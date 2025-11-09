@@ -165,6 +165,10 @@ export class AuthConfirmComponent implements OnInit {
     }, 2000);
   }
 
+  navigateToLogin() {
+    this.router.navigate(['/login']);
+  }
+
   private handleUnexpectedError(error: unknown, fallbackMessage: string) {
     const derivedMessage =
       error instanceof Error ? error.message : fallbackMessage;
