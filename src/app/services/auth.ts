@@ -146,36 +146,31 @@ export class AuthService {
 
       // Vérifier si l'utilisateur existe déjà (même si Supabase ne retourne pas d'erreur)
       // PROBLÈME : Supabase peut créer un NOUVEL utilisateur avec le même email au lieu de retourner une erreur
-      // SOLUTION : Vérifier si un autre utilisateur avec le même email existe déjà dans auth.users
+      // SOLUTION : Vérifier si un autre utilisateur avec le même email existe déjà dans auth.users via RPC
       if (data.user && !data.session) {
         console.log('⚠️ [AUTH] signUp() - User created but no session, checking if email already exists...');
         
-        // Essayer de se connecter avec un mot de passe incorrect pour voir si l'email existe déjà
-        // Si l'email existe, on aura une erreur "Invalid login credentials"
-        // Si l'email n'existe pas, on aura une erreur différente
-        const { error: signInError } = await this.supabaseService.client.auth.signInWithPassword({
-          email: email,
-          password: '___CHECK_IF_EXISTS___' // Mot de passe invalide intentionnellement
-        });
+        // Utiliser la fonction RPC pour vérifier si un AUTRE utilisateur avec le même email existe déjà
+        // On exclut l'utilisateur qui vient d'être créé pour éviter les faux positifs
+        const { data: emailExists, error: checkError } = await this.supabaseService.client
+          .rpc('check_email_exists', { 
+            email_to_check: email,
+            exclude_user_id: data.user.id // Exclure l'utilisateur qui vient d'être créé
+          });
 
-        console.log('🔍 [AUTH] signUp() - Check email exists result:', {
-          signInError: signInError ? {
-            message: signInError.message,
-            status: signInError.status
+        console.log('🔍 [AUTH] signUp() - check_email_exists RPC result:', {
+          emailExists,
+          excludeUserId: data.user.id,
+          checkError: checkError ? {
+            message: checkError.message,
+            code: checkError.code
           } : null
         });
 
-        // Si l'erreur est "Invalid login credentials", cela signifie que l'email existe déjà
-        // Si l'erreur est "Email not confirmed" ou autre, l'email existe aussi
-        const emailExists = signInError && (
-          signInError.message?.includes('Invalid login credentials') ||
-          signInError.message?.includes('Email not confirmed') ||
-          signInError.message?.includes('User not found') === false // Si ce n'est pas "User not found", l'email existe
-        );
-
-        if (emailExists) {
-          console.log('⚠️ [AUTH] signUp() - Email already exists! Supabase created duplicate user.');
-          // L'email existe déjà, Supabase a créé un doublon
+        // Si un AUTRE utilisateur avec le même email existe déjà (et que ce n'est pas une erreur de la fonction RPC)
+        if (emailExists === true && !checkError) {
+          console.log('⚠️ [AUTH] signUp() - Another user with same email exists! Supabase created duplicate user.');
+          // Un autre utilisateur avec le même email existe déjà, Supabase a créé un doublon
           // On doit proposer d'ajouter le rôle au compte existant
           return {
             user: null,

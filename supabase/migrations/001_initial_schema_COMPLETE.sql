@@ -208,9 +208,34 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 1. SELECT * FROM public.profiles LIMIT 1; (doit fonctionner)
 -- 2. SELECT routine_name FROM information_schema.routines 
 --    WHERE routine_schema = 'public' 
---    AND routine_name IN ('create_profile_after_signup', 'add_role_to_profile');
---    (doit retourner 2 lignes)
+--    AND routine_name IN ('create_profile_after_signup', 'add_role_to_profile', 'check_email_exists');
+--    (doit retourner 3 lignes)
 -- 3. SELECT * FROM pg_policies WHERE tablename = 'profiles';
 --    (doit retourner 3 policies)
 -- ============================================
+
+-- 7. FONCTION RPC : check_email_exists
+-- ============================================
+-- Cette fonction permet de vérifier si un autre utilisateur avec le même email existe dans auth.users
+-- Exclut l'utilisateur spécifié par son ID pour éviter les faux positifs lors de la création
+
+-- Supprimer l'ancienne fonction si elle existe (avec un seul paramètre)
+DROP FUNCTION IF EXISTS public.check_email_exists(TEXT);
+
+-- Créer la nouvelle fonction avec deux paramètres
+CREATE OR REPLACE FUNCTION public.check_email_exists(
+  email_to_check TEXT,
+  exclude_user_id UUID DEFAULT NULL
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM auth.users 
+    WHERE email = email_to_check
+    AND (exclude_user_id IS NULL OR id != exclude_user_id)
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION public.check_email_exists IS 'Vérifie si un autre utilisateur avec le même email existe dans auth.users. Exclut l''utilisateur spécifié par exclude_user_id pour éviter les faux positifs lors de la création.';
 
