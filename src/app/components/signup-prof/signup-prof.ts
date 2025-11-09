@@ -50,13 +50,37 @@ export class SignupProfComponent {
     this.showEmailExistsDialog = false;
 
     const { email, password } = this.signupForm.value;
+    console.log('🔵 [SIGNUP-PROF] onSubmit() - Starting signup:', { email });
+    
     const { user, error } = await this.authService.signUp(email, password, ['prof']);
+
+    console.log('📥 [SIGNUP-PROF] signUp result:', { 
+      hasUser: !!user, 
+      hasError: !!error,
+      error: error ? {
+        message: error.message,
+        code: (error as any).code
+      } : null
+    });
 
     this.isLoading = false;
 
     if (error) {
-      // Vérifier si l'erreur est "email déjà existant"
-      if (error.message?.includes('already registered') || error.message?.includes('User already registered')) {
+      // Vérifier si l'erreur est "email déjà existant" ou "rôle déjà existant"
+      const isAlreadyRegistered = error.message?.includes('already registered') || 
+                                  error.message?.includes('User already registered') ||
+                                  error.message?.includes('already exists') ||
+                                  (error as any).code === 'already_registered';
+      
+      const hasRoleAlready = (error as any).code === 'role_already_exists';
+      
+      if (hasRoleAlready) {
+        // L'utilisateur a déjà ce rôle
+        this.errorMessage = error.message || 'Vous avez déjà le rôle prof. Connectez-vous avec votre compte existant.';
+      } else if (isAlreadyRegistered) {
+        // Vérifier si l'utilisateur a déjà le rôle 'prof'
+        // On ne peut pas vérifier sans être connecté, donc on propose toujours d'ajouter le rôle
+        // Le login vérifiera si le rôle existe déjà
         this.showEmailExistsDialog = true;
       } else {
         this.errorMessage = error.message || 'Une erreur est survenue lors de l\'inscription';
@@ -65,6 +89,8 @@ export class SignupProfComponent {
     }
 
     if (user) {
+      // Vérifier si l'utilisateur est déjà confirmé (session existe)
+      // Si pas de session, c'est une nouvelle inscription en attente de confirmation
       // Inscription réussie, afficher message de confirmation d'email
       this.router.navigate(['/login'], { 
         queryParams: { 

@@ -24,11 +24,50 @@ export class AuthConfirmComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-    // Récupérer les paramètres de l'URL (token_hash, type et roles)
-    const tokenHash = this.route.snapshot.queryParams['token_hash'];
-    const type = this.route.snapshot.queryParams['type'];
-    const rolesParam = this.route.snapshot.queryParams['roles'];
+    // Supabase peut rediriger avec des fragments (#) ou des query params (?)
+    // Gérer les deux cas
+    
+    // Récupérer les fragments de l'URL (access_token, refresh_token, etc.)
+    const hash = window.location.hash.substring(1); // Enlever le #
+    const hashParams = new URLSearchParams(hash);
+    
+    // Récupérer aussi les query params au cas où
+    const queryParams = this.route.snapshot.queryParams;
+    
+    // Vérifier si on a un access_token dans les fragments (méthode Supabase standard)
+    const accessToken = hashParams.get('access_token') || queryParams['access_token'];
+    const refreshToken = hashParams.get('refresh_token') || queryParams['refresh_token'];
+    const type = hashParams.get('type') || queryParams['type'] || 'signup';
+    
+    // Si on a un access_token, c'est une redirection Supabase standard
+    if (accessToken) {
+      try {
+        // Utiliser setSession pour établir la session avec les tokens
+        const { data, error } = await this.supabaseService.client.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || ''
+        });
 
+        if (error) {
+          this.errorMessage = error.message || 'Erreur lors de la confirmation de l\'email';
+          this.isLoading = false;
+          return;
+        }
+
+        if (data.user) {
+          // Email confirmé avec succès
+          await this.handleUserConfirmed(data.user);
+        }
+      } catch (error: any) {
+        this.errorMessage = error.message || 'Une erreur est survenue lors de la confirmation';
+        this.isLoading = false;
+      }
+      return;
+    }
+
+    // Sinon, essayer avec token_hash (ancienne méthode)
+    const tokenHash = queryParams['token_hash'] || hashParams.get('token_hash');
+    
     if (!tokenHash) {
       this.errorMessage = 'Token de confirmation manquant';
       this.isLoading = false;
@@ -36,8 +75,7 @@ export class AuthConfirmComponent implements OnInit {
     }
 
     try {
-      // Confirmer l'email avec le token
-      // Supabase utilise verifyOtp pour les confirmations d'email
+      // Confirmer l'email avec le token_hash
       const { data, error } = await this.supabaseService.client.auth.verifyOtp({
         token_hash: tokenHash,
         type: type || 'email'
@@ -51,48 +89,83 @@ export class AuthConfirmComponent implements OnInit {
 
       if (data.user) {
         // Email confirmé avec succès
-        // Maintenant que l'utilisateur est confirmé, créer le profil avec les rôles
-        // Les rôles sont stockés dans user.user_metadata.roles
-        const roles = data.user.user_metadata?.roles || [];
-        
-        if (roles.length > 0) {
-          try {
-            // Attendre un peu pour s'assurer que le trigger a créé le profil
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const { profile, error: profileError } = await this.authService.createProfileWithRoles(
-              data.user.id,
-              roles
-            );
-
-            if (profileError) {
-              console.error('Error creating profile with roles:', profileError);
-              // Le profil existe peut-être déjà (créé par le trigger), on continue quand même
-            }
-          } catch (error) {
-            console.error('Error setting up profile:', error);
-            // Continuer même en cas d'erreur
-          }
-        }
-
-        this.isSuccess = true;
-        this.isLoading = false;
-
-        // Recharger le profil pour avoir les rôles à jour
-        await this.authService.getProfile();
-
-        // Rediriger vers la page de connexion après 2 secondes
-        setTimeout(() => {
-          this.router.navigate(['/login'], {
-            queryParams: {
-              message: 'Votre email a été confirmé avec succès ! Vous pouvez maintenant vous connecter.'
-            }
-          });
-        }, 2000);
+        await this.handleUserConfirmed(data.user);
       }
     } catch (error: any) {
       this.errorMessage = error.message || 'Une erreur est survenue lors de la confirmation';
       this.isLoading = false;
     }
+  }
+
+  private async handleUserConfirmed(user: any) {
+    console.group('🟣 [AUTH-CONFIRM] handleUserConfirmed() - START');
+    console.log('📥 User object:', {
+      id: user.id,
+      email: user.email,
+      user_metadata: user.user_metadata,
+      app_metadata: user.app_metadata
+    });
+    
+    // Maintenant que l'utilisateur est confirmé, créer le profil avec les rôles
+    // Les rôles sont stockés dans user.user_metadata.roles
+    const roles = user.user_metadata?.roles || [];
+    
+    console.log('🔍 [AUTH-CONFIRM] Extracted roles:', {
+      roles,
+      rolesType: typeof roles,
+      rolesIsArray: Array.isArray(roles),
+      rolesLength: roles.length,
+      userMetadataRoles: user.user_metadata?.roles,
+      fullUserMetadata: user.user_metadata
+    });
+    
+    if (roles.length > 0) {
+      try {
+        // Attendre un peu pour s'assurer que le trigger a créé le profil
+        console.log('⏳ [AUTH-CONFIRM] Waiting 500ms for trigger...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        console.log('🚀 [AUTH-CONFIRM] Calling createProfileWithRoles...');
+        const { profile, error: profileError } = await this.authService.createProfileWithRoles(
+          user.id,
+          roles
+        );
+
+        console.log('📥 [AUTH-CONFIRM] createProfileWithRoles result:', { profile, profileError });
+
+        if (profileError) {
+          console.error('❌ [AUTH-CONFIRM] Error creating profile with roles:', profileError);
+          // Le profil existe peut-être déjà (créé par le trigger), on continue quand même
+        } else {
+          console.log('✅ [AUTH-CONFIRM] Profile created/updated successfully:', profile);
+        }
+      } catch (error) {
+        console.error('💥 [AUTH-CONFIRM] Exception in handleUserConfirmed:', error);
+        // Continuer même en cas d'erreur
+      }
+    } else {
+      console.warn('⚠️ [AUTH-CONFIRM] No roles found in user_metadata!');
+    }
+
+    this.isSuccess = true;
+    this.isLoading = false;
+
+    // Recharger le profil pour avoir les rôles à jour
+    console.log('🔄 [AUTH-CONFIRM] Reloading profile...');
+    const finalProfile = await this.authService.getProfile();
+    console.log('📥 [AUTH-CONFIRM] Final profile after reload:', finalProfile);
+    console.groupEnd();
+
+    // Nettoyer l'URL en enlevant les fragments
+    window.history.replaceState(null, '', window.location.pathname);
+
+    // Rediriger vers la page de connexion après 2 secondes
+    setTimeout(() => {
+      this.router.navigate(['/login'], {
+        queryParams: {
+          message: 'Votre email a été confirmé avec succès ! Vous pouvez maintenant vous connecter.'
+        }
+      });
+    }, 2000);
   }
 }

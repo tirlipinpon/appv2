@@ -37,8 +37,8 @@ BEGIN
         UPDATE public.profiles
         SET 
             roles = (
-                SELECT array_agg(DISTINCT role)
-                FROM unnest(existing_roles || roles_array) AS role
+                SELECT array_agg(DISTINCT r)
+                FROM unnest(existing_roles || roles_array) AS r
             ),
             metadata = COALESCE(metadata_json, profiles.metadata),
             updated_at = NOW()

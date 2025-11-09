@@ -67,11 +67,29 @@ export class LoginComponent implements OnInit {
     if (session) {
       // Si on doit ajouter un rôle après connexion
       if (this.addRoleAfterLogin) {
-        const { profile, error: roleError } = await this.authService.addRoleToProfile(this.addRoleAfterLogin);
+        console.log('🟡 [LOGIN] Adding role after login:', this.addRoleAfterLogin);
+        
+        // Vérifier d'abord si l'utilisateur a déjà ce rôle
+        const profile = await this.authService.getProfile();
+        console.log('📥 [LOGIN] Current profile:', profile);
+        
+        if (profile && profile.roles.includes(this.addRoleAfterLogin)) {
+          console.log('⚠️ [LOGIN] Role already exists!');
+          this.errorMessage = `Vous avez déjà le rôle '${this.addRoleAfterLogin}'. Connectez-vous normalement.`;
+          return;
+        }
+        
+        console.log('➕ [LOGIN] Role does not exist, adding...');
+        const { profile: updatedProfile, error: roleError } = await this.authService.addRoleToProfile(this.addRoleAfterLogin);
+        
+        console.log('📥 [LOGIN] addRoleToProfile result:', { updatedProfile, roleError });
+        
         if (roleError) {
+          console.error('❌ [LOGIN] Error adding role:', roleError);
           this.errorMessage = roleError.message || 'Erreur lors de l\'ajout du rôle';
           return;
         }
+        console.log('✅ [LOGIN] Role added successfully!');
         this.successMessage = `Le rôle '${this.addRoleAfterLogin}' a été ajouté à votre profil avec succès !`;
       }
 
