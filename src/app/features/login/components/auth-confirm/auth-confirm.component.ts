@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../../services/auth/auth.service';
 import { SupabaseService } from '../../../../services/supabase/supabase.service';
+import type { User } from '@supabase/supabase-js';
 
 @Component({
   selector: 'app-auth-confirm',
@@ -12,16 +13,13 @@ import { SupabaseService } from '../../../../services/supabase/supabase.service'
   styleUrl: './auth-confirm.component.scss'
 })
 export class AuthConfirmComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly supabaseService = inject(SupabaseService);
   isLoading = true;
   isSuccess = false;
   errorMessage: string | null = null;
-
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private authService: AuthService,
-    private supabaseService: SupabaseService
-  ) {}
 
   async ngOnInit() {
     // Supabase peut rediriger avec des fragments (#) ou des query params (?)
@@ -58,9 +56,8 @@ export class AuthConfirmComponent implements OnInit {
           // Email confirmé avec succès
           await this.handleUserConfirmed(data.user);
         }
-      } catch (error: any) {
-        this.errorMessage = error.message || 'Une erreur est survenue lors de la confirmation';
-        this.isLoading = false;
+      } catch (error: unknown) {
+        this.handleUnexpectedError(error, 'Une erreur est survenue lors de la confirmation');
       }
       return;
     }
@@ -91,13 +88,12 @@ export class AuthConfirmComponent implements OnInit {
         // Email confirmé avec succès
         await this.handleUserConfirmed(data.user);
       }
-    } catch (error: any) {
-      this.errorMessage = error.message || 'Une erreur est survenue lors de la confirmation';
-      this.isLoading = false;
+    } catch (error: unknown) {
+      this.handleUnexpectedError(error, 'Une erreur est survenue lors de la confirmation');
     }
   }
 
-  private async handleUserConfirmed(user: any) {
+  private async handleUserConfirmed(user: User) {
     console.group('🟣 [AUTH-CONFIRM] handleUserConfirmed() - START');
     console.log('📥 User object:', {
       id: user.id,
@@ -108,14 +104,14 @@ export class AuthConfirmComponent implements OnInit {
     
     // Maintenant que l'utilisateur est confirmé, créer le profil avec les rôles
     // Les rôles sont stockés dans user.user_metadata.roles
-    const roles = user.user_metadata?.roles || [];
+    const roles = (user.user_metadata?.['roles'] as string[] | undefined) || [];
     
     console.log('🔍 [AUTH-CONFIRM] Extracted roles:', {
-      roles,
+      roles: user.user_metadata?.['roles'],
       rolesType: typeof roles,
       rolesIsArray: Array.isArray(roles),
       rolesLength: roles.length,
-      userMetadataRoles: user.user_metadata?.roles,
+      userMetadataRoles: user.user_metadata?.['roles'],
       fullUserMetadata: user.user_metadata
     });
     
@@ -167,5 +163,12 @@ export class AuthConfirmComponent implements OnInit {
         }
       });
     }, 2000);
+  }
+
+  private handleUnexpectedError(error: unknown, fallbackMessage: string) {
+    const derivedMessage =
+      error instanceof Error ? error.message : fallbackMessage;
+    this.errorMessage = derivedMessage || fallbackMessage;
+    this.isLoading = false;
   }
 }

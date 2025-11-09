@@ -1,8 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../../../services/auth/auth.service';
+import { AuthService, ServiceError } from '../../../../services/auth/auth.service';
 
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password');
@@ -23,22 +23,18 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
   styleUrl: './signup-parent.component.scss'
 })
 export class SignupParentComponent {
-  signupForm: FormGroup;
+  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  signupForm: FormGroup = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(6)]],
+    confirmPassword: ['', [Validators.required]]
+  }, { validators: passwordMatchValidator });
   errorMessage: string | null = null;
   isLoading = false;
   showEmailExistsDialog = false;
-
-  constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private router: Router
-  ) {
-    this.signupForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      confirmPassword: ['', [Validators.required]]
-    }, { validators: passwordMatchValidator });
-  }
 
   async onSubmit() {
     if (this.signupForm.invalid) {
@@ -49,7 +45,7 @@ export class SignupParentComponent {
     this.errorMessage = null;
     this.showEmailExistsDialog = false;
 
-    const { email, password } = this.signupForm.value;
+    const { email, password } = this.signupForm.getRawValue();
     console.log('🔵 [SIGNUP-PARENT] onSubmit() - Starting signup:', { email });
     
     const { user, error } = await this.authService.signUp(email, password, ['parent']);
@@ -59,7 +55,7 @@ export class SignupParentComponent {
       hasError: !!error,
       error: error ? {
         message: error.message,
-        code: (error as any).code
+        code: this.extractErrorCode(error)
       } : null
     });
 
@@ -67,12 +63,14 @@ export class SignupParentComponent {
 
     if (error) {
       // Vérifier si l'erreur est "email déjà existant" ou "rôle déjà existant"
-      const isAlreadyRegistered = error.message?.includes('already registered') || 
-                                  error.message?.includes('User already registered') ||
-                                  error.message?.includes('already exists') ||
-                                  (error as any).code === 'already_registered';
+      const errorCode = this.extractErrorCode(error);
+      const message = error.message ?? '';
+      const isAlreadyRegistered = message.includes('already registered') || 
+                                  message.includes('User already registered') ||
+                                  message.includes('already exists') ||
+                                  errorCode === 'already_registered';
       
-      const hasRoleAlready = (error as any).code === 'role_already_exists';
+      const hasRoleAlready = errorCode === 'role_already_exists';
       
       if (hasRoleAlready) {
         // L'utilisateur a déjà ce rôle
@@ -115,5 +113,34 @@ export class SignupParentComponent {
 
   goToLogin() {
     this.router.navigate(['/login']);
+  }
+
+  closeDialog() {
+    this.showEmailExistsDialog = false;
+  }
+
+  onOverlayKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.closeDialog();
+    }
+  }
+
+  onDialogKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.stopPropagation();
+    }
+  }
+
+  private extractErrorCode(error: ServiceError | null): string | undefined {
+    if (!error) {
+      return undefined;
+    }
+
+    if ('code' in error && typeof error.code === 'string') {
+      return error.code;
+    }
+
+    return undefined;
   }
 }

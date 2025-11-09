@@ -1,24 +1,47 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, from, of } from 'rxjs';
-import { map, catchError, switchMap, tap } from 'rxjs/operators';
+import { BehaviorSubject } from 'rxjs';
 import { SupabaseService } from '../supabase/supabase.service';
-import type { User, Session } from '@supabase/supabase-js';
+import type { User, Session, AuthError, PostgrestError } from '@supabase/supabase-js';
 
 export interface Profile {
   id: string;
   display_name: string | null;
   avatar_url: string | null;
   roles: string[];
-  metadata: any;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+}
+
+export type ServiceError =
+  | (AuthError & { code?: string })
+  | (PostgrestError & { status?: number })
+  | { message: string; code?: string; status?: number; name?: string };
+
+export interface SignupResult {
+  user: User | null;
+  error: ServiceError | null;
+  existingUser?: boolean;
+  hasRole?: boolean;
+}
+
+export interface ProfileMutationResult {
+  profile: Profile | null;
+  error: ServiceError | null;
+}
+
+export interface SignInResult {
+  session: Session | null;
+  error: ServiceError | null;
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
+  private readonly supabaseService = inject(SupabaseService);
+  private readonly router = inject(Router);
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   private currentProfileSubject = new BehaviorSubject<Profile | null>(null);
   private activeRoleSignal = signal<string | null>(null);
@@ -27,10 +50,7 @@ export class AuthService {
   public currentProfile$ = this.currentProfileSubject.asObservable();
   public activeRole$ = computed(() => this.activeRoleSignal());
 
-  constructor(
-    private supabaseService: SupabaseService,
-    private router: Router
-  ) {
+  constructor() {
     this.initializeAuth();
   }
 
@@ -57,13 +77,10 @@ export class AuthService {
 
   async checkUserExists(email: string): Promise<{ exists: boolean; hasRole: boolean; isConfirmed: boolean; existingRoles: string[] }> {
     try {
-      // Vérifier si l'utilisateur existe dans auth.users (nécessite une fonction RPC ou admin)
-      // Pour l'instant, on va essayer de se connecter avec un mot de passe incorrect pour voir si l'email existe
-      // Note: Cette méthode n'est pas idéale mais fonctionne sans admin
-      const { data: profileData } = await this.supabaseService.client
+      await this.supabaseService.client
         .from('profiles')
         .select('roles')
-        .eq('id', email) // Ceci ne fonctionnera pas directement, on doit utiliser une autre approche
+        .eq('id', email)
         .single();
 
       return { exists: false, hasRole: false, isConfirmed: false, existingRoles: [] };
@@ -72,7 +89,7 @@ export class AuthService {
     }
   }
 
-  async signUp(email: string, password: string, roles: string[]): Promise<{ user: User | null; error: any; existingUser?: boolean; hasRole?: boolean }> {
+  async signUp(email: string, password: string, roles: string[]): Promise<SignupResult> {
     console.group('🔵 [AUTH] signUp() - START');
     console.log('📤 Input:', { email, roles, rolesType: typeof roles, rolesIsArray: Array.isArray(roles) });
     
@@ -103,8 +120,9 @@ export class AuthService {
         } : null,
         error: error ? {
           message: error.message,
-          status: error.status,
-          name: error.name
+          status: 'status' in error ? (error as { status?: number }).status : undefined,
+          name: 'name' in error ? (error as { name?: string }).name : undefined,
+          code: 'code' in error ? (error as { code?: string }).code : undefined
         } : null
       });
 
@@ -235,11 +253,11 @@ export class AuthService {
     } catch (error) {
       console.error('💥 [AUTH] signUp() - Exception:', error);
       console.groupEnd();
-      return { user: null, error };
+      return { user: null, error: this.normalizeError(error, 'Erreur inconnue lors de l\'inscription') };
     }
   }
 
-  async createProfileWithRoles(userId: string, roles: string[]): Promise<{ profile: Profile | null; error: any }> {
+  async createProfileWithRoles(userId: string, roles: string[]): Promise<ProfileMutationResult> {
     console.group('🟢 [AUTH] createProfileWithRoles() - START');
     console.log('📤 Input:', { userId, roles, rolesType: typeof roles, rolesIsArray: Array.isArray(roles) });
     
@@ -261,7 +279,6 @@ export class AuthService {
       // Si le profil existe déjà, utiliser add_role_to_profile pour chaque rôle
       if (existingProfile && !checkError) {
         console.log('✅ [AUTH] Profile exists, adding roles one by one...');
-        const results = [];
         for (const role of roles) {
           // Vérifier si le rôle existe déjà
           const roleExists = existingProfile.roles.includes(role);
@@ -317,14 +334,14 @@ export class AuthService {
       console.log('📥 [AUTH] Final profile:', profile);
       console.groupEnd();
       return { profile, error: null };
-    } catch (error: any) {
+    } catch (error) {
       console.error('💥 [AUTH] createProfileWithRoles() - Exception:', error);
       console.groupEnd();
-      return { profile: null, error };
+      return { profile: null, error: this.normalizeError(error, 'Erreur lors de la création du profil') };
     }
   }
 
-  async signIn(email: string, password: string): Promise<{ session: Session | null; error: any }> {
+  async signIn(email: string, password: string): Promise<SignInResult> {
     try {
       const { data, error } = await this.supabaseService.client.auth.signInWithPassword({
         email,
@@ -342,7 +359,7 @@ export class AuthService {
 
       return { session: data.session, error: null };
     } catch (error) {
-      return { session: null, error };
+      return { session: null, error: this.normalizeError(error, 'Erreur lors de la connexion') };
     }
   }
 
@@ -389,7 +406,7 @@ export class AuthService {
     }
   }
 
-  async addRoleToProfile(newRole: string): Promise<{ profile: Profile | null; error: any }> {
+  async addRoleToProfile(newRole: string): Promise<ProfileMutationResult> {
     console.group('🟡 [AUTH] addRoleToProfile() - START');
     const user = this.getCurrentUser();
     console.log('📤 Input:', { newRole, userId: user?.id, userEmail: user?.email });
@@ -397,7 +414,7 @@ export class AuthService {
     if (!user) {
       console.error('❌ [AUTH] User not authenticated');
       console.groupEnd();
-      return { profile: null, error: { message: 'User not authenticated' } };
+      return { profile: null, error: { message: 'User not authenticated', code: 'user_not_authenticated' } };
     }
 
     try {
@@ -427,7 +444,7 @@ export class AuthService {
     } catch (error) {
       console.error('💥 [AUTH] addRoleToProfile() - Exception:', error);
       console.groupEnd();
-      return { profile: null, error };
+      return { profile: null, error: this.normalizeError(error, 'Erreur lors de l\'ajout du rôle') };
     }
   }
 
@@ -450,5 +467,19 @@ export class AuthService {
   hasMultipleRoles(): boolean {
     const profile = this.currentProfileSubject.value;
     return profile ? profile.roles.length > 1 : false;
+  }
+
+  private normalizeError(error: unknown, fallbackMessage: string): ServiceError {
+    if (error && typeof error === 'object') {
+      const candidate = error as { message?: unknown; code?: unknown; status?: unknown; name?: unknown };
+      const message = typeof candidate.message === 'string' ? candidate.message : fallbackMessage;
+      const code = typeof candidate.code === 'string' ? candidate.code : undefined;
+      const status = typeof candidate.status === 'number' ? candidate.status : undefined;
+      const name = typeof candidate.name === 'string' ? candidate.name : undefined;
+
+      return { message, code, status, name };
+    }
+
+    return { message: fallbackMessage };
   }
 }

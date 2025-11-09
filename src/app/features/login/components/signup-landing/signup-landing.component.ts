@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 
@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   styleUrl: './signup-landing.component.scss'
 })
 export class SignupLandingComponent {
-  constructor(private router: Router) {}
+  private readonly router = inject(Router);
 
   goToParentSignup() {
     this.router.navigate(['/signup/parent']);

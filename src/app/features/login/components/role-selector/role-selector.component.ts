@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService, Profile } from '../../../../services/auth/auth.service';
@@ -11,28 +11,25 @@ import { AuthService, Profile } from '../../../../services/auth/auth.service';
   styleUrl: './role-selector.component.scss'
 })
 export class RoleSelectorComponent implements OnInit {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
   profile: Profile | null = null;
   availableRoles: string[] = [];
-  roleLabels: { [key: string]: string } = {
+  roleLabels: Record<string, string> = {
     'parent': 'Parent',
     'prof': 'Professeur',
     'admin': 'Administrateur'
   };
-  roleIcons: { [key: string]: string } = {
+  roleIcons: Record<string, string> = {
     'parent': '👨‍👩‍👧‍👦',
     'prof': '👨‍🏫',
     'admin': '👤'
   };
-  roleDescriptions: { [key: string]: string } = {
+  roleDescriptions: Record<string, string> = {
     'parent': 'Gérer le parcours éducatif de vos enfants',
     'prof': 'Accompagner et valider l\'évolution de vos élèves',
     'admin': 'Administrer l\'application'
   };
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
 
   async ngOnInit() {
     this.profile = await this.authService.getProfile();

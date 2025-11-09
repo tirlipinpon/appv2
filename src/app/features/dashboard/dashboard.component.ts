@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService, Profile } from '../../services/auth/auth.service';
@@ -11,10 +11,9 @@ import { AuthService, Profile } from '../../services/auth/auth.service';
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
+  private readonly authService = inject(AuthService);
   profile: Profile | null = null;
   activeRole: string | null = null;
-
-  constructor(private authService: AuthService) {}
 
   async ngOnInit() {
     this.profile = await this.authService.getProfile();

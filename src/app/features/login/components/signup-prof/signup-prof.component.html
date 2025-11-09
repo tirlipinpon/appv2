@@ -67,8 +67,21 @@
   </div>
 
   <!-- Dialog pour email déjà existant -->
-  <div class="dialog-overlay" *ngIf="showEmailExistsDialog" (click)="showEmailExistsDialog = false">
-    <div class="dialog" (click)="$event.stopPropagation()">
+  <div
+    class="dialog-overlay"
+    *ngIf="showEmailExistsDialog"
+    role="button"
+    tabindex="0"
+    (click)="closeDialog()"
+    (keydown)="onOverlayKeydown($event)"
+  >
+    <div
+      class="dialog"
+      role="dialog"
+      tabindex="0"
+      (click)="$event.stopPropagation()"
+      (keydown)="onDialogKeydown($event)"
+    >
       <h2>Compte existant</h2>
       <p>Ce compte existe déjà. Souhaitez-vous ajouter le rôle 'prof' à votre profil existant ?</p>
       <div class="dialog-actions">
