@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../services/auth';
+import { AuthService } from '../../../../services/auth/auth.service';
 
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password');
@@ -19,8 +19,8 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
   selector: 'app-signup-parent',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './signup-parent.html',
-  styleUrl: './signup-parent.scss'
+  templateUrl: './signup-parent.component.html',
+  styleUrl: './signup-parent.component.scss'
 })
 export class SignupParentComponent {
   signupForm: FormGroup;

@@ -6,8 +6,8 @@ import { CommonModule } from '@angular/common';
   selector: 'app-signup-landing',
   standalone: true,
   imports: [CommonModule, RouterModule],
-  templateUrl: './signup-landing.html',
-  styleUrl: './signup-landing.scss'
+  templateUrl: './signup-landing.component.html',
+  styleUrl: './signup-landing.component.scss'
 })
 export class SignupLandingComponent {
   constructor(private router: Router) {}

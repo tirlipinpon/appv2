@@ -1,14 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService, Profile } from '../../services/auth';
+import { AuthService, Profile } from '../../../../services/auth/auth.service';
 
 @Component({
   selector: 'app-role-selector',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './role-selector.html',
-  styleUrl: './role-selector.scss'
+  templateUrl: './role-selector.component.html',
+  styleUrl: './role-selector.component.scss'
 })
 export class RoleSelectorComponent implements OnInit {
   profile: Profile | null = null;

@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './guards/auth-guard';
-import { roleGuard } from './guards/role-guard';
+import { authGuard } from './features/login/guards/auth.guard';
+import { roleGuard } from './features/login/guards/role.guard';
 
 export const routes: Routes = [
   {
@@ -10,32 +10,32 @@ export const routes: Routes = [
   },
   {
     path: 'login',
-    loadComponent: () => import('./components/login/login').then(m => m.LoginComponent)
+    loadComponent: () => import('./features/login/login.component').then(m => m.LoginComponent)
   },
   {
     path: 'auth/confirm',
-    loadComponent: () => import('./components/auth-confirm/auth-confirm').then(m => m.AuthConfirmComponent)
+    loadComponent: () => import('./features/login/components/auth-confirm/auth-confirm.component').then(m => m.AuthConfirmComponent)
   },
   {
     path: 'signup',
-    loadComponent: () => import('./components/signup-landing/signup-landing').then(m => m.SignupLandingComponent)
+    loadComponent: () => import('./features/login/components/signup-landing/signup-landing.component').then(m => m.SignupLandingComponent)
   },
   {
     path: 'signup/parent',
-    loadComponent: () => import('./components/signup-parent/signup-parent').then(m => m.SignupParentComponent)
+    loadComponent: () => import('./features/login/components/signup-parent/signup-parent.component').then(m => m.SignupParentComponent)
   },
   {
     path: 'signup/prof',
-    loadComponent: () => import('./components/signup-prof/signup-prof').then(m => m.SignupProfComponent)
+    loadComponent: () => import('./features/login/components/signup-prof/signup-prof.component').then(m => m.SignupProfComponent)
   },
   {
     path: 'select-role',
-    loadComponent: () => import('./components/role-selector/role-selector').then(m => m.RoleSelectorComponent),
+    loadComponent: () => import('./features/login/components/role-selector/role-selector.component').then(m => m.RoleSelectorComponent),
     canActivate: [authGuard]
   },
   {
     path: 'dashboard',
-    loadComponent: () => import('./components/dashboard/dashboard').then(m => m.DashboardComponent),
+    loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
     canActivate: [authGuard]
   },
   {

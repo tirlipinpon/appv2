@@ -2,7 +2,7 @@ import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError, switchMap, tap } from 'rxjs/operators';
-import { SupabaseService } from './supabase';
+import { SupabaseService } from '../supabase/supabase.service';
 import type { User, Session } from '@supabase/supabase-js';
 
 export interface Profile {

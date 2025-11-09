@@ -1,15 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../services/auth';
-import { SupabaseService } from '../../services/supabase';
+import { AuthService } from '../../../../services/auth/auth.service';
+import { SupabaseService } from '../../../../services/supabase/supabase.service';
 
 @Component({
   selector: 'app-auth-confirm',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './auth-confirm.html',
-  styleUrl: './auth-confirm.scss'
+  templateUrl: './auth-confirm.component.html',
+  styleUrl: './auth-confirm.component.scss'
 })
 export class AuthConfirmComponent implements OnInit {
   isLoading = true;
