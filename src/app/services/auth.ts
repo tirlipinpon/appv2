@@ -60,6 +60,9 @@ export class AuthService {
       const { data, error } = await this.supabaseService.client.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/confirm`
+        }
       });
 
       if (error) {

@@ -1,0 +1,24 @@
+<div class="auth-confirm-container">
+  <div class="auth-confirm-card">
+    <div *ngIf="isLoading" class="loading">
+      <div class="spinner"></div>
+      <p>Confirmation de votre email en cours...</p>
+    </div>
+
+    <div *ngIf="isSuccess && !isLoading" class="success">
+      <div class="success-icon">✅</div>
+      <h1>Email confirmé !</h1>
+      <p>Votre compte a été activé avec succès.</p>
+      <p class="redirect-message">Redirection vers la page de connexion...</p>
+    </div>
+
+    <div *ngIf="errorMessage && !isLoading" class="error">
+      <div class="error-icon">❌</div>
+      <h1>Erreur de confirmation</h1>
+      <p>{{ errorMessage }}</p>
+      <button (click)="router.navigate(['/login'])" class="btn-primary">
+        Aller à la page de connexion
+      </button>
+    </div>
+  </div>
+</div>

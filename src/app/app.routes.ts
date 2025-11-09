@@ -13,6 +13,10 @@ export const routes: Routes = [
     loadComponent: () => import('./components/login/login').then(m => m.LoginComponent)
   },
   {
+    path: 'auth/confirm',
+    loadComponent: () => import('./components/auth-confirm/auth-confirm').then(m => m.AuthConfirmComponent)
+  },
+  {
     path: 'signup',
     loadComponent: () => import('./components/signup-landing/signup-landing').then(m => m.SignupLandingComponent)
   },
