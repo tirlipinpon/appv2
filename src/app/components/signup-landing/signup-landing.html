@@ -1,0 +1,24 @@
+<div class="signup-landing-container">
+  <div class="signup-landing-card">
+    <h1>Inscription</h1>
+    <p class="subtitle">Choisissez votre profil</p>
+    
+    <div class="options">
+      <button class="option-card" (click)="goToParentSignup()">
+        <div class="icon">👨‍👩‍👧‍👦</div>
+        <h2>Je suis parent</h2>
+        <p>Gérez le parcours éducatif de vos enfants</p>
+      </button>
+
+      <button class="option-card" (click)="goToProfSignup()">
+        <div class="icon">👨‍🏫</div>
+        <h2>Je suis professeur</h2>
+        <p>Accompagnez et validez l'évolution de vos élèves</p>
+      </button>
+    </div>
+
+    <div class="links">
+      <a routerLink="/login">Déjà un compte ? Se connecter</a>
+    </div>
+  </div>
+</div>

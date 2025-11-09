@@ -1,0 +1,612 @@
+# Cursor Rules - Architecture Angular
+
+## Vue d'ensemble
+
+- Utiliser Angular 20.x avec composants standalone, Signals et pattern store.
+- Respecter l'architecture en couches : UI → Application → Store → Infrastructure → API Services.
+- Séparer strictement responsabilités UI, logique métier et accès API.
+
+## UI Layer
+
+- Créer uniquement des composants standalone et lazy-loaded.
+- Injecter les dépendances via `inject()` et exploiter Signals (`signal`, `computed`).
+- Limiter la logique métier aux orchestrations supérieures.
+
+## Application Layer
+
+- Centraliser l'orchestration métier dans `Application.ts`.
+- Utiliser des `computed()` et `effect()` pour réagir au store sans dupliquer la logique.
+- Appliquer le facade pattern pour exposer une interface simple aux composants.
+
+## Store Layer
+
+- Implémenter des stores avec NgRx Signals (`signalStore`, `withState`, `withComputed`, `withMethods`).
+- Encapsuler la logique asynchrone dans des `rxMethod`, valider les entrées et prévenir les appels concurrents.
+- Centraliser la gestion des erreurs et maintenir une liste d’erreurs typées (`PostgrestError`).
+
+## Infrastructure Layer
+
+- Adapter les services API via `Infrastructure.ts`, appliquer l’adapter pattern.
+- Normaliser les erreurs, journaliser systématiquement et prévoir des mocks activables.
+- Prévoir une variante optimisée `InfrastructurePerformanceService` avec cache et retry.
+
+## API Services Layer
+
+- Fournir des services spécialisés (Supabase, OpenAI, vidéo, images, upload interne).
+- Protéger les appels avec validations, gestion des tokens et transformation des réponses.
+
+## Performance et Qualité
+
+- Exploiter `forkJoin` pour paralléliser les appels lorsque pertinent.
+- Utiliser des computed signals pour éviter les recalculs inutiles.
+- Prévoir logging structuré, tests unitaires et mocks d’infrastructure.
+
+## Authentification
+
+- Utiliser `AuthService` pour l’authentification Supabase.
+- Protéger les routes via `auth.guard.ts` avec redirection `/login` → `/create`.
+
+## Dépendances clés
+
+- `@angular/core@^20.1.0`, `@angular/router@^20.1.0`, `@ngrx/signals@^19.2.1`.
+- `@supabase/supabase-js@^2.51.0`, `rxjs@~7.8.0`, `openai@^5.16.0`.
+
+## Évolutions recommandées
+
+- Envisager une interface entre le store et l'infrastructure pour réduire le couplage.
+- Raffiner la gestion d'erreurs (critiques vs non critiques, retry).
+- Introduire du caching pour les données et les médias.
+
+## 📁 Structure de fichiers des Features
+
+Chaque feature suit un **pattern standardisé** avec un composant Smart à la racine et des dossiers organisés par responsabilité.
+
+### 🎯 Pattern Smart Component + Dossiers
+
+Chaque feature est organisée selon cette structure :
+
+```
+src/app/features/
+└── [feature-name]/                    # Nom de la feature (ex: create, edit, all)
+    │
+    ├── [feature-name].component.ts    # 🎯 SMART COMPONENT (point d'entrée)
+    ├── [feature-name].component.html   # Template du composant principal
+    ├── [feature-name].component.css   # Styles du composant principal
+    ├── [feature-name].component.spec.ts # Tests du composant principal
+    │
+    ├── components/                     # 📦 Composants UI et logique
+    │   ├── application/                # Orchestration métier (Facade Pattern)
+    │   │   ├── application.ts
+    │   │   └── application.spec.ts
+    │   │
+    │   ├── infrastructure/             # Wrapper API (Adapter Pattern)
+    │   │   ├── infrastructure.ts
+    │   │   └── infrastructure.spec.ts
+    │   │
+    │   ├── [ui-component-name]/       # Composants UI de présentation
+    │   │   ├── [name].component.ts
+    │   │   ├── [name].component.html
+    │   │   ├── [name].component.css
+    │   │   └── [name].component.spec.ts
+    │   │
+    │   └── lazy-[component-name]/     # Composants lazy-loaded
+    │       └── lazy-[name].component.ts
+    │
+    ├── services/                       # 🔧 Services métier de la feature
+    │   ├── [service-name]/
+    │   │   ├── [service-name].service.ts
+    │   │   └── [service-name].service.spec.ts
+    │   └── [autre-service]/
+    │       └── ...
+    │
+    ├── store/                          # 🗄️ Store NgRx Signals
+    │   └── index.ts                    # Store principal de la feature
+    │
+    ├── types/                          # 📝 Types TypeScript de la feature
+    │   ├── [entity].ts                 # Interfaces et types
+    │   ├── [autre-type].ts
+    │   └── ...
+    │
+    └── utils/                          # 🛠️ Utilitaires de la feature
+        ├── [util-name].ts
+        ├── [util-name].spec.ts
+        └── ...
+```
+
+### 📋 Détail de chaque élément
+
+#### 1️⃣ **Smart Component** (composant principal)
+
+**Fichier** : `[feature-name].component.ts`
+
+**Responsabilité** :
+
+- ✅ Point d'entrée de la feature
+- ✅ Injection du store et des services
+- ✅ Gestion de l'affichage (signals pour toggle sections)
+- ✅ Computed signals pour optimiser les calculs
+- ✅ Délégation de la logique métier à `Application`
+
+**Caractéristiques** :
+
+- Composant **standalone**
+- Utilise `inject()` pour les dépendances
+- Signals pour la réactivité UI
+- Computed signals pour les calculs dérivés
+
+**Exemple** :
+
+```typescript
+@Component({
+  selector: 'app-create',
+  standalone: true,
+  imports: [CommonModule, FormsModule, ...],
+  templateUrl: './create.component.html',
+  styleUrl: './create.component.css'
+})
+export class CreateComponent {
+  // Injection des dépendances
+  private readonly application = inject(Application);
+  private readonly loggingService = inject(LoggingService);
+  readonly store = inject(SearchStore);
+
+  // État local pour l'UI
+  articleIdea = '';
+
+  // Signals pour contrôler l'affichage
+  readonly showEditor = signal(true);
+  readonly showErrors = signal(true);
+
+  // Computed signals pour optimiser
+  readonly articleStats = computed(() => {
+    const article = this.store.article() || '';
+    return {
+      characters: article.length,
+      words: article.split(/\s+/).filter(w => w.length > 0).length
+    };
+  });
+
+  // Méthodes publiques
+  generate() {
+    this.application.generate(this.articleIdea);
+  }
+}
+```
+
+#### 2️⃣ **Dossier `components/`** - Composants et logique
+
+**Structure** :
+
+```
+components/
+├── application/          # Orchestration métier (Facade)
+├── infrastructure/       # Wrapper API (Adapter)
+├── [ui-component]/       # Composants UI de présentation
+└── lazy-[component]/     # Composants lazy-loaded
+```
+
+##### **`application/`** - Orchestration métier
+
+**Fichier** : `components/application/application.ts`
+
+**Responsabilité** :
+
+- ✅ Coordonne le workflow de la feature
+- ✅ Utilise `effect()` pour réagir aux changements du store
+- ✅ Appelle les méthodes du store selon l'état
+- ✅ Simplifie l'interface pour le Smart Component
+
+**Pattern** : Facade Pattern
+
+**Exemple** :
+
+```typescript
+@Injectable({ providedIn: "root" })
+export class Application {
+  private readonly store = inject(SearchStore);
+
+  constructor() {
+    effect(() => {
+      const step = this.store.step();
+
+      if (step === 1) {
+        this.store.enrichMediaParallel();
+      } else if (step === 2) {
+        this.store.setInternalLink();
+      }
+    });
+  }
+
+  generate(articleIdea: string): void {
+    this.store.initializeAndGenerate(articleIdea);
+  }
+}
+```
+
+##### **`infrastructure/`** - Wrapper API
+
+**Fichier** : `components/infrastructure/infrastructure.ts`
+
+**Responsabilité** :
+
+- ✅ Encapsule les appels aux services API
+- ✅ Gestion d'erreurs standardisée
+- ✅ Transformation des erreurs en format uniforme
+- ✅ Logging systématique
+
+**Pattern** : Adapter Pattern
+
+**Exemple** :
+
+```typescript
+@Injectable({ providedIn: "root" })
+export class Infrastructure {
+  private readonly supabaseService = inject(SupabaseService);
+  private readonly openaiApiService = inject(OpenaiApiService);
+
+  setPost(idea: string): Observable<any | PostgrestError> {
+    return this.wrapWithErrorHandling(
+      () => this.openaiApiService.generateArticle(idea),
+      "setPost",
+      "Génération article"
+    );
+  }
+
+  private wrapWithErrorHandling<T>(
+    operation: () => Observable<T>,
+    methodName: string,
+    context: string
+  ): Observable<T | PostgrestError> {
+    return operation().pipe(
+      catchError((error) => {
+        const postgrestError = this.handleError(error, context, methodName);
+        return of(postgrestError);
+      })
+    );
+  }
+}
+```
+
+##### **Composants UI** - Présentation
+
+**Structure** : Un dossier par composant UI
+
+**Exemple** :
+
+```
+components/
+├── article-editor/
+│   ├── article-editor.component.ts
+│   ├── article-editor.component.html
+│   ├── article-editor.component.css
+│   └── article-editor.component.spec.ts
+├── error-display/
+│   └── ...
+└── performance-display/
+    └── ...
+```
+
+**Caractéristiques** :
+
+- Composants **standalone**
+- Responsabilité unique (Single Responsibility)
+- Réutilisables et testables
+- Peuvent être lazy-loaded si volumineux
+
+##### **Composants lazy-loaded**
+
+**Structure** : `lazy-[component-name]/`
+
+**Exemple** :
+
+```typescript
+// lazy-article-editor.component.ts
+import { Component } from "@angular/core";
+
+@Component({
+  selector: "app-lazy-article-editor",
+  standalone: true,
+  template: "",
+  imports: [],
+})
+export class LazyArticleEditorComponent {
+  // Wrapper pour lazy loading
+  static load() {
+    return import("../article-editor/article-editor.component").then(
+      (m) => m.ArticleEditorComponent
+    );
+  }
+}
+```
+
+**Usage dans le Smart Component** :
+
+```typescript
+import { LazyArticleEditorComponent } from './components/lazy-article-editor/lazy-article-editor.component';
+
+@Component({
+  imports: [LazyArticleEditorComponent, ...]
+})
+```
+
+#### 3️⃣ **Dossier `services/`** - Services métier
+
+**Structure** : Un dossier par service
+
+```
+services/
+├── [service-name]/
+│   ├── [service-name].service.ts
+│   └── [service-name].service.spec.ts
+├── [autre-service]/
+│   └── ...
+```
+
+**Convention de nommage** :
+
+- Dossier : `kebab-case` (ex: `openai-api/`)
+- Service : `PascalCase` + `.service.ts` (ex: `OpenaiApiService`)
+
+**Exemple** :
+
+```
+services/
+├── openai-api/
+│   ├── openai-api.service.ts
+│   └── openai-api.service.spec.ts
+├── video/
+│   ├── video.service.ts
+│   └── video.service.spec.ts
+└── image-upload/
+    ├── image-upload.service.ts
+    └── image-upload.service.spec.ts
+```
+
+**Caractéristiques** :
+
+- ✅ Services **Injectable** avec `providedIn: 'root'`
+- ✅ Responsabilité unique
+- ✅ Testables (injection de dépendances)
+- ✅ Peuvent utiliser des services `shared/`
+
+**Exemple** :
+
+```typescript
+@Injectable({ providedIn: "root" })
+export class OpenaiApiService {
+  private readonly supabaseService = inject(SupabaseService);
+
+  generateArticle(idea: string): Observable<string> {
+    // Logique métier spécifique
+  }
+}
+```
+
+#### 4️⃣ **Dossier `store/`** - État global
+
+**Fichier** : `store/index.ts`
+
+**Responsabilité** :
+
+- ✅ État global de la feature
+- ✅ Méthodes réactives avec `rxMethod`
+- ✅ Validation avant chaque opération
+- ✅ Gestion d'erreurs centralisée
+
+**Structure** :
+
+```typescript
+// store/index.ts
+export interface FeatureState {
+  // État de la feature
+  isLoading: boolean;
+  error: string[];
+  // ... autres propriétés
+}
+
+export const FeatureStore = signalStore(
+  { providedIn: "root" },
+  withState(initialState),
+  withComputed((state) => ({
+    // Computed signals
+  })),
+  withMethods((store, infra = inject(Infrastructure)) => ({
+    // Méthodes réactives
+  }))
+);
+```
+
+**Caractéristiques** :
+
+- ✅ Store **signalStore** (NgRx Signals)
+- ✅ État typé avec interface
+- ✅ Méthodes `rxMethod` pour RxJS
+- ✅ Validation et gestion d'erreurs
+
+#### 5️⃣ **Dossier `types/`** - Types TypeScript
+
+**Structure** : Un fichier par type/interface
+
+```
+types/
+├── post.ts              # Interface Post
+├── faq.ts              # Interface FAQ
+├── imageChapitre.ts     # Interface ImageChapitre
+└── validationRule.ts    # Interface ValidationRule
+```
+
+**Convention** :
+
+- Fichier : `kebab-case.ts`
+- Interface : `PascalCase` (ex: `Post`, `FaqItem`)
+
+**Exemple** :
+
+```typescript
+// types/post.ts
+export interface Post {
+  id: number;
+  titre: string;
+  article: string;
+  // ...
+}
+
+// types/faq.ts
+export interface FaqItem {
+  question: string;
+  response: string;
+}
+```
+
+**Caractéristiques** :
+
+- ✅ Types **exportés** pour réutilisation
+- ✅ Interfaces strictes (pas de `any`)
+- ✅ Regroupés par domaine métier
+
+#### 6️⃣ **Dossier `utils/`** - Utilitaires
+
+**Structure** : Un fichier par utilitaire
+
+```
+utils/
+├── slug-formatter.ts
+├── slug-formatter.spec.ts
+├── cleanJsonObject.ts
+├── cleanJsonObject.spec.ts
+└── getFormattedDate.ts
+```
+
+**Convention** :
+
+- Fichier : `kebab-case.ts`
+- Fonction : `camelCase` (ex: `formatSlug()`)
+
+**Exemple** :
+
+```typescript
+// utils/slug-formatter.ts
+export function formatSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+// utils/cleanJsonObject.ts
+export function parseJsonSafe<T>(json: string): T | null {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+```
+
+**Caractéristiques** :
+
+- ✅ Fonctions **pures** (pas d'effets de bord)
+- ✅ Testables (tests unitaires)
+- ✅ Réutilisables dans la feature
+- ✅ Peuvent être partagées dans `shared/utils/` si nécessaires
+
+### 📐 Exemple complet : Feature `create`
+
+```
+src/app/features/create/
+│
+├── create.component.ts              # 🎯 Smart Component
+├── create.component.html
+├── create.component.css
+├── create.component.spec.ts
+│
+├── components/                        # 📦 Composants
+│   ├── application/
+│   │   ├── application.ts            # Orchestration métier
+│   │   └── application.spec.ts
+│   │
+│   ├── infrastructure/
+│   │   ├── infrastructure.ts         # Wrapper API
+│   │   └── infrastructure.spec.ts
+│   │
+│   ├── article-editor/               # Composant UI
+│   │   ├── article-editor.component.ts
+│   │   ├── article-editor.component.html
+│   │   ├── article-editor.component.css
+│   │   └── article-editor.component.spec.ts
+│   │
+│   ├── error-display/                # Composant UI
+│   │   └── ...
+│   │
+│   └── lazy-article-editor/          # Lazy loading
+│       └── lazy-article-editor.component.ts
+│
+├── services/                          # 🔧 Services métier
+│   ├── openai-api/
+│   │   ├── openai-api.service.ts
+│   │   └── openai-api.service.spec.ts
+│   ├── video/
+│   │   ├── video.service.ts
+│   │   └── video.service.spec.ts
+│   └── [autres services...]
+│
+├── store/                             # 🗄️ Store
+│   └── index.ts                       # SearchStore
+│
+├── types/                              # 📝 Types
+│   ├── post.ts
+│   ├── faq.ts
+│   ├── imageChapitre.ts
+│   └── validationRule.ts
+│
+└── utils/                              # 🛠️ Utilitaires
+    ├── slug-formatter.ts
+    ├── slug-formatter.spec.ts
+    ├── cleanJsonObject.ts
+    └── cleanJsonObject.spec.ts
+```
+
+### ✅ Avantages de cette structure
+
+1. **Modularité**
+
+   - Chaque feature est autonome
+   - Facile à déplacer ou supprimer
+   - Réutilisable dans d'autres projets
+
+2. **Maintenabilité**
+
+   - Structure claire et prévisible
+   - Facile de trouver le code
+   - Séparation des responsabilités
+
+3. **Testabilité**
+
+   - Chaque élément est testable isolément
+   - Services injectables facilement mockables
+   - Composants standalone testables
+
+4. **Scalabilité**
+
+   - Facile d'ajouter de nouvelles features
+   - Pattern répétable
+   - Évolution progressive
+
+5. **Performance**
+   - Lazy loading des composants
+   - Computed signals pour optimiser
+   - Parallélisation des appels API
+
+### 🎯 Checklist pour créer une nouvelle feature
+
+- [ ] Créer le dossier `src/app/features/[feature-name]/`
+- [ ] Créer le Smart Component `[feature-name].component.ts`
+- [ ] Créer le dossier `components/` avec :
+  - [ ] `application/application.ts` (orchestration)
+  - [ ] `infrastructure/infrastructure.ts` (wrapper API)
+  - [ ] Composants UI nécessaires
+- [ ] Créer le dossier `services/` avec les services métier
+- [ ] Créer le dossier `store/` avec `index.ts` (store NgRx Signals)
+- [ ] Créer le dossier `types/` avec les interfaces TypeScript
+- [ ] Créer le dossier `utils/` avec les utilitaires
+- [ ] Ajouter la route dans `app.routes.ts` avec lazy loading

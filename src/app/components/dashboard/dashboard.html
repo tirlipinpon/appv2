@@ -1,0 +1,23 @@
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <h1>Tableau de bord</h1>
+    <div class="user-info">
+      <span *ngIf="profile">Bienvenue, {{ profile.display_name || profile.id }}</span>
+      <span *ngIf="activeRole" class="active-role">Rôle actif: {{ activeRole }}</span>
+      <button (click)="logout()" class="logout-btn">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="dashboard-content">
+    <div class="welcome-card">
+      <h2>Bienvenue sur votre tableau de bord</h2>
+      <p *ngIf="activeRole === 'parent'">Vous êtes connecté en tant que parent.</p>
+      <p *ngIf="activeRole === 'prof'">Vous êtes connecté en tant que professeur.</p>
+      <p *ngIf="activeRole === 'admin'">Vous êtes connecté en tant qu'administrateur.</p>
+      
+      <div *ngIf="profile && profile.roles.length > 1" class="role-switcher">
+        <p>Vous avez plusieurs rôles. <a routerLink="/select-role">Changer de rôle</a></p>
+      </div>
+    </div>
+  </main>
+</div>

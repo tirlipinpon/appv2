@@ -1,0 +1,18 @@
+<div class="role-selector-container">
+  <div class="role-selector-card">
+    <h1>Choisissez votre identité</h1>
+    <p class="subtitle">Vous avez plusieurs rôles. Sous quelle identité souhaitez-vous agir ?</p>
+    
+    <div class="roles-grid">
+      <button 
+        *ngFor="let role of availableRoles" 
+        class="role-card"
+        (click)="selectRole(role)"
+      >
+        <div class="role-icon">{{ roleIcons[role] }}</div>
+        <h2>{{ roleLabels[role] }}</h2>
+        <p>{{ roleDescriptions[role] }}</p>
+      </button>
+    </div>
+  </div>
+</div>

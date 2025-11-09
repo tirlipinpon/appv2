@@ -1,0 +1,361 @@
+---
+globs: *.ts
+alwaysApply: false
+---
+
+# 📐 Plan d'Architecture - Application Angular
+
+**Date** : 2025  
+**Version Angular** : 20.x  
+**Pattern** : Standalone Components + Signals + Store Pattern
+
+---
+
+## 🎯 Vue d'ensemble
+
+Cette application suit une **architecture en couches** avec séparation claire des responsabilités :
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    UI LAYER (Components)                    │
+│              │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│              APPLICATION LAYER (Orchestration)               │
+│  Application.ts - Coordonne le workflow via effects()       │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│                  STORE LAYER (État global)                   │
+│  SearchStore (NgRx Signals) - Gestion d'état réactive      │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│            INFRASTRUCTURE LAYER (Appels API)                  │
+│  Infrastructure.ts - Wrapper pour services API              │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│              API SERVICES LAYER (Services externes)            │
+│  SupabaseService, OpenaiApiService, VideoService, etc.      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🏗️ Architecture en couches détaillée
+
+### 1️⃣ **UI LAYER** - Composants de présentation
+
+**Responsabilité** : Affichage et interaction utilisateur
+
+**Caractéristiques** :
+
+- ✅ Composants **standalone** (pas de modules Angular)
+- ✅ Utilisation de **Signals** pour la réactivité
+- ✅ Injection de dépendances avec `inject()`
+- ✅ Composants **lazy-loaded** pour optimiser le chargement
+
+**Exemple** :
+
+```typescript
+@Component({
+  selector: 'app-create',
+  standalone: true,
+  imports: [CommonModule, FormsModule, ...],
+  templateUrl: './create.component.html'
+})
+export class CreateComponent {
+  readonly store = inject(SearchStore);
+
+  // Signals pour contrôler l'affichage
+  readonly showEditor = signal(true);
+
+  // Computed signals pour optimiser les calculs
+  readonly articleStats = computed(() => {
+    const article = this.store.article() || '';
+    return { characters: article.length, words: ... };
+  });
+}
+```
+
+**Composants principaux** :
+
+- `CreateComponent` : Point d'entrée de la feature
+- `EditorComponent` : Éditeur WYSIWYG
+- `GenerationComponent` : Interface génération
+- `ErrorDisplayComponent` : Affichage erreurs
+- `PerformanceDisplayComponent` : Métriques performance
+
+---
+
+### 2️⃣ **APPLICATION LAYER** - Orchestration métier
+
+**Responsabilité** : Coordonner le workflow de génération d'article
+
+**Pattern** : **Facade Pattern** via `Application.ts`
+
+**Caractéristiques** :
+
+- ✅ Utilise `computed()` pour réagir aux changements du store
+- ✅ Appelle les méthodes du store selon l'état
+
+---
+
+### 3️⃣ **STORE LAYER** - Gestion d'état réactive
+
+**Responsabilité** : État global de l'application et orchestration des appels API
+
+**Technologie** : **NgRx Signals** (`@ngrx/signals`)
+
+**Caractéristiques** :
+
+- ✅ Store **signalStore** avec `withState`, `withComputed`, `withMethods`
+- ✅ Méthodes **rxMethod** pour intégrer RxJS
+- ✅ **Validation** avant chaque opération
+- ✅ **Gestion d'erreurs** centralisée (liste d'erreurs)
+- ✅ **Parallélisation** avec `forkJoin` pour optimiser les performances
+
+**Optimisations** :
+
+- ⚡ **Parallélisation** : `forkJoin` pour exécuter plusieurs appels simultanément
+- ⚡ **Guards** : Évite les appels multiples simultanés
+- ⚡ **Validation** : Vérifie les prérequis avant chaque opération
+
+---
+
+### 4️⃣ **INFRASTRUCTURE LAYER** - Wrapper API
+
+**Responsabilité** : Encapsuler les appels API et gérer les erreurs
+
+**Pattern** : **Adapter Pattern**
+
+**Caractéristiques** :
+
+- ✅ Wrapper autour des services API
+- ✅ **Gestion d'erreurs** standardisée (transformation en `PostgrestError`)
+- ✅ **Logging** systématique
+- ✅ **Mocks** pour tests (via flags `shouldReturnMock`)
+
+**Service de performance** :
+
+- `InfrastructurePerformanceService` : Version optimisée avec cache et retry
+
+---
+
+### 5️⃣ **API SERVICES LAYER** - Services externes
+
+**Responsabilité** : Communication avec les APIs externes
+
+**Services principaux** :
+
+#### **SupabaseService**
+
+- CRUD sur tables
+- Upload images vers Supabase Storage
+- Authentification
+
+#### **OpenaiApiService**
+
+- Génération texte (GPT-4)
+- Génération images (DALL·E 3)
+- Parsing JSON sécurisé
+
+#### **VideoService**
+
+- Recherche YouTube API v3
+- Extraction ID vidéo
+
+#### **PexelsApiService / UnsplashImageService**
+
+- Recherche images libres de droits
+
+#### **Autres services**
+
+- `ImageUploadService` : Upload et traitement images
+- `InternalImageService` : Gestion images internes
+
+---
+
+## 🎨 Patterns et pratiques
+
+### ✅ Patterns utilisés
+
+1. **Standalone Components**
+
+   - Pas de modules Angular
+   - Import direct des dépendances
+
+2. **Dependency Injection avec `inject()`**
+
+   ```typescript
+   private readonly store = inject(SearchStore);
+   ```
+
+3. **Signals pour réactivité**
+
+   ```typescript
+   readonly title = signal('Mon titre');
+   readonly computed = computed(() => this.title().toUpperCase());
+   ```
+
+4. **Store Pattern (NgRx Signals)**
+
+   - État centralisé
+   - Méthodes réactives avec `rxMethod`
+
+5. **Facade Pattern**
+
+   - `Application.ts` simplifie l'interface du store
+
+6. **Adapter Pattern**
+
+   - `Infrastructure.ts` adapte les services API
+
+7. **Lazy Loading**
+   - Composants chargés à la demande
+   - Routes avec `loadComponent()`
+
+### ✅ Bonnes pratiques
+
+1. **Séparation des responsabilités**
+
+   - UI ≠ Logique métier ≠ Appels API
+
+2. **Type Safety**
+
+   - Interfaces TypeScript strictes
+   - Pas de `any` (sauf cas exceptionnels)
+
+3. **Gestion d'erreurs**
+
+   - Erreurs centralisées dans le store
+   - Transformation standardisée (`PostgrestError`)
+
+4. **Performance**
+
+   - Parallélisation avec `forkJoin`
+   - Computed signals pour éviter recalculs
+   - Lazy loading des composants
+
+5. **Logging**
+
+   - Service de logging centralisé
+   - Logs structurés avec contexte
+
+6. **Tests**
+   - Services testables (injection de dépendances)
+   - Mocks via flags dans Infrastructure
+
+---
+
+## 🔐 Authentification
+
+**Service** : `AuthService` (dans `login/services/`)
+
+**Guard** : `auth.guard.ts` protège les routes
+
+**Flux** :
+
+```
+1. User arrive sur /login
+   ↓
+2. LoginComponent → AuthService.signIn()
+   ↓
+3. Supabase authentifie
+   ↓
+4. Redirection vers /create (si authentifié)
+   ↓
+5. Routes protégées par auth.guard
+```
+
+---
+
+## 📦 Dépendances principales
+
+```json
+{
+  "@angular/core": "^20.1.0",
+  "@angular/router": "^20.1.0",
+  "@ngrx/signals": "^19.2.1",
+  "@supabase/supabase-js": "^2.51.0",
+  "rxjs": "~7.8.0",
+  "openai": "^5.16.0"
+}
+```
+
+---
+
+## 🚀 Points d'entrée
+
+### Application
+
+- **Fichier principal** : `src/main.ts`
+- **Composant racine** : `src/app/app.ts`
+- **Configuration** : `src/app/app.config.ts`
+- **Routes** : `src/app/app.routes.ts`
+
+### Feature principale
+
+- **Composant** : `src/app/features/XXX/create.component.ts`
+- **Store** : `src/app/features/XXX/store/index.ts`
+- **Orchestration** : `src/app/features/XXX/components/application/application.ts`
+- **Infrastructure** : `src/app/features/XXX/components/infrastructure/infrastructure.ts`
+
+---
+
+## 📝 Notes importantes
+
+### ⚠️ Points d'attention
+
+1. **Couplage Store ↔ Infrastructure**
+
+   - Le store injecte directement `Infrastructure`
+   - Pour réduire le couplage : utiliser des interfaces
+
+2. **Effect() dans Application**
+
+   - Dépend de l'ordre d'exécution
+   - Peut être fragile si plusieurs effects
+
+3. **Gestion d'erreurs**
+   - Erreurs stockées dans une liste (`error: string[]`)
+   - distinction entre erreurs critiques/non-critiques
+
+### ✅ Points forts
+
+1. **Architecture claire** en couches
+2. **Performance optimisée** (parallélisation)
+3. **Type safety** avec TypeScript
+4. **Réactivité** avec Signals
+5. **Modularité** avec features standalone
+
+---
+
+## 🔄 Évolutions possibles
+
+1. **Séparer Store et Infrastructure**
+
+   - Créer des interfaces pour réduire le couplage
+   - Utiliser des facades pour chaque domaine
+
+2. **Error Handling**
+
+   - Distinguer erreurs critiques/non-critiques
+   - Retry automatique pour erreurs temporaires
+
+3. **Caching**
+   - Cache des réponses API
+   - Cache des images générées
+
+---
+
+## 📚 Références
+
+- [Angular Signals](https://angular.dev/guide/signals)
+- [NgRx Signals](https://ngrx.io/guide/signals)
+- [Standalone Components](https://angular.dev/guide/components/importing)
+- [Supabase JS Client](https://supabase.com/docs/reference/javascript/introduction)
+
+---
+
+**Fin du plan d'architecture**

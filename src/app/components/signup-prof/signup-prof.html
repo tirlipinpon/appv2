@@ -1,0 +1,84 @@
+<div class="signup-container">
+  <div class="signup-card">
+    <h1>Inscription Professeur</h1>
+    
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="votre@email.com"
+          [class.error]="signupForm.get('email')?.invalid && signupForm.get('email')?.touched"
+        />
+        <div class="error-message" *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched">
+          <span *ngIf="signupForm.get('email')?.errors?.['required']">L'email est requis</span>
+          <span *ngIf="signupForm.get('email')?.errors?.['email']">Format d'email invalide</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="••••••••"
+          [class.error]="signupForm.get('password')?.invalid && signupForm.get('password')?.touched"
+        />
+        <div class="error-message" *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched">
+          <span *ngIf="signupForm.get('password')?.errors?.['required']">Le mot de passe est requis</span>
+          <span *ngIf="signupForm.get('password')?.errors?.['minlength']">Le mot de passe doit contenir au moins 6 caractères</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirmer le mot de passe</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          formControlName="confirmPassword"
+          placeholder="••••••••"
+          [class.error]="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched"
+        />
+        <div class="error-message" *ngIf="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched">
+          <span *ngIf="signupForm.get('confirmPassword')?.errors?.['required']">La confirmation est requise</span>
+        </div>
+        <div class="error-message" *ngIf="signupForm.errors?.['passwordMismatch'] && signupForm.get('confirmPassword')?.touched">
+          Les mots de passe ne correspondent pas
+        </div>
+      </div>
+
+      <div class="error-message" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" [disabled]="signupForm.invalid || isLoading" class="submit-button">
+        <span *ngIf="!isLoading">S'inscrire</span>
+        <span *ngIf="isLoading">Inscription...</span>
+      </button>
+    </form>
+
+    <div class="links">
+      <a routerLink="/login">Déjà un compte ? Se connecter</a>
+      <a routerLink="/signup">Retour</a>
+    </div>
+  </div>
+
+  <!-- Dialog pour email déjà existant -->
+  <div class="dialog-overlay" *ngIf="showEmailExistsDialog" (click)="showEmailExistsDialog = false">
+    <div class="dialog" (click)="$event.stopPropagation()">
+      <h2>Compte existant</h2>
+      <p>Ce compte existe déjà. Souhaitez-vous ajouter le rôle 'prof' à votre profil existant ?</p>
+      <div class="dialog-actions">
+        <button class="btn-primary" (click)="addRoleAndLogin()" [disabled]="isLoading">
+          Oui, ajouter le rôle
+        </button>
+        <button class="btn-secondary" (click)="goToLogin()">
+          Non, me connecter
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
