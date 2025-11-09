@@ -61,7 +61,10 @@ export class AuthService {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`
+          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          data: {
+            roles: roles // Stocker les rôles dans les metadata de l'utilisateur
+          }
         }
       });
 
@@ -69,24 +72,63 @@ export class AuthService {
         return { user: null, error };
       }
 
-      if (data.user) {
-        // Appeler la fonction RPC pour créer le profil avec les rôles
-        const { data: profileData, error: profileError } = await this.supabaseService.client
-          .rpc('create_profile_after_signup', {
-            user_id: data.user.id,
-            roles_array: roles,
-            metadata_json: null
-          });
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          return { user: data.user, error: profileError };
-        }
-      }
+      // Ne pas créer le profil immédiatement car l'utilisateur n'est pas encore confirmé
+      // Le profil sera créé automatiquement par le trigger handle_new_user lors de la confirmation
+      // Les rôles seront ajoutés après confirmation d'email dans auth-confirm component
 
       return { user: data.user, error: null };
     } catch (error) {
       return { user: null, error };
+    }
+  }
+
+  async createProfileWithRoles(userId: string, roles: string[]): Promise<{ profile: Profile | null; error: any }> {
+    try {
+      // Vérifier d'abord si le profil existe déjà
+      const { data: existingProfile, error: checkError } = await this.supabaseService.client
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      // Si le profil existe déjà, utiliser add_role_to_profile pour chaque rôle
+      if (existingProfile && !checkError) {
+        const results = [];
+        for (const role of roles) {
+          // Vérifier si le rôle existe déjà
+          if (!existingProfile.roles.includes(role)) {
+            const { error: addError } = await this.supabaseService.client
+              .rpc('add_role_to_profile', {
+                user_id: userId,
+                new_role: role
+              });
+            if (addError) {
+              console.error(`Error adding role ${role}:`, addError);
+            }
+          }
+        }
+        // Recharger le profil
+        const profile = await this.getProfile();
+        return { profile, error: null };
+      }
+
+      // Si le profil n'existe pas, utiliser create_profile_after_signup
+      const { data, error } = await this.supabaseService.client
+        .rpc('create_profile_after_signup', {
+          user_id: userId,
+          roles_array: roles,
+          metadata_json: null
+        });
+
+      if (error) {
+        return { profile: null, error };
+      }
+
+      // Recharger le profil
+      const profile = await this.getProfile();
+      return { profile, error: null };
+    } catch (error: any) {
+      return { profile: null, error };
     }
   }
 
