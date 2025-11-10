@@ -26,11 +26,15 @@ export const routes: Routes = [
   },
   {
     path: 'signup/parent',
-    loadComponent: () => import('./features/login/components/signup-parent/signup-parent.component').then(m => m.SignupParentComponent)
+    loadComponent: () =>
+      import('./features/login/components/signup-role/signup-role.component').then(m => m.SignupRoleComponent),
+    data: { role: 'parent' }
   },
   {
     path: 'signup/prof',
-    loadComponent: () => import('./features/login/components/signup-prof/signup-prof.component').then(m => m.SignupProfComponent)
+    loadComponent: () =>
+      import('./features/login/components/signup-role/signup-role.component').then(m => m.SignupRoleComponent),
+    data: { role: 'prof' }
   },
   {
     path: 'select-role',

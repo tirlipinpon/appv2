@@ -1,7 +1,7 @@
 <div class="signup-container">
   <div class="signup-card">
-    <h1>Inscription Parent</h1>
-    
+    <h1>{{ config.title }}</h1>
+
     <form [formGroup]="signupForm" (ngSubmit)="onSubmit()">
       <div class="form-group">
         <label for="email">Email</label>
@@ -42,7 +42,10 @@
           placeholder="••••••••"
           [class.error]="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched"
         />
-        <div class="error-message" *ngIf="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched">
+        <div
+          class="error-message"
+          *ngIf="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched"
+        >
           <span *ngIf="signupForm.get('confirmPassword')?.errors?.['required']">La confirmation est requise</span>
         </div>
         <div class="error-message" *ngIf="signupForm.errors?.['passwordMismatch'] && signupForm.get('confirmPassword')?.touched">
@@ -66,7 +69,6 @@
     </div>
   </div>
 
-  <!-- Dialog pour email déjà existant -->
   <div
     class="dialog-overlay"
     *ngIf="showEmailExistsDialog"
@@ -83,7 +85,7 @@
       (keydown)="onDialogKeydown($event)"
     >
       <h2>Compte existant</h2>
-      <p>Ce compte existe déjà. Souhaitez-vous ajouter le rôle 'parent' à votre profil existant ?</p>
+      <p>{{ dialogMessage }}</p>
       <div class="dialog-actions">
         <button class="btn-primary" (click)="addRoleAndLogin()" [disabled]="isLoading">
           Oui, ajouter le rôle
@@ -95,3 +97,4 @@
     </div>
   </div>
 </div>
+
