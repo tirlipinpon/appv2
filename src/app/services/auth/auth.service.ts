@@ -64,7 +64,7 @@ export class AuthService {
 
     // Écouter les changements d'authentification
     this.supabaseService.client.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+      if ((event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') && session) {
         this.currentUserSubject.next(session.user);
         await this.loadProfile();
       } else if (event === 'SIGNED_OUT') {
@@ -371,8 +371,55 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
+  async requestPasswordReset(email: string): Promise<{ error: ServiceError | null }> {
+    try {
+      const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/reset` : undefined;
+      const { error } = await this.supabaseService.client.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: this.normalizeError(error, 'Erreur lors de la demande de réinitialisation de mot de passe') };
+    }
+  }
+
+  async updatePassword(newPassword: string): Promise<{ error: ServiceError | null }> {
+    try {
+      const { error } = await this.supabaseService.client.auth.updateUser({ password: newPassword });
+
+      if (error) {
+        return { error };
+      }
+
+      // Recharger la session et le profil
+      const { data } = await this.supabaseService.client.auth.getSession();
+      if (data.session) {
+        this.currentUserSubject.next(data.session.user);
+        await this.loadProfile();
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: this.normalizeError(error, 'Erreur lors de la mise à jour du mot de passe') };
+    }
+  }
+
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
+  }
+
+  async getSession(): Promise<Session | null> {
+    const { data, error } = await this.supabaseService.client.auth.getSession();
+    if (error) {
+      console.error('Erreur lors de la récupération de la session:', error);
+      return null;
+    }
+    return data.session;
   }
 
   async getProfile(): Promise<Profile | null> {

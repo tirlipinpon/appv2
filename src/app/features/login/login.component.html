@@ -1,54 +1,94 @@
 <div class="login-container">
   <div class="login-card">
-    <h1>Connexion</h1>
-    
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          formControlName="email"
-          placeholder="votre@email.com"
-          [class.error]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
-        />
-        <div class="error-message" *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
-          <span *ngIf="loginForm.get('email')?.errors?.['required']">L'email est requis</span>
-          <span *ngIf="loginForm.get('email')?.errors?.['email']">Format d'email invalide</span>
+    <h1>{{ isForgotPasswordMode ? 'Réinitialisation du mot de passe' : 'Connexion' }}</h1>
+
+    <ng-container *ngIf="!isForgotPasswordMode; else forgotPassword">
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            formControlName="email"
+            placeholder="votre@email.com"
+            [class.error]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+          />
+          <div class="error-message" *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+            <span *ngIf="loginForm.get('email')?.errors?.['required']">L'email est requis</span>
+            <span *ngIf="loginForm.get('email')?.errors?.['email']">Format d'email invalide</span>
+          </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label for="password">Mot de passe</label>
-        <input
-          id="password"
-          type="password"
-          formControlName="password"
-          placeholder="••••••••"
-          [class.error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
-        />
-        <div class="error-message" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
-          <span *ngIf="loginForm.get('password')?.errors?.['required']">Le mot de passe est requis</span>
-          <span *ngIf="loginForm.get('password')?.errors?.['minlength']">Le mot de passe doit contenir au moins 6 caractères</span>
+        <div class="form-group">
+          <label for="password">Mot de passe</label>
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            placeholder="••••••••"
+            [class.error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+          />
+          <div class="error-message" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+            <span *ngIf="loginForm.get('password')?.errors?.['required']">Le mot de passe est requis</span>
+            <span *ngIf="loginForm.get('password')?.errors?.['minlength']">Le mot de passe doit contenir au moins 6 caractères</span>
+          </div>
         </div>
+
+        <div class="error-message" *ngIf="errorMessage">
+          {{ errorMessage }}
+        </div>
+
+        <div class="success-message" *ngIf="successMessage">
+          {{ successMessage }}
+        </div>
+
+        <button type="submit" [disabled]="loginForm.invalid || isLoading" class="submit-button">
+          <span *ngIf="!isLoading">Se connecter</span>
+          <span *ngIf="isLoading">Connexion...</span>
+        </button>
+      </form>
+
+      <div class="links">
+        <button type="button" class="link-button" (click)="toggleForgotPassword()">Mot de passe oublié ?</button>
+        <a routerLink="/signup">Pas encore de compte ? S'inscrire</a>
       </div>
+    </ng-container>
 
-      <div class="error-message" *ngIf="errorMessage">
-        {{ errorMessage }}
+    <ng-template #forgotPassword>
+      <form [formGroup]="forgotPasswordForm" (ngSubmit)="onForgotPasswordSubmit()">
+        <div class="form-group">
+          <label for="forgot-email">Email</label>
+          <input
+            id="forgot-email"
+            type="email"
+            formControlName="email"
+            placeholder="votre@email.com"
+            [class.error]="forgotPasswordForm.get('email')?.invalid && forgotPasswordForm.get('email')?.touched"
+          />
+          <div class="error-message" *ngIf="forgotPasswordForm.get('email')?.invalid && forgotPasswordForm.get('email')?.touched">
+            <span *ngIf="forgotPasswordForm.get('email')?.errors?.['required']">L'email est requis</span>
+            <span *ngIf="forgotPasswordForm.get('email')?.errors?.['email']">Format d'email invalide</span>
+          </div>
+        </div>
+
+        <div class="error-message" *ngIf="errorMessage">
+          {{ errorMessage }}
+        </div>
+
+        <div class="success-message" *ngIf="successMessage">
+          {{ successMessage }}
+        </div>
+
+        <button type="submit" [disabled]="forgotPasswordForm.invalid || isLoading" class="submit-button">
+          <span *ngIf="!isLoading">Envoyer le lien de réinitialisation</span>
+          <span *ngIf="isLoading">Envoi...</span>
+        </button>
+      </form>
+
+      <div class="links">
+        <button type="button" class="link-button" (click)="toggleForgotPassword()">Revenir à la connexion</button>
+        <a routerLink="/signup">Pas encore de compte ? S'inscrire</a>
       </div>
-
-      <div class="success-message" *ngIf="successMessage">
-        {{ successMessage }}
-      </div>
-
-      <button type="submit" [disabled]="loginForm.invalid || isLoading" class="submit-button">
-        <span *ngIf="!isLoading">Se connecter</span>
-        <span *ngIf="isLoading">Connexion...</span>
-      </button>
-    </form>
-
-    <div class="links">
-      <a routerLink="/signup">Pas encore de compte ? S'inscrire</a>
-    </div>
+    </ng-template>
   </div>
 </div>

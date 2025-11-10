@@ -21,10 +21,14 @@ export class LoginComponent implements OnInit {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
+  forgotPasswordForm: FormGroup = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+  });
   errorMessage: string | null = null;
   successMessage: string | null = null;
   isLoading = false;
   addRoleAfterLogin: string | null = null;
+  isForgotPasswordMode = false;
 
   ngOnInit() {
     // Vérifier les query params pour ajouter un rôle après connexion
@@ -34,6 +38,7 @@ export class LoginComponent implements OnInit {
       }
       if (params['email']) {
         this.loginForm.patchValue({ email: params['email'] });
+        this.forgotPasswordForm.patchValue({ email: params['email'] });
       }
       if (params['message']) {
         this.successMessage = params['message'];
@@ -43,6 +48,10 @@ export class LoginComponent implements OnInit {
 
   async onSubmit() {
     if (this.loginForm.invalid) {
+      return;
+    }
+
+    if (this.isForgotPasswordMode) {
       return;
     }
 
@@ -108,5 +117,36 @@ export class LoginComponent implements OnInit {
         this.router.navigate(['/dashboard']);
       }
     }
+  }
+
+  toggleForgotPassword() {
+    this.isForgotPasswordMode = !this.isForgotPasswordMode;
+    this.errorMessage = null;
+    this.successMessage = null;
+    this.isLoading = false;
+  }
+
+  async onForgotPasswordSubmit() {
+    if (this.forgotPasswordForm.invalid) {
+      return;
+    }
+
+    this.isLoading = true;
+    this.errorMessage = null;
+    this.successMessage = null;
+
+    const { email } = this.forgotPasswordForm.value;
+    const { error } = await this.authService.requestPasswordReset(email);
+
+    this.isLoading = false;
+
+    if (error) {
+      this.errorMessage = error.message || 'Une erreur est survenue lors de la demande de réinitialisation';
+      return;
+    }
+
+    this.successMessage =
+      'Un email de réinitialisation vous a été envoyé. Veuillez suivre les instructions reçues pour choisir un nouveau mot de passe.';
+    this.forgotPasswordForm.markAsPristine();
   }
 }
