@@ -10,16 +10,6 @@
     <div class="loading">Chargement...</div>
   }
 
-  @if (hasError()) {
-    <div class="error-message">
-      <h3>Erreur</h3>
-      <ul>
-        @for (err of error(); track err) {
-          <li>{{ err }}</li>
-        }
-      </ul>
-    </div>
-  }
 
   @if (showSuccess()) {
     <div class="success-message">

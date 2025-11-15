@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { RouterModule } from '@angular/router';
 import { ParentStore } from './store/index';
 import { Application } from './components/application/application';
+import { ErrorSnackbarService } from '../../services/snackbar/error-snackbar.service';
 import type { Parent } from './types/parent';
 
 @Component({
@@ -16,6 +17,7 @@ import type { Parent } from './types/parent';
 export class ParentComponent implements OnInit {
   private readonly application = inject(Application);
   private readonly fb = inject(FormBuilder);
+  private readonly errorSnackbarService = inject(ErrorSnackbarService);
   readonly store = inject(ParentStore);
 
   // Signals pour contrôler l'affichage
@@ -39,6 +41,17 @@ export class ParentComponent implements OnInit {
       const parent = this.parent();
       if (parent && this.parentForm) {
         this.populateForm(parent);
+      }
+    });
+
+    // Écouter les changements d'erreur dans le store et afficher les snackbars
+    effect(() => {
+      const errors = this.error();
+      if (errors.length > 0) {
+        // Afficher toutes les erreurs dans des snackbars séparées
+        this.errorSnackbarService.showErrors(errors);
+        // Réinitialiser les erreurs après affichage
+        this.store.clearError();
       }
     });
   }

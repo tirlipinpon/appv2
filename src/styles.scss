@@ -1,1 +1,8 @@
 /* You can add global styles to this file, and also import other style files */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+/* Styles pour les snackbars d'erreur */
+::ng-deep .error-snackbar-panel {
+  background-color: #f44336 !important;
+  color: white !important;
+}

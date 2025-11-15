@@ -5,6 +5,7 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ChildStore } from './store/index';
 import { Application } from './components/application/application';
 import { SchoolService } from './services/school/school.service';
+import { ErrorSnackbarService } from '../../services/snackbar/error-snackbar.service';
 import type { Child } from './types/child';
 import type { School } from './types/school';
 import { Subscription } from 'rxjs';
@@ -22,6 +23,7 @@ export class ChildComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly schoolService = inject(SchoolService);
+  private readonly errorSnackbarService = inject(ErrorSnackbarService);
   readonly store = inject(ChildStore);
 
   // Signals pour contrôler l'affichage
@@ -63,6 +65,17 @@ export class ChildComponent implements OnInit, OnDestroy {
       // et que le formulaire existe
       if (child && this.childForm && !isLoading) {
         this.populateForm(child);
+      }
+    });
+
+    // Écouter les changements d'erreur dans le store et afficher les snackbars
+    effect(() => {
+      const errors = this.error();
+      if (errors.length > 0) {
+        // Afficher toutes les erreurs dans des snackbars séparées
+        this.errorSnackbarService.showErrors(errors);
+        // Réinitialiser les erreurs après affichage
+        this.store.clearError();
       }
     });
   }
