@@ -1,17 +1,21 @@
 {
-    "mcpServers": {
-      "supabase": {
-        "command": "cmd",
-        "args": [
-          "/c",
-          "npx",
-          "-y",
-          "@supabase/mcp-server-supabase@latest",
-          "--project-ref=fqdthoeifvhvmlimlqkq"
-        ],
-        "env": {
-          "SUPABASE_ACCESS_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZHRob2VpZnZodm1saW1scWtxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjYxMDcwOSwiZXhwIjoyMDc4MTg2NzA5fQ.Ya6X2hNm2hS7dEPSKtj7_vj2ruVFSfJTXEmHNk8dBXU"
-        }
+  "mcpServers": {
+    "supabase": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=piaahwlfyvezdfnzoxeb"
+      ],
+      "env": {
+        "SUPABASE_PROJECT_REF": "piaahwlfyvezdfnzoxeb",
+        "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYWFod2xmeXZlemRmbnpveGViIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjcwMjQ4NCwiZXhwIjoyMDc4Mjc4NDg0fQ.A50ETjEe2EQnZc28kMavY5HLggyCwKI2QAQqhVsceR4",
+        "SUPABASE_REGION": "eu-west-1",
+        "SUPABASE_ACCESS_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlcnZpYWFod2xmeXZlemRmbnpveGViIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjcwMjQ4NCwiZXhwIjoyMDc4Mjc4NDg0fQ.A50ETjEe2EQnZc28kMavY5HLggyCwKI2QAQqhVsceR4"
+
       }
     }
   }
+}

@@ -1,0 +1,102 @@
+<div class="parent-container">
+  <h1>Profil Parent</h1>
+
+  @if (isLoading()) {
+    <div class="loading">Chargement...</div>
+  }
+
+  @if (hasError()) {
+    <div class="error-message">
+      <h3>Erreur</h3>
+      <ul>
+        @for (err of error(); track err) {
+          <li>{{ err }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (showSuccess()) {
+    <div class="success-message">
+      <p>✅ Profil mis à jour avec succès !</p>
+    </div>
+  }
+
+  @if (showForm() && !isLoading()) {
+    <form [formGroup]="parentForm" (ngSubmit)="onSubmit()" class="parent-form">
+      <div class="form-group">
+        <label for="fullname">Nom complet *</label>
+        <input
+          id="fullname"
+          type="text"
+          formControlName="fullname"
+          class="form-control"
+          [class.invalid]="parentForm.get('fullname')?.invalid && parentForm.get('fullname')?.touched"
+        />
+        @if (parentForm.get('fullname')?.invalid && parentForm.get('fullname')?.touched) {
+          <span class="error-text">Le nom complet est requis</span>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Téléphone</label>
+        <input
+          id="phone"
+          type="tel"
+          formControlName="phone"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="address">Adresse</label>
+        <input
+          id="address"
+          type="text"
+          formControlName="address"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="city">Ville</label>
+        <input
+          id="city"
+          type="text"
+          formControlName="city"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="country">Pays</label>
+        <input
+          id="country"
+          type="text"
+          formControlName="country"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="avatar_url">URL de l'avatar</label>
+        <input
+          id="avatar_url"
+          type="url"
+          formControlName="avatar_url"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" [disabled]="parentForm.invalid || isLoading()" class="btn btn-primary">
+          Enregistrer
+        </button>
+        <button type="button" (click)="onCancel()" class="btn btn-secondary">
+          Annuler
+        </button>
+      </div>
+    </form>
+  }
+</div>
+

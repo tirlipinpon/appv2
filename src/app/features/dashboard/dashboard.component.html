@@ -18,6 +18,11 @@
       <div *ngIf="profile && profile.roles.length > 1" class="role-switcher">
         <p>Vous avez plusieurs rôles. <a routerLink="/select-role">Changer de rôle</a></p>
       </div>
+
+      <!-- Lien vers l'édition du profil pour les parents -->
+      <div *ngIf="activeRole === 'parent'" class="action-links">
+        <a routerLink="/parent" class="btn btn-primary">Éditer mon profil</a>
+      </div>
     </div>
   </main>
 </div>
