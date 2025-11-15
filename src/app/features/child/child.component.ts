@@ -1,10 +1,13 @@
-import { Component, inject, signal, computed, OnInit, effect } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, effect, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ChildStore } from './store/index';
 import { Application } from './components/application/application';
+import { SchoolService } from './services/school/school.service';
 import type { Child } from './types/child';
+import type { School } from './types/school';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-child',
@@ -13,11 +16,12 @@ import type { Child } from './types/child';
   templateUrl: './child.component.html',
   styleUrl: './child.component.scss',
 })
-export class ChildComponent implements OnInit {
+export class ChildComponent implements OnInit, OnDestroy {
   private readonly application = inject(Application);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly schoolService = inject(SchoolService);
   readonly store = inject(ChildStore);
 
   // Signals pour contrôler l'affichage
@@ -26,8 +30,14 @@ export class ChildComponent implements OnInit {
   readonly showCopySelection = signal(false);
   readonly sourceChildId = signal<string | null>(null);
 
+  // Écoles
+  readonly schools = signal<School[]>([]);
+  readonly showOtherSchoolInput = signal(false);
+  readonly otherSchoolName = signal('');
+
   // Formulaire réactif
   childForm!: FormGroup;
+  private schoolsSubscription?: Subscription;
 
   // Computed signals
   readonly selectedChild = computed(() => this.store.selectedChild());
@@ -59,6 +69,9 @@ export class ChildComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.initializeForm();
+    
+    // Charger toutes les écoles
+    this.loadSchools();
     
     // Charger tous les enfants
     this.application.loadChildren();
@@ -111,9 +124,18 @@ export class ChildComponent implements OnInit {
       lastname: ['', [Validators.required]],
       birthdate: [''],
       gender: [''],
+      school_id: [''], // null ou ID d'école ou 'other'
       school_level: [''],
       notes: [''],
       avatar_url: [''],
+    });
+
+    // Écouter les changements de school_id pour afficher/masquer le champ "Autre"
+    this.childForm.get('school_id')?.valueChanges.subscribe((value) => {
+      this.showOtherSchoolInput.set(value === 'other');
+      if (value !== 'other') {
+        this.otherSchoolName.set('');
+      }
     });
   }
 
@@ -145,6 +167,7 @@ export class ChildComponent implements OnInit {
         lastname: child.lastname || '',
         birthdate: child.birthdate || '',
         gender: child.gender || '',
+        school_id: child.school_id || '',
         school_level: child.school_level || '',
         notes: child.notes || '',
         avatar_url: child.avatar_url || '',
@@ -186,6 +209,7 @@ export class ChildComponent implements OnInit {
             (formValue.lastname || '').trim() !== (sourceChild.lastname || '').trim() ||
             (formValue.birthdate || '') !== (sourceChild.birthdate || '') ||
             (formValue.gender || '') !== (sourceChild.gender || '') ||
+            (formValue.school_id || '') !== (sourceChild.school_id || '') ||
             (formValue.school_level || '') !== (sourceChild.school_level || '') ||
             (formValue.notes || '').trim() !== (sourceChild.notes || '').trim() ||
             (formValue.avatar_url || '').trim() !== (sourceChild.avatar_url || '').trim();
@@ -198,22 +222,58 @@ export class ChildComponent implements OnInit {
         }
       }
       
-      const profileData = {
-        firstname: formValue.firstname || null,
-        lastname: formValue.lastname || null,
-        birthdate: formValue.birthdate || null,
-        gender: formValue.gender || null,
-        school_level: formValue.school_level || null,
-        notes: formValue.notes || null,
-        avatar_url: formValue.avatar_url || null,
-      };
+      // Gérer la création d'une école "Autre" si nécessaire
+      let finalSchoolId: string | null = null;
+      
+      if (formValue.school_id === 'other') {
+        // Si "Autre" est sélectionné, créer une nouvelle école
+        if (this.otherSchoolName().trim()) {
+          this.schoolService.createSchool({
+            name: this.otherSchoolName().trim(),
+          }).subscribe({
+            next: (result) => {
+              if (result.school) {
+                finalSchoolId = result.school.id;
+                this.createOrUpdateChild(finalSchoolId, formValue);
+              } else {
+                this.store.setError(result.error?.message || 'Erreur lors de la création de l\'école');
+              }
+            },
+            error: () => {
+              this.store.setError('Erreur lors de la création de l\'école');
+            }
+          });
+          return; // Attendre la création de l'école
+        } else {
+          this.store.setError('Veuillez remplir le nom de l\'école');
+          return;
+        }
+      } else if (formValue.school_id) {
+        finalSchoolId = formValue.school_id;
+      }
 
-      const wasCreating = this.isCreating();
-      const childId = this.route.snapshot.paramMap.get('id');
+      this.createOrUpdateChild(finalSchoolId, formValue);
+    }
+  }
 
-      if (wasCreating) {
-        // Créer le profil
-        this.application.createChildProfile(profileData);
+  private createOrUpdateChild(schoolId: string | null, formValue: { firstname: string; lastname: string; birthdate: string; gender: string; school_id: string; school_level: string; notes: string; avatar_url: string }): void {
+    const profileData = {
+      firstname: formValue.firstname || null,
+      lastname: formValue.lastname || null,
+      birthdate: formValue.birthdate || null,
+      gender: formValue.gender || null,
+      school_id: schoolId,
+      school_level: formValue.school_level || null,
+      notes: formValue.notes || null,
+      avatar_url: formValue.avatar_url || null,
+    };
+
+    const wasCreating = this.isCreating();
+    const childId = this.route.snapshot.paramMap.get('id');
+
+    if (wasCreating) {
+      // Créer le profil
+      this.application.createChildProfile(profileData);
         
         // Attendre que la création soit terminée
         let checkCount = 0;
@@ -258,7 +318,21 @@ export class ChildComponent implements OnInit {
           }, 3000);
         }, 100);
       }
-    }
+  }
+
+  ngOnDestroy(): void {
+    this.schoolsSubscription?.unsubscribe();
+  }
+
+  private loadSchools(): void {
+    this.schoolsSubscription = this.schoolService.getSchools().subscribe({
+      next: (schools) => {
+        this.schools.set(schools);
+      },
+      error: (error) => {
+        console.error('Error loading schools:', error);
+      }
+    });
   }
 
   onCancel(): void {

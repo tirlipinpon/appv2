@@ -104,10 +104,30 @@
           padding: 1rem;
           text-align: left;
 
+          &.inactive-child {
+            opacity: 0.7;
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
+          }
+
           .child-name {
             font-weight: 600;
             color: #333;
             margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+
+            .inactive-badge-small {
+              display: inline-block;
+              padding: 0.15rem 0.4rem;
+              background: #dc3545;
+              color: white;
+              border-radius: 3px;
+              font-size: 0.7rem;
+              font-weight: normal;
+            }
           }
 
           .child-info {
@@ -232,13 +252,21 @@
     cursor: pointer;
   }
 
-  .error-text {
-    display: block;
-    color: #dc3545;
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-  }
-}
+        .error-text {
+          display: block;
+          color: #dc3545;
+          font-size: 0.875rem;
+          margin-top: 0.25rem;
+        }
+      }
+
+      .other-school-group {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+        margin-top: 0.5rem;
+      }
 
 .form-actions {
   display: flex;

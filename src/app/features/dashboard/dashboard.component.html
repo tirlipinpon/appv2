@@ -42,7 +42,6 @@
           <div *ngFor="let child of activeChildren(); trackBy: trackByChildId" class="child-card">
             <div class="child-info">
               <h4>{{ child.firstname }} {{ child.lastname }}</h4>
-              <p *ngIf="child.school_level">Niveau : {{ child.school_level }}</p>
               <p *ngIf="child.birthdate">Né(e) le : {{ child.birthdate | date:'dd/MM/yyyy' }}</p>
             </div>
             <div class="child-actions">
@@ -69,7 +68,6 @@
           <div *ngFor="let child of inactiveChildren(); trackBy: trackByChildId" class="child-card inactive">
             <div class="child-info">
               <h4>{{ child.firstname }} {{ child.lastname }} <span class="inactive-badge">(Désactivé)</span></h4>
-              <p *ngIf="child.school_level">Niveau : {{ child.school_level }}</p>
               <p *ngIf="child.birthdate">Né(e) le : {{ child.birthdate | date:'dd/MM/yyyy' }}</p>
             </div>
             <div class="child-actions">

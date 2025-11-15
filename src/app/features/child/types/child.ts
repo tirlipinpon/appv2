@@ -5,6 +5,7 @@ export interface Child {
   lastname: string | null;
   birthdate: string | null;
   gender: string | null;
+  school_id: string | null;
   school_level: string | null;
   notes: string | null;
   avatar_url: string | null;
@@ -18,6 +19,7 @@ export interface ChildUpdate {
   lastname?: string | null;
   birthdate?: string | null;
   gender?: string | null;
+  school_id?: string | null;
   school_level?: string | null;
   notes?: string | null;
   avatar_url?: string | null;
