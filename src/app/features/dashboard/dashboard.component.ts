@@ -1,8 +1,10 @@
-import { Component, OnInit, inject, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, NavigationEnd, Router } from '@angular/router';
 import { AuthService, Profile } from '../../services/auth/auth.service';
 import { ParentStore } from '../parent/store/index';
+import { ChildStore } from '../child/store/index';
+import { filter, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
@@ -11,16 +13,24 @@ import { ParentStore } from '../parent/store/index';
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
   readonly parentStore = inject(ParentStore);
+  readonly childStore = inject(ChildStore);
   profile: Profile | null = null;
   activeRole: string | null = null;
+  private routerSubscription?: Subscription;
 
   // Computed signals pour le bouton parent
   readonly hasParent = computed(() => this.parentStore.hasParent());
-  readonly buttonText = computed(() => this.hasParent() ? 'Éditer mon profil' : 'Créer mon profil');
-  readonly isCreating = computed(() => !this.hasParent());
+  readonly parentButtonText = computed(() => this.hasParent() ? 'Éditer mon profil' : 'Créer mon profil');
+  readonly isCreatingParent = computed(() => !this.hasParent());
+
+  // Computed signals pour les enfants
+  readonly children = computed(() => this.childStore.children());
+  readonly hasChildren = computed(() => this.childStore.hasChildren());
+  readonly childrenCount = computed(() => this.childStore.childrenCount());
 
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
@@ -30,10 +40,30 @@ export class DashboardComponent implements OnInit {
     if (this.activeRole === 'parent') {
       this.parentStore.loadParentProfile();
       this.parentStore.checkParentStatus();
+      this.childStore.loadChildren();
+    }
+    
+    // Écouter les navigations pour recharger les enfants quand on revient au dashboard
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event: any) => {
+        if (event.url === '/dashboard' && this.activeRole === 'parent') {
+          this.childStore.loadChildren();
+        }
+      });
+  }
+
+  ngOnDestroy() {
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
     }
   }
 
   async logout() {
     await this.authService.signOut();
+  }
+
+  trackByChildId(index: number, child: any): string {
+    return child.id;
   }
 }

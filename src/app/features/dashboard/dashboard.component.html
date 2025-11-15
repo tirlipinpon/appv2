@@ -19,15 +19,39 @@
         <p>Vous avez plusieurs rôles. <a routerLink="/select-role">Changer de rôle</a></p>
       </div>
 
-      <!-- Lien vers l'édition/création du profil pour les parents -->
+      <!-- Liens vers l'édition/création pour les parents -->
       <div *ngIf="activeRole === 'parent'" class="action-links">
         <a 
           routerLink="/parent-profile" 
           class="btn btn-primary"
-          [class.btn-add]="isCreating()"
-          [class.btn-edit]="!isCreating()">
-          {{ buttonText() }}
+          [class.btn-add]="isCreatingParent()"
+          [class.btn-edit]="!isCreatingParent()">
+          {{ parentButtonText() }}
         </a>
+        <a 
+          routerLink="/child-profile" 
+          class="btn btn-primary btn-add">
+          ➕ Ajouter un enfant
+        </a>
+      </div>
+
+      <!-- Liste des enfants -->
+      <div *ngIf="activeRole === 'parent' && hasChildren()" class="children-section">
+        <h3>Mes enfants ({{ childrenCount() }})</h3>
+        <div class="children-list">
+          <div *ngFor="let child of children(); trackBy: trackByChildId" class="child-card">
+            <div class="child-info">
+              <h4>{{ child.firstname }} {{ child.lastname }}</h4>
+              <p *ngIf="child.school_level">Niveau : {{ child.school_level }}</p>
+              <p *ngIf="child.birthdate">Né(e) le : {{ child.birthdate | date:'dd/MM/yyyy' }}</p>
+            </div>
+            <a 
+              [routerLink]="['/child-profile', child.id]" 
+              class="btn btn-secondary btn-sm">
+              ✏️ Modifier
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   </main>

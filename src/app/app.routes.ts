@@ -52,6 +52,16 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'child-profile',
+    loadComponent: () => import('./features/child/child.component').then(m => m.ChildComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'child-profile/:id',
+    loadComponent: () => import('./features/child/child.component').then(m => m.ChildComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: '**',
     redirectTo: '/dashboard'
   }

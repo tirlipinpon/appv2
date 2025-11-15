@@ -1,0 +1,171 @@
+<div class="child-container">
+  <div class="header-actions">
+    <a routerLink="/dashboard" class="btn-back">
+      ← Retour au dashboard
+    </a>
+    <h1>Profil Enfant</h1>
+  </div>
+
+  @if (isLoading() && !showForm() && !showCopySelection()) {
+    <div class="loading">Chargement...</div>
+  }
+
+  @if (hasError()) {
+    <div class="error-message">
+      <h3>Erreur</h3>
+      <ul>
+        @for (err of error(); track err) {
+          <li>{{ err }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (showSuccess()) {
+    <div class="success-message">
+      <p>✅ {{ isCreating() ? 'Profil créé avec succès !' : 'Profil mis à jour avec succès !' }}</p>
+    </div>
+  }
+
+  @if (showCopySelection() && !isLoading()) {
+    <div class="copy-selection">
+      <h2>Créer un nouvel enfant</h2>
+      <p>Comment souhaitez-vous créer ce nouvel enfant ?</p>
+      <div class="selection-options">
+        <button type="button" (click)="selectCreateFromScratch()" class="btn btn-primary btn-large">
+          ✨ Créer depuis zéro
+        </button>
+        <div class="divider">
+          <span>ou</span>
+        </div>
+        <div class="copy-from-list">
+          <p>Copier depuis un enfant existant :</p>
+          <div class="children-list">
+            @for (child of children(); track child.id) {
+              <button 
+                type="button" 
+                (click)="selectCopyFrom(child.id)" 
+                class="btn btn-secondary child-card">
+                <span class="child-name">{{ child.firstname }} {{ child.lastname }}</span>
+                <span class="child-info">{{ child.school_level || 'Niveau non défini' }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showForm() && !showCopySelection()) {
+    <form [formGroup]="childForm" (ngSubmit)="onSubmit()" class="child-form">
+      <div class="form-group">
+        <label for="firstname">Prénom *</label>
+        <input
+          id="firstname"
+          type="text"
+          formControlName="firstname"
+          class="form-control"
+          [class.invalid]="childForm.get('firstname')?.invalid && childForm.get('firstname')?.touched"
+        />
+        @if (childForm.get('firstname')?.invalid && childForm.get('firstname')?.touched) {
+          <span class="error-text">Le prénom est requis</span>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="lastname">Nom *</label>
+        <input
+          id="lastname"
+          type="text"
+          formControlName="lastname"
+          class="form-control"
+          [class.invalid]="childForm.get('lastname')?.invalid && childForm.get('lastname')?.touched"
+        />
+        @if (childForm.get('lastname')?.invalid && childForm.get('lastname')?.touched) {
+          <span class="error-text">Le nom est requis</span>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="birthdate">Date de naissance</label>
+        <input
+          id="birthdate"
+          type="date"
+          formControlName="birthdate"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="gender">Genre</label>
+        <select
+          id="gender"
+          formControlName="gender"
+          class="form-control">
+          <option value="">Sélectionner...</option>
+          <option value="male">Masculin</option>
+          <option value="female">Féminin</option>
+          <option value="other">Autre</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="school_level">Niveau scolaire</label>
+        <select
+          id="school_level"
+          formControlName="school_level"
+          class="form-control">
+          <option value="">Sélectionner...</option>
+          <option value="1ère">1ère</option>
+          <option value="2ème">2ème</option>
+          <option value="3ème">3ème</option>
+          <option value="4ème">4ème</option>
+          <option value="5ème">5ème</option>
+          <option value="6ème">6ème</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea
+          id="notes"
+          formControlName="notes"
+          class="form-control"
+          rows="4"
+          placeholder="Informations complémentaires sur l'enfant..."
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="avatar_url">URL de l'avatar</label>
+        <input
+          id="avatar_url"
+          type="url"
+          formControlName="avatar_url"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          [disabled]="childForm.invalid || isLoading()" 
+          class="btn btn-primary"
+          [class.btn-add]="isCreating()"
+          [class.btn-edit]="!isCreating()">
+          @if (isLoading()) {
+            <span class="spinner"></span>
+          }
+          <span>{{ buttonText() }}</span>
+        </button>
+        @if (!isCreating()) {
+          <button type="button" (click)="onCancel()" class="btn btn-secondary">
+            Annuler
+          </button>
+        }
+      </div>
+    </form>
+  }
+</div>
+
