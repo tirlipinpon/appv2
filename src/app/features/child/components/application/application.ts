@@ -34,8 +34,15 @@ export class Application {
   /**
    * Crée un profil enfant
    */
-  createChildProfile(profileData: Omit<Child, 'id' | 'parent_id' | 'created_at' | 'updated_at'>): void {
+  createChildProfile(profileData: Omit<Child, 'id' | 'parent_id' | 'created_at' | 'updated_at' | 'is_active'>): void {
     this.store.createChildProfile(profileData);
+  }
+
+  /**
+   * Définit le statut actif d'un enfant (activate/désactivate)
+   */
+  setChildActiveStatus(childId: string, isActive: boolean): void {
+    this.store.setChildActiveStatus({ childId, isActive });
   }
 }
 

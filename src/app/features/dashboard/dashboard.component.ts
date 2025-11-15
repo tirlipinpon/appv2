@@ -29,8 +29,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Computed signals pour les enfants
   readonly children = computed(() => this.childStore.children());
+  readonly activeChildren = computed(() => this.children().filter(c => c.is_active));
+  readonly inactiveChildren = computed(() => this.children().filter(c => !c.is_active));
   readonly hasChildren = computed(() => this.childStore.hasChildren());
-  readonly childrenCount = computed(() => this.childStore.childrenCount());
+  readonly hasActiveChildren = computed(() => this.activeChildren().length > 0);
+  readonly hasInactiveChildren = computed(() => this.inactiveChildren().length > 0);
+  readonly childrenCount = computed(() => this.activeChildren().length);
 
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
@@ -65,5 +69,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   trackByChildId(index: number, child: any): string {
     return child.id;
+  }
+
+  setChildActiveStatus(childId: string, isActive: boolean, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isActive && !confirm('Êtes-vous sûr de vouloir désactiver cet enfant ? Vous pourrez le réactiver plus tard.')) {
+      return;
+    }
+    this.childStore.setChildActiveStatus({ childId, isActive });
   }
 }

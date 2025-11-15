@@ -130,13 +130,18 @@ export class ChildComponent implements OnInit {
     this.sourceChildId.set(childId);
     this.showForm.set(true);
     this.application.loadChildById(childId);
+    // Note: Le formulaire sera rempli automatiquement par l'effet quand l'enfant sera chargé
+    // Mais on va vider le prénom pour forcer une modification
   }
 
   private populateForm(child: Child): void {
     // Ne remplir le formulaire que si on n'est pas en train de charger
     if (!this.isLoading()) {
+      const isCopyMode = this.sourceChildId() !== null && this.currentChildId() === null;
+      
       this.childForm.patchValue({
-        firstname: child.firstname || '',
+        // Si on est en mode copie, vider le prénom pour forcer une modification
+        firstname: isCopyMode ? '' : (child.firstname || ''),
         lastname: child.lastname || '',
         birthdate: child.birthdate || '',
         gender: child.gender || '',
@@ -144,12 +149,55 @@ export class ChildComponent implements OnInit {
         notes: child.notes || '',
         avatar_url: child.avatar_url || '',
       });
+      
+      // Si on est en mode copie, marquer le prénom comme requis et touché pour afficher l'erreur
+      if (isCopyMode) {
+        this.childForm.get('firstname')?.markAsTouched();
+      }
     }
   }
 
   onSubmit(): void {
     if (this.childForm.valid) {
       const formValue = this.childForm.value;
+      
+      // Si on est en mode copie, vérifier qu'au moins un champ a été modifié
+      const isCopyMode = this.sourceChildId() !== null && this.currentChildId() === null;
+      if (isCopyMode) {
+        const sourceChild = this.store.children().find(c => c.id === this.sourceChildId());
+        if (sourceChild) {
+          // Vérifier que le prénom est différent (obligatoire)
+          const firstNameChanged = formValue.firstname && 
+            formValue.firstname.trim() !== '' && 
+            formValue.firstname.trim().toLowerCase() !== (sourceChild.firstname || '').trim().toLowerCase();
+          
+          if (!firstNameChanged) {
+            this.childForm.get('firstname')?.setErrors({ 
+              required: true, 
+              sameAsSource: true 
+            });
+            this.childForm.get('firstname')?.markAsTouched();
+            this.store.setError('Le prénom doit être différent de l\'enfant source.');
+            return;
+          }
+          
+          // Vérifier qu'au moins un autre champ est différent
+          const hasOtherChanges = 
+            (formValue.lastname || '').trim() !== (sourceChild.lastname || '').trim() ||
+            (formValue.birthdate || '') !== (sourceChild.birthdate || '') ||
+            (formValue.gender || '') !== (sourceChild.gender || '') ||
+            (formValue.school_level || '') !== (sourceChild.school_level || '') ||
+            (formValue.notes || '').trim() !== (sourceChild.notes || '').trim() ||
+            (formValue.avatar_url || '').trim() !== (sourceChild.avatar_url || '').trim();
+          
+          if (!hasOtherChanges) {
+            // Aucun autre champ n'a été modifié, afficher un message d'erreur
+            this.store.setError('Vous devez modifier au moins un champ en plus du prénom pour créer un nouvel enfant.');
+            return;
+          }
+        }
+      }
+      
       const profileData = {
         firstname: formValue.firstname || null,
         lastname: formValue.lastname || null,

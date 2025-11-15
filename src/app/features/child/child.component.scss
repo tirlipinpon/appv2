@@ -4,6 +4,42 @@
   padding: 2rem;
 }
 
+.copy-warning {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #856404;
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+}
+
+.inactive-warning {
+  background: #f8d7da;
+  border: 1px solid #dc3545;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #721c24;
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+}
+
 .copy-selection {
   background: #fff;
   border: 1px solid #ddd;

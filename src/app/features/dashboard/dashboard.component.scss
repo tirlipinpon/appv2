@@ -179,6 +179,29 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
           }
 
+          &.inactive {
+            background: #f8f9fa;
+            border-color: #dee2e6;
+            opacity: 0.7;
+
+            .child-info {
+              h4 {
+                color: #6c757d;
+              }
+
+              .inactive-badge {
+                display: inline-block;
+                padding: 0.25rem 0.5rem;
+                background: #dc3545;
+                color: white;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                font-weight: normal;
+                margin-left: 0.5rem;
+              }
+            }
+          }
+
           .child-info {
             flex: 1;
 
@@ -194,12 +217,50 @@
             }
           }
 
+          .child-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+          }
+
           .btn-sm {
             padding: 0.5rem 1rem;
             font-size: 0.9rem;
             white-space: nowrap;
           }
+
+          .btn-danger {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            cursor: pointer;
+
+            &:hover {
+              background-color: #c82333;
+            }
+          }
+
+          .btn-success {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+
+            &:hover {
+              background-color: #218838;
+            }
+          }
         }
+      }
+    }
+
+    .inactive-section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 2px solid #dee2e6;
+
+      h3 {
+        color: #6c757d;
       }
     }
   }

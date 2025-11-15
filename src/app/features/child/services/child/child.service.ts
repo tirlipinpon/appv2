@@ -50,7 +50,7 @@ export class ChildService {
   }
 
   /**
-   * Récupère tous les enfants du parent connecté
+   * Récupère tous les enfants du parent connecté (actifs et inactifs)
    */
   getChildren(): Observable<Child[]> {
     return this.getParentId().pipe(
@@ -135,7 +135,7 @@ export class ChildService {
   /**
    * Crée un profil enfant pour le parent connecté
    */
-  createChildProfile(profileData: Omit<Child, 'id' | 'parent_id' | 'created_at' | 'updated_at'>): Observable<{ child: Child | null; error: PostgrestError | null }> {
+  createChildProfile(profileData: Omit<Child, 'id' | 'parent_id' | 'created_at' | 'updated_at' | 'is_active'>): Observable<{ child: Child | null; error: PostgrestError | null }> {
     return this.getParentId().pipe(
       switchMap((parentId) => {
         if (!parentId) {
@@ -150,6 +150,7 @@ export class ChildService {
             .from('children')
             .insert({
               parent_id: parentId,
+              is_active: true, // Nouveaux enfants sont actifs par défaut
               ...profileData,
             })
             .select()
@@ -162,6 +163,26 @@ export class ChildService {
           catchError((error) => of({ child: null, error }))
         );
       })
+    );
+  }
+
+  /**
+   * Définit le statut actif d'un enfant (activate/désactivate)
+   */
+  setChildActiveStatus(childId: string, isActive: boolean): Observable<{ child: Child | null; error: PostgrestError | null }> {
+    return from(
+      this.supabaseService.client
+        .from('children')
+        .update({ is_active: isActive })
+        .eq('id', childId)
+        .select()
+        .single()
+    ).pipe(
+      map(({ data, error }) => ({
+        child: data,
+        error: error || null,
+      })),
+      catchError((error) => of({ child: null, error }))
     );
   }
 }

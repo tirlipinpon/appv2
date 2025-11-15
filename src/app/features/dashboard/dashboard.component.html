@@ -35,21 +35,56 @@
         </a>
       </div>
 
-      <!-- Liste des enfants -->
-      <div *ngIf="activeRole === 'parent' && hasChildren()" class="children-section">
-        <h3>Mes enfants ({{ childrenCount() }})</h3>
+      <!-- Liste des enfants actifs -->
+      <div *ngIf="activeRole === 'parent' && hasActiveChildren()" class="children-section">
+        <h3>Mes enfants actifs ({{ childrenCount() }})</h3>
         <div class="children-list">
-          <div *ngFor="let child of children(); trackBy: trackByChildId" class="child-card">
+          <div *ngFor="let child of activeChildren(); trackBy: trackByChildId" class="child-card">
             <div class="child-info">
               <h4>{{ child.firstname }} {{ child.lastname }}</h4>
               <p *ngIf="child.school_level">Niveau : {{ child.school_level }}</p>
               <p *ngIf="child.birthdate">Né(e) le : {{ child.birthdate | date:'dd/MM/yyyy' }}</p>
             </div>
-            <a 
-              [routerLink]="['/child-profile', child.id]" 
-              class="btn btn-secondary btn-sm">
-              ✏️ Modifier
-            </a>
+            <div class="child-actions">
+              <a 
+                [routerLink]="['/child-profile', child.id]" 
+                class="btn btn-secondary btn-sm">
+                ✏️ Modifier
+              </a>
+              <button 
+                type="button"
+                (click)="setChildActiveStatus(child.id, false, $event)" 
+                class="btn btn-danger btn-sm">
+                🗑️ Désactiver
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Liste des enfants désactivés -->
+      <div *ngIf="activeRole === 'parent' && hasInactiveChildren()" class="children-section inactive-section">
+        <h3>Enfants désactivés ({{ inactiveChildren().length }})</h3>
+        <div class="children-list">
+          <div *ngFor="let child of inactiveChildren(); trackBy: trackByChildId" class="child-card inactive">
+            <div class="child-info">
+              <h4>{{ child.firstname }} {{ child.lastname }} <span class="inactive-badge">(Désactivé)</span></h4>
+              <p *ngIf="child.school_level">Niveau : {{ child.school_level }}</p>
+              <p *ngIf="child.birthdate">Né(e) le : {{ child.birthdate | date:'dd/MM/yyyy' }}</p>
+            </div>
+            <div class="child-actions">
+              <a 
+                [routerLink]="['/child-profile', child.id]" 
+                class="btn btn-secondary btn-sm">
+                ✏️ Modifier
+              </a>
+              <button 
+                type="button"
+                (click)="setChildActiveStatus(child.id, true, $event)" 
+                class="btn btn-success btn-sm">
+                ✅ Réactiver
+              </button>
+            </div>
           </div>
         </div>
       </div>

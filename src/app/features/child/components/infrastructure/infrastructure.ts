@@ -50,10 +50,21 @@ export class Infrastructure {
   /**
    * Crée un profil enfant
    */
-  createChildProfile(profileData: Omit<Child, 'id' | 'parent_id' | 'created_at' | 'updated_at'>): Observable<{ child: Child | null; error: PostgrestError | null }> {
+  createChildProfile(profileData: Omit<Child, 'id' | 'parent_id' | 'created_at' | 'updated_at' | 'is_active'>): Observable<{ child: Child | null; error: PostgrestError | null }> {
     return this.childService.createChildProfile(profileData).pipe(
       catchError((error: PostgrestError) => {
         // L'erreur est gérée par le store
+        return of({ child: null, error });
+      })
+    );
+  }
+
+  /**
+   * Définit le statut actif d'un enfant (activate/désactivate)
+   */
+  setChildActiveStatus(childId: string, isActive: boolean): Observable<{ child: Child | null; error: PostgrestError | null }> {
+    return this.childService.setChildActiveStatus(childId, isActive).pipe(
+      catchError((error: PostgrestError) => {
         return of({ child: null, error });
       })
     );

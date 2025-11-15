@@ -57,6 +57,16 @@
   }
 
   @if (showForm() && !showCopySelection()) {
+    @if (sourceChildId() !== null) {
+      <div class="copy-warning">
+        <p>⚠️ Vous créez un nouvel enfant en copiant depuis un enfant existant. <strong>Vous devez modifier au moins le prénom ou un autre champ.</strong></p>
+      </div>
+    }
+    @if (selectedChild() && !selectedChild()?.is_active) {
+      <div class="inactive-warning">
+        <p>⚠️ <strong>Cet enfant est actuellement désactivé.</strong> Vous pouvez le modifier et le réactiver depuis le dashboard.</p>
+      </div>
+    }
     <form [formGroup]="childForm" (ngSubmit)="onSubmit()" class="child-form">
       <div class="form-group">
         <label for="firstname">Prénom *</label>
@@ -66,9 +76,16 @@
           formControlName="firstname"
           class="form-control"
           [class.invalid]="childForm.get('firstname')?.invalid && childForm.get('firstname')?.touched"
+          [placeholder]="sourceChildId() !== null ? 'Le prénom doit être différent de l\'enfant source' : ''"
         />
         @if (childForm.get('firstname')?.invalid && childForm.get('firstname')?.touched) {
-          <span class="error-text">Le prénom est requis</span>
+          <span class="error-text">
+            @if (childForm.get('firstname')?.errors?.['sameAsSource']) {
+              Le prénom doit être différent de l'enfant source
+            } @else {
+              Le prénom est requis
+            }
+          </span>
         }
       </div>
 

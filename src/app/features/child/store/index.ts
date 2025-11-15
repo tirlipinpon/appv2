@@ -122,7 +122,7 @@ export const ChildStore = signalStore(
     /**
      * Crée un profil enfant
      */
-    createChildProfile: rxMethod<Omit<Child, 'id' | 'parent_id' | 'created_at' | 'updated_at'>>(
+    createChildProfile: rxMethod<Omit<Child, 'id' | 'parent_id' | 'created_at' | 'updated_at' | 'is_active'>>(
       pipe(
         tap(() => {
           patchState(store, { isLoading: true, error: [] });
@@ -147,6 +147,45 @@ export const ChildStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la création du profil enfant';
+              patchState(store, { error: [errorMessage], isLoading: false });
+              return of({ child: null, error });
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Définit le statut actif d'un enfant (activate/désactivate)
+     */
+    setChildActiveStatus: rxMethod<{ childId: string; isActive: boolean }>(
+      pipe(
+        tap(() => {
+          patchState(store, { isLoading: true, error: [] });
+        }),
+        switchMap(({ childId, isActive }) =>
+          infrastructure.setChildActiveStatus(childId, isActive).pipe(
+            tap((result) => {
+              if (result.error) {
+                const action = isActive ? 'réactivation' : 'désactivation';
+                const errorMessage = result.error.message || `Erreur lors de la ${action} de l'enfant`;
+                patchState(store, { error: [errorMessage], isLoading: false });
+              } else if (result.child) {
+                // Mettre à jour l'enfant dans la liste
+                const children = store.children();
+                const updatedChildren = children.map(c => c.id === result.child!.id ? result.child! : c);
+                patchState(store, { 
+                  children: updatedChildren,
+                  selectedChild: result.child.id === store.selectedChild()?.id ? result.child : store.selectedChild(),
+                  isLoading: false 
+                });
+              } else {
+                patchState(store, { isLoading: false });
+              }
+            }),
+            catchError((error) => {
+              const action = isActive ? 'réactivation' : 'désactivation';
+              const errorMessage = error?.message || `Erreur lors de la ${action} de l'enfant`;
               patchState(store, { error: [errorMessage], isLoading: false });
               return of({ child: null, error });
             })
