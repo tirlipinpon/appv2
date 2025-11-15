@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService, Profile } from '../../../../services/auth/auth.service';
+import { ParentStore } from '../../../parent/store/index';
 
 @Component({
   selector: 'app-role-selector',
@@ -13,6 +14,7 @@ import { AuthService, Profile } from '../../../../services/auth/auth.service';
 export class RoleSelectorComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly parentStore = inject(ParentStore);
   profile: Profile | null = null;
   availableRoles: string[] = [];
   roleLabels: Record<string, string> = {
@@ -44,6 +46,12 @@ export class RoleSelectorComponent implements OnInit {
   selectRole(role: string) {
     if (this.availableRoles.includes(role)) {
       this.authService.setActiveRole(role);
+      
+      // Si le rôle sélectionné est parent, vérifier le statut du profil
+      if (role === 'parent') {
+        this.parentStore.checkParentStatus();
+      }
+      
       this.router.navigate(['/dashboard']);
     }
   }

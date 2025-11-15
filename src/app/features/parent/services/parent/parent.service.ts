@@ -1,9 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, catchError, switchMap } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { SupabaseService } from '../../../../services/supabase/supabase.service';
 import { AuthService } from '../../../../services/auth/auth.service';
 import type { Parent, ParentUpdate } from '../../types/parent';
+import type { ParentStatus } from '../../store/index';
 import type { PostgrestError } from '@supabase/supabase-js';
 
 @Injectable({
@@ -96,6 +98,68 @@ export class ParentService {
         parent: data,
         error: error || null,
       }))
+    );
+  }
+
+  /**
+   * Vérifie si des enfants sont inscrits pour un parent donné
+   */
+  checkChildrenEnrolled(parentId: string): Observable<boolean> {
+    return from(
+      this.supabaseService.client
+        .from('children')
+        .select('id')
+        .eq('parent_id', parentId)
+        .limit(1)
+        .maybeSingle()
+    ).pipe(
+      map(({ data, error }) => {
+        // Si la table n'existe pas, l'erreur sera gérée et on retourne false
+        if (error && error.code === '42P01') {
+          // Table does not exist
+          return false;
+        }
+        return data !== null;
+      }),
+      catchError(() => {
+        // Si la table n'existe pas encore, retourner false
+        return of(false);
+      })
+    );
+  }
+
+  /**
+   * Vérifie si le profil parent est complété
+   */
+  private isProfileComplete(parent: Parent | null): boolean {
+    if (!parent) {
+      return false;
+    }
+    // On considère le profil complété si les champs essentiels sont remplis
+    return !!(parent.fullname && parent.phone && parent.address && parent.city);
+  }
+
+  /**
+   * Vérifie le statut du profil parent (profil complété et enfants inscrits)
+   */
+  checkParentStatus(): Observable<ParentStatus> {
+    return this.getParentProfile().pipe(
+      switchMap((parent: Parent | null) => {
+        if (!parent) {
+          return of({ isProfileComplete: false, hasChildrenEnrolled: false });
+        }
+
+        const isProfileComplete = this.isProfileComplete(parent);
+        const childrenCheck$ = this.checkChildrenEnrolled(parent.id);
+
+        return childrenCheck$.pipe(
+          map((hasChildren) => ({
+            isProfileComplete,
+            hasChildrenEnrolled: hasChildren,
+          }))
+        );
+      }),
+      catchError(() => of({ isProfileComplete: false, hasChildrenEnrolled: false }))
     );
   }
 }

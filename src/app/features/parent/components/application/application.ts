@@ -23,5 +23,12 @@ export class Application {
   updateParentProfile(updates: Partial<{ fullname: string | null; phone: string | null; address: string | null; city: string | null; country: string | null; preferences: Record<string, any>; avatar_url: string | null }>): void {
     this.store.updateParentProfile(updates as Partial<Parent>);
   }
+
+  /**
+   * Crée un profil parent
+   */
+  createParentProfile(profileData: Omit<Parent, 'id' | 'profile_id' | 'created_at' | 'updated_at'>): void {
+    this.store.createParentProfile(profileData);
+  }
 }
 

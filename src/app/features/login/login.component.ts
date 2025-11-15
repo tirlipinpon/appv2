@@ -16,10 +16,11 @@ export class LoginComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  readonly isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
   loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    password: ['tony-ster@hotmail.com', [Validators.required, Validators.minLength(6)]],
   });
   forgotPasswordForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -47,11 +48,11 @@ export class LoginComponent implements OnInit {
   }
 
   async onSubmit() {
-    if (this.loginForm.invalid) {
+    if (this.loginForm.invalid && !this.isLocalhost) {
       return;
     }
 
-    if (this.isForgotPasswordMode) {
+    if (this.isForgotPasswordMode && !this.isLocalhost) {
       return;
     }
 

@@ -47,7 +47,7 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
-    path: 'parent',
+    path: 'parent-profile',
     loadComponent: () => import('./features/parent/parent.component').then(m => m.ParentComponent),
     canActivate: [authGuard]
   },

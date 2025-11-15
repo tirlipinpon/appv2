@@ -1,5 +1,10 @@
 <div class="parent-container">
-  <h1>Profil Parent</h1>
+  <div class="header-actions">
+    <a routerLink="/dashboard" class="btn-back">
+      ← Retour au dashboard
+    </a>
+    <h1>Profil Parent</h1>
+  </div>
 
   @if (isLoading()) {
     <div class="loading">Chargement...</div>
@@ -18,7 +23,7 @@
 
   @if (showSuccess()) {
     <div class="success-message">
-      <p>✅ Profil mis à jour avec succès !</p>
+      <p>✅ {{ isCreating() ? 'Profil créé avec succès !' : 'Profil mis à jour avec succès !' }}</p>
     </div>
   }
 
@@ -89,12 +94,22 @@
       </div>
 
       <div class="form-actions">
-        <button type="submit" [disabled]="parentForm.invalid || isLoading()" class="btn btn-primary">
-          Enregistrer
+        <button 
+          type="submit" 
+          [disabled]="parentForm.invalid || isLoading()" 
+          class="btn btn-primary"
+          [class.btn-add]="isCreating()"
+          [class.btn-edit]="!isCreating()">
+          @if (isLoading()) {
+            <span class="spinner"></span>
+          }
+          <span>{{ buttonText() }}</span>
         </button>
-        <button type="button" (click)="onCancel()" class="btn btn-secondary">
-          Annuler
-        </button>
+        @if (!isCreating()) {
+          <button type="button" (click)="onCancel()" class="btn btn-secondary">
+            Annuler
+          </button>
+        }
       </div>
     </form>
   }
