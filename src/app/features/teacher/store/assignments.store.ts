@@ -12,7 +12,7 @@ export interface TeacherAssignmentState {
   schools: School[];
   subjects: Subject[];
   assignments: TeacherAssignment[];
-  schoolYears: any[];
+  schoolYears: { id: string; label: string }[];
   isLoading: boolean;
   error: string[];
 }
@@ -37,9 +37,6 @@ export const TeacherAssignmentStore = signalStore(
     hasSubjects: () => store.subjects().length > 0,
   })),
   withMethods((store, infrastructure = inject(Infrastructure)) => ({
-    /**
-     * Charge les écoles
-     */
     loadSchools: rxMethod<void>(
       pipe(
         switchMap(() =>
@@ -62,9 +59,6 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Crée une nouvelle école
-     */
     createSchool: rxMethod<Omit<School, 'id' | 'created_at' | 'updated_at'>>(
       pipe(
         switchMap((schoolData) =>
@@ -87,9 +81,6 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Charge les années scolaires d'une école
-     */
     loadSchoolYears: rxMethod<string>(
       pipe(
         switchMap((schoolId) =>
@@ -112,10 +103,7 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Crée une nouvelle année scolaire
-     */
-    createSchoolYear: rxMethod<any>(
+    createSchoolYear: rxMethod<{ school_id: string; label: string; order_index?: number | null; is_active?: boolean }>(
       pipe(
         switchMap((schoolYearData) =>
           infrastructure.createSchoolYear(schoolYearData).pipe(
@@ -126,7 +114,6 @@ export const TeacherAssignmentStore = signalStore(
                 return of(null);
               } else if (result.schoolYear) {
                 const schoolId = result.schoolYear.school_id;
-                // Recharger les années de l'école après création
                 if (schoolId) {
                   return infrastructure.getSchoolYearsBySchool(schoolId).pipe(
                     tap((yearsResult) => {
@@ -150,9 +137,6 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Charge les matières
-     */
     loadSubjects: rxMethod<void>(
       pipe(
         switchMap(() =>
@@ -175,9 +159,6 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Crée une nouvelle matière
-     */
     createSubject: rxMethod<Omit<Subject, 'id' | 'created_at' | 'updated_at'>>(
       pipe(
         switchMap((subjectData) =>
@@ -200,9 +181,6 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Charge les affectations du professeur
-     */
     loadAssignments: rxMethod<string>(
       pipe(
         switchMap((teacherId) =>
@@ -225,9 +203,6 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Crée une nouvelle affectation
-     */
     createAssignment: rxMethod<TeacherAssignmentCreate>(
       pipe(
         tap(() => {
@@ -258,9 +233,6 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Supprime une affectation
-     */
     deleteAssignment: rxMethod<string>(
       pipe(
         switchMap((assignmentId) =>
@@ -285,16 +257,9 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    /**
-     * Définit une erreur (méthode utilitaire)
-     */
     setError: (error: string) => {
       patchState(store, { error: [error], isLoading: false });
     },
-
-    /**
-     * Efface les erreurs
-     */
     clearError: () => {
       patchState(store, { error: [] });
     },

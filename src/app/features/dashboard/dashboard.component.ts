@@ -1,11 +1,11 @@
-import { Component, OnInit, OnDestroy, inject, computed, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, NavigationEnd, Router } from '@angular/router';
 import { AuthService, Profile } from '../../services/auth/auth.service';
 import { ParentStore } from '../parent/store/index';
 import { ChildStore } from '../child/store/index';
 import { TeacherStore } from '../teacher/store/index';
-import { TeacherAssignmentStore } from '../teacher-assignments/store/index';
+import { TeacherAssignmentStore } from '../teacher/store/assignments.store';
 import { Child } from '../child/types/child';
 import { filter, Subscription } from 'rxjs';
 
@@ -26,6 +26,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   profile: Profile | null = null;
   activeRole: string | null = null;
   private routerSubscription?: Subscription;
+  private lastLoadedTeacherId: string | null = null;
+  private readonly activeRoleSig = signal<string | null>(null);
 
   // Computed signals pour le bouton parent
   readonly hasParent = computed(() => this.parentStore.hasParent());
@@ -47,9 +49,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly hasInactiveChildren = computed(() => this.inactiveChildren().length > 0);
   readonly childrenCount = computed(() => this.activeChildren().length);
 
+  // Effect créé en contexte d'injection (champ de classe), pas dans ngOnInit
+  private readonly loadAssignmentsEffect = effect(() => {
+    if (this.activeRoleSig() === 'prof') {
+      const teacher = this.teacherStore.teacher();
+      if (teacher && this.lastLoadedTeacherId !== teacher.id) {
+        this.lastLoadedTeacherId = teacher.id;
+        this.teacherAssignmentStore.loadAssignments(teacher.id);
+      }
+    }
+  });
+
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
     this.activeRole = this.authService.getActiveRole();
+    this.activeRoleSig.set(this.activeRole);
     
     // Si le rôle actif est parent, charger le profil et vérifier le statut
     if (this.activeRole === 'parent') {
@@ -63,15 +77,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.teacherStore.loadTeacherProfile();
       this.teacherAssignmentStore.loadSchools();
       this.teacherAssignmentStore.loadSubjects();
-      // Réagir au chargement du profil professeur pour charger les affectations (sans setTimeout)
-      let assignmentsLoadedFor: string | null = null;
-      effect(() => {
-        const teacher = this.teacherStore.teacher();
-        if (teacher && assignmentsLoadedFor !== teacher.id) {
-          assignmentsLoadedFor = teacher.id;
-          this.teacherAssignmentStore.loadAssignments(teacher.id);
-        }
-      });
     }
     
     // Écouter les navigations pour recharger les enfants quand on revient au dashboard

@@ -51,19 +51,20 @@ export class SchoolYearSelectComponent implements ControlValueAccessor, OnInit, 
 	readonly selectId = computed(() => this.id ?? this.autoId);
 	readonly displayYears = computed<{ id: string; label: string }[]>(() => this.years());
 
-	ngOnInit(): void {
-		effect(() => {
-			// Si des années sont fournies par le parent, ne pas charger via service
-			if (this.useExternalYears()) return;
-			const currentSchool = this.schoolId() || null;
-			if (currentSchool) {
-				this.loadYears(currentSchool);
-			} else {
-				this.years.set([]);
-				this.writeValue(null);
-			}
-		}, { allowSignalWrites: true });
-	}
+	// Réactivité aux inputs (créée en tant que champ de classe pour être dans le contexte d'injection)
+	private readonly reactToInputs = effect(() => {
+		// Si des années sont fournies par le parent, ne pas charger via service
+		if (this.useExternalYears()) return;
+		const currentSchool = this.schoolId() || null;
+		if (currentSchool) {
+			this.loadYears(currentSchool);
+		} else {
+			this.years.set([]);
+			this.writeValue(null);
+		}
+	}, { allowSignalWrites: true });
+
+	ngOnInit(): void {}
 
 	ngOnDestroy(): void {
 		this.subscription?.unsubscribe();

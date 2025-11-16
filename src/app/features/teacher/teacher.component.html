@@ -7,11 +7,16 @@
   </div>
 
   <main class="teacher-content">
+    <nav class="tabs">
+      <a [routerLink]="[]" [queryParams]="{ tab: 'profile' }" [class.active]="activeTab() === 'profile'">Profil</a>
+      <a [routerLink]="[]" [queryParams]="{ tab: 'assignments' }" [class.active]="activeTab() === 'assignments'">Affectations</a>
+    </nav>
+
     <div *ngIf="showSuccess()" class="success-message">
       <p>✅ {{ isCreating() ? 'Profil créé avec succès !' : 'Profil mis à jour avec succès !' }}</p>
     </div>
 
-    <form [formGroup]="teacherForm" (ngSubmit)="onSubmit()" *ngIf="showForm()">
+    <form [formGroup]="teacherForm" (ngSubmit)="onSubmit()" *ngIf="showForm() && activeTab() === 'profile'">
       <div class="form-group">
         <label for="fullname">Nom complet *</label>
         <input 
@@ -66,6 +71,10 @@
         </button>
       </div>
     </form>
+
+    <section *ngIf="activeTab() === 'assignments'">
+      <app-assignments />
+    </section>
 
     <div *ngIf="isLoading()" class="loading">
       <p>Chargement...</p>

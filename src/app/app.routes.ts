@@ -68,7 +68,8 @@ export const routes: Routes = [
   },
   {
     path: 'teacher-assignments',
-    loadComponent: () => import('./features/teacher-assignments/teacher-assignments.component').then(m => m.TeacherAssignmentsComponent),
+    loadComponent: () => import('./features/teacher/teacher.component').then(m => m.TeacherComponent),
+    data: { tab: 'assignments' },
     canActivate: [authGuard]
   },
   {
