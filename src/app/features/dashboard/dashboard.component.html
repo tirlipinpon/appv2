@@ -44,6 +44,12 @@
           [class.btn-edit]="hasTeacher()">
           {{ teacherButtonText() }}
         </a>
+        <a 
+          routerLink="/teacher-assignments" 
+          [queryParams]="{ tab: 'assignments' }"
+          class="btn btn-secondary">
+          📚 Mes affectations
+        </a>
       </div>
 
       <!-- Section Affectations pour les professeurs -->
@@ -56,10 +62,12 @@
               <h4>{{ getSubjectName(assignment.subject_id) }}</h4>
               <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
               <p *ngIf="assignment.school_year_id">📅 Année: {{ assignment.school_year_id }}</p>
+              <p *ngIf="assignment.school_level">🎓 Niveau: {{ assignment.school_level }}</p>
             </div>
             <div class="assignment-actions">
               <a 
                 [routerLink]="['/teacher-subjects', assignment.subject_id]" 
+                [queryParams]="{ school_id: assignment.school_id, school_level: assignment.school_level }"
                 class="btn btn-secondary btn-sm">
                 ✏️ Gérer
               </a>

@@ -1,13 +1,13 @@
 import { Component, Input, forwardRef, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR, ReactiveFormsModule, FormsModule } from '@angular/forms';
 
 interface SchoolLevelOption { value: string; label: string }
 
 @Component({
 	selector: 'app-school-level-select',
 	standalone: true,
-	imports: [CommonModule, ReactiveFormsModule],
+	imports: [CommonModule, ReactiveFormsModule, FormsModule],
 	templateUrl: './school-level-select.component.html',
 	styleUrl: './school-level-select.component.scss',
 	providers: [
@@ -59,8 +59,9 @@ export class SchoolLevelSelectComponent implements ControlValueAccessor {
 		this.isDisabled.set(isDisabled);
 	}
 
-	onSelectChange(value: string): void {
-		const normalized = value || null;
+	onSelectChange(value: unknown): void {
+		const v = (typeof value === 'string') ? value : (value as { target?: { value?: string } } | null)?.target?.value;
+		const normalized = v || null;
 		this.value.set(normalized);
 		this.onChange(normalized);
 		this.onTouched();

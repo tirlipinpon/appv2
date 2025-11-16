@@ -44,11 +44,65 @@ export class SubjectsComponent implements OnInit {
     this.store.loadSubjects();
     const id = this.route.snapshot.paramMap.get('id');
     this.subjectId.set(id);
+
+    // Préselection via query params (ex: depuis le dashboard/affectations)
+    const q = this.route.snapshot.queryParamMap;
+    const qpSchoolId = q.get('school_id');
+    const qpSchoolLevel = q.get('school_level');
+    if (qpSchoolId || qpSchoolLevel) {
+      const normalizedLevel = this.normalizeLevel(qpSchoolLevel || '');
+      this.linkForm.patchValue({
+        school_id: qpSchoolId || '',
+        school_level: normalizedLevel || '',
+      });
+    }
+    this.route.queryParamMap.subscribe(params => {
+      const sId = params.get('school_id');
+      const sLvl = params.get('school_level');
+      if (sId || sLvl) {
+        const normalized = this.normalizeLevel(sLvl || '');
+        this.linkForm.patchValue({
+          school_id: sId || this.linkForm.get('school_id')?.value || '',
+          school_level: normalized || this.linkForm.get('school_level')?.value || '',
+        });
+      }
+    });
+
     if (id) {
       this.loadLinks(id);
       const s = this.subjects().find(x => x.id === id);
       if (s) this.subjectForm.patchValue({ name: s.name || '', description: s.description || '', type: s.type || 'scolaire' });
     }
+  }
+
+  private normalizeLevel(level: string): string {
+    const map: Record<string, string> = {
+      '1ere': '1ère',
+      '1ère': '1ère',
+      '2eme': '2ème',
+      '2ème': '2ème',
+      '3eme': '3ème',
+      '3ème': '3ème',
+      '4eme': '4ème',
+      '4ème': '4ème',
+      '5eme': '5ème',
+      '5ème': '5ème',
+      '6eme': '6ème',
+      '6ème': '6ème',
+      'seconde': '2nde',
+      '2nde': '2nde',
+      'terminale': 'terminale',
+      'cp': 'cp',
+      'ce1': 'ce1',
+      'ce2': 'ce2',
+      'cm1': 'cm1',
+      'cm2': 'cm2',
+      'maternelle': 'maternelle',
+      'autre': 'autre',
+    };
+    const key = (level || '').toLowerCase();
+    // conserver les valeurs déjà compatibles
+    return map[key] || level;
   }
 
   create(): void {
@@ -87,7 +141,19 @@ export class SubjectsComponent implements OnInit {
   }
 
   private loadLinks(subjectId: string): void {
-    this.infra.getSubjectLinks(subjectId).subscribe(({ links }) => this.links.set(links || []));
+    this.infra.getSubjectLinks(subjectId).subscribe(({ links }) => {
+      const list = links || [];
+      this.links.set(list);
+      // Pré-remplir le formulaire avec la première association existante
+      if (list.length > 0) {
+        const first = list[0];
+        this.linkForm.patchValue({
+          school_id: first.school_id,
+          school_level: first.school_level,
+          required: first.required,
+        });
+      }
+    });
   }
 
   getSchoolName(schoolId: string): string {

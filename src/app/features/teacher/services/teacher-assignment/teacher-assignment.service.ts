@@ -25,6 +25,7 @@ export class TeacherAssignmentService {
           school:schools(*),
           subject:subjects(*)
         `)
+        .is('deleted_at', null)
         .eq('teacher_id', teacherId)
         .order('created_at', { ascending: false })
     ).pipe(
@@ -39,13 +40,16 @@ export class TeacherAssignmentService {
    * Crée une nouvelle affectation
    */
   createAssignment(assignmentData: TeacherAssignmentCreate): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+    // Normaliser school_level pour respecter la contrainte UNIQUE (pas de NULL)
+    const normalized = {
+      ...assignmentData,
+      school_level: (assignmentData.school_level ?? '') as string,
+      roles: assignmentData.roles || ['titulaire'],
+    };
     return from(
       this.supabaseService.client
         .from('teacher_assignments')
-        .insert({
-          ...assignmentData,
-          roles: assignmentData.roles || ['titulaire'],
-        })
+        .upsert(normalized, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
         .select()
         .single()
     ).pipe(
@@ -79,15 +83,22 @@ export class TeacherAssignmentService {
    * Supprime une affectation
    */
   deleteAssignment(id: string): Observable<{ error: PostgrestError | null }> {
+    // Soft delete: marquer deleted_at, plus robuste face aux réinsertions externes
     return from(
       this.supabaseService.client
         .from('teacher_assignments')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
+        .select('id')
+        .limit(1)
     ).pipe(
-      map(({ error }) => ({
-        error: error || null,
-      }))
+      map(({ data, error }) => {
+        const rows = (data as { id: string }[] | null) || [];
+        const logicalError = (rows.length === 0 && !error)
+          ? ({ message: 'Aucune ligne mise à jour' } as PostgrestError)
+          : null;
+        return { error: (error || logicalError) as PostgrestError | null };
+      })
     );
   }
 }
