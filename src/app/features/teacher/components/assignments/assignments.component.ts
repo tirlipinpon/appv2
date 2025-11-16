@@ -6,12 +6,12 @@ import { TeacherAssignmentStore } from '../../store/assignments.store';
 import { Application } from '../../components/application/application';
 import { TeacherService } from '../../services/teacher/teacher.service';
 import { ErrorSnackbarService } from '../../../../services/snackbar/error-snackbar.service';
-import { SchoolYearSelectComponent } from '../../../../shared/components/school-year-select/school-year-select.component';
+import { SchoolLevelSelectComponent } from '../../../../shared/components/school-level-select/school-level-select.component';
 
 @Component({
   selector: 'app-assignments',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolYearSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent],
   templateUrl: './assignments.component.html',
   styleUrl: './assignments.component.scss'
 })
@@ -30,11 +30,6 @@ export class AssignmentsComponent implements OnInit {
   readonly creatingSubject = signal(false);
   readonly teacherId = signal<string | null>(null);
   readonly currentSchoolId = signal<string | null>(null);
-  readonly yearOptions = signal([
-    { id: '2022-2023', label: '2022–2023' },
-    { id: '2023-2024', label: '2023–2024' },
-    { id: '2024-2025', label: '2024–2025' },
-  ]);
 
   // Forms
   assignmentForm!: FormGroup;
@@ -76,7 +71,7 @@ export class AssignmentsComponent implements OnInit {
   private initializeForms(): void {
     this.assignmentForm = this.fb.group({
       school_id: ['', Validators.required],
-      school_year_id: ['', Validators.required],
+      school_level: ['', Validators.required],
       subject_id: ['', Validators.required],
     });
     this.schoolForm = this.fb.group({
@@ -100,14 +95,10 @@ export class AssignmentsComponent implements OnInit {
   onSchoolChange(schoolId: string): void {
     if (schoolId) {
       this.currentSchoolId.set(schoolId || null);
-      this.loadSchoolYears(schoolId);
     } else {
       this.currentSchoolId.set(null);
-      this.assignmentForm.patchValue({ school_year_id: '' });
+      this.assignmentForm.patchValue({ school_level: '' });
     }
-  }
-  loadSchoolYears(schoolId: string): void {
-    this.application.loadSchoolYears(schoolId);
   }
 
   onCreateSchool(): void {
@@ -146,10 +137,13 @@ export class AssignmentsComponent implements OnInit {
   onSubmitAssignment(): void {
     if (!(this.assignmentForm.valid && this.teacherId())) return;
     const formValue = this.assignmentForm.value;
+    const isUuid = (v: unknown) =>
+      typeof v === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
     const assignmentData = {
       teacher_id: this.teacherId()!,
       school_id: formValue.school_id || null,
-      school_year_id: formValue.school_year_id || null,
+      school_level: formValue.school_level || null,
       subject_id: formValue.subject_id,
     };
     this.application.createAssignment(assignmentData);

@@ -62,7 +62,7 @@ export class SchoolYearSelectComponent implements ControlValueAccessor, OnInit, 
 			this.years.set([]);
 			this.writeValue(null);
 		}
-	}, { allowSignalWrites: true });
+	});
 
 	ngOnInit(): void {}
 

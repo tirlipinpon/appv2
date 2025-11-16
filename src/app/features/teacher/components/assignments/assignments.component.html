@@ -50,11 +50,10 @@
       </div>
 
       <div class="form-group">
-        <app-school-year-select
-          [label]="'Année scolaire'"
+        <app-school-level-select
+          [label]="'Niveau scolaire'"
           [required]="true"
-          [items]="yearOptions()"
-          formControlName="school_year_id"
+          formControlName="school_level"
         />
       </div>
 
@@ -112,7 +111,7 @@
       <div class="assignment-info">
         <h4>{{ getSubjectName(assignment.subject_id) }}</h4>
         <p *ngIf="assignment.school_id">École: {{ getSchoolName(assignment.school_id) }}</p>
-        <p *ngIf="assignment.school_year_id">Année: {{ assignment.school_year_id }}</p>
+        <p *ngIf="assignment.school_level">Niveau: {{ assignment.school_level }}</p>
       </div>
       <div class="assignment-actions">
         <button type="button" (click)="onDeleteAssignment(assignment.id)" class="btn btn-danger btn-sm">

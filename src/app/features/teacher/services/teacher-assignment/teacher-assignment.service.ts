@@ -23,7 +23,6 @@ export class TeacherAssignmentService {
         .select(`
           *,
           school:schools(*),
-          school_year:school_years(*),
           subject:subjects(*)
         `)
         .eq('teacher_id', teacherId)
