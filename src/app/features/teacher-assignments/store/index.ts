@@ -1,0 +1,303 @@
+import { inject } from '@angular/core';
+import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
+import { withDevtools } from "@angular-architects/ngrx-toolkit";
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { pipe, switchMap, tap, catchError, of } from 'rxjs';
+import { School } from '../types/school';
+import { Subject } from '../types/subject';
+import { TeacherAssignment, TeacherAssignmentCreate } from '../types/teacher-assignment';
+import { Infrastructure } from '../components/infrastructure/infrastructure';
+
+export interface TeacherAssignmentState {
+  schools: School[];
+  subjects: Subject[];
+  assignments: TeacherAssignment[];
+  schoolYears: any[];
+  isLoading: boolean;
+  error: string[];
+}
+
+const initialState: TeacherAssignmentState = {
+  schools: [],
+  subjects: [],
+  assignments: [],
+  schoolYears: [],
+  isLoading: false,
+  error: [],
+};
+
+export const TeacherAssignmentStore = signalStore(
+  { providedIn: 'root' },
+  withDevtools('teacher-assignments'),
+  withState(initialState),
+  withComputed((store) => ({
+    hasError: () => store.error().length > 0,
+    hasAssignments: () => store.assignments().length > 0,
+    hasSchools: () => store.schools().length > 0,
+    hasSubjects: () => store.subjects().length > 0,
+  })),
+  withMethods((store, infrastructure = inject(Infrastructure)) => ({
+    /**
+     * Charge les écoles
+     */
+    loadSchools: rxMethod<void>(
+      pipe(
+        switchMap(() =>
+          infrastructure.getSchools().pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du chargement des écoles';
+                patchState(store, { error: [errorMessage] });
+              } else {
+                patchState(store, { schools: result.schools });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du chargement des écoles';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Crée une nouvelle école
+     */
+    createSchool: rxMethod<Omit<School, 'id' | 'created_at' | 'updated_at'>>(
+      pipe(
+        switchMap((schoolData) =>
+          infrastructure.createSchool(schoolData).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors de la création de l\'école';
+                patchState(store, { error: [errorMessage] });
+              } else if (result.school) {
+                patchState(store, { schools: [...store.schools(), result.school] });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors de la création de l\'école';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Charge les années scolaires d'une école
+     */
+    loadSchoolYears: rxMethod<string>(
+      pipe(
+        switchMap((schoolId) =>
+          infrastructure.getSchoolYearsBySchool(schoolId).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du chargement des années scolaires';
+                patchState(store, { error: [errorMessage] });
+              } else {
+                patchState(store, { schoolYears: result.schoolYears });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du chargement des années scolaires';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Crée une nouvelle année scolaire
+     */
+    createSchoolYear: rxMethod<any>(
+      pipe(
+        switchMap((schoolYearData) =>
+          infrastructure.createSchoolYear(schoolYearData).pipe(
+            switchMap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors de la création de l\'année scolaire';
+                patchState(store, { error: [errorMessage] });
+                return of(null);
+              } else if (result.schoolYear) {
+                const schoolId = result.schoolYear.school_id;
+                // Recharger les années de l'école après création
+                if (schoolId) {
+                  return infrastructure.getSchoolYearsBySchool(schoolId).pipe(
+                    tap((yearsResult) => {
+                      if (!yearsResult.error) {
+                        patchState(store, { schoolYears: yearsResult.schoolYears });
+                      }
+                    })
+                  );
+                }
+                return of(null);
+              }
+              return of(null);
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors de la création de l\'année scolaire';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Charge les matières
+     */
+    loadSubjects: rxMethod<void>(
+      pipe(
+        switchMap(() =>
+          infrastructure.getSubjects().pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du chargement des matières';
+                patchState(store, { error: [errorMessage] });
+              } else {
+                patchState(store, { subjects: result.subjects });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du chargement des matières';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Crée une nouvelle matière
+     */
+    createSubject: rxMethod<Omit<Subject, 'id' | 'created_at' | 'updated_at'>>(
+      pipe(
+        switchMap((subjectData) =>
+          infrastructure.createSubject(subjectData).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors de la création de la matière';
+                patchState(store, { error: [errorMessage] });
+              } else if (result.subject) {
+                patchState(store, { subjects: [...store.subjects(), result.subject] });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors de la création de la matière';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Charge les affectations du professeur
+     */
+    loadAssignments: rxMethod<string>(
+      pipe(
+        switchMap((teacherId) =>
+          infrastructure.getTeacherAssignments(teacherId).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du chargement des affectations';
+                patchState(store, { error: [errorMessage] });
+              } else {
+                patchState(store, { assignments: result.assignments });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du chargement des affectations';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Crée une nouvelle affectation
+     */
+    createAssignment: rxMethod<TeacherAssignmentCreate>(
+      pipe(
+        tap(() => {
+          patchState(store, { isLoading: true, error: [] });
+        }),
+        switchMap((assignmentData) =>
+          infrastructure.createAssignment(assignmentData).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors de la création de l\'affectation';
+                patchState(store, { error: [errorMessage], isLoading: false });
+              } else if (result.assignment) {
+                patchState(store, { 
+                  assignments: [result.assignment, ...store.assignments()],
+                  isLoading: false 
+                });
+              } else {
+                patchState(store, { isLoading: false });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors de la création de l\'affectation';
+              patchState(store, { error: [errorMessage], isLoading: false });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Supprime une affectation
+     */
+    deleteAssignment: rxMethod<string>(
+      pipe(
+        switchMap((assignmentId) =>
+          infrastructure.deleteAssignment(assignmentId).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors de la suppression de l\'affectation';
+                patchState(store, { error: [errorMessage] });
+              } else {
+                patchState(store, { 
+                  assignments: store.assignments().filter(a => a.id !== assignmentId)
+                });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors de la suppression de l\'affectation';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    /**
+     * Définit une erreur (méthode utilitaire)
+     */
+    setError: (error: string) => {
+      patchState(store, { error: [error], isLoading: false });
+    },
+
+    /**
+     * Efface les erreurs
+     */
+    clearError: () => {
+      patchState(store, { error: [] });
+    },
+  }))
+);
+

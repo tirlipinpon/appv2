@@ -4,6 +4,9 @@ import { RouterModule, NavigationEnd, Router } from '@angular/router';
 import { AuthService, Profile } from '../../services/auth/auth.service';
 import { ParentStore } from '../parent/store/index';
 import { ChildStore } from '../child/store/index';
+import { TeacherStore } from '../teacher/store/index';
+import { TeacherAssignmentStore } from '../teacher-assignments/store/index';
+import { Child } from '../child/types/child';
 import { filter, Subscription } from 'rxjs';
 
 @Component({
@@ -18,6 +21,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   readonly parentStore = inject(ParentStore);
   readonly childStore = inject(ChildStore);
+  readonly teacherStore = inject(TeacherStore);
+  readonly teacherAssignmentStore = inject(TeacherAssignmentStore);
   profile: Profile | null = null;
   activeRole: string | null = null;
   private routerSubscription?: Subscription;
@@ -26,6 +31,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly hasParent = computed(() => this.parentStore.hasParent());
   readonly parentButtonText = computed(() => this.hasParent() ? 'Éditer mon profil' : 'Créer mon profil');
   readonly isCreatingParent = computed(() => !this.hasParent());
+
+  // Computed signals pour le bouton professeur
+  readonly hasTeacher = computed(() => this.teacherStore.hasTeacher());
+  readonly teacherButtonText = computed(() => this.hasTeacher() ? 'Éditer mon profil' : 'Créer mon profil');
+  readonly teacherAssignments = computed(() => this.teacherAssignmentStore.assignments());
+  readonly hasAssignments = computed(() => this.teacherAssignmentStore.hasAssignments());
 
   // Computed signals pour les enfants
   readonly children = computed(() => this.childStore.children());
@@ -47,10 +58,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.childStore.loadChildren();
     }
     
+    // Si le rôle actif est prof, charger le profil et les affectations
+    if (this.activeRole === 'prof') {
+      this.teacherStore.loadTeacherProfile();
+      this.teacherAssignmentStore.loadSchools();
+      this.teacherAssignmentStore.loadSubjects();
+      // Charger les affectations une fois le profil chargé
+      setTimeout(() => {
+        const teacher = this.teacherStore.teacher();
+        if (teacher) {
+          this.teacherAssignmentStore.loadAssignments(teacher.id);
+        }
+      }, 500);
+    }
+    
     // Écouter les navigations pour recharger les enfants quand on revient au dashboard
     this.routerSubscription = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe((event: any) => {
+      .subscribe((event: NavigationEnd) => {
         if (event.url === '/dashboard' && this.activeRole === 'parent') {
           this.childStore.loadChildren();
         }
@@ -67,7 +92,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     await this.authService.signOut();
   }
 
-  trackByChildId(index: number, child: any): string {
+  trackByChildId(index: number, child: Child): string {
     return child.id;
   }
 
@@ -78,5 +103,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
     this.childStore.setChildActiveStatus({ childId, isActive });
+  }
+
+  // Méthodes pour les professeurs
+  getSchoolName(schoolId: string): string {
+    const schools = this.teacherAssignmentStore.schools();
+    const school = schools.find(s => s.id === schoolId);
+    return school ? school.name : 'École inconnue';
+  }
+
+  getSubjectName(subjectId: string): string {
+    const subjects = this.teacherAssignmentStore.subjects();
+    const subject = subjects.find(s => s.id === subjectId);
+    return subject ? subject.name : 'Matière inconnue';
   }
 }

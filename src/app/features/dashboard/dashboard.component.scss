@@ -263,6 +263,71 @@
         color: #6c757d;
       }
     }
+
+    .assignments-section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #eee;
+
+      h3 {
+        margin-bottom: 1rem;
+        color: #333;
+      }
+
+      .assignments-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+
+        .assignment-card {
+          background: #fff;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 1.5rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transition: box-shadow 0.2s;
+
+          &:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          }
+
+          .assignment-info {
+            flex: 1;
+
+            h4 {
+              margin: 0 0 0.5rem 0;
+              color: #333;
+              font-size: 1.1rem;
+            }
+
+            p {
+              margin: 0.25rem 0;
+              color: #666;
+              font-size: 0.9rem;
+            }
+          }
+
+          .assignment-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+          }
+        }
+      }
+
+      .no-assignments {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+
+        p {
+          margin-bottom: 1rem;
+        }
+      }
+    }
   }
 }
 

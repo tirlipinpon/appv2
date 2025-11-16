@@ -1,0 +1,75 @@
+<div class="teacher-container">
+  <div class="header-actions">
+    <a routerLink="/dashboard" class="btn-back">
+      ← Retour au dashboard
+    </a>
+    <h1>Profil Professeur</h1>
+  </div>
+
+  <main class="teacher-content">
+    <div *ngIf="showSuccess()" class="success-message">
+      <p>✅ {{ isCreating() ? 'Profil créé avec succès !' : 'Profil mis à jour avec succès !' }}</p>
+    </div>
+
+    <form [formGroup]="teacherForm" (ngSubmit)="onSubmit()" *ngIf="showForm()">
+      <div class="form-group">
+        <label for="fullname">Nom complet *</label>
+        <input 
+          id="fullname" 
+          type="text" 
+          formControlName="fullname"
+          [class.error]="teacherForm.get('fullname')?.invalid && teacherForm.get('fullname')?.touched">
+        <span *ngIf="teacherForm.get('fullname')?.invalid && teacherForm.get('fullname')?.touched" class="error-message">
+          Le nom complet est requis
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="bio">Biographie</label>
+        <textarea 
+          id="bio" 
+          formControlName="bio" 
+          rows="4"
+          placeholder="Présentez-vous brièvement..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Téléphone</label>
+        <input 
+          id="phone" 
+          type="tel" 
+          formControlName="phone">
+      </div>
+
+      <div class="form-group">
+        <label for="avatar_url">URL de l'avatar</label>
+        <input 
+          id="avatar_url" 
+          type="url" 
+          formControlName="avatar_url"
+          placeholder="https://example.com/avatar.jpg">
+      </div>
+
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          [disabled]="teacherForm.invalid || isLoading()"
+          class="btn btn-primary">
+          {{ buttonText() }}
+        </button>
+        <button 
+          type="button" 
+          (click)="onCancel()" 
+          *ngIf="!isCreating()"
+          class="btn btn-secondary">
+          Annuler
+        </button>
+      </div>
+    </form>
+
+    <div *ngIf="isLoading()" class="loading">
+      <p>Chargement...</p>
+    </div>
+  </main>
+</div>
+

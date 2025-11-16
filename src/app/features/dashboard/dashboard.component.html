@@ -35,6 +35,48 @@
         </a>
       </div>
 
+      <!-- Liens vers l'édition/création pour les professeurs -->
+      <div *ngIf="activeRole === 'prof'" class="action-links">
+        <a 
+          routerLink="/teacher-profile" 
+          class="btn btn-primary"
+          [class.btn-add]="!hasTeacher()"
+          [class.btn-edit]="hasTeacher()">
+          {{ teacherButtonText() }}
+        </a>
+      </div>
+
+      <!-- Section Affectations pour les professeurs -->
+      <div *ngIf="activeRole === 'prof' && hasTeacher()" class="assignments-section">
+        <h3>Mes Affectations</h3>
+        
+        <div *ngIf="hasAssignments()" class="assignments-list">
+          <div *ngFor="let assignment of teacherAssignments()" class="assignment-card">
+            <div class="assignment-info">
+              <h4>{{ getSubjectName(assignment.subject_id) }}</h4>
+              <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
+              <p *ngIf="assignment.school_year_id">📅 Année: {{ assignment.school_year_id }}</p>
+            </div>
+            <div class="assignment-actions">
+              <a 
+                routerLink="/teacher-assignments" 
+                class="btn btn-secondary btn-sm">
+                ✏️ Gérer
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!hasAssignments()" class="no-assignments">
+          <p>Vous n'avez pas encore d'affectation.</p>
+          <a 
+            routerLink="/teacher-assignments" 
+            class="btn btn-primary">
+            ➕ Ajouter une affectation
+          </a>
+        </div>
+      </div>
+
       <!-- Liste des enfants actifs -->
       <div *ngIf="activeRole === 'parent' && hasActiveChildren()" class="children-section">
         <h3>Mes enfants actifs ({{ childrenCount() }})</h3>
