@@ -1,0 +1,21 @@
+<div class="form-group">
+	<label
+		[attr.for]="selectId()"
+	>
+		{{ label }}<span *ngIf="required"> *</span>
+	</label>
+	<select
+		[attr.id]="selectId()"
+		[disabled]="disabled || isDisabled()"
+		[value]="value() || ''"
+		(change)="onSelectChange($any($event.target).value)"
+	>
+		<option [value]="''">{{ required ? 'Sélectionner...' : 'Aucun' }}</option>
+		<option *ngFor="let opt of options" [value]="opt.value">
+			{{ opt.label }}
+		</option>
+	</select>
+</div>
+
+
+

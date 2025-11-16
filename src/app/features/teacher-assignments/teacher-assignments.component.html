@@ -70,15 +70,12 @@
         </div>
 
         <div class="form-group">
-          <label for="school_year_id">Année scolaire *</label>
-          <select 
-            id="school_year_id" 
+          <app-school-year-select
+            [label]="'Année scolaire'"
+            [required]="true"
+            [schoolId]="assignmentForm.get('school_id')?.value"
             formControlName="school_year_id"
-            [class.error]="assignmentForm.get('school_year_id')?.invalid && assignmentForm.get('school_year_id')?.touched"
-            [disabled]="!assignmentForm.get('school_id')?.value">
-            <option value="">Sélectionner une année</option>
-            <option *ngFor="let year of schoolYears()" [value]="year.id">{{ year.label }}</option>
-          </select>
+          />
         </div>
 
         <div class="form-group">

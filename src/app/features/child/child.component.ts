@@ -9,11 +9,12 @@ import { ErrorSnackbarService } from '../../services/snackbar/error-snackbar.ser
 import type { Child } from './types/child';
 import type { School } from './types/school';
 import { Subscription } from 'rxjs';
+import { SchoolLevelSelectComponent } from '../../shared/components/school-level-select/school-level-select.component';
 
 @Component({
   selector: 'app-child',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent],
   templateUrl: './child.component.html',
   styleUrl: './child.component.scss',
 })
@@ -106,27 +107,20 @@ export class ChildComponent implements OnInit, OnDestroy {
         this.showForm.set(true);
         this.showCopySelection.set(false);
       } else {
-        // Utiliser un effet pour détecter quand les enfants sont chargés
-        // Attendre que le chargement soit terminé
-        const checkChildren = () => {
-          if (!this.isLoading()) {
-            if (this.children().length > 0) {
-              // Si on a déjà des enfants, proposer de créer from scratch ou copier
+        // Réagir de façon réactive au chargement des enfants
+        effect(() => {
+          const loading = this.isLoading();
+          const list = this.children();
+          if (!loading) {
+            if (list.length > 0) {
               this.showCopySelection.set(true);
               this.showForm.set(false);
             } else {
-              // Pas d'enfants, afficher directement le formulaire
               this.showForm.set(true);
               this.showCopySelection.set(false);
             }
-          } else {
-            // Si encore en chargement, réessayer après un court délai
-            setTimeout(checkChildren, 100);
           }
-        };
-        
-        // Démarrer la vérification après un court délai initial
-        setTimeout(checkChildren, 200);
+        });
       }
     }
   }
@@ -285,51 +279,27 @@ export class ChildComponent implements OnInit, OnDestroy {
     const childId = this.route.snapshot.paramMap.get('id');
 
     if (wasCreating) {
-      // Créer le profil
+      // Créer le profil et réagir via un effet à l'ajout
+      const initialCount = this.store.children().length;
       this.application.createChildProfile(profileData);
-        
-        // Attendre que la création soit terminée
-        let checkCount = 0;
-        const maxChecks = 50; // 5 secondes max (50 * 100ms)
-        const initialChildrenCount = this.store.children().length;
-        
-        const checkCreation = setInterval(() => {
-          checkCount++;
-          const currentChildren = this.store.children();
-          const stillLoading = this.isLoading();
-          
-          // Si le chargement est terminé et qu'on a un nouvel enfant, la création est réussie
-          if (!stillLoading && currentChildren.length > initialChildrenCount) {
-            clearInterval(checkCreation);
-            this.showSuccess.set(true);
-            // Recharger la liste pour s'assurer qu'elle est à jour
-            this.application.loadChildren();
-            setTimeout(() => {
-              this.showSuccess.set(false);
-              this.router.navigate(['/dashboard']);
-            }, 2000);
-          } else if (checkCount >= maxChecks) {
-            // Timeout de sécurité
-            clearInterval(checkCreation);
-            this.showSuccess.set(true);
-            this.application.loadChildren();
-            setTimeout(() => {
-              this.showSuccess.set(false);
-              this.router.navigate(['/dashboard']);
-            }, 2000);
-          }
-        }, 100);
-      } else if (childId) {
-        // Mettre à jour le profil
-        this.application.updateChildProfile(childId, profileData);
-        
-        // Afficher le message de succès
-        setTimeout(() => {
+      effect(() => {
+        const loading = this.isLoading();
+        const current = this.store.children().length;
+        if (!loading && current > initialCount) {
           this.showSuccess.set(true);
-          setTimeout(() => {
-            this.showSuccess.set(false);
-          }, 3000);
-        }, 100);
+          this.application.loadChildren();
+          this.router.navigate(['/dashboard']);
+        }
+      });
+      } else if (childId) {
+        // Mettre à jour le profil et marquer le succès de façon réactive
+        this.application.updateChildProfile(childId, profileData);
+        effect(() => {
+          const loading = this.isLoading();
+          if (!loading) {
+            this.showSuccess.set(true);
+          }
+        });
       }
   }
 

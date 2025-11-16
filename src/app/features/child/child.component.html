@@ -153,20 +153,11 @@
       }
 
       <div class="form-group">
-        <label for="school_level">Niveau scolaire</label>
-        <select
-          id="school_level"
+        <app-school-level-select
+          [label]="'Niveau scolaire'"
+          [required]="false"
           formControlName="school_level"
-          class="form-control">
-          <option value="">Sélectionner...</option>
-          <option value="1ère">1ère</option>
-          <option value="2ème">2ème</option>
-          <option value="3ème">3ème</option>
-          <option value="4ème">4ème</option>
-          <option value="5ème">5ème</option>
-          <option value="6ème">6ème</option>
-          <option value="autre">Autre</option>
-        </select>
+        />
       </div>
 
       <div class="form-group">

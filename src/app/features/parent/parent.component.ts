@@ -108,11 +108,8 @@ export class ParentComponent implements OnInit {
         this.application.updateParentProfile(profileData);
       }
 
-      // Afficher le message de succès
+      // Afficher le message de succès (réactif, sans timer)
       this.showSuccess.set(true);
-      setTimeout(() => {
-        this.showSuccess.set(false);
-      }, 3000);
     }
   }
 

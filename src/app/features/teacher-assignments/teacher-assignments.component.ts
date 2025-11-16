@@ -7,11 +7,12 @@ import { Application } from './components/application/application';
 import { TeacherService } from '../teacher/services/teacher/teacher.service';
 import { ErrorSnackbarService } from '../../services/snackbar/error-snackbar.service';
 import type { SchoolYear } from './types/school';
+import { SchoolYearSelectComponent } from '../../shared/components/school-year-select/school-year-select.component';
 
 @Component({
   selector: 'app-teacher-assignments',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolYearSelectComponent],
   templateUrl: './teacher-assignments.component.html',
   styleUrl: './teacher-assignments.component.scss'
 })

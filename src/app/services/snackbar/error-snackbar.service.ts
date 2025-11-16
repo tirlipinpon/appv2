@@ -98,11 +98,8 @@ export class ErrorSnackbarService {
    * @param messages Les messages d'erreur à afficher
    */
   showErrors(messages: string[]): void {
-    messages.forEach((message, index) => {
-      // Petit délai pour empiler les snackbars verticalement
-      setTimeout(() => {
-        this.showError(message);
-      }, index * 50);
+    messages.forEach((message) => {
+      this.showError(message);
     });
   }
 

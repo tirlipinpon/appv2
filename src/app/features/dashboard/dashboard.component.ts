@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, NavigationEnd, Router } from '@angular/router';
 import { AuthService, Profile } from '../../services/auth/auth.service';
@@ -63,13 +63,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.teacherStore.loadTeacherProfile();
       this.teacherAssignmentStore.loadSchools();
       this.teacherAssignmentStore.loadSubjects();
-      // Charger les affectations une fois le profil chargé
-      setTimeout(() => {
+      // Réagir au chargement du profil professeur pour charger les affectations (sans setTimeout)
+      let assignmentsLoadedFor: string | null = null;
+      effect(() => {
         const teacher = this.teacherStore.teacher();
-        if (teacher) {
+        if (teacher && assignmentsLoadedFor !== teacher.id) {
+          assignmentsLoadedFor = teacher.id;
           this.teacherAssignmentStore.loadAssignments(teacher.id);
         }
-      }, 500);
+      });
     }
     
     // Écouter les navigations pour recharger les enfants quand on revient au dashboard
