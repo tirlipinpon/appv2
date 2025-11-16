@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -26,6 +26,29 @@ export class SubjectsComponent implements OnInit {
   readonly subjectId = signal<string | null>(null);
   readonly subjects = computed(() => this.store.subjects());
   readonly schools = computed(() => this.store.schools());
+  readonly currentSubjectName = computed(() => {
+    const id = this.subjectId();
+    if (!id) return '';
+    const s = this.subjects().find(x => x.id === id);
+    return s?.name || '';
+  });
+
+  // Effet déclaré en champ de classe (contexte d'injection garanti) pour pré-remplir le formulaire
+  private readonly patchFormFromStore = effect(() => {
+    const sid = this.subjectId();
+    const list = this.subjects();
+    if (sid) {
+      const subj = list.find(x => x.id === sid);
+      if (subj) {
+        this.subjectForm.get('name')?.setValue(subj.name || '');
+        this.subjectForm.patchValue({
+          description: subj.description || '',
+          type: subj.type || 'scolaire',
+        });
+        this.subjectForm.updateValueAndValidity();
+      }
+    }
+  });
 
   subjectForm = this.fb.group({
     name: ['', Validators.required],
@@ -39,7 +62,7 @@ export class SubjectsComponent implements OnInit {
     required: [true],
   });
 
-  readonly links = signal<Array<{ id: string; school_id: string; school_level: string; required: boolean }>>([]);
+  readonly links = signal<{ id: string; school_id: string; school_level: string; required: boolean }[]>([]);
 
   ngOnInit(): void {
     this.store.loadSchools();
@@ -73,7 +96,23 @@ export class SubjectsComponent implements OnInit {
     if (id) {
       this.loadLinks(id);
       const s = this.subjects().find(x => x.id === id);
-      if (s) this.subjectForm.patchValue({ name: s.name || '', description: s.description || '', type: s.type || 'scolaire' });
+      if (s) {
+        // Remplir explicitement le champ 'name' pour éviter d'avoir à le retaper
+        this.subjectForm.get('name')?.setValue(s.name || '');
+        this.subjectForm.patchValue({ description: s.description || '', type: s.type || 'scolaire' });
+        this.subjectForm.updateValueAndValidity();
+      }
+
+      // Sécuriser: charger directement depuis l'infra au cas où le store n'a pas encore les sujets
+      this.infra.getSubjects().subscribe(({ subjects }) => {
+        const found = (subjects || []).find(x => x.id === id);
+        if (found) {
+          this.subjectForm.get('name')?.setValue(found.name || '');
+          this.subjectForm.patchValue({ description: found.description || '', type: found.type || 'scolaire' });
+          this.subjectForm.updateValueAndValidity();
+        }
+      });
+      // (effet de pré-remplissage déclaré en champ de classe)
     }
   }
 

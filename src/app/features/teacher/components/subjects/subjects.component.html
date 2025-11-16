@@ -36,7 +36,8 @@
   </div>
 
   <div *ngIf="subjectId()">
-    <h2>Configurer la matière</h2>
+    <h2>Configurer la matière<span *ngIf="subjectForm?.get('name')?.value"> — {{ subjectForm.get('name')?.value }}</span></h2>
+    <p *ngIf="!subjectForm?.get('name')?.value && currentSubjectName()" class="muted">Nom: {{ currentSubjectName() }}</p>
     <form [formGroup]="subjectForm">
       <div class="form-group">
         <label for="name2">Nom *</label>
@@ -77,13 +78,6 @@
         <button type="submit" class="btn btn-primary" [disabled]="linkForm.invalid">Ajouter</button>
       </div>
     </form>
-
-    <ul class="links-list">
-      <li *ngFor="let l of links()">
-        {{ getSchoolName(l.school_id) }} — {{ l.school_level }} <span *ngIf="l.required">(obligatoire)</span>
-        <button type="button" class="btn btn-danger btn-sm" (click)="removeLink(l.id)">Supprimer</button>
-      </li>
-    </ul>
   </div>
 </div>
 
