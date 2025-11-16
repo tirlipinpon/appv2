@@ -154,6 +154,19 @@ export class AssignmentsComponent implements OnInit {
       school_level: formValue.school_level || null,
       subject_id: formValue.subject_id,
     };
+
+    // Empêcher les doublons (même école + niveau + matière) pour ce professeur
+    const exists = this.assignments().some(a =>
+      a.teacher_id === assignmentData.teacher_id &&
+      a.school_id === assignmentData.school_id &&
+      a.school_level === assignmentData.school_level &&
+      a.subject_id === assignmentData.subject_id
+    );
+    if (exists) {
+      this.errorSnackbarService.showError('Cette affectation existe déjà (école + niveau + matière).');
+      return;
+    }
+
     const isAllowedSubject = this.subjects().some(s => s.id === assignmentData.subject_id);
     if (!isAllowedSubject) {
       this.errorSnackbarService.showError('La matière sélectionnée n\'est pas disponible pour ce niveau dans cette école.');
