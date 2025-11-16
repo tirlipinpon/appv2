@@ -38,10 +38,13 @@
   <div *ngIf="subjectId()">
     <h2>Configurer la matière<span *ngIf="subjectForm?.get('name')?.value"> — {{ subjectForm.get('name')?.value }}</span></h2>
     <p *ngIf="!subjectForm?.get('name')?.value && currentSubjectName()" class="muted">Nom: {{ currentSubjectName() }}</p>
-    <form [formGroup]="subjectForm">
+    <form [formGroup]="subjectForm" (ngSubmit)="update()">
       <div class="form-group">
         <label for="name2">Nom *</label>
         <input id="name2" type="text" formControlName="name">
+        <span class="error-message" *ngIf="subjectForm.get('name')?.hasError('nameTaken') && subjectForm.get('name')?.touched">
+          Ce nom est déjà utilisé.
+        </span>
       </div>
       <div class="form-group">
         <label for="description2">Description</label>
@@ -55,29 +58,12 @@
           <option value="optionnelle">Optionnelle</option>
         </select>
       </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="subjectForm.invalid">Enregistrer</button>
+      </div>
     </form>
 
-    <h3>Disponibilité par École et Niveau</h3>
-    <form [formGroup]="linkForm" (ngSubmit)="addLink()">
-      <div class="form-group">
-        <label for="school_id">École *</label>
-        <select id="school_id" formControlName="school_id">
-          <option value="">Sélectionner</option>
-          <option *ngFor="let school of schools()" [value]="school.id">{{ school.name }}</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <app-school-level-select [label]="'Niveau scolaire *'" [required]="true" formControlName="school_level" />
-      </div>
-      <div class="form-group">
-        <label>
-          <input type="checkbox" formControlName="required"> Obligatoire
-        </label>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="linkForm.invalid">Ajouter</button>
-      </div>
-    </form>
+    <!-- Section rattachement retirée -->
   </div>
 </div>
 

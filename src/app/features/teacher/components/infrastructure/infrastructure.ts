@@ -74,6 +74,10 @@ export class Infrastructure {
     return this.subjectService.createSubject(subjectData);
   }
 
+  updateSubject(id: string, updates: Partial<Omit<Subject, 'id' | 'created_at' | 'updated_at'>>): Observable<{ subject: Subject | null; error: PostgrestError | null }> {
+    return this.subjectService.updateSubject(id, updates);
+  }
+
   getTeacherAssignments(teacherId: string): Observable<{ assignments: TeacherAssignment[]; error: PostgrestError | null }> {
     return this.teacherAssignmentService.getTeacherAssignments(teacherId);
   }

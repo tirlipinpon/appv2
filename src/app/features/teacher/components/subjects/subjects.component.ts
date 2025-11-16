@@ -1,17 +1,16 @@
 import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, AsyncValidatorFn, ValidationErrors } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { Infrastructure } from '../infrastructure/infrastructure';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import type { Subject } from '../../types/subject';
-import { SchoolLevelSelectComponent } from '../../../../shared/components/school-level-select/school-level-select.component';
 import { ErrorSnackbarService } from '../../../../services/snackbar/error-snackbar.service';
 
 @Component({
   selector: 'app-subjects',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './subjects.component.html',
   styleUrls: ['./subjects.component.scss'],
 })
@@ -51,7 +50,7 @@ export class SubjectsComponent implements OnInit {
   });
 
   subjectForm = this.fb.group({
-    name: ['', Validators.required],
+    name: ['', Validators.required, [/* async */ this.nameUniqueValidator()]],
     description: [''],
     type: ['scolaire', Validators.required],
   });
@@ -173,14 +172,72 @@ export class SubjectsComponent implements OnInit {
     });
   }
 
+  update(): void {
+    const id = this.subjectId();
+    if (!id || !this.subjectForm.valid) return;
+    const v = this.subjectForm.value;
+    console.log('[SubjectsComponent] update subject submit', { id, payload: v });
+    const updates = {
+      name: ((v.name || '').trim() || undefined) as string | undefined,
+      description: (v.description || undefined) as string | undefined,
+      type: v.type as Subject['type'],
+    };
+    this.infra.updateSubject(id, updates).subscribe(({ subject, error }) => {
+      console.log('[SubjectsComponent] update subject result', { error, subject });
+      if (error) {
+        this.errorSnackbar.showError(error.message || 'Erreur lors de la mise à jour de la matière');
+        return;
+      }
+      // Succès même si 'subject' est null (aucun champ réellement changé)
+      this.store.loadSubjects();
+      this.errorSnackbar.showError('Matière enregistrée.');
+    });
+  }
+
+  private nameUniqueValidator(): AsyncValidatorFn {
+    return (control) => {
+      const raw = (control.value || '') as string;
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        return Promise.resolve(null);
+      }
+      const currentId = this.subjectId();
+      return new Promise<ValidationErrors | null>((resolve) => {
+        this.infra.getSubjects().subscribe(({ subjects, error }) => {
+          if (error) {
+            resolve(null);
+            return;
+          }
+          const exists = (subjects || []).some(s =>
+            s.id !== currentId &&
+            (s.name || '').trim().toLowerCase() === trimmed.toLowerCase()
+          );
+          resolve(exists ? { nameTaken: true } : null);
+        });
+      });
+    };
+  }
+
   addLink(): void {
     if (!(this.linkForm.valid && this.subjectId())) return;
     const v = this.linkForm.value;
 
     // Validation client: empêcher un doublon (même école + niveau) pour cette matière
-    const already = this.links().some(l => l.school_id === v.school_id && l.school_level === v.school_level);
-    if (already) {
-      this.errorSnackbar.showError('Ce lien école + niveau existe déjà pour cette matière.');
+    const existing = this.links().find(l => l.school_id === v.school_id && l.school_level === v.school_level);
+    if (existing) {
+      // Si le lien existe déjà: si 'required' a changé, on met à jour en remplaçant; sinon, no-op succès
+      if (!!existing.required !== !!v.required) {
+        this.infra.deleteSubjectLink(existing.id).subscribe(() => {
+          this.infra.addSubjectLink({
+            subject_id: this.subjectId()!,
+            school_id: v.school_id!,
+            school_level: v.school_level!,
+            required: !!v.required,
+          }).subscribe(() => {
+            this.loadLinks(this.subjectId()!);
+          });
+        });
+      }
       return;
     }
 

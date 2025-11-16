@@ -100,6 +100,31 @@ export class SubjectService {
     );
   }
 
+  /**
+   * Met à jour une matière existante
+   */
+  updateSubject(id: string, updates: Partial<Omit<Subject, 'id' | 'created_at' | 'updated_at'>>): Observable<{ subject: Subject | null; error: PostgrestError | null }> {
+    return from(
+      this.supabaseService.client
+        .from('subjects')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .limit(1)
+    ).pipe(
+      map(({ data, error }) => {
+        const rows = (data as Subject[] | null) || [];
+        const logicalError = (rows.length === 0 && !error)
+          ? ({ message: 'Aucune ligne mise à jour' } as PostgrestError)
+          : null;
+        return {
+          subject: rows[0] || null,
+          error: (error || logicalError) as PostgrestError | null,
+        };
+      })
+    );
+  }
+
   // ===== Liens matière <-> (école, niveau) =====
   getSubjectLinks(subjectId: string): Observable<{ links: { id: string; school_id: string; school_level: string; required: boolean }[]; error: PostgrestError | null }> {
     return from(

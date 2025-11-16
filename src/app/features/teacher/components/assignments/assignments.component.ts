@@ -45,6 +45,28 @@ export class AssignmentsComponent implements OnInit {
   readonly hasAssignments = computed(() => this.store.hasAssignments());
   readonly isLoading = computed(() => this.store.isLoading());
 
+  // Affichage "affectées / non affectées" pour l'école + niveau sélectionnés
+  readonly selectedSchoolId = computed<string | null>(() => this.assignmentForm ? (this.assignmentForm.get('school_id')?.value || null) : null);
+  readonly selectedSchoolLevel = computed<string | null>(() => this.assignmentForm ? (this.assignmentForm.get('school_level')?.value || null) : null);
+
+  readonly assignmentsForSelection = computed(() => {
+    const sid = this.selectedSchoolId();
+    const lvl = this.selectedSchoolLevel();
+    if (!sid || !lvl) return [];
+    return this.assignments().filter(a => a.school_id === sid && a.school_level === lvl);
+  });
+
+  readonly assignedSubjectIdsForSelection = computed<Set<string>>(() => {
+    const set = new Set<string>();
+    this.assignmentsForSelection().forEach(a => { if (a.subject_id) set.add(a.subject_id); });
+    return set;
+  });
+
+  readonly unassignedSubjectsForSelection = computed(() => {
+    const assignedIds = this.assignedSubjectIdsForSelection();
+    return this.subjects().filter(s => !assignedIds.has(s.id));
+  });
+
   constructor() {
     effect(() => {
       const tid = this.teacherId();
