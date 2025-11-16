@@ -76,7 +76,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.activeRole === 'prof') {
       this.teacherStore.loadTeacherProfile();
       this.teacherAssignmentStore.loadSchools();
-      this.teacherAssignmentStore.loadSubjects();
+      // Ne pas charger toutes les matières globales ici pour ne pas écraser la liste filtrée
     }
     
     // Écouter les navigations pour recharger les enfants quand on revient au dashboard
@@ -123,5 +123,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const subjects = this.teacherAssignmentStore.subjects();
     const subject = subjects.find(s => s.id === subjectId);
     return subject ? subject.name : 'Matière inconnue';
+  }
+
+  getAssignmentSubjectName(assignment: { subject?: { name?: string }; subject_id?: string } | null | undefined): string {
+    // Utilise la jointure si présente, sinon le fallback via store
+    const joinedName = assignment && assignment.subject && assignment.subject.name;
+    if (joinedName && typeof joinedName === 'string') return joinedName;
+    return assignment && assignment.subject_id ? this.getSubjectName(assignment.subject_id) : 'Matière inconnue';
   }
 }

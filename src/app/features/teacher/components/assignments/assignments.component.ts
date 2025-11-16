@@ -74,8 +74,14 @@ export class AssignmentsComponent implements OnInit {
       school_level: ['', Validators.required],
       subject_id: ['', Validators.required],
     });
-    this.assignmentForm.get('school_level')?.valueChanges.subscribe(() => this.tryLoadSubjectsForSelection());
-    this.assignmentForm.get('school_id')?.valueChanges.subscribe(() => this.tryLoadSubjectsForSelection());
+    this.assignmentForm.get('school_level')?.valueChanges.subscribe((val) => {
+      console.log('[AssignmentsComponent] school_level changed', val);
+      this.tryLoadSubjectsForSelection();
+    });
+    this.assignmentForm.get('school_id')?.valueChanges.subscribe((val) => {
+      console.log('[AssignmentsComponent] school_id changed', val);
+      this.tryLoadSubjectsForSelection();
+    });
     this.schoolForm = this.fb.group({
       name: ['', Validators.required],
       address: [''],
@@ -91,10 +97,11 @@ export class AssignmentsComponent implements OnInit {
 
   private loadInitialData(): void {
     this.application.loadSchools();
-    this.application.loadSubjects();
+    // Ne pas charger toutes les matières ici pour éviter d’écraser la liste filtrée
   }
 
   onSchoolChange(schoolId: string): void {
+    console.log('[AssignmentsComponent] onSchoolChange', { schoolId });
     if (schoolId) {
       this.currentSchoolId.set(schoolId || null);
     } else {
@@ -107,7 +114,9 @@ export class AssignmentsComponent implements OnInit {
   private tryLoadSubjectsForSelection(): void {
     const schoolId = this.assignmentForm.get('school_id')?.value;
     const schoolLevel = this.assignmentForm.get('school_level')?.value;
+    console.log('[AssignmentsComponent] tryLoadSubjectsForSelection', { schoolId, schoolLevel });
     if (schoolId && schoolLevel) {
+      console.log('[AssignmentsComponent] loadSubjectsForSchoolLevel → call', { schoolId, schoolLevel });
       this.application.loadSubjectsForSchoolLevel(schoolId, schoolLevel);
     }
   }
@@ -142,7 +151,8 @@ export class AssignmentsComponent implements OnInit {
     this.creatingSubject.set(false);
     this.showCreateSubject.set(false);
     this.subjectForm.reset();
-    this.application.loadSubjects();
+    // Recharger la liste des matières selon l'école+niveau sélectionnés
+    this.tryLoadSubjectsForSelection();
   }
 
   onSubmitAssignment(): void {
@@ -154,6 +164,7 @@ export class AssignmentsComponent implements OnInit {
       school_level: formValue.school_level || null,
       subject_id: formValue.subject_id,
     };
+    console.log('[AssignmentsComponent] onSubmitAssignment payload', assignmentData);
 
     // Empêcher les doublons (même école + niveau + matière) pour ce professeur
     const exists = this.assignments().some(a =>
@@ -163,12 +174,17 @@ export class AssignmentsComponent implements OnInit {
       a.subject_id === assignmentData.subject_id
     );
     if (exists) {
+      console.warn('[AssignmentsComponent] duplicate assignment detected', assignmentData);
       this.errorSnackbarService.showError('Cette affectation existe déjà (école + niveau + matière).');
       return;
     }
 
     const isAllowedSubject = this.subjects().some(s => s.id === assignmentData.subject_id);
     if (!isAllowedSubject) {
+      console.warn('[AssignmentsComponent] subject not allowed for selection', {
+        selectedSubjectId: assignmentData.subject_id,
+        availableSubjectIds: this.subjects().map(s => s.id),
+      });
       this.errorSnackbarService.showError('La matière sélectionnée n\'est pas disponible pour ce niveau dans cette école.');
       return;
     }
@@ -191,6 +207,12 @@ export class AssignmentsComponent implements OnInit {
   getSubjectName(subjectId: string): string {
     const subject = this.subjects().find(s => s.id === subjectId);
     return subject ? subject.name : 'Matière inconnue';
+  }
+
+  getAssignmentSubjectName(assignment: { subject?: { name?: string }; subject_id?: string } | null | undefined): string {
+    const joinedName = assignment && assignment.subject && assignment.subject.name;
+    if (joinedName && typeof joinedName === 'string') return joinedName;
+    return assignment && assignment.subject_id ? this.getSubjectName(assignment.subject_id) : 'Matière inconnue';
   }
 }
 

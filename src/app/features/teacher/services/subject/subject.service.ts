@@ -10,6 +10,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 })
 export class SubjectService {
   private readonly supabaseService = inject(SupabaseService);
+  private static readonly DEBUG = true;
 
   /**
    * Récupère toutes les matières
@@ -35,26 +36,48 @@ export class SubjectService {
    */
   getSubjectsForSchoolLevel(schoolId: string, schoolLevel: string): Observable<{ subjects: Subject[]; error: PostgrestError | null }> {
     const client = this.supabaseService.client;
+    const simplify = (s: string) => s
+      .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+      .toLowerCase().replace(/\s+/g, '');
+    const normalizeKey = (lvl: string | null | undefined): string => simplify((lvl || '').trim());
+
+    const targetKey = normalizeKey(schoolLevel);
+    if (SubjectService.DEBUG) {
+      console.log('[SubjectService:getSubjectsForSchoolLevel] params', { schoolId, schoolLevel, targetKey });
+    }
+
     return from(Promise.all([
       client
         .from('school_level_subjects')
-        .select('subject:subjects(*)')
+        .select('school_level_key, subject:subjects(*)')
         .eq('school_id', schoolId)
-        .eq('school_level', schoolLevel),
+        .eq('school_level_key', targetKey),
       client
         .from('subjects')
         .select('*')
         .in('type', ['extra', 'optionnelle'] as unknown as string[])
     ])).pipe(
-      map(([linked, extras]) => {
-        const linkedRows = (linked.data as { subject: Subject }[] | null) || [];
-        const linkedSubjects = linkedRows.map((row) => row.subject as Subject);
-        const extraSubjects = (extras.data as Subject[] | null) || [];
+      map(([linksRes, extrasRes]) => {
+        const linkRows = (linksRes.data as { school_level_key: string; subject: Subject }[] | null) || [];
+        const filteredLinked = linkRows.map(row => row.subject as Subject);
+        const extraSubjects = (extrasRes.data as Subject[] | null) || [];
         const byId = new Map<string, Subject>();
-        [...linkedSubjects, ...extraSubjects].forEach(s => byId.set(s.id, s));
-        const merged = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
-        const error: PostgrestError | null = (linked.error as PostgrestError | null) || (extras.error as PostgrestError | null) || null;
-        return { subjects: merged, error };
+        [...filteredLinked, ...extraSubjects].forEach(s => byId.set(s.id, s));
+        const subjects = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+        const error: PostgrestError | null =
+          (linksRes.error as PostgrestError | null) ||
+          (extrasRes.error as PostgrestError | null) ||
+          null;
+        if (SubjectService.DEBUG) {
+          console.log('[SubjectService:getSubjectsForSchoolLevel] results', {
+            linksCount: linkRows.length,
+            extrasCount: extraSubjects.length,
+            subjectsCount: subjects.length,
+            firstSubjects: subjects.slice(0, 5).map(s => ({ id: s.id, name: s.name })),
+            error,
+          });
+        }
+        return { subjects, error };
       })
     );
   }
@@ -94,6 +117,11 @@ export class SubjectService {
   }
 
   addSubjectLink(link: { subject_id: string; school_id: string; school_level: string; required?: boolean }): Observable<{ link: { id: string; subject_id: string; school_id: string; school_level: string; required: boolean } | null; error: PostgrestError | null }> {
+    const simplify = (s: string) => s
+      .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+      .toLowerCase().replace(/\s+/g, '');
+    const school_level_key = simplify(link.school_level || '');
+
     return from(
       this.supabaseService.client
         .from('school_level_subjects')
@@ -101,6 +129,7 @@ export class SubjectService {
           subject_id: link.subject_id,
           school_id: link.school_id,
           school_level: link.school_level,
+          school_level_key,
           required: link.required ?? true,
         })
         .select()

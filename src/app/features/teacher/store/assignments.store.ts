@@ -162,8 +162,14 @@ export const TeacherAssignmentStore = signalStore(
     loadSubjectsForSchoolLevel: rxMethod<{ schoolId: string; schoolLevel: string }>(
       pipe(
         switchMap(({ schoolId, schoolLevel }) =>
+          (console.log?.('[TeacherAssignmentStore] loadSubjectsForSchoolLevel params', { schoolId, schoolLevel }),
           infrastructure.getSubjectsForSchoolLevel(schoolId, schoolLevel).pipe(
             tap((result) => {
+              console.log?.('[TeacherAssignmentStore] loadSubjectsForSchoolLevel result', {
+                error: result.error,
+                subjectsCount: result.subjects?.length,
+                firstSubjects: (result.subjects || []).slice(0, 5).map(s => ({ id: s.id, name: s.name })),
+              });
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des matières pour le niveau';
                 patchState(store, { error: [errorMessage] });
@@ -176,7 +182,7 @@ export const TeacherAssignmentStore = signalStore(
               patchState(store, { error: [errorMessage] });
               return of(null);
             })
-          )
+          ))
         )
       )
     ),
