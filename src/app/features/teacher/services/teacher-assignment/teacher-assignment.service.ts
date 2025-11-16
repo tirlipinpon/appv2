@@ -45,6 +45,7 @@ export class TeacherAssignmentService {
       ...assignmentData,
       school_level: (assignmentData.school_level ?? '') as string,
       roles: assignmentData.roles || ['titulaire'],
+      deleted_at: null, // réactiver en cas d'upsert sur une ligne soft-supprimée
     };
     return from(
       this.supabaseService.client

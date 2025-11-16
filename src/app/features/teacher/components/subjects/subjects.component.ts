@@ -6,6 +6,7 @@ import { Infrastructure } from '../infrastructure/infrastructure';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import type { Subject } from '../../types/subject';
 import { SchoolLevelSelectComponent } from '../../../../shared/components/school-level-select/school-level-select.component';
+import { ErrorSnackbarService } from '../../../../services/snackbar/error-snackbar.service';
 
 @Component({
   selector: 'app-subjects',
@@ -19,6 +20,7 @@ export class SubjectsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly infra = inject(Infrastructure);
+  private readonly errorSnackbar = inject(ErrorSnackbarService);
   readonly store = inject(TeacherAssignmentStore);
 
   readonly subjectId = signal<string | null>(null);
@@ -108,8 +110,18 @@ export class SubjectsComponent implements OnInit {
   create(): void {
     if (!this.subjectForm.valid) return;
     const v = this.subjectForm.value;
+
+    // Validation: nom unique insensible à la casse
+    const newName = (v.name || '').trim();
+    if (!newName) return;
+    const exists = this.subjects().some(s => (s.name || '').trim().toLowerCase() === newName.toLowerCase());
+    if (exists) {
+      this.errorSnackbar.showError('Cette matière existe déjà (même nom, insensible à la casse).');
+      return;
+    }
+
     this.infra.createSubject({
-      name: v.name!,
+      name: newName,
       description: v.description || null,
       type: (v.type as Subject['type'])!,
       default_age_range: null,
@@ -125,12 +137,24 @@ export class SubjectsComponent implements OnInit {
   addLink(): void {
     if (!(this.linkForm.valid && this.subjectId())) return;
     const v = this.linkForm.value;
+
+    // Validation client: empêcher un doublon (même école + niveau) pour cette matière
+    const already = this.links().some(l => l.school_id === v.school_id && l.school_level === v.school_level);
+    if (already) {
+      this.errorSnackbar.showError('Ce lien école + niveau existe déjà pour cette matière.');
+      return;
+    }
+
     this.infra.addSubjectLink({
       subject_id: this.subjectId()!,
       school_id: v.school_id!,
       school_level: v.school_level!,
       required: !!v.required,
-    }).subscribe(() => {
+    }).subscribe(({ error }) => {
+      if (error) {
+        this.errorSnackbar.showError(error.message || 'Impossible d\'ajouter le lien (école + niveau).');
+        return;
+      }
       this.linkForm.reset({ required: true });
       this.loadLinks(this.subjectId()!);
     });
