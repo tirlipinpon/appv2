@@ -30,6 +30,12 @@ export class TeacherAssignmentsComponent implements OnInit {
   readonly creatingSchool = signal(false);
   readonly creatingSubject = signal(false);
   readonly teacherId = signal<string | null>(null);
+  readonly currentSchoolId = signal<string | null>(null);
+  readonly yearOptions = signal([
+    { id: '2022-2023', label: '2022–2023' },
+    { id: '2023-2024', label: '2023–2024' },
+    { id: '2024-2025', label: '2024–2025' },
+  ]);
 
   // Forms
   assignmentForm!: FormGroup;
@@ -59,6 +65,9 @@ export class TeacherAssignmentsComponent implements OnInit {
     this.initializeForms();
     this.loadInitialData();
     this.loadTeacherId();
+    // Initialiser le signal avec la valeur actuelle du formulaire (si existante)
+    const initSchoolId = this.assignmentForm.get('school_id')?.value || null;
+    this.currentSchoolId.set(initSchoolId);
   }
 
   private loadTeacherId(): void {
@@ -107,8 +116,10 @@ export class TeacherAssignmentsComponent implements OnInit {
   // Gestion des affectations
   onSchoolChange(schoolId: string): void {
     if (schoolId) {
+      this.currentSchoolId.set(schoolId || null);
       this.loadSchoolYears(schoolId);
     } else {
+      this.currentSchoolId.set(null);
       this.assignmentForm.patchValue({ school_year_id: '' });
     }
   }

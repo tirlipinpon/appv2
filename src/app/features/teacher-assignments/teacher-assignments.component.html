@@ -73,7 +73,7 @@
           <app-school-year-select
             [label]="'Année scolaire'"
             [required]="true"
-            [schoolId]="assignmentForm.get('school_id')?.value"
+            [items]="yearOptions()"
             formControlName="school_year_id"
           />
         </div>

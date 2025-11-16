@@ -19,28 +19,42 @@ import { Subscription } from 'rxjs';
 	],
 })
 export class SchoolYearSelectComponent implements ControlValueAccessor, OnInit, OnDestroy {
+	// Format d'option affichée par le select
+	private static mapToOption(year: SchoolYear): { id: string; label: string } {
+		return { id: year.id, label: year.label };
+	}
+
 	@Input() label = 'Année scolaire';
 	@Input() required = false;
 	@Input() disabled = false;
 	schoolId = input<string | null | undefined>(undefined);
 	@Input() id: string | undefined;
+	// Option: on peut fournir directement les années depuis le parent
+	private readonly useExternalYears = signal<boolean>(false);
+	@Input() set items(value: { id: string; label: string }[] | null) {
+		this.useExternalYears.set(!!value && value.length > 0);
+		this.years.set(value ?? []);
+	}
 
 	private readonly schoolYearService = inject(SchoolYearService);
 
-	private onChange: (value: string | null) => void = () => {};
-	private onTouched: () => void = () => {};
+	private onChange: (value: string | null) => void = () => undefined;
+	private onTouched: () => void = () => undefined;
 	private subscription: Subscription | null = null;
 	private readonly autoId = `school-year-${Math.random().toString(36).slice(2)}`;
 
-	readonly years = signal<SchoolYear[]>([]);
+	readonly years = signal<{ id: string; label: string }[]>([]);
 	readonly isDisabled = signal<boolean>(false);
 	readonly value = signal<string | null>(null);
 
-	readonly isSelectDisabled = computed(() => this.disabled || this.isDisabled() || !this.schoolId());
+	readonly isSelectDisabled = computed(() => this.disabled || this.isDisabled() || (!this.useExternalYears() && !this.schoolId()));
 	readonly selectId = computed(() => this.id ?? this.autoId);
+	readonly displayYears = computed<{ id: string; label: string }[]>(() => this.years());
 
 	ngOnInit(): void {
 		effect(() => {
+			// Si des années sont fournies par le parent, ne pas charger via service
+			if (this.useExternalYears()) return;
 			const currentSchool = this.schoolId() || null;
 			if (currentSchool) {
 				this.loadYears(currentSchool);
@@ -48,7 +62,7 @@ export class SchoolYearSelectComponent implements ControlValueAccessor, OnInit, 
 				this.years.set([]);
 				this.writeValue(null);
 			}
-		});
+		}, { allowSignalWrites: true });
 	}
 
 	ngOnDestroy(): void {
@@ -81,7 +95,7 @@ export class SchoolYearSelectComponent implements ControlValueAccessor, OnInit, 
 	private loadYears(schoolId: string): void {
 		this.subscription?.unsubscribe();
 		this.subscription = this.schoolYearService.getSchoolYearsBySchool(schoolId).subscribe(({ schoolYears }) => {
-			this.years.set(schoolYears);
+			this.years.set((schoolYears || []).map(SchoolYearSelectComponent.mapToOption));
 		});
 	}
 }
