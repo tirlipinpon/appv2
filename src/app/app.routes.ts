@@ -73,6 +73,16 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'teacher-subjects',
+    loadComponent: () => import('./features/teacher/components/subjects/subjects.component').then(m => m.SubjectsComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'teacher-subjects/:id',
+    loadComponent: () => import('./features/teacher/components/subjects/subjects.component').then(m => m.SubjectsComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: '**',
     redirectTo: '/dashboard'
   }

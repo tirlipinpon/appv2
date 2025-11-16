@@ -1,0 +1,87 @@
+.subjects-container {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 16px;
+}
+.subjects-container h1,
+.subjects-container h2,
+.subjects-container h3 {
+  margin: 12px 0;
+}
+
+.form-group { 
+  margin-bottom: 12px; 
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-weight: 600;
+}
+
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group input[type="tel"],
+.form-group select,
+.form-group textarea {
+  padding: 8px 10px;
+  border: 1px solid #d6d6d6;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+.form-actions { 
+  margin-top: 16px; 
+  display: flex;
+  gap: 8px;
+}
+
+.btn { 
+  cursor: pointer; 
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: #f1f1f1;
+}
+
+.btn.btn-primary {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #fff;
+}
+
+.btn.btn-secondary {
+  background: #eee;
+  color: #333;
+}
+
+.btn.btn-danger {
+  background: #e53935;
+  border-color: #e53935;
+  color: #fff;
+}
+
+.btn-back { 
+  display: inline-block; 
+  margin-bottom: 12px; 
+  color: #1976d2;
+}
+
+.links-list { 
+  margin-top: 12px; 
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+

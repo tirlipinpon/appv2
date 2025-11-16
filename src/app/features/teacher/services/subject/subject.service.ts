@@ -44,15 +44,16 @@ export class SubjectService {
       client
         .from('subjects')
         .select('*')
-        .in('type', ['extra', 'optionnelle'] as any)
+        .in('type', ['extra', 'optionnelle'] as unknown as string[])
     ])).pipe(
       map(([linked, extras]) => {
-        const linkedSubjects = (linked.data || []).map((row: any) => row.subject as Subject);
-        const extraSubjects = extras.data || [];
+        const linkedRows = (linked.data as { subject: Subject }[] | null) || [];
+        const linkedSubjects = linkedRows.map((row) => row.subject as Subject);
+        const extraSubjects = (extras.data as Subject[] | null) || [];
         const byId = new Map<string, Subject>();
         [...linkedSubjects, ...extraSubjects].forEach(s => byId.set(s.id, s));
         const merged = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
-        const error = (linked.error as PostgrestError | null) || (extras.error as PostgrestError | null) || null;
+        const error: PostgrestError | null = (linked.error as PostgrestError | null) || (extras.error as PostgrestError | null) || null;
         return { subjects: merged, error };
       })
     );
@@ -71,6 +72,55 @@ export class SubjectService {
     ).pipe(
       map(({ data, error }) => ({
         subject: data,
+        error: error || null,
+      }))
+    );
+  }
+
+  // ===== Liens matière <-> (école, niveau) =====
+  getSubjectLinks(subjectId: string): Observable<{ links: { id: string; school_id: string; school_level: string; required: boolean }[]; error: PostgrestError | null }> {
+    return from(
+      this.supabaseService.client
+        .from('school_level_subjects')
+        .select('id, school_id, school_level, required')
+        .eq('subject_id', subjectId)
+        .order('school_id', { ascending: true })
+    ).pipe(
+      map(({ data, error }) => ({
+        links: (data as { id: string; school_id: string; school_level: string; required: boolean }[] | null) || [],
+        error: error || null,
+      }))
+    );
+  }
+
+  addSubjectLink(link: { subject_id: string; school_id: string; school_level: string; required?: boolean }): Observable<{ link: { id: string; subject_id: string; school_id: string; school_level: string; required: boolean } | null; error: PostgrestError | null }> {
+    return from(
+      this.supabaseService.client
+        .from('school_level_subjects')
+        .insert({
+          subject_id: link.subject_id,
+          school_id: link.school_id,
+          school_level: link.school_level,
+          required: link.required ?? true,
+        })
+        .select()
+        .single()
+    ).pipe(
+      map(({ data, error }) => ({
+        link: data as { id: string; subject_id: string; school_id: string; school_level: string; required: boolean } | null,
+        error: error || null,
+      }))
+    );
+  }
+
+  deleteSubjectLink(linkId: string): Observable<{ error: PostgrestError | null }> {
+    return from(
+      this.supabaseService.client
+        .from('school_level_subjects')
+        .delete()
+        .eq('id', linkId)
+    ).pipe(
+      map(({ error }) => ({
         error: error || null,
       }))
     );

@@ -58,6 +58,17 @@ export class Infrastructure {
     return this.subjectService.getSubjectsForSchoolLevel(schoolId, schoolLevel);
   }
 
+  // Liens matière <-> (école, niveau)
+  getSubjectLinks(subjectId: string) {
+    return this.subjectService.getSubjectLinks(subjectId);
+  }
+  addSubjectLink(link: { subject_id: string; school_id: string; school_level: string; required?: boolean }) {
+    return this.subjectService.addSubjectLink(link);
+  }
+  deleteSubjectLink(linkId: string) {
+    return this.subjectService.deleteSubjectLink(linkId);
+  }
+
   createSubject(subjectData: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): Observable<{ subject: Subject | null; error: PostgrestError | null }> {
     return this.subjectService.createSubject(subjectData);
   }

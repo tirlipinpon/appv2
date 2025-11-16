@@ -1,0 +1,90 @@
+<div class="subjects-container">
+  <a routerLink="/dashboard" class="btn-back">← Retour</a>
+  <h1>Gestion des matières</h1>
+
+  <div *ngIf="!subjectId()">
+    <h2>Créer une matière</h2>
+    <form [formGroup]="subjectForm" (ngSubmit)="create()">
+      <div class="form-group">
+        <label for="name">Nom *</label>
+        <input id="name" type="text" formControlName="name">
+      </div>
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" rows="3" formControlName="description"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="type">Type *</label>
+        <select id="type" formControlName="type">
+          <option value="scolaire">Scolaire</option>
+          <option value="extra">Extra-scolaire</option>
+          <option value="optionnelle">Optionnelle</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="subjectForm.invalid">Créer</button>
+      </div>
+    </form>
+
+    <h2>Mes matières</h2>
+    <ul>
+      <li *ngFor="let s of subjects()">
+        {{ s.name }} ({{ s.type }})
+        <a [routerLink]="['/teacher-subjects', s.id]" class="btn btn-link">Gérer</a>
+      </li>
+    </ul>
+  </div>
+
+  <div *ngIf="subjectId()">
+    <h2>Configurer la matière</h2>
+    <form [formGroup]="subjectForm">
+      <div class="form-group">
+        <label for="name2">Nom *</label>
+        <input id="name2" type="text" formControlName="name">
+      </div>
+      <div class="form-group">
+        <label for="description2">Description</label>
+        <textarea id="description2" rows="3" formControlName="description"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="type2">Type *</label>
+        <select id="type2" formControlName="type">
+          <option value="scolaire">Scolaire</option>
+          <option value="extra">Extra-scolaire</option>
+          <option value="optionnelle">Optionnelle</option>
+        </select>
+      </div>
+    </form>
+
+    <h3>Disponibilité par École et Niveau</h3>
+    <form [formGroup]="linkForm" (ngSubmit)="addLink()">
+      <div class="form-group">
+        <label for="school_id">École *</label>
+        <select id="school_id" formControlName="school_id">
+          <option value="">Sélectionner</option>
+          <option *ngFor="let school of schools()" [value]="school.id">{{ school.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <app-school-level-select [label]="'Niveau scolaire *'" [required]="true" formControlName="school_level" />
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" formControlName="required"> Obligatoire
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="linkForm.invalid">Ajouter</button>
+      </div>
+    </form>
+
+    <ul class="links-list">
+      <li *ngFor="let l of links()">
+        {{ getSchoolName(l.school_id) }} — {{ l.school_level }} <span *ngIf="l.required">(obligatoire)</span>
+        <button type="button" class="btn btn-danger btn-sm" (click)="removeLink(l.id)">Supprimer</button>
+      </li>
+    </ul>
+  </div>
+</div>
+
+
