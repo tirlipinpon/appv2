@@ -54,6 +54,10 @@ export class Infrastructure {
     return this.subjectService.getSubjects();
   }
 
+  getSubjectsForSchoolLevel(schoolId: string, schoolLevel: string): Observable<{ subjects: Subject[]; error: PostgrestError | null }> {
+    return this.subjectService.getSubjectsForSchoolLevel(schoolId, schoolLevel);
+  }
+
   createSubject(subjectData: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): Observable<{ subject: Subject | null; error: PostgrestError | null }> {
     return this.subjectService.createSubject(subjectData);
   }

@@ -159,6 +159,28 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
+    loadSubjectsForSchoolLevel: rxMethod<{ schoolId: string; schoolLevel: string }>(
+      pipe(
+        switchMap(({ schoolId, schoolLevel }) =>
+          infrastructure.getSubjectsForSchoolLevel(schoolId, schoolLevel).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du chargement des matières pour le niveau';
+                patchState(store, { error: [errorMessage] });
+              } else {
+                patchState(store, { subjects: result.subjects });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du chargement des matières pour le niveau';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
     createSubject: rxMethod<Omit<Subject, 'id' | 'created_at' | 'updated_at'>>(
       pipe(
         switchMap((subjectData) =>
@@ -235,25 +257,28 @@ export const TeacherAssignmentStore = signalStore(
 
     deleteAssignment: rxMethod<string>(
       pipe(
-        switchMap((assignmentId) =>
-          infrastructure.deleteAssignment(assignmentId).pipe(
+        switchMap((assignmentId) => {
+          const previous = store.assignments();
+          // Optimistic update: remove locally first
+          patchState(store, {
+            assignments: previous.filter(a => a.id !== assignmentId),
+          });
+          return infrastructure.deleteAssignment(assignmentId).pipe(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la suppression de l\'affectation';
-                patchState(store, { error: [errorMessage] });
-              } else {
-                patchState(store, { 
-                  assignments: store.assignments().filter(a => a.id !== assignmentId)
-                });
+                // rollback
+                patchState(store, { assignments: previous, error: [errorMessage] });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la suppression de l\'affectation';
-              patchState(store, { error: [errorMessage] });
+              // rollback
+              patchState(store, { assignments: previous, error: [errorMessage] });
               return of(null);
             })
-          )
-        )
+          );
+        })
       )
     ),
 

@@ -41,6 +41,9 @@ export class Application {
   loadSubjects(): void {
     this.assignmentStore.loadSubjects();
   }
+  loadSubjectsForSchoolLevel(schoolId: string, schoolLevel: string): void {
+    this.assignmentStore.loadSubjectsForSchoolLevel({ schoolId, schoolLevel });
+  }
   createSubject(subjectData: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): void {
     this.assignmentStore.createSubject(subjectData);
   }

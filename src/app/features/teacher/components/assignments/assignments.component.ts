@@ -74,6 +74,8 @@ export class AssignmentsComponent implements OnInit {
       school_level: ['', Validators.required],
       subject_id: ['', Validators.required],
     });
+    this.assignmentForm.get('school_level')?.valueChanges.subscribe(() => this.tryLoadSubjectsForSelection());
+    this.assignmentForm.get('school_id')?.valueChanges.subscribe(() => this.tryLoadSubjectsForSelection());
     this.schoolForm = this.fb.group({
       name: ['', Validators.required],
       address: [''],
@@ -98,6 +100,15 @@ export class AssignmentsComponent implements OnInit {
     } else {
       this.currentSchoolId.set(null);
       this.assignmentForm.patchValue({ school_level: '' });
+    }
+    this.tryLoadSubjectsForSelection();
+  }
+
+  private tryLoadSubjectsForSelection(): void {
+    const schoolId = this.assignmentForm.get('school_id')?.value;
+    const schoolLevel = this.assignmentForm.get('school_level')?.value;
+    if (schoolId && schoolLevel) {
+      this.application.loadSubjectsForSchoolLevel(schoolId, schoolLevel);
     }
   }
 
@@ -137,15 +148,17 @@ export class AssignmentsComponent implements OnInit {
   onSubmitAssignment(): void {
     if (!(this.assignmentForm.valid && this.teacherId())) return;
     const formValue = this.assignmentForm.value;
-    const isUuid = (v: unknown) =>
-      typeof v === 'string' &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
     const assignmentData = {
       teacher_id: this.teacherId()!,
       school_id: formValue.school_id || null,
       school_level: formValue.school_level || null,
       subject_id: formValue.subject_id,
     };
+    const isAllowedSubject = this.subjects().some(s => s.id === assignmentData.subject_id);
+    if (!isAllowedSubject) {
+      this.errorSnackbarService.showError('La matière sélectionnée n\'est pas disponible pour ce niveau dans cette école.');
+      return;
+    }
     this.application.createAssignment(assignmentData);
     this.assignmentForm.reset();
     this.showAssignmentForm.set(false);
@@ -155,7 +168,6 @@ export class AssignmentsComponent implements OnInit {
   onDeleteAssignment(assignmentId: string): void {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette affectation ?')) return;
     this.application.deleteAssignment(assignmentId);
-    if (this.teacherId()) this.application.loadAssignments(this.teacherId()!);
   }
 
   getSchoolName(schoolId: string): string {
