@@ -7,6 +7,7 @@ import { Application } from '../../components/application/application';
 import { TeacherService } from '../../services/teacher/teacher.service';
 import { ErrorSnackbarService } from '../../../../services/snackbar/error-snackbar.service';
 import { SchoolLevelSelectComponent } from '../../../../shared/components/school-level-select/school-level-select.component';
+import { Infrastructure } from '../infrastructure/infrastructure';
 
 @Component({
   selector: 'app-assignments',
@@ -18,6 +19,7 @@ import { SchoolLevelSelectComponent } from '../../../../shared/components/school
 export class AssignmentsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly application = inject(Application);
+  private readonly infrastructure = inject(Infrastructure);
   private readonly teacherService = inject(TeacherService);
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
   readonly store = inject(TeacherAssignmentStore);
@@ -141,18 +143,46 @@ export class AssignmentsComponent implements OnInit {
     if (!this.subjectForm.valid) return;
     this.creatingSubject.set(true);
     const formValue = this.subjectForm.value;
-    this.application.createSubject({
+    const schoolId: string | null = this.assignmentForm.get('school_id')?.value || null;
+    const schoolLevel: string | null = this.assignmentForm.get('school_level')?.value || null;
+
+    // Créer la matière puis, si possible, créer le lien École+Niveau
+    this.infrastructure.createSubject({
       name: formValue.name,
       description: formValue.description || null,
       type: formValue.type,
       default_age_range: null,
       metadata: null,
+    }).subscribe(({ subject, error }) => {
+      if (error) {
+        this.errorSnackbarService.showError(error.message || 'Erreur lors de la création de la matière');
+        this.creatingSubject.set(false);
+        return;
+      }
+      if (subject && schoolId && schoolLevel) {
+        this.infrastructure.addSubjectLink({
+          subject_id: subject.id,
+          school_id: schoolId,
+          school_level: schoolLevel,
+          required: true,
+        }).subscribe(({ error: linkError }) => {
+          if (linkError) {
+            this.errorSnackbarService.showError(linkError.message || 'Erreur lors de l\'association matière ↔ école/niveau');
+          }
+          // Recharger la liste filtrée
+          this.tryLoadSubjectsForSelection();
+          this.creatingSubject.set(false);
+          this.showCreateSubject.set(false);
+          this.subjectForm.reset();
+        });
+      } else {
+        // Pas d'école/niveau sélectionnés: juste rafraîchir la sélection
+        this.tryLoadSubjectsForSelection();
+        this.creatingSubject.set(false);
+        this.showCreateSubject.set(false);
+        this.subjectForm.reset();
+      }
     });
-    this.creatingSubject.set(false);
-    this.showCreateSubject.set(false);
-    this.subjectForm.reset();
-    // Recharger la liste des matières selon l'école+niveau sélectionnés
-    this.tryLoadSubjectsForSelection();
   }
 
   onSubmitAssignment(): void {
