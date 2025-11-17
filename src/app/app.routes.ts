@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './features/login/guards/auth.guard';
+import { childParentGuard } from './features/child/guards/child-parent.guard';
 
 export const routes: Routes = [
   {
@@ -81,6 +82,11 @@ export const routes: Routes = [
     path: 'teacher-subjects/:id',
     loadComponent: () => import('./features/teacher/components/subjects/subjects.component').then(m => m.SubjectsComponent),
     canActivate: [authGuard]
+  },
+  {
+    path: 'child-subjects/:childId',
+    loadComponent: () => import('./features/child/components/subjects/child-subjects.component').then(m => m.ChildSubjectsComponent),
+    canActivate: [authGuard, childParentGuard]
   },
   {
     path: '**',

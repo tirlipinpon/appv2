@@ -17,36 +17,16 @@ export class ChildService {
   private readonly parentStore = inject(ParentStore);
 
   /**
-   * Récupère l'ID du parent depuis le store ou la base de données
+   * Récupère l'ID du parent (qui est l'ID de l'utilisateur auth.users.id)
+   * Dans la table children, parent_id fait référence à auth.users.id, pas à parents.id
    */
   private getParentId(): Observable<string | null> {
-    // Essayer d'abord d'utiliser le parent du store
-    const parent = this.parentStore.parent();
-    if (parent?.id) {
-      return of(parent.id);
-    }
-
-    // Sinon, récupérer depuis la base de données
     const user = this.authService.getCurrentUser();
     if (!user) {
       return of(null);
     }
-
-    return from(
-      this.supabaseService.client
-        .from('parents')
-        .select('id')
-        .eq('profile_id', user.id)
-        .maybeSingle()
-    ).pipe(
-      map(({ data, error }) => {
-        if (error || !data) {
-          return null;
-        }
-        return data.id;
-      }),
-      catchError(() => of(null))
-    );
+    // parent_id dans children fait référence à auth.users.id directement
+    return of(user.id);
   }
 
   /**

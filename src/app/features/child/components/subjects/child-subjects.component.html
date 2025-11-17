@@ -1,0 +1,90 @@
+<div class="child-subjects-container" *ngIf="child() as c">
+  <header class="subjects-header">
+    <a routerLink="/dashboard" class="btn-back">
+      ← Retour au dashboard
+    </a>
+    <h1>Matières de {{ c.firstname }} {{ c.lastname }}</h1>
+  </header>
+
+  <main class="subjects-content">
+    <div class="child-info-card">
+      <div class="info-item">
+        <span class="info-label">École:</span>
+        <span class="info-value">{{ c.school_id || 'Non renseignée' }}</span>
+      </div>
+      <div class="info-item" *ngIf="c.school_level">
+        <span class="info-label">Niveau:</span>
+        <span class="info-value">{{ c.school_level }}</span>
+      </div>
+    </div>
+
+    <div class="subjects-grid">
+      <div class="subjects-column active-column">
+        <div class="column-header">
+          <h2>📖 Matières activées</h2>
+          <span class="count-badge">{{ selectedSubjects().length }}</span>
+        </div>
+        <div class="subjects-list">
+          <div *ngFor="let s of selectedSubjects()" class="subject-card active">
+            <label class="subject-checkbox">
+              <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false)">
+              <span class="checkmark"></span>
+              <span class="subject-name">{{ s.name }}</span>
+              <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
+            </label>
+          </div>
+          <div *ngIf="selectedSubjects().length === 0" class="empty-state">
+            <p class="muted">Aucune matière activée.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="subjects-column available-column">
+        <div class="column-header">
+          <h2>📚 Matières disponibles</h2>
+          <span class="count-badge">{{ unselectedSubjects().length }}</span>
+        </div>
+        <div class="subjects-list">
+          <div *ngFor="let s of unselectedSubjects()" class="subject-card">
+            <label class="subject-checkbox">
+              <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true)">
+              <span class="checkmark"></span>
+              <span class="subject-name">{{ s.name }}</span>
+            </label>
+          </div>
+          <div *ngIf="unselectedSubjects().length === 0" class="empty-state">
+            <p class="muted">Aucune autre matière disponible.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-block">
+      <div class="search-header">
+        <h3>🔍 Ajouter une autre matière</h3>
+        <p class="search-hint">Recherchez une matière pour l'ajouter hors programme</p>
+      </div>
+      <div class="search-input-wrapper">
+        <input 
+          type="text" 
+          class="search-input"
+          placeholder="Rechercher une matière (min 2 lettres)..." 
+          [value]="searchQuery()" 
+          (input)="onSearchInput($any($event.target).value)">
+      </div>
+      <div *ngIf="searchResults().length > 0" class="search-results">
+        <div *ngFor="let s of searchResults()" class="search-result-item">
+          <span class="result-name">{{ s.name }}</span>
+          <button 
+            type="button" 
+            class="btn btn-primary btn-sm" 
+            (click)="addSearchedSubject(s.id)">
+            ➕ Activer (hors programme)
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+
