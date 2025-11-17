@@ -10,14 +10,11 @@ import type { Child } from './types/child';
 import type { School } from './types/school';
 import { Subscription } from 'rxjs';
 import { SchoolLevelSelectComponent } from '../../shared/components/school-level-select/school-level-select.component';
-import { ParentSubjectService } from './services/subject/parent-subject.service';
-import type { Subject } from '../teacher/types/subject';
-import { ChildSubjectsComponent } from './components/subjects/child-subjects.component';
 
 @Component({
   selector: 'app-child',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent, ChildSubjectsComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent],
   templateUrl: './child.component.html',
   styleUrl: './child.component.scss',
 })
@@ -28,7 +25,6 @@ export class ChildComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly schoolService = inject(SchoolService);
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
-  private readonly parentSubjectService = inject(ParentSubjectService);
   private readonly injector = inject(Injector);
   readonly store = inject(ChildStore);
 
@@ -87,7 +83,6 @@ export class ChildComponent implements OnInit, OnDestroy {
   }
 
   // Effects pour gérer les réactions aux changements (créés conditionnellement dans ngOnInit)
-  private childEditEffect?: ReturnType<typeof effect>;
   private childListEffect?: ReturnType<typeof effect>;
 
   async ngOnInit(): Promise<void> {
@@ -106,16 +101,6 @@ export class ChildComponent implements OnInit, OnDestroy {
       this.application.loadChildById(childId);
       this.showForm.set(true);
       this.showCopySelection.set(false);
-      // Charger les matières dispo + inscriptions quand l'enfant est là
-      // Utiliser runInInjectionContext pour créer l'effect dans un contexte d'injection
-      this.childEditEffect = runInInjectionContext(this.injector, () => {
-        return effect(() => {
-          const c = this.selectedChild();
-          if (c && c.school_id) {
-            this.loadChildSubjects(c);
-          }
-        });
-      });
     } else {
       // Vérifier s'il y a un paramètre query pour copier depuis un enfant
       const copyFrom = this.route.snapshot.queryParamMap.get('copyFrom');
@@ -329,90 +314,6 @@ export class ChildComponent implements OnInit, OnDestroy {
     this.schoolsSubscription?.unsubscribe();
   }
 
-  // ====== Gestion matières enfant ======
-  readonly availableSubjects = signal<Subject[]>([]);
-  readonly enrollments = signal<{ subject_id: string; selected: boolean }[]>([]);
-  readonly searchQuery = signal<string>('');
-  readonly searchResults = signal<Subject[]>([]);
-
-  private loadChildSubjects(child: Child): void {
-    this.parentSubjectService.getAvailableSubjectsForChild(child).subscribe(({ subjects, error }) => {
-      if (error) return;
-      this.availableSubjects.set(subjects);
-    });
-    this.parentSubjectService.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
-      if (error) return;
-      this.enrollments.set(enrollments.map(e => ({ subject_id: e.subject_id, selected: e.selected })));
-    });
-  }
-
-  childSelectedSubjects(): Subject[] {
-    const selectedIds = new Set(this.enrollments().filter(e => e.selected).map(e => e.subject_id));
-    return this.availableSubjects().filter(s => selectedIds.has(s.id));
-  }
-
-  childAvailableButUnselected(): Subject[] {
-    const selectedIds = new Set(this.enrollments().filter(e => e.selected).map(e => e.subject_id));
-    return this.availableSubjects().filter(s => !selectedIds.has(s.id));
-  }
-
-  isUnofficial(subjectId: string): boolean {
-    // Hors programme: la matière n'est pas dans la liste availableSubjects, mais activée via recherche
-    const isInAvailable = this.availableSubjects().some(s => s.id === subjectId);
-    const isSelected = this.enrollments().some(e => e.subject_id === subjectId && e.selected);
-    return isSelected && !isInAvailable;
-  }
-
-  onToggleSubject(childId: string, schoolId: string, subjectId: string, selected: boolean): void {
-    const child = this.selectedChild();
-    if (!child) return;
-    const schoolYearId = (child as any).school_year_id || null;
-    this.parentSubjectService.upsertEnrollment({ child_id: childId, school_id: schoolId, school_year_id: schoolYearId, subject_id: subjectId, selected })
-      .subscribe(() => {
-        // Mettre à jour localement
-        const list = this.enrollments();
-        const idx = list.findIndex(e => e.subject_id === subjectId);
-        if (idx >= 0) {
-          list[idx] = { subject_id: subjectId, selected };
-          this.enrollments.set([...list]);
-        } else {
-          this.enrollments.set([...list, { subject_id: subjectId, selected }]);
-        }
-      });
-  }
-
-  onSearchInput(q: string): void {
-    this.searchQuery.set(q);
-    if ((q || '').trim().length < 2) {
-      this.searchResults.set([]);
-      return;
-    }
-    this.parentSubjectService.searchSubjects(q).subscribe(({ subjects }) => {
-      // Exclure celles déjà sélectionnées
-      const selectedIds = new Set(this.enrollments().filter(e => e.selected).map(e => e.subject_id));
-      this.searchResults.set((subjects || []).filter(s => !selectedIds.has(s.id)));
-    });
-  }
-
-  addSearchedSubject(childId: string, schoolId: string, subjectId: string): void {
-    const child = this.selectedChild();
-    if (!child) return;
-    const schoolYearId = (child as any).school_year_id || null;
-    // Sélectionner comme hors programme (selected=true)
-    this.parentSubjectService.upsertEnrollment({ child_id: childId, school_id: schoolId, school_year_id: schoolYearId, subject_id: subjectId, selected: true })
-      .subscribe(() => {
-        const list = this.enrollments();
-        const idx = list.findIndex(e => e.subject_id === subjectId);
-        if (idx >= 0) {
-          list[idx] = { subject_id: subjectId, selected: true };
-          this.enrollments.set([...list]);
-        } else {
-          this.enrollments.set([...list, { subject_id: subjectId, selected: true }]);
-        }
-        this.searchResults.set([]);
-        this.searchQuery.set('');
-      });
-  }
   private loadSchools(): void {
     this.schoolsSubscription = this.schoolService.getSchools().subscribe({
       next: (schools) => {

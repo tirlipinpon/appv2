@@ -191,15 +191,24 @@ export class AssignmentsComponent implements OnInit {
           if (linkError) {
             this.errorSnackbarService.showError(linkError.message || 'Erreur lors de l\'association matière ↔ école/niveau');
           }
-          // Recharger la liste filtrée
-          this.tryLoadSubjectsForSelection();
-          this.creatingSubject.set(false);
-          this.showCreateSubject.set(false);
-          this.subjectForm.reset();
+          // Attendre un peu pour s'assurer que le lien est bien créé avant de recharger
+          setTimeout(() => {
+            // Recharger la liste filtrée
+            this.tryLoadSubjectsForSelection();
+            this.creatingSubject.set(false);
+            this.showCreateSubject.set(false);
+            this.subjectForm.reset();
+          }, 300);
         });
       } else {
-        // Pas d'école/niveau sélectionnés: juste rafraîchir la sélection
-        this.tryLoadSubjectsForSelection();
+        // Pas d'école/niveau sélectionnés: ajouter la matière au store directement si elle est de type 'extra' ou 'optionnelle'
+        if (subject && (formValue.type === 'extra' || formValue.type === 'optionnelle')) {
+          // Les matières extra/optionnelle sont globales, elles apparaîtront dans la liste
+          // Recharger la liste filtrée pour les inclure
+          setTimeout(() => {
+            this.tryLoadSubjectsForSelection();
+          }, 300);
+        }
         this.creatingSubject.set(false);
         this.showCreateSubject.set(false);
         this.subjectForm.reset();
