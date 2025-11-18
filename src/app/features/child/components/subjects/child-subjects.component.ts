@@ -92,31 +92,87 @@ export class ChildSubjectsComponent implements OnInit {
 
   onSearchInput(q: string): void {
     this.searchQuery.set(q);
-    if ((q || '').trim().length < 2) {
+    const trimmed = (q || '').trim();
+    if (trimmed.length < 2) {
       this.searchResults.set([]);
       return;
     }
-    this.parentSvc.searchSubjects(q).subscribe(({ subjects }) => {
-      // Exclure celles déjà sélectionnées (par défaut ou explicite)
-      const selectedIds = new Set(this.selectedSubjects().map(s => s.id));
-      this.searchResults.set((subjects || []).filter(s => !selectedIds.has(s.id)));
+    
+    console.log('🔍 Searching subjects for query:', trimmed);
+    this.parentSvc.searchSubjects(trimmed).subscribe({
+      next: ({ subjects, error }) => {
+        if (error) {
+          console.error('❌ Error searching subjects:', error);
+          this.searchResults.set([]);
+          return;
+        }
+        
+        console.log('📋 Search results:', subjects?.length || 0, subjects);
+        
+        // Exclure celles déjà sélectionnées (par défaut ou explicite)
+        const selectedIds = new Set(this.selectedSubjects().map(s => s.id));
+        const filtered = (subjects || []).filter(s => !selectedIds.has(s.id));
+        console.log('✅ Filtered search results (excluding selected):', filtered.length, filtered);
+        this.searchResults.set(filtered);
+      },
+      error: (err) => {
+        console.error('❌ Error in search subscription:', err);
+        this.searchResults.set([]);
+      }
     });
   }
 
   addSearchedSubject(subjectId: string): void {
     const c = this.child();
-    if (!c) return;
+    if (!c) {
+      console.error('❌ Cannot add subject: child not loaded');
+      return;
+    }
     const schoolYearId = (c as any).school_year_id || null;
-    this.parentSvc.upsertEnrollment({ child_id: c.id, school_id: c.school_id, school_year_id: schoolYearId, subject_id: subjectId, selected: true })
-      .subscribe(() => {
+    
+    console.log('➕ Adding searched subject:', {
+      child_id: c.id,
+      school_id: c.school_id,
+      school_year_id: schoolYearId,
+      subject_id: subjectId,
+      selected: true
+    });
+    
+    this.parentSvc.upsertEnrollment({ 
+      child_id: c.id, 
+      school_id: c.school_id, 
+      school_year_id: schoolYearId, 
+      subject_id: subjectId, 
+      selected: true 
+    }).subscribe({
+      next: ({ enrollment, error }) => {
+        if (error) {
+          console.error('❌ Error adding subject:', error);
+          alert(`Erreur lors de l'ajout de la matière: ${error.message || 'Erreur inconnue'}`);
+          return;
+        }
+        
+        console.log('✅ Subject added successfully:', enrollment);
+        
+        // Mettre à jour la liste locale des enrollments
         const list = this.enrollments();
         const idx = list.findIndex(e => e.subject_id === subjectId);
-        if (idx >= 0) list[idx] = { subject_id: subjectId, selected: true };
-        else list.push({ subject_id: subjectId, selected: true });
+        if (idx >= 0) {
+          list[idx] = { subject_id: subjectId, selected: true };
+        } else {
+          list.push({ subject_id: subjectId, selected: true });
+        }
         this.enrollments.set([...list]);
+        
+        // Vider les résultats de recherche
         this.searchResults.set([]);
         this.searchQuery.set('');
-      });
+      },
+      error: (err) => {
+        console.error('❌ Error in addSearchedSubject subscription:', err);
+        alert(`Erreur lors de l'ajout de la matière: ${err.message || 'Erreur inconnue'}`);
+      }
+    });
   }
 }
 

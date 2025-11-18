@@ -301,6 +301,10 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
           }
+
+          &:active {
+            transform: translateY(0);
+          }
         }
 
         &.btn-sm {
@@ -308,6 +312,15 @@
           font-size: 13px;
         }
       }
+    }
+
+    .no-results {
+      padding: 20px;
+      text-align: center;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      color: #856404;
     }
   }
 }

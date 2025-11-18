@@ -72,15 +72,20 @@
           [value]="searchQuery()" 
           (input)="onSearchInput($any($event.target).value)">
       </div>
-      <div *ngIf="searchResults().length > 0" class="search-results">
-        <div *ngFor="let s of searchResults()" class="search-result-item">
-          <span class="result-name">{{ s.name }}</span>
-          <button 
-            type="button" 
-            class="btn btn-primary btn-sm" 
-            (click)="addSearchedSubject(s.id)">
-            ➕ Activer (hors programme)
-          </button>
+      <div *ngIf="searchQuery().trim().length >= 2" class="search-results">
+        <div *ngIf="searchResults().length > 0">
+          <div *ngFor="let s of searchResults()" class="search-result-item">
+            <span class="result-name">{{ s.name }}</span>
+            <button 
+              type="button" 
+              class="btn btn-primary btn-sm" 
+              (click)="addSearchedSubject(s.id)">
+              ➕ Activer (hors programme)
+            </button>
+          </div>
+        </div>
+        <div *ngIf="searchResults().length === 0 && searchQuery().trim().length >= 2" class="no-results">
+          <p class="muted">Aucune matière trouvée pour "{{ searchQuery() }}"</p>
         </div>
       </div>
     </div>

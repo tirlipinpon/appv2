@@ -150,11 +150,14 @@ export class ParentSubjectService {
   }
 
   upsertEnrollment(enr: { child_id: string; school_id: string; school_year_id?: string | null; subject_id: string; selected: boolean }): Observable<{ enrollment: Enrollment | null; error: PostgrestError | null }> {
+    console.log('🔄 [ParentSubjectService] upsertEnrollment called:', enr);
+    
     // Approche UPDATE puis INSERT si nécessaire pour éviter les problèmes de contrainte ON CONFLICT
     return from(
       (async () => {
         // D'abord, essayer de mettre à jour l'enrollment existant
         // On cherche par child_id et subject_id (contrainte la plus probable)
+        console.log('🔍 [ParentSubjectService] Checking for existing enrollment...');
         const { data: existing, error: selectError } = await this.supabase.client
           .from('child_subject_enrollments')
           .select('*')
@@ -163,10 +166,12 @@ export class ParentSubjectService {
           .maybeSingle();
 
         if (selectError) {
+          console.error('❌ [ParentSubjectService] Error checking existing enrollment:', selectError);
           return { data: null, error: selectError };
         }
 
         if (existing) {
+          console.log('📝 [ParentSubjectService] Updating existing enrollment:', existing);
           // Mise à jour de l'enrollment existant
           const { data: updated, error: updateError } = await this.supabase.client
             .from('child_subject_enrollments')
@@ -180,8 +185,14 @@ export class ParentSubjectService {
             .select('*')
             .single();
 
+          if (updateError) {
+            console.error('❌ [ParentSubjectService] Error updating enrollment:', updateError);
+          } else {
+            console.log('✅ [ParentSubjectService] Enrollment updated:', updated);
+          }
           return { data: updated as Enrollment | null, error: updateError };
         } else {
+          console.log('➕ [ParentSubjectService] Inserting new enrollment...');
           // Insertion d'un nouvel enrollment
           const { data: inserted, error: insertError } = await this.supabase.client
             .from('child_subject_enrollments')
@@ -195,11 +206,27 @@ export class ParentSubjectService {
             .select('*')
             .single();
 
+          if (insertError) {
+            console.error('❌ [ParentSubjectService] Error inserting enrollment:', insertError);
+            console.error('Insert error details:', {
+              message: insertError.message,
+              details: insertError.details,
+              hint: insertError.hint,
+              code: insertError.code
+            });
+          } else {
+            console.log('✅ [ParentSubjectService] Enrollment inserted:', inserted);
+          }
           return { data: inserted as Enrollment | null, error: insertError };
         }
       })()
     ).pipe(
       map(({ data, error }) => {
+        console.log('📊 [ParentSubjectService] upsertEnrollment result:', { 
+          hasEnrollment: !!data, 
+          hasError: !!error,
+          error: error ? { message: error.message, code: error.code } : null
+        });
         return { enrollment: data as Enrollment | null, error: error || null };
       })
     );

@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, effect, OnDestroy, runInInjectionContext, Injector } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, effect, OnDestroy, runInInjectionContext, Injector, EffectRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -83,7 +83,7 @@ export class ChildComponent implements OnInit, OnDestroy {
   }
 
   // Effects pour gérer les réactions aux changements (créés conditionnellement dans ngOnInit)
-  private childListEffect?: ReturnType<typeof effect>;
+  private childListEffect?: EffectRef;
 
   async ngOnInit(): Promise<void> {
     this.initializeForm();
@@ -117,7 +117,11 @@ export class ChildComponent implements OnInit, OnDestroy {
           return effect(() => {
             const loading = this.isLoading();
             const list = this.children();
-            if (!loading) {
+            const alreadyCopying = this.sourceChildId() !== null;
+            const formAlreadyShown = this.showForm();
+            
+            // Ne pas réafficher le menu de sélection si on est déjà en train de copier ou si le formulaire est déjà affiché
+            if (!loading && !alreadyCopying && !formAlreadyShown) {
               if (list.length > 0) {
                 this.showCopySelection.set(true);
                 this.showForm.set(false);
@@ -154,6 +158,11 @@ export class ChildComponent implements OnInit, OnDestroy {
   }
 
   selectCreateFromScratch(): void {
+    // Désactiver l'effet qui gère l'affichage du menu de sélection
+    if (this.childListEffect) {
+      this.childListEffect.destroy();
+      this.childListEffect = undefined;
+    }
     this.showCopySelection.set(false);
     this.sourceChildId.set(null);
     this.store.setSelectedChild(null); // S'assurer qu'aucun enfant n'est sélectionné
@@ -162,6 +171,11 @@ export class ChildComponent implements OnInit, OnDestroy {
   }
 
   selectCopyFrom(childId: string): void {
+    // Désactiver l'effet qui gère l'affichage du menu de sélection
+    if (this.childListEffect) {
+      this.childListEffect.destroy();
+      this.childListEffect = undefined;
+    }
     this.showCopySelection.set(false);
     this.sourceChildId.set(childId);
     this.showForm.set(true);
@@ -312,6 +326,11 @@ export class ChildComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.schoolsSubscription?.unsubscribe();
+    // Désactiver l'effet de gestion du menu de sélection
+    if (this.childListEffect) {
+      this.childListEffect.destroy();
+      this.childListEffect = undefined;
+    }
   }
 
   private loadSchools(): void {
