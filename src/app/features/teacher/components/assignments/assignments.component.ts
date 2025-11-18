@@ -278,7 +278,12 @@ export class AssignmentsComponent implements OnInit {
     this.application.deleteAssignment(assignmentId);
   }
 
-  getSchoolName(schoolId: string): string {
+  getSchoolName(schoolId: string, assignment?: any): string {
+    // Utiliser la jointure si présente dans l'assignment
+    if (assignment && assignment.school && assignment.school.name) {
+      return assignment.school.name;
+    }
+    // Sinon, chercher dans le store
     const school = this.schools().find(s => s.id === schoolId);
     return school ? school.name : 'École inconnue';
   }

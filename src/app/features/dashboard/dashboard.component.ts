@@ -113,7 +113,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   // Méthodes pour les professeurs
-  getSchoolName(schoolId: string): string {
+  getSchoolName(schoolId: string, assignment?: any): string {
+    // Utiliser la jointure si présente dans l'assignment
+    if (assignment && assignment.school && assignment.school.name) {
+      return assignment.school.name;
+    }
+    // Sinon, chercher dans le store
     const schools = this.teacherAssignmentStore.schools();
     const school = schools.find(s => s.id === schoolId);
     return school ? school.name : 'École inconnue';
