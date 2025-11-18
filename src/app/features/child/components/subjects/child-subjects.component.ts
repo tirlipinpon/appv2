@@ -21,13 +21,52 @@ export class ChildSubjectsComponent implements OnInit {
 
   readonly child = signal<Child | null>(null);
   readonly availableSubjects = signal<(Subject & { school_level?: string | null })[]>([]);
+  readonly unofficialSubjects = signal<(Subject & { school_level?: string | null })[]>([]); // Matières hors programme
   readonly enrollments = signal<{ subject_id: string; selected: boolean }[]>([]);
   readonly searchQuery = signal<string>('');
   readonly searchResults = signal<(Subject & { school_level?: string | null })[]>([]);
   
   getSchoolLevelForSubject(subjectId: string): string | null {
+    // Chercher d'abord dans availableSubjects
     const subject = this.availableSubjects().find(s => s.id === subjectId);
-    return subject?.school_level || null;
+    if (subject?.school_level) return subject.school_level;
+    
+    // Sinon chercher dans unofficialSubjects
+    const unofficial = this.unofficialSubjects().find(s => s.id === subjectId);
+    return unofficial?.school_level || null;
+  }
+  
+  private loadUnofficialSubjects(): void {
+    const availableIds = new Set(this.availableSubjects().map(s => s.id));
+    const selectedEnrollments = this.enrollments().filter(e => e.selected === true);
+    const unofficialSubjectIds = selectedEnrollments
+      .map(e => e.subject_id)
+      .filter(id => !availableIds.has(id));
+    
+    if (unofficialSubjectIds.length > 0) {
+      const c = this.child();
+      const schoolId = c?.school_id || null;
+      
+      // Chercher d'abord dans les résultats de recherche pour récupérer le niveau
+      const searchResultsMap = new Map(this.searchResults().map(s => [s.id, s]));
+      
+      this.parentSvc.getSubjectsByIds(unofficialSubjectIds, schoolId).subscribe(({ subjects, error: subjError }) => {
+        if (!subjError && subjects) {
+          // Enrichir les matières avec le niveau depuis la recherche si disponible (priorité)
+          const enrichedSubjects = subjects.map(s => {
+            const searchResult = searchResultsMap.get(s.id);
+            if (searchResult?.school_level) {
+              return { ...s, school_level: searchResult.school_level };
+            }
+            // Sinon utiliser le niveau récupéré depuis la base de données
+            return s;
+          });
+          this.unofficialSubjects.set(enrichedSubjects);
+        }
+      });
+    } else {
+      this.unofficialSubjects.set([]);
+    }
   }
 
   ngOnInit(): void {
@@ -51,6 +90,9 @@ export class ChildSubjectsComponent implements OnInit {
             }
             console.log('Available subjects loaded:', subjects?.length, subjects);
             this.availableSubjects.set(subjects || []);
+            
+            // Recharger les matières hors programme après avoir chargé les matières disponibles
+            this.loadUnofficialSubjects();
           });
           this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
             if (error) {
@@ -61,6 +103,12 @@ export class ChildSubjectsComponent implements OnInit {
               subject_id: e.subject_id, 
               selected: e.selected
             })));
+            
+            // Charger les matières hors programme après avoir chargé les enrollments
+            // On doit attendre que availableSubjects soit chargé
+            setTimeout(() => {
+              this.loadUnofficialSubjects();
+            }, 100);
           });
         }
       }
@@ -71,8 +119,14 @@ export class ChildSubjectsComponent implements OnInit {
     const explicit = this.enrollments();
     // Seulement les matières avec selected=true dans les enrollments
     const selectedIds = new Set(explicit.filter(e => e.selected === true).map(e => e.subject_id));
-    // Filtrer les matières disponibles qui sont sélectionnées
-    return this.availableSubjects().filter(s => selectedIds.has(s.id));
+    
+    // Matières disponibles qui sont sélectionnées
+    const fromAvailable = this.availableSubjects().filter(s => selectedIds.has(s.id));
+    
+    // Matières hors programme qui sont sélectionnées
+    const fromUnofficial = this.unofficialSubjects().filter(s => selectedIds.has(s.id));
+    
+    return [...fromAvailable, ...fromUnofficial];
   });
   readonly unselectedSubjects = computed(() => {
     const explicit = this.enrollments();
@@ -178,6 +232,31 @@ export class ChildSubjectsComponent implements OnInit {
           list.push({ subject_id: subjectId, selected: true });
         }
         this.enrollments.set([...list]);
+        
+        // Charger la matière ajoutée si elle n'est pas dans availableSubjects (hors programme)
+        const availableIds = new Set(this.availableSubjects().map(s => s.id));
+        if (!availableIds.has(subjectId)) {
+          // Chercher d'abord dans les résultats de recherche pour récupérer le niveau
+          const searchedSubject = this.searchResults().find(s => s.id === subjectId);
+          if (searchedSubject) {
+            // Utiliser la matière de la recherche qui a déjà le niveau
+            const currentUnofficial = this.unofficialSubjects();
+            if (!currentUnofficial.some(s => s.id === subjectId)) {
+              this.unofficialSubjects.set([...currentUnofficial, searchedSubject]);
+            }
+          } else {
+            // Sinon charger depuis la base de données avec le niveau
+            const schoolId = c?.school_id || null;
+            this.parentSvc.getSubjectsByIds([subjectId], schoolId).subscribe(({ subjects, error: subjError }) => {
+              if (!subjError && subjects && subjects.length > 0) {
+                const currentUnofficial = this.unofficialSubjects();
+                if (!currentUnofficial.some(s => s.id === subjectId)) {
+                  this.unofficialSubjects.set([...currentUnofficial, ...subjects]);
+                }
+              }
+            });
+          }
+        }
         
         // Vider les résultats de recherche
         this.searchResults.set([]);

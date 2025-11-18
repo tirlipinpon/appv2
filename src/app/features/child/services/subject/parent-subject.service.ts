@@ -380,6 +380,75 @@ export class ParentSubjectService {
       })
     );
   }
+
+  getSubjectsByIds(subjectIds: string[], schoolId?: string | null): Observable<{ subjects: (Subject & { school_level?: string | null })[]; error: PostgrestError | null }> {
+    if (!subjectIds || subjectIds.length === 0) {
+      return from(Promise.resolve({ subjects: [], error: null }));
+    }
+    
+    if (!schoolId) {
+      // Si pas d'école, charger simplement les matières sans niveau
+      return from(
+        this.supabase.client
+          .from('subjects')
+          .select('*')
+          .in('id', subjectIds)
+      ).pipe(
+        map(({ data, error }) => ({
+          subjects: ((data as Subject[] | null) || []).map(s => ({ ...s, school_level: null })),
+          error: error || null
+        }))
+      );
+    }
+    
+    // Si on a une école, récupérer aussi le niveau depuis school_level_subjects et teacher_assignments
+    return from(
+      Promise.all([
+        this.supabase.client
+          .from('subjects')
+          .select('*')
+          .in('id', subjectIds),
+        this.supabase.client
+          .from('school_level_subjects')
+          .select('subject_id, school_level')
+          .eq('school_id', schoolId)
+          .in('subject_id', subjectIds),
+        this.supabase.client
+          .from('teacher_assignments')
+          .select('subject_id, school_level')
+          .eq('school_id', schoolId)
+          .in('subject_id', subjectIds)
+          .is('deleted_at', null)
+      ])
+    ).pipe(
+      map(([subjectsRes, linksRes, assignmentsRes]) => {
+        const subjects = (subjectsRes.data as Subject[] | null) || [];
+        const links = (linksRes.data as { subject_id: string; school_level: string }[] | null) || [];
+        const assignments = (assignmentsRes.data as { subject_id: string; school_level: string }[] | null) || [];
+        
+        // Créer une map des niveaux (priorité aux school_level_subjects)
+        const levelMap = new Map<string, string>();
+        links.forEach(l => levelMap.set(l.subject_id, l.school_level));
+        assignments.forEach(a => {
+          if (!levelMap.has(a.subject_id)) {
+            levelMap.set(a.subject_id, a.school_level);
+          }
+        });
+        
+        const enrichedSubjects = subjects.map(s => ({
+          ...s,
+          school_level: levelMap.get(s.id) || null
+        }));
+        
+        const error = (subjectsRes.error as PostgrestError | null) || 
+                     (linksRes.error as PostgrestError | null) || 
+                     (assignmentsRes.error as PostgrestError | null) || 
+                     null;
+        
+        return { subjects: enrichedSubjects, error };
+      })
+    );
+  }
 }
 
 
