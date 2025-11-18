@@ -80,6 +80,8 @@ export class AssignmentsComponent implements OnInit {
     this.loadTeacherId();
     const initSchoolId = this.assignmentForm.get('school_id')?.value || null;
     this.currentSchoolId.set(initSchoolId);
+    // S'assurer que la liste des matières est vide au démarrage
+    this.store.clearSubjects();
   }
 
   private loadTeacherId(): void {
@@ -100,10 +102,23 @@ export class AssignmentsComponent implements OnInit {
     });
     this.assignmentForm.get('school_level')?.valueChanges.subscribe((val) => {
       console.log('[AssignmentsComponent] school_level changed', val);
+      // Réinitialiser la matière quand on change le niveau
+      this.assignmentForm.patchValue({ subject_id: '' });
       this.tryLoadSubjectsForSelection();
     });
     this.assignmentForm.get('school_id')?.valueChanges.subscribe((val) => {
       console.log('[AssignmentsComponent] school_id changed', val);
+      if (val) {
+        // Réinitialiser le niveau et la matière quand on change d'école
+        this.assignmentForm.patchValue({ 
+          school_level: '',
+          subject_id: '' 
+        });
+        // Vider la liste des matières
+        this.store.clearSubjects();
+      } else {
+        this.store.clearSubjects();
+      }
       this.tryLoadSubjectsForSelection();
     });
     this.schoolForm = this.fb.group({
@@ -130,18 +145,21 @@ export class AssignmentsComponent implements OnInit {
       this.currentSchoolId.set(schoolId || null);
     } else {
       this.currentSchoolId.set(null);
-      this.assignmentForm.patchValue({ school_level: '' });
     }
-    this.tryLoadSubjectsForSelection();
+    // Le listener valueChanges s'occupe du reste
   }
 
   private tryLoadSubjectsForSelection(): void {
     const schoolId = this.assignmentForm.get('school_id')?.value;
     const schoolLevel = this.assignmentForm.get('school_level')?.value;
     console.log('[AssignmentsComponent] tryLoadSubjectsForSelection', { schoolId, schoolLevel });
+    
     if (schoolId && schoolLevel) {
       console.log('[AssignmentsComponent] loadSubjectsForSchoolLevel → call', { schoolId, schoolLevel });
       this.application.loadSubjectsForSchoolLevel(schoolId, schoolLevel);
+    } else {
+      // Si pas d'école ou niveau, vider la liste des matières
+      this.store.clearSubjects();
     }
   }
 

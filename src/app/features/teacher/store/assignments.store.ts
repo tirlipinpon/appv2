@@ -294,6 +294,9 @@ export const TeacherAssignmentStore = signalStore(
     clearError: () => {
       patchState(store, { error: [] });
     },
+    clearSubjects: () => {
+      patchState(store, { subjects: [] });
+    },
   }))
 );
 
