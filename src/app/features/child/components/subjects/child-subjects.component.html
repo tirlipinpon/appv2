@@ -29,7 +29,7 @@
             <label class="subject-checkbox">
               <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false)">
               <span class="checkmark"></span>
-              <span class="subject-name">{{ s.name }}</span>
+              <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
               <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
             </label>
           </div>
@@ -49,7 +49,7 @@
             <label class="subject-checkbox">
               <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true)">
               <span class="checkmark"></span>
-              <span class="subject-name">{{ s.name }}</span>
+              <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
             </label>
           </div>
           <div *ngIf="unselectedSubjects().length === 0" class="empty-state">
@@ -75,7 +75,7 @@
       <div *ngIf="searchQuery().trim().length >= 2" class="search-results">
         <div *ngIf="searchResults().length > 0">
           <div *ngFor="let s of searchResults()" class="search-result-item">
-            <span class="result-name">{{ s.name }}</span>
+            <span class="result-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="s.school_level" class="school-level-badge"> - {{ s.school_level }}</span></span>
             <button 
               type="button" 
               class="btn btn-primary btn-sm" 

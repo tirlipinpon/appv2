@@ -47,7 +47,7 @@ export class ParentSubjectService {
     );
   }
 
-  getAvailableSubjectsForChild(child: Child): Observable<{ subjects: Subject[]; error: PostgrestError | null }> {
+  getAvailableSubjectsForChild(child: Child): Observable<{ subjects: (Subject & { school_level?: string | null })[]; error: PostgrestError | null }> {
     const client = this.supabase.client;
     const schoolId = child.school_id;
     const schoolLevel = child.school_level;
@@ -56,25 +56,24 @@ export class ParentSubjectService {
       return from(Promise.resolve({ subjects: [], error: null }));
     }
 
-    // Utiliser École + Niveau avec clé normalisée (school_level_key) et ajouter extras/optionnelles.
+    // Utiliser École + Niveau avec clé normalisée (school_level_key) - FILTRER par niveau de l'enfant
     const simplify = (s: string) =>
       s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, '');
     const levelKey = simplify((schoolLevel || '').trim());
 
     const linksQuery = levelKey
       ? client.from('school_level_subjects')
-          .select('subject:subjects(*)')
+          .select('subject:subjects(*), school_level')
           .eq('school_id', schoolId)
           .eq('school_level_key', levelKey)
       : client.from('school_level_subjects')
-          .select('subject:subjects(*)')
+          .select('subject:subjects(*), school_level')
           .eq('school_id', schoolId);
 
-    // Récupérer aussi les matières assignées par les profs pour cette école et ce niveau
-    // D'abord récupérer les subject_id, puis récupérer les subjects
+    // Récupérer les matières assignées par les profs pour cette école et ce niveau (FILTRER par niveau)
     const teacherAssignmentsQuery = client
       .from('teacher_assignments')
-      .select('subject_id')
+      .select('subject_id, school_level')
       .eq('school_id', schoolId)
       .eq('school_level', schoolLevel || '')
       .is('deleted_at', null);
@@ -87,33 +86,65 @@ export class ParentSubjectService {
       teacherAssignmentsQuery
     ])).pipe(
       switchMap(async ([links, extras, teacherAssignments]) => {
-        const linkRows = (links.data as { subject: Subject }[] | null) || [];
-        const linked = linkRows.map(r => r.subject);
+        const linkRows = (links.data as { subject: Subject; school_level: string }[] | null) || [];
+        const linked = linkRows.map(r => ({ ...r.subject, school_level: r.school_level }));
         const extra = (extras.data as Subject[] | null) || [];
         
-        // Extraire les subject_id des affectations
-        const assignmentRows = (teacherAssignments.data as { subject_id: string }[] | null) || [];
+        // Extraire les subject_id et school_level des affectations (TOUS les niveaux)
+        const assignmentRows = (teacherAssignments.data as { subject_id: string; school_level: string }[] | null) || [];
         const teacherSubjectIds = [...new Set(assignmentRows.map(r => r.subject_id))];
+        const assignmentLevels = new Map<string, string>();
+        assignmentRows.forEach(r => {
+          assignmentLevels.set(r.subject_id, r.school_level);
+        });
         
         // Récupérer les subjects correspondants
-        let teacherSubjects: Subject[] = [];
+        let teacherSubjects: (Subject & { school_level?: string | null })[] = [];
         if (teacherSubjectIds.length > 0) {
           const { data: subjectsData, error: subjectsError } = await client
             .from('subjects')
             .select('*')
             .in('id', teacherSubjectIds);
-          teacherSubjects = (subjectsData as Subject[] | null) || [];
+          teacherSubjects = ((subjectsData as Subject[] | null) || []).map(s => ({
+            ...s,
+            school_level: assignmentLevels.get(s.id) || null
+          }));
           if (subjectsError) {
             console.error('Error loading teacher assignment subjects:', subjectsError);
           }
         }
         
-        const byId = new Map<string, Subject>();
-        [...linked, ...extra, ...teacherSubjects].forEach(s => {
+        // Combiner toutes les matières avec leur niveau
+        const byId = new Map<string, Subject & { school_level?: string | null }>();
+        
+        // D'abord ajouter les matières de school_level_subjects (avec leur niveau)
+        linked.forEach(s => {
           if (s && s.id) {
             byId.set(s.id, s);
           }
         });
+        
+        // Ensuite ajouter les matières des teacher_assignments (avec leur niveau)
+        teacherSubjects.forEach(s => {
+          if (s && s.id) {
+            // Si la matière existe déjà, garder le niveau le plus spécifique (non null)
+            const existing = byId.get(s.id);
+            if (!existing || !existing.school_level) {
+              byId.set(s.id, s);
+            } else if (s.school_level) {
+              // Si les deux ont un niveau, garder celui qui existe déjà (priorité aux school_level_subjects)
+              byId.set(s.id, existing);
+            }
+          }
+        });
+        
+        // Enfin ajouter les matières extra/optionnelles (sans niveau)
+        extra.forEach(e => {
+          if (e && e.id && !byId.has(e.id)) {
+            byId.set(e.id, { ...e, school_level: null });
+          }
+        });
+        
         return {
           subjects: Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name)),
           error: (links.error as PostgrestError | null) || (extras.error as PostgrestError | null) || (teacherAssignments.error as PostgrestError | null) || null,
@@ -232,17 +263,122 @@ export class ParentSubjectService {
     );
   }
 
-  searchSubjects(query: string): Observable<{ subjects: Subject[]; error: PostgrestError | null }> {
+  searchSubjects(query: string, schoolId?: string | null): Observable<{ subjects: (Subject & { school_level?: string | null })[]; error: PostgrestError | null }> {
     const q = (query || '').trim();
     if (!q || q.length < 2) return from(Promise.resolve({ subjects: [], error: null }));
+    
+    if (!schoolId) {
+      // Si pas d'école, recherche simple sans niveau
+      return from(
+        this.supabase.client
+          .from('subjects')
+          .select('*')
+          .ilike('name', `%${q}%`)
+          .order('name', { ascending: true })
+          .limit(20)
+      ).pipe(map(({ data, error }) => ({ 
+        subjects: ((data as Subject[] | null) || []).map(s => ({ ...s, school_level: null })), 
+        error: error || null 
+      })));
+    }
+    
+    // Recherche dans toutes les matières de l'école avec leur niveau
     return from(
-      this.supabase.client
-        .from('subjects')
-        .select('*')
-        .ilike('name', `%${q}%`)
-        .order('name', { ascending: true })
-        .limit(20)
-    ).pipe(map(({ data, error }) => ({ subjects: (data as Subject[] | null) || [], error: error || null })));
+      Promise.all([
+        // Recherche dans school_level_subjects
+        this.supabase.client
+          .from('school_level_subjects')
+          .select('subject:subjects(*), school_level')
+          .eq('school_id', schoolId),
+        // Recherche dans teacher_assignments (récupérer d'abord les IDs, puis filtrer)
+        this.supabase.client
+          .from('teacher_assignments')
+          .select('subject_id, school_level')
+          .eq('school_id', schoolId)
+          .is('deleted_at', null),
+        // Recherche dans toutes les matières (pour les extra/optionnelles)
+        this.supabase.client
+          .from('subjects')
+          .select('*')
+          .in('type', ['extra', 'optionnelle'] as unknown as string[])
+      ])
+    ).pipe(
+      switchMap(async ([linksRes, assignmentsRes, extrasRes]) => {
+        const linkRows = (linksRes.data as { subject: Subject; school_level: string }[] | null) || [];
+        // Filtrer par nom après récupération
+        const linked = linkRows
+          .filter(r => r.subject && r.subject.name.toLowerCase().includes(q.toLowerCase()))
+          .map(r => ({ ...r.subject, school_level: r.school_level }));
+        
+        const assignmentRows = (assignmentsRes.data as { subject_id: string; school_level: string }[] | null) || [];
+        const assignmentLevels = new Map<string, string>();
+        assignmentRows.forEach(r => {
+          assignmentLevels.set(r.subject_id, r.school_level);
+        });
+        
+        // Récupérer les subjects correspondants et filtrer par nom
+        let assignments: (Subject & { school_level?: string | null })[] = [];
+        if (assignmentRows.length > 0) {
+          const subjectIds = [...new Set(assignmentRows.map(r => r.subject_id))];
+          const { data: subjectsData, error: subjectsError } = await this.supabase.client
+            .from('subjects')
+            .select('*')
+            .in('id', subjectIds);
+          
+          assignments = ((subjectsData as Subject[] | null) || [])
+            .filter(s => s.name.toLowerCase().includes(q.toLowerCase()))
+            .map(s => ({
+              ...s,
+              school_level: assignmentLevels.get(s.id) || null
+            }));
+          
+          if (subjectsError) {
+            console.error('Error loading teacher assignment subjects:', subjectsError);
+          }
+        }
+        
+        const extras = ((extrasRes.data as Subject[] | null) || [])
+          .filter(s => s.name.toLowerCase().includes(q.toLowerCase()));
+        
+        // Combiner toutes les matières avec leur niveau
+        const byId = new Map<string, Subject & { school_level?: string | null }>();
+        
+        // Ajouter les matières de school_level_subjects
+        linked.forEach(s => {
+          if (s && s.id) {
+            byId.set(s.id, s);
+          }
+        });
+        
+        // Ajouter les matières des teacher_assignments (priorité si déjà existante)
+        assignments.forEach(s => {
+          if (s && s.id) {
+            const existing = byId.get(s.id);
+            if (!existing || !existing.school_level) {
+              byId.set(s.id, s);
+            }
+          }
+        });
+        
+        // Ajouter les matières extra/optionnelles (sans niveau)
+        extras.forEach(e => {
+          if (e && e.id && !byId.has(e.id)) {
+            byId.set(e.id, { ...e, school_level: null });
+          }
+        });
+        
+        const subjects = Array.from(byId.values())
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .slice(0, 20);
+        
+        const error = (linksRes.error as PostgrestError | null) || 
+                     (assignmentsRes.error as PostgrestError | null) || 
+                     (extrasRes.error as PostgrestError | null) || 
+                     null;
+        
+        return { subjects, error };
+      })
+    );
   }
 }
 

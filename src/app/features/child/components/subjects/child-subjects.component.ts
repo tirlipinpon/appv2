@@ -4,6 +4,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ParentSubjectService } from '../../services/subject/parent-subject.service';
 import type { Subject } from '../../../teacher/types/subject';
+import type { Child } from '../../types/child';
 
 @Component({
   selector: 'app-child-subjects',
@@ -18,11 +19,16 @@ export class ChildSubjectsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  readonly child = signal<any | null>(null);
-  readonly availableSubjects = signal<Subject[]>([]);
+  readonly child = signal<Child | null>(null);
+  readonly availableSubjects = signal<(Subject & { school_level?: string | null })[]>([]);
   readonly enrollments = signal<{ subject_id: string; selected: boolean }[]>([]);
   readonly searchQuery = signal<string>('');
-  readonly searchResults = signal<Subject[]>([]);
+  readonly searchResults = signal<(Subject & { school_level?: string | null })[]>([]);
+  
+  getSchoolLevelForSubject(subjectId: string): string | null {
+    const subject = this.availableSubjects().find(s => s.id === subjectId);
+    return subject?.school_level || null;
+  }
 
   ngOnInit(): void {
     // Récupérer childId depuis la route si pas fourni en @Input
@@ -36,22 +42,27 @@ export class ChildSubjectsComponent implements OnInit {
     
     this.childId = finalChildId;
     this.parentSvc.getChild(this.childId).subscribe(({ child }) => {
-      this.child.set(child);
-      if (child && child.school_id) {
-        this.parentSvc.getAvailableSubjectsForChild(child).subscribe(({ subjects, error }) => {
-          if (error) {
-            console.error('Error loading available subjects:', error);
-          }
-          console.log('Available subjects loaded:', subjects?.length, subjects);
-          this.availableSubjects.set(subjects || []);
-        });
-        this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
-          if (error) {
-            console.error('Error loading enrollments:', error);
-          }
-          console.log('Enrollments loaded:', enrollments?.length, enrollments);
-          this.enrollments.set((enrollments || []).map(e => ({ subject_id: e.subject_id, selected: e.selected })));
-        });
+      if (child) {
+        this.child.set(child);
+        if (child.school_id) {
+          this.parentSvc.getAvailableSubjectsForChild(child).subscribe(({ subjects, error }) => {
+            if (error) {
+              console.error('Error loading available subjects:', error);
+            }
+            console.log('Available subjects loaded:', subjects?.length, subjects);
+            this.availableSubjects.set(subjects || []);
+          });
+          this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
+            if (error) {
+              console.error('Error loading enrollments:', error);
+            }
+            console.log('Enrollments loaded:', enrollments?.length, enrollments);
+            this.enrollments.set((enrollments || []).map(e => ({ 
+              subject_id: e.subject_id, 
+              selected: e.selected
+            })));
+          });
+        }
       }
     });
   }
@@ -78,14 +89,17 @@ export class ChildSubjectsComponent implements OnInit {
 
   onToggle(subjectId: string, selected: boolean): void {
     const c = this.child();
-    if (!c) return;
-    const schoolYearId = (c as any).school_year_id || null;
-    this.parentSvc.upsertEnrollment({ child_id: c.id, school_id: c.school_id, school_year_id: schoolYearId, subject_id: subjectId, selected })
+    if (!c || !c.school_id) return;
+    this.parentSvc.upsertEnrollment({ child_id: c.id, school_id: c.school_id, school_year_id: null, subject_id: subjectId, selected })
       .subscribe(() => {
+        // Mettre à jour la liste locale des enrollments
         const list = this.enrollments();
         const idx = list.findIndex(e => e.subject_id === subjectId);
-        if (idx >= 0) list[idx] = { subject_id: subjectId, selected };
-        else list.push({ subject_id: subjectId, selected });
+        if (idx >= 0) {
+          list[idx] = { subject_id: subjectId, selected };
+        } else {
+          list.push({ subject_id: subjectId, selected });
+        }
         this.enrollments.set([...list]);
       });
   }
@@ -98,8 +112,11 @@ export class ChildSubjectsComponent implements OnInit {
       return;
     }
     
-    console.log('🔍 Searching subjects for query:', trimmed);
-    this.parentSvc.searchSubjects(trimmed).subscribe({
+    const c = this.child();
+    const schoolId = c?.school_id || null;
+    
+    console.log('🔍 Searching subjects for query:', trimmed, 'schoolId:', schoolId);
+    this.parentSvc.searchSubjects(trimmed, schoolId).subscribe({
       next: ({ subjects, error }) => {
         if (error) {
           console.error('❌ Error searching subjects:', error);
@@ -109,9 +126,9 @@ export class ChildSubjectsComponent implements OnInit {
         
         console.log('📋 Search results:', subjects?.length || 0, subjects);
         
-        // Exclure celles déjà sélectionnées (par défaut ou explicite)
-        const selectedIds = new Set(this.selectedSubjects().map(s => s.id));
-        const filtered = (subjects || []).filter(s => !selectedIds.has(s.id));
+        // Exclure celles déjà dans "Matières activées" (selectedSubjects)
+        const selectedSubjectIds = new Set(this.selectedSubjects().map(s => s.id));
+        const filtered = (subjects || []).filter(s => !selectedSubjectIds.has(s.id));
         console.log('✅ Filtered search results (excluding selected):', filtered.length, filtered);
         this.searchResults.set(filtered);
       },
@@ -124,16 +141,14 @@ export class ChildSubjectsComponent implements OnInit {
 
   addSearchedSubject(subjectId: string): void {
     const c = this.child();
-    if (!c) {
-      console.error('❌ Cannot add subject: child not loaded');
+    if (!c || !c.school_id) {
+      console.error('❌ Cannot add subject: child not loaded or no school_id');
       return;
     }
-    const schoolYearId = (c as any).school_year_id || null;
     
     console.log('➕ Adding searched subject:', {
       child_id: c.id,
       school_id: c.school_id,
-      school_year_id: schoolYearId,
       subject_id: subjectId,
       selected: true
     });
@@ -141,7 +156,7 @@ export class ChildSubjectsComponent implements OnInit {
     this.parentSvc.upsertEnrollment({ 
       child_id: c.id, 
       school_id: c.school_id, 
-      school_year_id: schoolYearId, 
+      school_year_id: null, 
       subject_id: subjectId, 
       selected: true 
     }).subscribe({
