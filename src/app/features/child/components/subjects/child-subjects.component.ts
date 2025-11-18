@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -36,6 +36,29 @@ export class ChildSubjectsComponent implements OnInit {
     return unofficial?.school_level || null;
   }
   
+  // Effect pour charger les matières hors programme quand availableSubjects et enrollments sont chargés
+  private loadUnofficialSubjectsTimeout: ReturnType<typeof setTimeout> | null = null;
+  
+  private readonly loadUnofficialSubjectsEffect = effect(() => {
+    const available = this.availableSubjects();
+    const enrollments = this.enrollments();
+    const child = this.child();
+    
+    // Ne charger que si l'enfant est chargé et qu'on a des enrollments
+    if (child && enrollments.length > 0) {
+      // Annuler le timeout précédent si existant
+      if (this.loadUnofficialSubjectsTimeout) {
+        clearTimeout(this.loadUnofficialSubjectsTimeout);
+      }
+      
+      // Utiliser un petit délai pour éviter les appels multiples
+      this.loadUnofficialSubjectsTimeout = setTimeout(() => {
+        this.loadUnofficialSubjects();
+        this.loadUnofficialSubjectsTimeout = null;
+      }, 100);
+    }
+  });
+  
   private loadUnofficialSubjects(): void {
     const availableIds = new Set(this.availableSubjects().map(s => s.id));
     const selectedEnrollments = this.enrollments().filter(e => e.selected === true);
@@ -61,7 +84,23 @@ export class ChildSubjectsComponent implements OnInit {
             // Sinon utiliser le niveau récupéré depuis la base de données
             return s;
           });
-          this.unofficialSubjects.set(enrichedSubjects);
+          
+          // Dédupliquer par ID pour éviter les doublons (garder seulement les nouvelles matières)
+          const currentUnofficial = this.unofficialSubjects();
+          const currentIds = new Set(currentUnofficial.map(s => s.id));
+          const newSubjects = enrichedSubjects.filter(s => !currentIds.has(s.id));
+          
+          if (newSubjects.length > 0) {
+            // Dédupliquer par ID
+            const byId = new Map<string, Subject & { school_level?: string | null }>();
+            [...currentUnofficial, ...newSubjects].forEach(s => {
+              if (s && s.id) {
+                byId.set(s.id, s);
+              }
+            });
+            
+            this.unofficialSubjects.set(Array.from(byId.values()));
+          }
         }
       });
     } else {
@@ -90,9 +129,6 @@ export class ChildSubjectsComponent implements OnInit {
             }
             console.log('Available subjects loaded:', subjects?.length, subjects);
             this.availableSubjects.set(subjects || []);
-            
-            // Recharger les matières hors programme après avoir chargé les matières disponibles
-            this.loadUnofficialSubjects();
           });
           this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
             if (error) {
@@ -103,12 +139,6 @@ export class ChildSubjectsComponent implements OnInit {
               subject_id: e.subject_id, 
               selected: e.selected
             })));
-            
-            // Charger les matières hors programme après avoir chargé les enrollments
-            // On doit attendre que availableSubjects soit chargé
-            setTimeout(() => {
-              this.loadUnofficialSubjects();
-            }, 100);
           });
         }
       }
@@ -123,10 +153,19 @@ export class ChildSubjectsComponent implements OnInit {
     // Matières disponibles qui sont sélectionnées
     const fromAvailable = this.availableSubjects().filter(s => selectedIds.has(s.id));
     
-    // Matières hors programme qui sont sélectionnées
-    const fromUnofficial = this.unofficialSubjects().filter(s => selectedIds.has(s.id));
+    // Matières hors programme qui sont sélectionnées (exclure celles déjà dans availableSubjects)
+    const availableIds = new Set(fromAvailable.map(s => s.id));
+    const fromUnofficial = this.unofficialSubjects().filter(s => selectedIds.has(s.id) && !availableIds.has(s.id));
     
-    return [...fromAvailable, ...fromUnofficial];
+    // Dédupliquer par ID pour éviter les doublons
+    const byId = new Map<string, Subject & { school_level?: string | null }>();
+    [...fromAvailable, ...fromUnofficial].forEach(s => {
+      if (s && s.id) {
+        byId.set(s.id, s);
+      }
+    });
+    
+    return Array.from(byId.values());
   });
   readonly unselectedSubjects = computed(() => {
     const explicit = this.enrollments();
@@ -242,7 +281,14 @@ export class ChildSubjectsComponent implements OnInit {
             // Utiliser la matière de la recherche qui a déjà le niveau
             const currentUnofficial = this.unofficialSubjects();
             if (!currentUnofficial.some(s => s.id === subjectId)) {
-              this.unofficialSubjects.set([...currentUnofficial, searchedSubject]);
+              // Dédupliquer par ID
+              const byId = new Map<string, Subject & { school_level?: string | null }>();
+              [...currentUnofficial, searchedSubject].forEach(s => {
+                if (s && s.id) {
+                  byId.set(s.id, s);
+                }
+              });
+              this.unofficialSubjects.set(Array.from(byId.values()));
             }
           } else {
             // Sinon charger depuis la base de données avec le niveau
@@ -251,7 +297,14 @@ export class ChildSubjectsComponent implements OnInit {
               if (!subjError && subjects && subjects.length > 0) {
                 const currentUnofficial = this.unofficialSubjects();
                 if (!currentUnofficial.some(s => s.id === subjectId)) {
-                  this.unofficialSubjects.set([...currentUnofficial, ...subjects]);
+                  // Dédupliquer par ID
+                  const byId = new Map<string, Subject & { school_level?: string | null }>();
+                  [...currentUnofficial, ...subjects].forEach(s => {
+                    if (s && s.id) {
+                      byId.set(s.id, s);
+                    }
+                  });
+                  this.unofficialSubjects.set(Array.from(byId.values()));
                 }
               }
             });
