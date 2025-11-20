@@ -10,6 +10,7 @@ import type { School } from '../../types/school';
 import type { Subject } from '../../types/subject';
 import type { TeacherAssignment, TeacherAssignmentCreate } from '../../types/teacher-assignment';
 import type { PostgrestError } from '@supabase/supabase-js';
+import type { SchoolYear } from '../../types/school';
 
 @Injectable({
   providedIn: 'root',
@@ -42,11 +43,11 @@ export class Infrastructure {
     return this.schoolService.createSchool(schoolData);
   }
 
-  getSchoolYearsBySchool(schoolId: string): Observable<{ schoolYears: any[]; error: PostgrestError | null }> {
+  getSchoolYearsBySchool(schoolId: string): Observable<{ schoolYears: SchoolYear[]; error: PostgrestError | null }> {
     return this.schoolYearService.getSchoolYearsBySchool(schoolId);
   }
 
-  createSchoolYear(schoolYearData: Omit<any, 'id' | 'created_at' | 'updated_at'>): Observable<{ schoolYear: any; error: PostgrestError | null }> {
+  createSchoolYear(schoolYearData: Omit<SchoolYear, 'id' | 'created_at' | 'updated_at'>): Observable<{ schoolYear: SchoolYear | null; error: PostgrestError | null }> {
     return this.schoolYearService.createSchoolYear(schoolYearData);
   }
 

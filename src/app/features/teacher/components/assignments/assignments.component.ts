@@ -278,7 +278,7 @@ export class AssignmentsComponent implements OnInit {
     this.application.deleteAssignment(assignmentId);
   }
 
-  getSchoolName(schoolId: string, assignment?: any): string {
+  getSchoolName(schoolId: string, assignment?: { school?: { name?: string } }): string {
     // Utiliser la jointure si présente dans l'assignment
     if (assignment && assignment.school && assignment.school.name) {
       return assignment.school.name;

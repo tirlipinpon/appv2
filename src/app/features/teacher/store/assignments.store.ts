@@ -3,7 +3,7 @@ import { signalStore, withState, withComputed, withMethods, patchState } from '@
 import { withDevtools } from "@angular-architects/ngrx-toolkit";
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap, catchError, of } from 'rxjs';
-import { School } from '../types/school';
+import { School, SchoolYear } from '../types/school';
 import { Subject } from '../types/subject';
 import { TeacherAssignment, TeacherAssignmentCreate } from '../types/teacher-assignment';
 import { Infrastructure } from '../components/infrastructure/infrastructure';
@@ -105,8 +105,15 @@ export const TeacherAssignmentStore = signalStore(
 
     createSchoolYear: rxMethod<{ school_id: string; label: string; order_index?: number | null; is_active?: boolean }>(
       pipe(
-        switchMap((schoolYearData) =>
-          infrastructure.createSchoolYear(schoolYearData).pipe(
+        switchMap((schoolYearData) => {
+          // Convert undefined to null/default values to match SchoolYear type
+          const data: Omit<SchoolYear, 'id' | 'created_at' | 'updated_at'> = {
+            school_id: schoolYearData.school_id,
+            label: schoolYearData.label,
+            order_index: schoolYearData.order_index ?? null,
+            is_active: schoolYearData.is_active ?? true,
+          };
+          return infrastructure.createSchoolYear(data).pipe(
             switchMap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la création de l\'année scolaire';
@@ -132,8 +139,8 @@ export const TeacherAssignmentStore = signalStore(
               patchState(store, { error: [errorMessage] });
               return of(null);
             })
-          )
-        )
+          );
+        })
       )
     ),
 
@@ -299,4 +306,3 @@ export const TeacherAssignmentStore = signalStore(
     },
   }))
 );
-

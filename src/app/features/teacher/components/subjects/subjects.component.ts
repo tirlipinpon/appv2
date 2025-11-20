@@ -129,15 +129,6 @@ export class SubjectsComponent implements OnInit {
       '5ème': '5ème',
       '6eme': '6ème',
       '6ème': '6ème',
-      'seconde': '2nde',
-      '2nde': '2nde',
-      'terminale': 'terminale',
-      'cp': 'cp',
-      'ce1': 'ce1',
-      'ce2': 'ce2',
-      'cm1': 'cm1',
-      'cm2': 'cm2',
-      'maternelle': 'maternelle',
       'autre': 'autre',
     };
     const key = (level || '').toLowerCase();
