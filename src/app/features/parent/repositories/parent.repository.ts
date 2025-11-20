@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { BaseRepository, RepositoryResult } from '../../../shared/repositories/base-repository.service';
+import { BaseRepository } from '../../../shared/repositories/base-repository.service';
 import type { Parent } from '../types/parent';
 
 /**
@@ -21,7 +21,7 @@ export class ParentRepository extends BaseRepository<Parent> {
    */
   checkChildrenEnrolled(parentId: string): Observable<boolean> {
     this.logger.debug('ParentRepository: checkChildrenEnrolled', { parentId });
-    
+
     return from(
       this.supabaseService.client
         .from('children')
