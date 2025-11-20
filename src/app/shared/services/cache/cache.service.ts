@@ -16,8 +16,8 @@ export interface CacheEntry<T> {
   providedIn: 'root',
 })
 export class CacheService {
-  private caches = new Map<string, CacheEntry<any>>();
-  private cacheSubjects = new Map<string, BehaviorSubject<any>>();
+  private caches = new Map<string, CacheEntry<unknown>>();
+  private cacheSubjects = new Map<string, BehaviorSubject<unknown>>();
 
   /**
    * Récupère une valeur depuis le cache ou exécute la factory si non présent
@@ -32,12 +32,12 @@ export class CacheService {
 
     // Si les données sont déjà en cache
     if (entry?.data !== undefined) {
-      return of(entry.data);
+      return of(entry.data as T | null);
     }
 
     // Si un chargement est déjà en cours
     if (entry?.loading) {
-      return entry.loading;
+      return entry.loading as Observable<T | null>;
     }
 
     // Créer un nouvel Observable avec cache
@@ -64,7 +64,7 @@ export class CacheService {
    */
   get<T>(key: string, userId?: string): T | null | undefined {
     const cacheKey = userId ? `${key}:${userId}` : key;
-    return this.caches.get(cacheKey)?.data;
+    return this.caches.get(cacheKey)?.data as T | null | undefined;
   }
 
   /**
@@ -115,10 +115,10 @@ export class CacheService {
     
     if (!this.cacheSubjects.has(cacheKey)) {
       const currentValue = this.get<T>(cacheKey);
-      this.cacheSubjects.set(cacheKey, new BehaviorSubject<T | null>(currentValue ?? null));
+      this.cacheSubjects.set(cacheKey, new BehaviorSubject<T | null>(currentValue ?? null) as unknown as BehaviorSubject<unknown>);
     }
     
-    return this.cacheSubjects.get(cacheKey)!.asObservable();
+    return this.cacheSubjects.get(cacheKey)!.asObservable() as Observable<T | null>;
   }
 
   /**

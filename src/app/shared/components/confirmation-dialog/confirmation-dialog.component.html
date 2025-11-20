@@ -1,0 +1,180 @@
+@if (isOpen) {
+
+
+
+  <div 
+
+
+
+    class="dialog-backdrop" 
+
+
+
+    (click)="onBackdropClick($event)"
+
+
+
+    (keydown.escape)="close()"
+
+
+
+    role="dialog"
+
+
+
+    aria-modal="true"
+
+
+
+    aria-labelledby="dialog-title"
+
+
+
+    aria-describedby="dialog-message"
+
+
+
+    tabindex="-1">
+
+
+
+    <div class="dialog-container" (click)="$event.stopPropagation()" (keydown.escape)="close()" tabindex="0">
+
+
+
+      <div class="dialog-header">
+
+
+
+        <h2 id="dialog-title" class="dialog-title">{{ title }}</h2>
+
+
+
+        <button 
+
+
+
+          class="dialog-close"
+
+
+
+          type="button"
+
+
+
+          (click)="close()"
+
+
+
+          (keyup.enter)="close()"
+
+
+
+          (keyup.space)="close()"
+
+
+
+          aria-label="Fermer la boîte de dialogue">
+
+
+
+          ×
+
+
+
+        </button>
+
+
+
+      </div>
+
+
+
+      
+
+
+
+      <div class="dialog-body">
+
+
+
+        <p id="dialog-message" class="dialog-message">{{ message }}</p>
+
+
+
+      </div>
+
+
+
+      
+
+
+
+      <div class="dialog-footer">
+
+
+
+        <button 
+
+
+
+          type="button"
+
+
+
+          class="btn btn-cancel"
+
+
+
+          (click)="cancel()">
+
+
+
+          {{ cancelText }}
+
+
+
+        </button>
+
+
+
+        <button 
+
+
+
+          type="button"
+
+
+
+          class="btn btn-confirm btn-{{ type }}"
+
+
+
+          (click)="confirm()">
+
+
+
+          {{ confirmText }}
+
+
+
+        </button>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+}
+
+
+

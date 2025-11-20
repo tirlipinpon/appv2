@@ -1,0 +1,75 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.form-field {
+  margin-bottom: $spacing-lg;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: $spacing-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  font-size: $font-size-sm;
+
+  .required-indicator {
+    color: $color-danger;
+    margin-left: 2px;
+  }
+}
+
+.field-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-input {
+  @include form-control-base;
+  padding-right: 40px;
+
+  &.input-invalid {
+    @include form-control-invalid;
+  }
+}
+
+.field-icon {
+  position: absolute;
+  right: $spacing-md;
+  font-size: 1rem;
+  pointer-events: none;
+  
+  &.field-icon-success {
+    color: $color-success;
+  }
+  
+  &.field-icon-error {
+    color: $color-danger;
+  }
+}
+
+.field-error {
+  display: block;
+  margin-top: $spacing-xs;
+  color: $color-danger;
+  font-size: $font-size-sm;
+  animation: fadeIn 0.2s ease;
+}
+
+.field-hint {
+  display: block;
+  margin-top: $spacing-xs;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
+}
+
+.field-invalid {
+  .field-label {
+    color: $color-danger;
+  }
+}
+
+.field-disabled {
+  opacity: $opacity-disabled;
+  pointer-events: none;
+}

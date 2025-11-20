@@ -1,0 +1,401 @@
+@use '../../../../styles/variables' as *;
+
+@use '../../../../styles/mixins' as *;
+
+
+
+.app-header {
+
+  background: $color-bg-primary;
+
+  box-shadow: $shadow-sm;
+
+  position: sticky;
+
+  top: 0;
+
+  z-index: 1000;
+
+  border-bottom: $border-width-thin solid $color-border-light;
+
+}
+
+
+
+.header-container {
+
+  max-width: $container-max-width;
+
+  margin: 0 auto;
+
+  padding: 0 $spacing-md;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  height: $header-height;
+
+  gap: $spacing-lg;
+
+
+
+  @include respond-to(md) {
+
+    padding: 0 $spacing-lg;
+
+  }
+
+}
+
+
+
+.header-brand {
+
+  flex-shrink: 0;
+
+
+
+  .brand-link {
+
+    text-decoration: none;
+
+    color: $color-text-primary;
+
+    display: flex;
+
+    align-items: center;
+
+    
+
+    &:hover {
+
+      text-decoration: none;
+
+    }
+
+  }
+
+
+
+  .brand-title {
+
+    margin: 0;
+
+    font-size: 1.25rem;
+
+    font-weight: $font-weight-semibold;
+
+    color: $color-primary;
+
+  }
+
+}
+
+
+
+.header-nav {
+
+  flex: 1;
+
+  display: flex;
+
+  justify-content: center;
+
+
+
+  .menu-toggle {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 40px;
+
+    height: 40px;
+
+    background: none;
+
+    border: none;
+
+    cursor: pointer;
+
+    padding: 0;
+
+    margin-left: auto;
+
+
+
+    @include respond-to(md) {
+
+      display: none;
+
+    }
+
+
+
+    .hamburger-icon {
+
+      position: relative;
+
+      width: 24px;
+
+      height: 2px;
+
+      background: $color-text-primary;
+
+      
+
+      &::before,
+
+      &::after {
+
+        content: '';
+
+        position: absolute;
+
+        width: 24px;
+
+        height: 2px;
+
+        background: $color-text-primary;
+
+        transition: all $transition-base;
+
+      }
+
+      
+
+      &::before {
+
+        top: -8px;
+
+      }
+
+      
+
+      &::after {
+
+        bottom: -8px;
+
+      }
+
+    }
+
+  }
+
+
+
+  .nav-list {
+
+    display: none;
+
+    flex-direction: column;
+
+    list-style: none;
+
+    margin: 0;
+
+    padding: 0;
+
+    position: absolute;
+
+    top: $header-height;
+
+    left: 0;
+
+    right: 0;
+
+    background: $color-bg-primary;
+
+    box-shadow: $shadow-md;
+
+    border-top: $border-width-thin solid $color-border-light;
+
+
+
+    @include respond-to(md) {
+
+      display: flex;
+
+      flex-direction: row;
+
+      position: static;
+
+      box-shadow: none;
+
+      border-top: none;
+
+      gap: $spacing-xs;
+
+    }
+
+
+
+    &.menu-open {
+
+      display: flex;
+
+    }
+
+
+
+    .nav-item {
+
+      margin: 0;
+
+    }
+
+
+
+    .nav-link {
+
+      display: block;
+
+      padding: $spacing-md;
+
+      color: $color-text-primary;
+
+      text-decoration: none;
+
+      transition: background-color $transition-base;
+
+      border-radius: $border-radius-sm;
+
+      
+
+      @include respond-to(md) {
+
+        padding: $spacing-sm $spacing-md;
+
+      }
+
+
+
+      &:hover {
+
+        background-color: $color-gray-100;
+
+        text-decoration: none;
+
+      }
+
+
+
+      &.active {
+
+        color: $color-primary;
+
+        font-weight: $font-weight-semibold;
+
+        background-color: rgba($color-primary, 0.1);
+
+      }
+
+
+
+      &:focus-visible {
+
+        @include focus-ring;
+
+      }
+
+    }
+
+  }
+
+}
+
+
+
+.header-actions {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: $spacing-md;
+
+  flex-shrink: 0;
+
+
+
+  .user-info {
+
+    display: none;
+
+    flex-direction: column;
+
+    align-items: flex-end;
+
+    gap: $spacing-xs;
+
+
+
+    @include respond-to(md) {
+
+      display: flex;
+
+    }
+
+
+
+    .user-name {
+
+      font-size: $font-size-sm;
+
+      color: $color-text-secondary;
+
+      font-weight: $font-weight-medium;
+
+    }
+
+
+
+    .user-role {
+
+      font-size: $font-size-sm;
+
+      padding: 2px $spacing-sm;
+
+      background: $color-primary;
+
+      color: $color-white;
+
+      border-radius: $border-radius-sm;
+
+      text-transform: capitalize;
+
+    }
+
+  }
+
+
+  .btn-logout {
+    @include button-base;
+    background-color: $color-danger;
+    color: $color-white;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+
+    &:hover:not(:disabled) {
+      background-color: $color-danger-dark;
+    }
+  }
+
+  .btn-login {
+    @include button-base;
+    background-color: $color-primary;
+    color: $color-white;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+    
+    &:hover:not(:disabled) {
+      background-color: $color-primary-dark;
+    }
+  }
+}

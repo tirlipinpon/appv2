@@ -74,7 +74,7 @@ export class ChildRepository extends BaseRepository<Child> {
   /**
    * Met à jour un enfant spécifique par son ID
    */
-  updateById(childId: string, updates: Partial<Child>): Observable<{ data: Child | null; error: any }> {
+  updateById(childId: string, updates: Partial<Child>): Observable<{ data: Child | null; error: unknown }> {
     this.logger.debug('ChildRepository: updateById', { childId, updates });
     
     return from(

@@ -60,7 +60,7 @@
           <div *ngFor="let assignment of teacherAssignments()" class="assignment-card">
             <div class="assignment-info">
               <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
-              <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id, assignment) }}</p>
+              <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
               <p *ngIf="assignment.school_year_id">📅 Année: {{ assignment.school_year_id }}</p>
               <p *ngIf="assignment.school_level">🎓 Niveau: {{ assignment.school_level }}</p>
             </div>

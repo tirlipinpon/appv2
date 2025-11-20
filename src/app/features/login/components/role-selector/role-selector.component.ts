@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService, Profile } from '../../../../shared/services/auth/auth.service';
@@ -13,26 +13,26 @@ import { TrackByUtils } from '../../../../shared/utils/track-by.util';
   styleUrl: './role-selector.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RoleSelectorComponent implements OnInit, OnDestroy {
+export class RoleSelectorComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly parentStore = inject(ParentStore);
-  
+
   profile: Profile | null = null;
   availableRoles: string[] = [];
-  
+
   roleLabels: Record<string, string> = {
     'parent': 'Parent',
     'prof': 'Professeur',
     'admin': 'Administrateur'
   };
-  
+
   roleIcons: Record<string, string> = {
     'parent': '👨‍👩‍👧‍👦',
     'prof': '👨‍🏫',
     'admin': '👤'
   };
-  
+
   roleDescriptions: Record<string, string> = {
     'parent': 'Gérer le parcours éducatif de vos enfants',
     'prof': 'Accompagner et valider l\'évolution de vos élèves',
@@ -45,11 +45,11 @@ export class RoleSelectorComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     try {
       this.profile = this.authService.getCurrentProfile();
-      
+
       if (!this.profile) {
         this.profile = await this.authService.getProfile();
       }
-      
+
       if (this.profile) {
         this.availableRoles = this.profile.roles;
       } else {
@@ -61,18 +61,14 @@ export class RoleSelectorComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy(): void {
-    // Cleanup si nécessaire
-  }
-
   selectRole(role: string) {
     if (this.availableRoles.includes(role)) {
       this.authService.setActiveRole(role);
-      
+
       if (role === 'parent') {
         this.parentStore.checkParentStatus();
       }
-      
+
       this.router.navigate(['/dashboard']);
     }
   }

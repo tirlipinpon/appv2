@@ -1,0 +1,68 @@
+@use './variables' as *;
+
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == sm {
+    @media (min-width: $breakpoint-sm) { @content; }
+  } @else if $breakpoint == md {
+    @media (min-width: $breakpoint-md) { @content; }
+  } @else if $breakpoint == lg {
+    @media (min-width: $breakpoint-lg) { @content; }
+  } @else if $breakpoint == xl {
+    @media (min-width: $breakpoint-xl) { @content; }
+  }
+}
+
+@mixin focus-ring($color: $color-primary) {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba($color, 0.25);
+}
+
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-sm $spacing-md;
+  border: none;
+  border-radius: $border-radius-md;
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: all $transition-base;
+  &:disabled { opacity: $opacity-disabled; cursor: not-allowed; }
+  &:focus-visible { @include focus-ring; }
+}
+
+@mixin form-control-base {
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  border: $border-width-thin solid $color-border-medium;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-base;
+  transition: border-color $transition-base;
+  &:focus { outline: none; border-color: $color-primary; @include focus-ring; }
+  &:disabled { background-color: $color-gray-100; cursor: not-allowed; }
+}
+
+@mixin form-control-invalid {
+  border-color: $color-danger;
+  &:focus {
+    border-color: $color-danger;
+    @include focus-ring($color-danger);
+  }
+}
+
+@mixin card-base {
+  background: $color-bg-primary;
+  border: $border-width-thin solid $color-border-light;
+  border-radius: $border-radius-md;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+  transition: box-shadow $transition-base;
+  &:hover { box-shadow: $shadow-md; }
+}
+
+@mixin grid-auto-fill($min-width) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax($min-width, 1fr));
+  gap: $spacing-md;
+}

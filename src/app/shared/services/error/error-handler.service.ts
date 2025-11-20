@@ -48,7 +48,7 @@ export class ErrorHandlerService {
   /**
    * Normalise n'importe quelle erreur en un format standard
    */
-  normalize(error: unknown, fallbackMessage: string = 'Une erreur est survenue'): NormalizedError {
+  normalize(error: unknown, fallbackMessage = 'Une erreur est survenue'): NormalizedError {
     if (!error) {
       return { message: fallbackMessage };
     }

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { environment } from '../../../../environments/environment.prod.example';
 
 export enum LogLevel {
@@ -28,25 +28,25 @@ export class LoggerService {
     }
   }
 
-  debug(message: string, ...args: any[]): void {
+  debug(message: string, ...args: unknown[]): void {
     if (this.logLevel <= LogLevel.DEBUG) {
       console.log(`[DEBUG] ${message}`, ...args);
     }
   }
 
-  info(message: string, ...args: any[]): void {
+  info(message: string, ...args: unknown[]): void {
     if (this.logLevel <= LogLevel.INFO) {
       console.info(`[INFO] ${message}`, ...args);
     }
   }
 
-  warn(message: string, ...args: any[]): void {
+  warn(message: string, ...args: unknown[]): void {
     if (this.logLevel <= LogLevel.WARN) {
       console.warn(`[WARN] ${message}`, ...args);
     }
   }
 
-  error(message: string, error?: any, ...args: any[]): void {
+  error(message: string, error?: unknown, ...args: unknown[]): void {
     if (this.logLevel <= LogLevel.ERROR) {
       if (error) {
         console.error(`[ERROR] ${message}`, error, ...args);

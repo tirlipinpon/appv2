@@ -1,54 +1,71 @@
+@use '../../../styles/variables' as *;
+@use '../../../styles/mixins' as *;
+
 .dashboard-container {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: $color-bg-secondary;
 }
 
 .dashboard-header {
-  background: white;
-  padding: 20px 40px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: $color-bg-primary;
+  padding: $spacing-md $spacing-lg;
+  box-shadow: $shadow-sm;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+
+  @include respond-to(md) {
+    padding: $spacing-md $spacing-xl;
+  }
 
   h1 {
     margin: 0;
-    color: #333;
+    color: $color-text-primary;
+    font-size: $font-size-xl;
+
+    @include respond-to(md) {
+      font-size: $font-size-2xl;
+    }
   }
 
   .user-info {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: $spacing-md;
+    flex-wrap: wrap;
 
     .active-role {
-      padding: 5px 15px;
-      background: #667eea;
-      color: white;
-      border-radius: 20px;
-      font-size: 14px;
+      padding: 4px $spacing-md;
+      background: $color-primary;
+      color: $color-white;
+      border-radius: $border-radius-full;
+      font-size: $font-size-sm;
     }
 
     .logout-btn {
-      padding: 8px 20px;
-      background: #e74c3c;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s;
+      @include button-base;
+      background-color: $color-danger;
+      color: $color-white;
+      padding: $spacing-sm $spacing-md;
+      font-size: $font-size-sm;
 
-      &:hover {
-        background: #c0392b;
+      &:hover:not(:disabled) {
+        background-color: $color-danger-dark;
       }
     }
   }
 }
 
 .dashboard-content {
-  padding: 40px;
-  max-width: 1200px;
+  padding: $spacing-md;
+  max-width: $container-max-width;
   margin: 0 auto;
+
+  @include respond-to(md) {
+    padding: $spacing-xl;
+  }
 
   .welcome-card {
     background: white;
@@ -160,10 +177,12 @@
       }
 
       .children-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
+        @include grid-auto-fill(280px);
+        margin-top: $spacing-md;
+
+        @include respond-to(sm) {
+          @include grid-auto-fill(300px);
+        }
 
         .child-card {
           background: #fff;
@@ -281,17 +300,15 @@
         margin-top: 1rem;
 
         .assignment-card {
-          background: #fff;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 1.5rem;
+          @include card-base;
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          transition: box-shadow 0.2s;
+          flex-direction: column;
+          gap: $spacing-md;
 
-          &:hover {
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          @include respond-to(md) {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
           }
 
           .assignment-info {

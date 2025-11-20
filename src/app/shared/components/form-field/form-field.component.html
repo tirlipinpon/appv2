@@ -1,0 +1,46 @@
+<div class="form-field" [class.field-invalid]="isInvalid" [class.field-disabled]="disabled">
+  @if (label) {
+    <label [for]="label" class="field-label">
+      {{ label }}
+      @if (required) {
+        <span class="required-indicator" aria-label="Champ requis">*</span>
+      }
+    </label>
+  }
+  
+  <div class="field-input-wrapper">
+    <input
+      [id]="label"
+      [type]="type"
+      [placeholder]="placeholder"
+      [value]="value"
+      [disabled]="disabled"
+      [required]="required"
+      (input)="onInput($event)"
+      (blur)="onBlur()"
+      class="field-input"
+      [class.input-invalid]="isInvalid"
+      [attr.aria-invalid]="isInvalid"
+      [attr.aria-describedby]="showError ? label + '-error' : (hint ? label + '-hint' : null)"
+      [attr.aria-required]="required">
+    
+    @if (isInvalid && !showError) {
+      <span class="field-icon field-icon-error" aria-hidden="true">✗</span>
+    }
+    @if (!isInvalid && value && !disabled) {
+      <span class="field-icon field-icon-success" aria-hidden="true">✓</span>
+    }
+  </div>
+  
+  @if (showError) {
+    <span [id]="label + '-error'" class="field-error" role="alert">
+      {{ errorMessage }}
+    </span>
+  }
+  
+  @if (hint && !showError) {
+    <span [id]="label + '-hint'" class="field-hint">
+      {{ hint }}
+    </span>
+  }
+</div>

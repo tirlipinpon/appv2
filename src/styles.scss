@@ -1,8 +1,45 @@
 /* You can add global styles to this file, and also import other style files */
+// Design system imports
+@use './styles/variables' as *;
+@use './styles/mixins' as *;
+@use './styles/animations' as *;
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
-/* Styles pour les snackbars d'erreur */
+/* Styles globaux de base */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: $font-family-primary;
+  font-size: $font-size-base;
+  line-height: $line-height-normal;
+  color: $color-text-primary;
+  background-color: $color-bg-secondary;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Styles pour les liens
+a {
+  color: $color-primary;
+  text-decoration: none;
+  transition: color $transition-base;
+  
+  &:hover {
+    color: $color-primary-dark;
+    text-decoration: underline;
+  }
+}
+
+// Styles pour les snackbars d'erreur
 ::ng-deep .error-snackbar-panel {
-  background-color: #f44336 !important;
+  background-color: $color-danger !important;
   color: white !important;
 }

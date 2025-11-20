@@ -1,0 +1,101 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+@use '../../../../styles/animations' as *;
+
+.toast-container {
+  position: fixed;
+  top: calc($header-height + $spacing-md);
+  right: $spacing-md;
+  z-index: $z-index-toast;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  max-width: 400px;
+  width: 100%;
+
+  @include respond-to(sm) {
+    max-width: 450px;
+  }
+}
+
+.toast {
+  @include card-base;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  animation: slideInFromRight 0.3s ease;
+  min-width: 300px;
+  box-shadow: $shadow-lg;
+
+  &.toast-success {
+    background-color: $color-success-lighter;
+    border-left: 4px solid $color-success;
+    color: $color-success-dark;
+  }
+
+  &.toast-error {
+    background-color: $color-danger-lighter;
+    border-left: 4px solid $color-danger;
+    color: $color-danger-dark;
+  }
+
+  &.toast-warning {
+    background-color: $color-warning-lighter;
+    border-left: 4px solid $color-warning;
+    color: $color-warning-dark;
+  }
+
+  &.toast-info {
+    background-color: $color-info-lighter;
+    border-left: 4px solid $color-info;
+    color: $color-info-dark;
+  }
+}
+
+.toast-content {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-sm;
+  flex: 1;
+}
+
+.toast-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  margin: 0;
+  font-size: $font-size-sm;
+  line-height: $line-height-normal;
+  flex: 1;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity $transition-base;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+    border-radius: $border-radius-sm;
+  }
+}

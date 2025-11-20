@@ -35,7 +35,7 @@ export class Application {
   loadSchoolYears(schoolId: string): void {
     this.assignmentStore.loadSchoolYears(schoolId);
   }
-  createSchoolYear(schoolYearData: any): void {
+  createSchoolYear(schoolYearData: { school_id: string; label: string; order_index?: number | null; is_active?: boolean }): void {
     this.assignmentStore.createSchoolYear(schoolYearData);
   }
   loadSubjects(): void {

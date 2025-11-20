@@ -25,7 +25,7 @@ export class ChildFormService {
     });
   }
 
-  populateForm(form: FormGroup, child: Child, isCopyMode: boolean = false): void {
+  populateForm(form: FormGroup, child: Child, isCopyMode = false): void {
     form.patchValue({
       firstname: isCopyMode ? '' : (child.firstname || ''),
       lastname: child.lastname || '',

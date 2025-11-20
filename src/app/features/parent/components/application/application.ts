@@ -20,7 +20,7 @@ export class Application {
   /**
    * Met à jour le profil parent
    */
-  updateParentProfile(updates: Partial<{ fullname: string | null; phone: string | null; address: string | null; city: string | null; country: string | null; preferences: Record<string, any>; avatar_url: string | null }>): void {
+  updateParentProfile(updates: Partial<{ fullname: string | null; phone: string | null; address: string | null; city: string | null; country: string | null; preferences: Record<string, unknown>; avatar_url: string | null }>): void {
     this.store.updateParentProfile(updates as Partial<Parent>);
   }
 

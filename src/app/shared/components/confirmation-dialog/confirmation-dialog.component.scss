@@ -1,0 +1,1075 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+@use '../../../../styles/animations' as *;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.dialog-backdrop {
+
+
+
+
+
+
+
+  position: fixed;
+
+
+
+
+
+
+
+  top: 0;
+
+
+
+
+
+
+
+  left: 0;
+
+
+
+
+
+
+
+  right: 0;
+
+
+
+
+
+
+
+  bottom: 0;
+
+
+
+
+
+
+
+  background-color: rgba(0, 0, 0, 0.5);
+
+
+
+
+
+
+
+  display: flex;
+
+
+
+
+
+
+
+  align-items: center;
+
+
+
+
+
+
+
+  justify-content: center;
+
+
+
+
+
+
+
+  z-index: $z-index-modal;
+
+
+
+
+
+
+
+  animation: fadeIn 0.2s ease;
+
+
+
+
+
+
+
+  padding: $spacing-md;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.dialog-container {
+
+
+
+
+
+
+
+  background: $color-bg-primary;
+
+
+
+
+
+
+
+  border-radius: $border-radius-md;
+
+
+
+
+
+
+
+  box-shadow: $shadow-xl;
+
+
+
+
+
+
+
+  max-width: 500px;
+
+
+
+
+
+
+
+  width: 100%;
+
+
+
+
+
+
+
+  max-height: 90vh;
+
+
+
+
+
+
+
+  overflow: auto;
+
+
+
+
+
+
+
+  animation: scaleIn 0.2s ease;
+
+
+
+
+
+
+
+  display: flex;
+
+
+
+
+
+
+
+  flex-direction: column;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.dialog-header {
+
+
+
+
+
+
+
+  display: flex;
+
+
+
+
+
+
+
+  align-items: center;
+
+
+
+
+
+
+
+  justify-content: space-between;
+
+
+
+
+
+
+
+  padding: $spacing-lg;
+
+
+
+
+
+
+
+  border-bottom: $border-width-thin solid $color-border-light;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  .dialog-title {
+
+
+
+
+
+
+
+    margin: 0;
+
+
+
+
+
+
+
+    font-size: $font-size-xl;
+
+
+
+
+
+
+
+    font-weight: $font-weight-semibold;
+
+
+
+
+
+
+
+    color: $color-text-primary;
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  .dialog-close {
+
+
+
+
+
+
+
+    background: none;
+
+
+
+
+
+
+
+    border: none;
+
+
+
+
+
+
+
+    font-size: 1.5rem;
+
+
+
+
+
+
+
+    line-height: 1;
+
+
+
+
+
+
+
+    cursor: pointer;
+
+
+
+
+
+
+
+    color: $color-text-secondary;
+
+
+
+
+
+
+
+    padding: 0;
+
+
+
+
+
+
+
+    width: 32px;
+
+
+
+
+
+
+
+    height: 32px;
+
+
+
+
+
+
+
+    display: flex;
+
+
+
+
+
+
+
+    align-items: center;
+
+
+
+
+
+
+
+    justify-content: center;
+
+
+
+
+
+
+
+    border-radius: $border-radius-sm;
+
+
+
+
+
+
+
+    transition: all $transition-base;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    &:hover {
+
+
+
+
+
+
+
+      background-color: $color-gray-100;
+
+
+
+
+
+
+
+      color: $color-text-primary;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    &:focus-visible {
+
+
+
+
+
+
+
+      @include focus-ring;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.dialog-body {
+
+
+
+
+
+
+
+  padding: $spacing-lg;
+
+
+
+
+
+
+
+  flex: 1;
+
+
+
+
+
+
+
+  overflow-y: auto;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  .dialog-message {
+
+
+
+
+
+
+
+    margin: 0;
+
+
+
+
+
+
+
+    color: $color-text-primary;
+
+
+
+
+
+
+
+    line-height: $line-height-normal;
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.dialog-footer {
+
+
+
+
+
+
+
+  display: flex;
+
+
+
+
+
+
+
+  gap: $spacing-md;
+
+
+
+
+
+
+
+  justify-content: flex-end;
+
+
+
+
+
+
+
+  padding: $spacing-lg;
+
+
+
+
+
+
+
+  border-top: $border-width-thin solid $color-border-light;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  .btn {
+
+
+
+
+
+
+
+    @include button-base;
+
+
+
+
+
+
+
+    padding: $spacing-sm $spacing-lg;
+
+
+
+
+
+
+
+    min-width: 100px;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    &.btn-cancel {
+
+
+
+
+
+
+
+      background-color: $color-gray-200;
+
+
+
+
+
+
+
+      color: $color-text-primary;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      &:hover:not(:disabled) {
+
+
+
+
+
+
+
+        background-color: $color-gray-300;
+
+
+
+
+
+
+
+      }
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    &.btn-confirm {
+
+
+
+
+
+
+
+      &.btn-danger {
+
+
+
+
+
+
+
+        background-color: $color-danger;
+
+
+
+
+
+
+
+        color: $color-white;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        &:hover:not(:disabled) {
+
+
+
+
+
+
+
+          background-color: $color-danger-dark;
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      &.btn-warning {
+
+
+
+
+
+
+
+        background-color: $color-warning;
+
+
+
+
+
+
+
+        color: $color-text-primary;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        &:hover:not(:disabled) {
+
+
+
+
+
+
+
+          background-color: $color-warning-dark;
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      &.btn-info {
+
+
+
+
+
+
+
+        background-color: $color-info;
+
+
+
+
+
+
+
+        color: $color-white;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        &:hover:not(:disabled) {
+
+
+
+
+
+
+
+          background-color: $color-info-dark;
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+      }
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+

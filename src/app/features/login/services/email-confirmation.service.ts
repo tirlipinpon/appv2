@@ -45,7 +45,7 @@ export class EmailConfirmationService {
     }
   }
 
-  async confirmWithTokenHash(tokenHash: string, type: string = 'email'): Promise<ConfirmationResult> {
+  async confirmWithTokenHash(tokenHash: string): Promise<ConfirmationResult> {
     try {
       // verifyOtp avec token_hash n'accepte que 'email' comme type
       const { data, error } = await this.supabaseService.client.auth.verifyOtp({

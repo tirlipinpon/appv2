@@ -40,7 +40,7 @@ export class ChildSubjectsComponent implements OnInit {
   private loadUnofficialSubjectsTimeout: ReturnType<typeof setTimeout> | null = null;
   
   private readonly loadUnofficialSubjectsEffect = effect(() => {
-    const available = this.availableSubjects();
+    this.availableSubjects();
     const enrollments = this.enrollments();
     const child = this.child();
     

@@ -1,0 +1,110 @@
+<header class="app-header" role="banner">
+  <div class="header-container">
+    <div class="header-brand">
+      <a routerLink="/dashboard" class="brand-link" aria-label="Retour au tableau de bord">
+        <h1 class="brand-title">📚 App Éducative</h1>
+      </a>
+    </div>
+
+    <nav class="header-nav" [class.menu-open]="isMenuOpen()" role="navigation" aria-label="Navigation principale">
+      <button 
+        class="menu-toggle" 
+        (click)="toggleMenu()"
+        [attr.aria-expanded]="isMenuOpen()"
+        aria-label="Ouvrir le menu"
+        aria-controls="main-menu">
+        <span class="hamburger-icon"></span>
+      </button>
+
+      <ul class="nav-list" id="main-menu" [class.menu-open]="isMenuOpen()">
+        @if (isAuthenticated()) {
+          <li class="nav-item">
+            <a 
+              routerLink="/dashboard" 
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{exact: false}"
+              class="nav-link"
+              (click)="closeMenu()">
+              🏠 Tableau de bord
+            </a>
+          </li>
+
+          @if (activeRole() === 'parent') {
+            <li class="nav-item">
+              <a 
+                routerLink="/parent-profile" 
+                routerLinkActive="active"
+                class="nav-link"
+                (click)="closeMenu()">
+                👤 Mon profil parent
+              </a>
+            </li>
+            <li class="nav-item">
+              <a 
+                routerLink="/child-profile" 
+                routerLinkActive="active"
+                class="nav-link"
+                (click)="closeMenu()">
+                ➕ Ajouter un enfant
+              </a>
+            </li>
+          }
+
+          @if (activeRole() === 'prof') {
+            <li class="nav-item">
+              <a 
+                routerLink="/teacher-profile" 
+                routerLinkActive="active"
+                class="nav-link"
+                (click)="closeMenu()">
+                👨‍🏫 Mon profil professeur
+              </a>
+            </li>
+            <li class="nav-item">
+              <a 
+                routerLink="/teacher-assignments" 
+                routerLinkActive="active"
+                class="nav-link"
+                (click)="closeMenu()">
+                📚 Mes affectations
+              </a>
+            </li>
+          }
+
+          @if (hasMultipleRoles()) {
+            <li class="nav-item">
+              <a 
+                routerLink="/select-role" 
+                routerLinkActive="active"
+                class="nav-link"
+                (click)="closeMenu()">
+                🔄 Changer de rôle
+              </a>
+            </li>
+          }
+        }
+      </ul>
+    </nav>
+
+    <div class="header-actions">
+      @if (isAuthenticated()) {
+        <div class="user-info">
+          <span class="user-name" aria-label="Utilisateur connecté">{{ displayName() }}</span>
+          @if (activeRole()) {
+            <span class="user-role" [attr.aria-label]="'Rôle actif: ' + activeRole()">
+              {{ activeRole() }}
+            </span>
+          }
+        </div>
+        <button 
+          class="btn-logout" 
+          (click)="logout()"
+          aria-label="Se déconnecter">
+          Déconnexion
+        </button>
+      } @else {
+        <a routerLink="/login" class="btn-login">Connexion</a>
+      }
+    </div>
+  </div>
+</header>
