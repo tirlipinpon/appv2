@@ -95,9 +95,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  async logout() {
-    await this.authService.signOut();
-  }
 
   trackByChildId(index: number, child: Child): string {
     return child.id;

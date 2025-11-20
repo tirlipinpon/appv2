@@ -1,13 +1,4 @@
 <div class="dashboard-container">
-  <header class="dashboard-header">
-    <h1>Tableau de bord</h1>
-    <div class="user-info">
-      <span *ngIf="profile">Bienvenue, {{ profile.display_name || profile.id }}</span>
-      <span *ngIf="activeRole" class="active-role">Rôle actif: {{ activeRole }}</span>
-      <button (click)="logout()" class="logout-btn">Déconnexion</button>
-    </div>
-  </header>
-
   <main class="dashboard-content">
     <div class="welcome-card">
       <h2>Bienvenue sur votre tableau de bord</h2>
