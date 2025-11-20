@@ -27,6 +27,7 @@ export class ChildComponent implements OnInit, OnDestroy {
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
   private readonly injector = inject(Injector);
   readonly store = inject(ChildStore);
+  
 
   // Signals pour contrôler l'affichage
   readonly showForm = signal(true);
@@ -62,10 +63,13 @@ export class ChildComponent implements OnInit, OnDestroy {
     effect(() => {
       const child = this.selectedChild();
       const isLoading = this.isLoading();
+      const isCreating = this.isCreating();
+      const isCopyMode = this.sourceChildId() !== null && this.currentChildId() === null;
       
       // Ne remplir le formulaire que si on n'est pas en train de charger
       // et que le formulaire existe
-      if (child && this.childForm && !isLoading) {
+      // Permettre le remplissage en mode édition OU en mode copie
+      if (child && this.childForm && !isLoading && (!isCreating || isCopyMode)) {
         this.populateForm(child);
       }
     });
@@ -113,6 +117,10 @@ export class ChildComponent implements OnInit, OnDestroy {
         this.showForm.set(true);
         this.showCopySelection.set(false);
       } else {
+        this.store.setSelectedChild(null);
+        this.sourceChildId.set(null);
+        this.showForm.set(false);
+        this.showCopySelection.set(false);
         // Réagir de façon réactive au chargement des enfants
         // Utiliser runInInjectionContext pour créer l'effect dans un contexte d'injection
         this.childListEffect = runInInjectionContext(this.injector, () => {
