@@ -8,6 +8,7 @@ import { TeacherService } from '../../services/teacher/teacher.service';
 import { ErrorSnackbarService } from '../../../../services/snackbar/error-snackbar.service';
 import { SchoolLevelSelectComponent } from '../../../../shared/components/school-level-select/school-level-select.component';
 import { Infrastructure } from '../infrastructure/infrastructure';
+import type { TeacherAssignment } from '../../types/teacher-assignment';
 
 @Component({
   selector: 'app-assignments',
@@ -278,9 +279,9 @@ export class AssignmentsComponent implements OnInit {
     this.application.deleteAssignment(assignmentId);
   }
 
-  getSchoolName(schoolId: string, assignment?: { school?: { name?: string } }): string {
+  getSchoolName(schoolId: string, assignment?: TeacherAssignment | { school?: { name?: string } }): string {
     // Utiliser la jointure si présente dans l'assignment
-    if (assignment && assignment.school && assignment.school.name) {
+    if (assignment && 'school' in assignment && assignment.school && assignment.school.name) {
       return assignment.school.name;
     }
     // Sinon, chercher dans le store
