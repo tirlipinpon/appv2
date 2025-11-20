@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { Observable, from, BehaviorSubject, shareReplay } from 'rxjs';
+import { map, catchError, switchMap, tap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { SupabaseService } from '../../../../services/supabase/supabase.service';
 import { AuthService } from '../../../../services/auth/auth.service';
@@ -14,9 +14,27 @@ import type { PostgrestError } from '@supabase/supabase-js';
 export class ParentService {
   private readonly supabaseService = inject(SupabaseService);
   private readonly authService = inject(AuthService);
+  
+  // Cache pour éviter les appels multiples
+  private currentParentSubject = new BehaviorSubject<Parent | null | undefined>(undefined);
+  private parentLoadingObservable: Observable<Parent | null> | null = null;
+  private cachedUserId: string | null = null; // Pour vérifier si le cache est toujours valide
+
+  /**
+   * Retourne le parent actuel sans faire d'appel API
+   */
+  getCurrentParent(): Parent | null | undefined {
+    const user = this.authService.getCurrentUser();
+    // Si l'utilisateur a changé, le cache n'est plus valide
+    if (!user || this.cachedUserId !== user.id) {
+      return undefined;
+    }
+    return this.currentParentSubject.value;
+  }
 
   /**
    * Récupère le profil parent de l'utilisateur connecté
+   * Utilise un cache pour éviter les appels multiples simultanés
    */
   getParentProfile(): Observable<Parent | null> {
     const user = this.authService.getCurrentUser();
@@ -24,7 +42,26 @@ export class ParentService {
       return from(Promise.resolve(null));
     }
 
-    return from(
+    // Si l'utilisateur a changé, réinitialiser le cache
+    if (this.cachedUserId !== user.id) {
+      this.currentParentSubject.next(undefined);
+      this.parentLoadingObservable = null;
+      this.cachedUserId = user.id;
+    }
+
+    // Si le parent est déjà chargé pour cet utilisateur, retourner immédiatement
+    const currentParent = this.currentParentSubject.value;
+    if (currentParent !== undefined) {
+      return of(currentParent);
+    }
+
+    // Si un chargement est déjà en cours, partager le même Observable
+    if (this.parentLoadingObservable) {
+      return this.parentLoadingObservable;
+    }
+
+    // Créer un nouvel Observable avec cache et partage
+    this.parentLoadingObservable = from(
       this.supabaseService.client
         .from('parents')
         .select('*')
@@ -37,8 +74,27 @@ export class ParentService {
           return null;
         }
         return data;
-      })
+      }),
+      tap((parent) => {
+        // Mettre à jour le cache
+        this.currentParentSubject.next(parent);
+        this.cachedUserId = user.id;
+        // Réinitialiser l'Observable de chargement
+        this.parentLoadingObservable = null;
+      }),
+      shareReplay(1) // Partager le résultat avec tous les abonnés
     );
+
+    return this.parentLoadingObservable;
+  }
+  
+  /**
+   * Réinitialise le cache du parent (utile après mise à jour ou déconnexion)
+   */
+  clearParentCache(): void {
+    this.currentParentSubject.next(undefined);
+    this.parentLoadingObservable = null;
+    this.cachedUserId = null;
   }
 
   /**
@@ -66,7 +122,15 @@ export class ParentService {
       map(({ data, error }) => ({
         parent: data,
         error: error || null,
-      }))
+      })),
+      tap(({ parent }) => {
+        // Mettre à jour le cache après la mise à jour
+        if (parent) {
+          this.currentParentSubject.next(parent);
+        } else {
+          this.clearParentCache();
+        }
+      })
     );
   }
 
@@ -97,7 +161,13 @@ export class ParentService {
       map(({ data, error }) => ({
         parent: data,
         error: error || null,
-      }))
+      })),
+      tap(({ parent }) => {
+        // Mettre à jour le cache après la création
+        if (parent) {
+          this.currentParentSubject.next(parent);
+        }
+      })
     );
   }
 

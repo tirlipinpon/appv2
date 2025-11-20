@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService, Profile } from '../../../../services/auth/auth.service';
@@ -11,7 +11,7 @@ import { ParentStore } from '../../../parent/store/index';
   templateUrl: './role-selector.component.html',
   styleUrl: './role-selector.component.scss'
 })
-export class RoleSelectorComponent implements OnInit {
+export class RoleSelectorComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly parentStore = inject(ParentStore);
@@ -34,13 +34,32 @@ export class RoleSelectorComponent implements OnInit {
   };
 
   async ngOnInit() {
-    this.profile = await this.authService.getProfile();
-    if (this.profile) {
-      this.availableRoles = this.profile.roles;
-    } else {
-      // Si pas de profil, rediriger vers login
+    // Utiliser getCurrentProfile() d'abord pour éviter les appels API inutiles
+    // Si le profil n'est pas encore chargé, utiliser getProfile() qui a un cache
+    try {
+      // Vérifier d'abord si le profil est déjà chargé
+      this.profile = this.authService.getCurrentProfile();
+      
+      if (!this.profile) {
+        // Si le profil n'est pas chargé, utiliser getProfile() qui a un cache
+        // pour éviter les appels multiples simultanés
+        this.profile = await this.authService.getProfile();
+      }
+      
+      if (this.profile) {
+        this.availableRoles = this.profile.roles;
+      } else {
+        // Si pas de profil, rediriger vers login
+        this.router.navigate(['/login']);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
       this.router.navigate(['/login']);
     }
+  }
+
+  ngOnDestroy(): void {
+    // Cleanup si nécessaire
   }
 
   selectRole(role: string) {

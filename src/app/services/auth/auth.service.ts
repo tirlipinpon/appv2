@@ -50,6 +50,13 @@ export class AuthService {
   public currentProfile$ = this.currentProfileSubject.asObservable();
   public activeRole$ = computed(() => this.activeRoleSignal());
 
+  /**
+   * Retourne le profil actuel sans faire d'appel API
+   */
+  getCurrentProfile(): Profile | null {
+    return this.currentProfileSubject.value;
+  }
+
   constructor() {
     this.initializeAuth();
   }
@@ -422,25 +429,48 @@ export class AuthService {
     return data.session;
   }
 
+  private profileLoadingPromise: Promise<Profile | null> | null = null;
+
   async getProfile(): Promise<Profile | null> {
+    // Si un chargement est déjà en cours, retourner la même promesse
+    if (this.profileLoadingPromise) {
+      return this.profileLoadingPromise;
+    }
+
+    // Si le profil est déjà chargé, le retourner immédiatement
+    const currentProfile = this.currentProfileSubject.value;
+    if (currentProfile) {
+      return currentProfile;
+    }
+
     const user = this.getCurrentUser();
     if (!user) {
       return null;
     }
 
-    const { data, error } = await this.supabaseService.client
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    // Créer une promesse de chargement
+    this.profileLoadingPromise = (async () => {
+      try {
+        const { data, error } = await this.supabaseService.client
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
-      return null;
-    }
+        if (error) {
+          console.error('Error fetching profile:', error);
+          return null;
+        }
 
-    this.currentProfileSubject.next(data);
-    return data;
+        this.currentProfileSubject.next(data);
+        return data;
+      } finally {
+        // Réinitialiser la promesse après le chargement
+        this.profileLoadingPromise = null;
+      }
+    })();
+
+    return this.profileLoadingPromise;
   }
 
   private async loadProfile() {
