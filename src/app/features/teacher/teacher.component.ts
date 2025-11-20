@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, effect } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
@@ -14,6 +14,7 @@ import type { Teacher } from './types/teacher';
   imports: [CommonModule, ReactiveFormsModule, RouterModule, AssignmentsComponent],
   templateUrl: './teacher.component.html',
   styleUrl: './teacher.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TeacherComponent implements OnInit {
   private readonly application = inject(Application);
