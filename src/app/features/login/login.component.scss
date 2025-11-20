@@ -1,111 +1,78 @@
+@use '../../../styles/variables' as *;
+@use '../../../styles/mixins' as *;
+
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: $spacing-lg;
+  background: $color-primary;
 }
 
 .login-card {
-  background: white;
-  border-radius: 8px;
-  padding: 40px;
+  @include card-base;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: $shadow-xl;
 
   h1 {
-    margin: 0 0 30px 0;
+    margin: 0 0 $spacing-xl 0;
     text-align: center;
-    color: #333;
+    color: $color-text-primary;
+    font-size: $font-size-2xl;
   }
 
   .form-group {
-    margin-bottom: 20px;
+    @include input-group;
+    margin-bottom: $spacing-lg;
 
     label {
-      display: block;
-      margin-bottom: 8px;
-      color: #555;
-      font-weight: 500;
+      font-weight: $font-weight-medium;
+      color: $color-text-primary;
     }
 
     input {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 16px;
-      transition: border-color 0.3s;
-
-      &:focus {
-        outline: none;
-        border-color: #667eea;
-      }
+      @include form-control-base;
 
       &.error {
-        border-color: #e74c3c;
+        @include form-control-invalid;
       }
-    }
-
-    .error-message {
-      color: #e74c3c;
-      font-size: 14px;
-      margin-top: 5px;
     }
   }
 
   .error-message {
-    color: #e74c3c;
-    font-size: 14px;
-    margin-bottom: 15px;
-    padding: 10px;
-    background: #fee;
-    border-radius: 4px;
+    @include alert-base;
+    @include alert-variant($color-danger-lighter, $color-danger);
+    margin-bottom: $spacing-md;
   }
 
   .success-message {
-    color: #27ae60;
-    font-size: 14px;
-    margin-bottom: 15px;
-    padding: 10px;
-    background: #d4edda;
-    border-radius: 4px;
+    @include alert-base;
+    @include alert-variant($color-success-lighter, $color-success);
+    margin-bottom: $spacing-md;
   }
 
   .submit-button {
+    @include button-base;
+    @include button-variant($color-primary, $color-white, $color-primary-dark);
     width: 100%;
-    padding: 12px;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.3s;
-
-    &:hover:not(:disabled) {
-      background: #5568d3;
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+    padding: $spacing-md;
+    font-size: $font-size-base;
   }
 
   .links {
-    margin-top: 20px;
+    margin-top: $spacing-lg;
     text-align: center;
 
     a {
-      color: #667eea;
+      color: $color-primary;
       text-decoration: none;
-      font-size: 14px;
+      font-size: $font-size-sm;
+      transition: color $transition-base;
 
       &:hover {
+        color: $color-primary-dark;
         text-decoration: underline;
       }
     }
@@ -113,22 +80,23 @@
     .link-button {
       background: none;
       border: none;
-      color: #667eea;
-      font-size: 14px;
+      color: $color-primary;
+      font-size: $font-size-sm;
       cursor: pointer;
       padding: 0;
-      margin: 0 0 10px 0;
+      margin: 0 0 $spacing-md 0;
       display: inline-block;
+      transition: color $transition-base;
 
       &:hover {
+        color: $color-primary-dark;
         text-decoration: underline;
       }
     }
 
     a + .link-button,
     .link-button + a {
-      margin-left: 16px;
+      margin-left: $spacing-md;
     }
   }
 }
-

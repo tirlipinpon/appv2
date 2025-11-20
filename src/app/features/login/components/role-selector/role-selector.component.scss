@@ -1,70 +1,70 @@
+@use '../../../../../styles/variables' as *;
+@use '../../../../../styles/mixins' as *;
+
 .role-selector-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: $spacing-lg;
+  background: $color-primary;
 }
 
 .role-selector-card {
-  background: white;
-  border-radius: 8px;
-  padding: 40px;
+  @include card-base;
   width: 100%;
   max-width: 700px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: $shadow-xl;
 
   h1 {
-    margin: 0 0 10px 0;
+    margin: 0 0 $spacing-md 0;
     text-align: center;
-    color: #333;
+    color: $color-text-primary;
+    font-size: $font-size-2xl;
   }
 
   .subtitle {
     text-align: center;
-    color: #666;
-    margin-bottom: 30px;
+    color: $color-text-secondary;
+    margin-bottom: $spacing-xl;
+    font-size: $font-size-base;
   }
 
   .roles-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
+    @include grid-auto-fill(200px);
   }
 
   .role-card {
-    background: #f8f9fa;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 30px 20px;
+    @include card-variant($color-gray-50, $color-gray-300);
+    border-width: $border-width-medium;
+    padding: $spacing-xl $spacing-lg;
     cursor: pointer;
-    transition: all 0.3s;
     text-align: center;
+    transition: all $transition-base;
 
     &:hover {
-      border-color: #667eea;
-      background: #f0f4ff;
+      border-color: $color-primary;
+      background: $color-primary-lighter;
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+      box-shadow: $shadow-md;
     }
 
     .role-icon {
-      font-size: 48px;
-      margin-bottom: 15px;
+      font-size: $font-size-4xl;
+      margin-bottom: $spacing-md;
     }
 
     h2 {
-      margin: 0 0 10px 0;
-      color: #333;
-      font-size: 20px;
+      margin: 0 0 $spacing-md 0;
+      color: $color-text-primary;
+      font-size: $font-size-xl;
+      font-weight: $font-weight-semibold;
     }
 
     p {
       margin: 0;
-      color: #666;
-      font-size: 14px;
+      color: $color-text-secondary;
+      font-size: $font-size-sm;
     }
   }
 }
-

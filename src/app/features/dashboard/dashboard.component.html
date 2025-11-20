@@ -5,10 +5,6 @@
       <p *ngIf="activeRole === 'parent'">Vous êtes connecté en tant que parent.</p>
       <p *ngIf="activeRole === 'prof'">Vous êtes connecté en tant que professeur.</p>
       <p *ngIf="activeRole === 'admin'">Vous êtes connecté en tant qu'administrateur.</p>
-      
-      <div *ngIf="profile && profile.roles.length > 1" class="role-switcher">
-        <p>Vous avez plusieurs rôles. <a routerLink="/select-role">Changer de rôle</a></p>
-      </div>
 
       <!-- Liens vers l'édition/création pour les parents -->
       <div *ngIf="activeRole === 'parent'" class="action-links">
@@ -70,7 +66,7 @@
           <p>Vous n'avez pas encore d'affectation.</p>
           <a 
             routerLink="/teacher-assignments" 
-            class="btn btn-primary">
+            class="btn btn-primary btn-add">
             ➕ Ajouter une affectation
           </a>
         </div>

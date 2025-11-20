@@ -13,3 +13,15 @@
 .assignment-card .assignment-info p{margin:.25rem 0;color:#666;font-size:.9rem}
 .assignment-card .assignment-actions{display:flex;gap:.5rem}
 
+.btn.btn-add {
+  background-color: #28a745;
+  color: white;
+  font-weight: 600;
+  border-color: #28a745;
+}
+
+.btn.btn-add:hover {
+  background-color: #218838;
+  border-color: #218838;
+}
+

@@ -1,195 +1,103 @@
+@use '../../../styles/variables' as *;
+@use '../../../styles/mixins' as *;
+@use 'sass:color';
+
 .parent-container {
   max-width: 800px;
-  margin: 2rem auto;
-  padding: 2rem;
+  margin: $spacing-2xl auto;
+  padding: $spacing-2xl;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: $spacing-md;
+  margin-bottom: $spacing-2xl;
 
   .btn-back {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    background-color: #6c757d;
-    color: white;
+    @include button-base;
+    @include button-variant($color-secondary, $color-white, $color-secondary-dark);
     text-decoration: none;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    transition: background-color 0.2s;
-
-    &:hover {
-      background-color: #545b62;
-    }
+    font-size: $font-size-sm;
   }
 
   h1 {
     margin: 0;
     flex: 1;
-    color: #333;
+    color: $color-text-primary;
+    font-size: $font-size-2xl;
   }
 }
 
 .loading {
   text-align: center;
-  padding: 2rem;
-  color: #666;
+  padding: $spacing-2xl;
+  color: $color-text-secondary;
 }
 
 .error-message {
-  background-color: #fee;
-  border: 1px solid #fcc;
-  border-radius: 4px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  @include alert-base;
+  @include alert-variant($color-danger-lighter, $color-danger);
+  margin-bottom: $spacing-md;
 
   h3 {
-    color: #c33;
+    color: color.adjust($color-danger, $lightness: -10%);
     margin-top: 0;
   }
 
   ul {
-    margin: 0.5rem 0 0 0;
-    padding-left: 1.5rem;
+    margin: $spacing-sm 0 0 0;
+    padding-left: $spacing-xl;
   }
 
   li {
-    color: #c33;
+    color: color.adjust($color-danger, $lightness: -10%);
   }
 }
 
 .success-message {
-  background-color: #efe;
-  border: 1px solid #cfc;
-  border-radius: 4px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  color: #3c3;
+  @include alert-base;
+  @include alert-variant($color-success-lighter, $color-success);
+  margin-bottom: $spacing-md;
 }
 
 .parent-form {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 2rem;
+  @include card-base;
+  padding: $spacing-2xl;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
-
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #333;
-  }
-
-  .form-control {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
-
-    &:focus {
-      outline: none;
-      border-color: #007bff;
-      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-    }
-
-    &.invalid {
-      border-color: #dc3545;
-    }
-  }
-
-  .error-text {
-    display: block;
-    color: #dc3545;
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-  }
+  @include input-group;
+  margin-bottom: $spacing-xl;
 }
 
 .form-actions {
   display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #eee;
+  gap: $spacing-md;
+  margin-top: $spacing-2xl;
+  padding-top: $spacing-xl;
+  border-top: $border-width-thin solid $color-border-light;
 }
 
 .btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+  @include button-base;
+  padding: $spacing-md $spacing-xl;
 
   &.btn-primary {
-    background-color: #007bff;
-    color: white;
-
-    &:hover:not(:disabled) {
-      background-color: #0056b3;
-    }
+    @include button-variant($color-primary, $color-white, $color-primary-dark);
   }
 
   &.btn-secondary {
-    background-color: #6c757d;
-    color: white;
-
-    &:hover:not(:disabled) {
-      background-color: #545b62;
-    }
+    @include button-variant($color-secondary, $color-white, $color-secondary-dark);
   }
 
   &.btn-add {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    font-weight: 600;
-    position: relative;
-    overflow: hidden;
-    animation: pulse-glow 2s ease-in-out infinite;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-      animation: shimmer 2s infinite;
-    }
-
-    &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #218838 0%, #1ea080 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-    }
-
-    &:active:not(:disabled) {
-      transform: translateY(0);
-    }
+    @include button-variant($color-success, $color-white, $color-success-dark);
+    font-weight: $font-weight-semibold;
   }
 
   &.btn-edit {
-    background-color: #007bff;
-    color: white;
-
-    &:hover:not(:disabled) {
-      background-color: #0056b3;
-    }
+    @include button-variant($color-primary, $color-white, $color-primary-dark);
   }
 }
 
@@ -197,37 +105,9 @@
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
+  border: $border-width-medium solid rgba($color-white, 0.3);
+  border-top-color: $color-white;
+  border-radius: $border-radius-full;
   animation: spin 0.8s linear infinite;
-  margin-right: 8px;
+  margin-right: $spacing-sm;
 }
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-

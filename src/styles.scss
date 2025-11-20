@@ -3,6 +3,7 @@
 @use './styles/variables' as *;
 @use './styles/mixins' as *;
 @use './styles/animations' as *;
+@use './styles/utilities' as *;
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
 /* Styles globaux de base */

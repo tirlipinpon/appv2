@@ -1,68 +1,1928 @@
 @use './variables' as *;
 
+
+
+
+
+
+
+@use 'sass:color';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @mixin respond-to($breakpoint) {
+
+
+
+
+
+
+
   @if $breakpoint == sm {
+
+
+
+
+
+
+
     @media (min-width: $breakpoint-sm) { @content; }
+
+
+
+
+
+
+
   } @else if $breakpoint == md {
+
+
+
+
+
+
+
     @media (min-width: $breakpoint-md) { @content; }
+
+
+
+
+
+
+
   } @else if $breakpoint == lg {
+
+
+
+
+
+
+
     @media (min-width: $breakpoint-lg) { @content; }
+
+
+
+
+
+
+
   } @else if $breakpoint == xl {
+
+
+
+
+
+
+
     @media (min-width: $breakpoint-xl) { @content; }
+
+
+
+
+
+
+
   }
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @mixin focus-ring($color: $color-primary) {
+
+
+
+
+
+
+
   outline: none;
+
+
+
+
+
+
+
   box-shadow: 0 0 0 3px rgba($color, 0.25);
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @mixin button-base {
+
+
+
+
+
+
+
   display: inline-flex;
+
+
+
+
+
+
+
   align-items: center;
+
+
+
+
+
+
+
   justify-content: center;
+
+
+
+
+
+
+
   padding: $spacing-sm $spacing-md;
+
+
+
+
+
+
+
   border: none;
+
+
+
+
+
+
+
   border-radius: $border-radius-md;
+
+
+
+
+
+
+
   font-size: $font-size-base;
+
+
+
+
+
+
+
   font-weight: $font-weight-medium;
+
+
+
+
+
+
+
   cursor: pointer;
+
+
+
+
+
+
+
   transition: all $transition-base;
+
+
+
+
+
+
+
   &:disabled { opacity: $opacity-disabled; cursor: not-allowed; }
+
+
+
+
+
+
+
   &:focus-visible { @include focus-ring; }
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @mixin form-control-base {
+
+
+
+
+
+
+
   width: 100%;
+
+
+
+
+
+
+
   padding: $spacing-sm $spacing-md;
+
+
+
+
+
+
+
   border: $border-width-thin solid $color-border-medium;
+
+
+
+
+
+
+
   border-radius: $border-radius-sm;
+
+
+
+
+
+
+
   font-size: $font-size-base;
+
+
+
+
+
+
+
   transition: border-color $transition-base;
+
+
+
+
+
+
+
   &:focus { outline: none; border-color: $color-primary; @include focus-ring; }
+
+
+
+
+
+
+
   &:disabled { background-color: $color-gray-100; cursor: not-allowed; }
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @mixin form-control-invalid {
+
+
+
+
+
+
+
   border-color: $color-danger;
+
+
+
+
+
+
+
   &:focus {
+
+
+
+
+
+
+
     border-color: $color-danger;
+
+
+
+
+
+
+
     @include focus-ring($color-danger);
+
+
+
+
+
+
+
   }
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @mixin card-base {
+
+
+
+
+
+
+
   background: $color-bg-primary;
+
+
+
+
+
+
+
   border: $border-width-thin solid $color-border-light;
+
+
+
+
+
+
+
   border-radius: $border-radius-md;
+
+
+
+
+
+
+
   padding: $spacing-lg;
+
+
+
+
+
+
+
   box-shadow: $shadow-sm;
+
+
+
+
+
+
+
   transition: box-shadow $transition-base;
+
+
+
+
+
+
+
   &:hover { box-shadow: $shadow-md; }
+
+
+
+
+
+
+
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @mixin grid-auto-fill($min-width) {
+
+
+
+
+
+
+
   display: grid;
+
+
+
+
+
+
+
   grid-template-columns: repeat(auto-fill, minmax($min-width, 1fr));
+
+
+
+
+
+
+
   gap: $spacing-md;
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Mixins pour les variantes de boutons
+
+
+
+
+
+
+
+@mixin button-variant($bg-color, $text-color: $color-white, $hover-bg: null, $active-bg: null) {
+
+
+
+
+
+
+
+  background-color: $bg-color;
+
+
+
+
+
+
+
+  color: $text-color;
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:hover:not(:disabled) {
+
+
+
+
+
+
+
+    @if $hover-bg {
+
+
+
+
+
+
+
+      background-color: $hover-bg;
+
+
+
+
+
+
+
+    } @else {
+
+
+
+
+
+
+
+      background-color: color.adjust($bg-color, $lightness: -10%);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:active:not(:disabled) {
+
+
+
+
+
+
+
+    @if $active-bg {
+
+
+
+
+
+
+
+      background-color: $active-bg;
+
+
+
+
+
+
+
+    } @else {
+
+
+
+
+
+
+
+      background-color: color.adjust($bg-color, $lightness: -15%);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:focus-visible {
+
+
+
+
+
+
+
+    @include focus-ring($bg-color);
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@mixin button-outline-variant($color, $hover-bg: null) {
+
+
+
+
+
+
+
+  background-color: transparent;
+
+
+
+
+
+
+
+  border: $border-width-thin solid $color;
+
+
+
+
+
+
+
+  color: $color;
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:hover:not(:disabled) {
+
+
+
+
+
+
+
+    @if $hover-bg {
+
+
+
+
+
+
+
+      background-color: $hover-bg;
+
+
+
+
+
+
+
+    } @else {
+
+
+
+
+
+
+
+      background-color: rgba($color, 0.1);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    border-color: color.adjust($color, $lightness: -10%);
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:active:not(:disabled) {
+
+
+
+
+
+
+
+    background-color: rgba($color, 0.2);
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:focus-visible {
+
+
+
+
+
+
+
+    @include focus-ring($color);
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@mixin button-ghost-variant($color) {
+
+
+
+
+
+
+
+  background-color: transparent;
+
+
+
+
+
+
+
+  border: none;
+
+
+
+
+
+
+
+  color: $color;
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:hover:not(:disabled) {
+
+
+
+
+
+
+
+    background-color: rgba($color, 0.1);
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:active:not(:disabled) {
+
+
+
+
+
+
+
+    background-color: rgba($color, 0.2);
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:focus-visible {
+
+
+
+
+
+
+
+    @include focus-ring($color);
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Mixins pour les cartes
+
+
+
+
+
+
+
+@mixin card-variant($bg-color: $color-bg-primary, $border-color: $color-border-light) {
+
+
+
+
+
+
+
+  background: $bg-color;
+
+
+
+
+
+
+
+  border: $border-width-thin solid $border-color;
+
+
+
+
+
+
+
+  border-radius: $border-radius-md;
+
+
+
+
+
+
+
+  padding: $spacing-lg;
+
+
+
+
+
+
+
+  box-shadow: $shadow-sm;
+
+
+
+
+
+
+
+  transition: box-shadow $transition-base;
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &:hover {
+
+
+
+
+
+
+
+    box-shadow: $shadow-md;
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@mixin card-header($bg-color: $color-gray-50, $padding: $spacing-md) {
+
+
+
+
+
+
+
+  background-color: $bg-color;
+
+
+
+
+
+
+
+  padding: $padding;
+
+
+
+
+
+
+
+  border-bottom: $border-width-thin solid $color-border-light;
+
+
+
+
+
+
+
+  border-radius: $border-radius-md $border-radius-md 0 0;
+
+
+
+
+
+
+
+  font-weight: $font-weight-semibold;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@mixin card-body($padding: $spacing-lg) {
+
+
+
+
+
+
+
+  padding: $padding;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@mixin card-footer($bg-color: $color-gray-50, $padding: $spacing-md) {
+
+
+
+
+
+
+
+  background-color: $bg-color;
+
+
+
+
+
+
+
+  padding: $padding;
+
+
+
+
+
+
+
+  border-top: $border-width-thin solid $color-border-light;
+
+
+
+
+
+
+
+  border-radius: 0 0 $border-radius-md $border-radius-md;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Mixins pour les badges/tags
+
+
+
+
+
+
+
+@mixin badge-base {
+
+
+
+
+
+
+
+  display: inline-flex;
+
+
+
+
+
+
+
+  align-items: center;
+
+
+
+
+
+
+
+  padding: $spacing-xs $spacing-sm;
+
+
+
+
+
+
+
+  border-radius: $border-radius-full;
+
+
+
+
+
+
+
+  font-size: $font-size-xs;
+
+
+
+
+
+
+
+  font-weight: $font-weight-medium;
+
+
+
+
+
+
+
+  line-height: 1;
+
+
+
+
+
+
+
+  white-space: nowrap;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@mixin badge-variant($bg-color, $text-color: $color-white) {
+
+
+
+
+
+
+
+  background-color: $bg-color;
+
+
+
+
+
+
+
+  color: $text-color;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@mixin badge-outline-variant($color) {
+
+
+
+
+
+
+
+  background-color: transparent;
+
+
+
+
+
+
+
+  border: $border-width-thin solid $color;
+
+
+
+
+
+
+
+  color: $color;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Mixins pour les alertes/messages
+
+
+
+
+
+
+
+@mixin alert-base {
+
+
+
+
+
+
+
+  padding: $spacing-md;
+
+
+
+
+
+
+
+  border-radius: $border-radius-md;
+
+
+
+
+
+
+
+  border: $border-width-thin solid;
+
+
+
+
+
+
+
+  display: flex;
+
+
+
+
+
+
+
+  align-items: flex-start;
+
+
+
+
+
+
+
+  gap: $spacing-sm;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@mixin alert-variant($bg-color, $border-color, $text-color: null) {
+
+
+
+
+
+
+
+  background-color: $bg-color;
+
+
+
+
+
+
+
+  border-color: $border-color;
+
+
+
+
+
+
+
+  @if $text-color {
+
+
+
+
+
+
+
+    color: $text-color;
+
+
+
+
+
+
+
+  } @else {
+
+
+
+
+
+
+
+    color: color.adjust($border-color, $lightness: -30%);
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Mixins pour les inputs/selects améliorés
+
+
+
+
+
+
+
+@mixin input-group {
+
+
+
+
+
+
+
+  display: flex;
+
+
+
+
+
+
+
+  flex-direction: column;
+
+
+
+
+
+
+
+  gap: $spacing-xs;
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  label {
+
+
+
+
+
+
+
+    font-size: $font-size-sm;
+
+
+
+
+
+
+
+    font-weight: $font-weight-medium;
+
+
+
+
+
+
+
+    color: $color-text-primary;
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  .form-control {
+
+
+
+
+
+
+
+    @include form-control-base;
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  .form-error {
+
+
+
+
+
+
+
+    font-size: $font-size-xs;
+
+
+
+
+
+
+
+    color: $color-danger;
+
+
+
+
+
+
+
+    margin-top: $spacing-xs;
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  &.invalid {
+
+
+
+
+
+
+
+    .form-control {
+
+
+
+
+
+
+
+      @include form-control-invalid;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+

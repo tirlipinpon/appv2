@@ -1,66 +1,68 @@
+@use '../../../../../styles/variables' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'sass:color';
+
 .child-subjects-container {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: $color-bg-secondary;
 }
 
 .subjects-header {
-  background: white;
-  padding: 20px 40px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 30px;
+  background: $color-bg-primary;
+  padding: $spacing-lg $spacing-2xl;
+  box-shadow: $shadow-sm;
+  margin-bottom: $spacing-xl;
 
   .btn-back {
     display: inline-block;
-    margin-bottom: 15px;
-    color: #667eea;
+    margin-bottom: $spacing-md;
+    color: $color-primary;
     text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
+    font-weight: $font-weight-medium;
+    transition: color $transition-base;
 
     &:hover {
-      color: #5568d3;
+      color: $color-primary-dark;
       text-decoration: underline;
     }
   }
 
   h1 {
     margin: 0;
-    color: #333;
-    font-size: 28px;
-    font-weight: 600;
+    color: $color-text-primary;
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-semibold;
   }
 }
 
 .subjects-content {
-  max-width: 1200px;
+  max-width: $container-max-width;
   margin: 0 auto;
-  padding: 0 40px 40px;
+  padding: 0 $spacing-2xl $spacing-2xl;
 }
 
 .child-info-card {
-  background: white;
-  border-radius: 8px;
-  padding: 20px 30px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  @include card-base;
+  padding: $spacing-lg $spacing-xl;
+  margin-bottom: $spacing-xl;
   display: flex;
-  gap: 30px;
+  gap: $spacing-xl;
   flex-wrap: wrap;
 
   .info-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: $spacing-md;
 
     .info-label {
-      font-weight: 600;
-      color: #666;
-      font-size: 14px;
+      font-weight: $font-weight-semibold;
+      color: $color-text-secondary;
+      font-size: $font-size-sm;
     }
 
     .info-value {
-      color: #333;
-      font-size: 16px;
+      color: $color-text-primary;
+      font-size: $font-size-base;
     }
   }
 }
@@ -68,50 +70,45 @@
 .subjects-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  margin-bottom: 40px;
+  gap: $spacing-xl;
+  margin-bottom: $spacing-2xl;
 
-  @media (max-width: 768px) {
+  @include respond-to(md) {
     grid-template-columns: 1fr;
   }
 }
 
 .subjects-column {
-  background: white;
-  border-radius: 8px;
-  padding: 25px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  @include card-base;
+  padding: $spacing-lg;
 
   &.active-column {
-    border-top: 4px solid #28a745;
+    border-top: $border-width-medium solid $color-success;
   }
 
   &.available-column {
-    border-top: 4px solid #667eea;
+    border-top: $border-width-medium solid $color-primary;
   }
 
   .column-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: $spacing-lg;
+    padding-bottom: $spacing-md;
+    border-bottom: $border-width-medium solid $color-gray-200;
 
     h2 {
       margin: 0;
-      color: #333;
-      font-size: 20px;
-      font-weight: 600;
+      color: $color-text-primary;
+      font-size: $font-size-xl;
+      font-weight: $font-weight-semibold;
     }
 
     .count-badge {
-      background: #667eea;
-      color: white;
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 600;
+      @include badge-base;
+      @include badge-variant($color-primary);
+      padding: $spacing-xs $spacing-md;
       min-width: 30px;
       text-align: center;
     }
@@ -120,54 +117,54 @@
   .subjects-list {
     max-height: 500px;
     overflow-y: auto;
-    padding-right: 10px;
+    padding-right: $spacing-md;
 
     &::-webkit-scrollbar {
       width: 6px;
     }
 
     &::-webkit-scrollbar-track {
-      background: #f1f1f1;
+      background: $color-gray-200;
       border-radius: 10px;
     }
 
     &::-webkit-scrollbar-thumb {
-      background: #888;
+      background: $color-gray-500;
       border-radius: 10px;
 
       &:hover {
-        background: #555;
+        background: $color-gray-700;
       }
     }
   }
 }
 
 .subject-card {
-  padding: 15px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  border: 2px solid #e0e0e0;
-  transition: all 0.2s;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+  border-radius: $border-radius-sm;
+  border: $border-width-medium solid $color-border-light;
+  transition: all $transition-base;
 
   &:hover {
-    border-color: #667eea;
-    background: #f8f9ff;
+    border-color: $color-primary;
+    background: $color-primary-lighter;
     transform: translateX(5px);
   }
 
   &.active {
-    border-color: #28a745;
-    background: #f0f9f4;
+    border-color: $color-success;
+    background: $color-success-lighter;
 
     &:hover {
-      background: #e8f5ed;
+      background: color.adjust($color-success-lighter, $lightness: 2%);
     }
   }
 
   .subject-checkbox {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: $spacing-md;
     cursor: pointer;
     margin: 0;
 
@@ -175,7 +172,7 @@
       width: 20px;
       height: 20px;
       cursor: pointer;
-      accent-color: #667eea;
+      accent-color: $color-primary;
       flex-shrink: 0;
     }
 
@@ -185,75 +182,66 @@
 
     .subject-name {
       flex: 1;
-      font-size: 16px;
-      color: #333;
-      font-weight: 500;
+      font-size: $font-size-base;
+      color: $color-text-primary;
+      font-weight: $font-weight-medium;
     }
 
     .unofficial-badge {
-      font-size: 12px;
-      color: #ff9800;
-      font-weight: 600;
-      background: #fff3e0;
-      padding: 3px 8px;
-      border-radius: 4px;
+      @include badge-base;
+      @include badge-variant($color-warning-lighter, color.adjust($color-warning, $lightness: -20%));
+      font-size: $font-size-xs;
     }
   }
 }
 
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
-  color: #999;
+  padding: $spacing-2xl $spacing-lg;
+  color: $color-text-tertiary;
 
   .muted {
-    font-size: 14px;
+    font-size: $font-size-sm;
     font-style: italic;
   }
 }
 
 .search-block {
-  background: white;
-  border-radius: 8px;
-  padding: 30px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  @include card-base;
+  padding: $spacing-xl;
 
   .search-header {
-    margin-bottom: 20px;
+    margin-bottom: $spacing-lg;
 
     h3 {
-      margin: 0 0 8px 0;
-      color: #333;
-      font-size: 22px;
-      font-weight: 600;
+      margin: 0 0 $spacing-sm 0;
+      color: $color-text-primary;
+      font-size: $font-size-xl;
+      font-weight: $font-weight-semibold;
     }
 
     .search-hint {
       margin: 0;
-      color: #666;
-      font-size: 14px;
+      color: $color-text-secondary;
+      font-size: $font-size-sm;
     }
   }
 
   .search-input-wrapper {
-    margin-bottom: 20px;
+    margin-bottom: $spacing-lg;
 
     .search-input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 2px solid #e0e0e0;
-      border-radius: 6px;
-      font-size: 16px;
-      transition: border-color 0.2s;
+      @include form-control-base;
+      padding: $spacing-md;
+      border-width: $border-width-medium;
 
       &:focus {
-        outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        border-color: $color-primary;
+        @include focus-ring($color-primary);
       }
 
       &::placeholder {
-        color: #999;
+        color: $color-text-tertiary;
       }
     }
   }
@@ -261,71 +249,55 @@
   .search-results {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: $spacing-md;
 
     .search-result-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 15px 20px;
-      background: #f8f9fa;
-      border-radius: 6px;
-      border: 1px solid #e0e0e0;
-      transition: all 0.2s;
+      padding: $spacing-md $spacing-lg;
+      background: $color-gray-50;
+      border-radius: $border-radius-sm;
+      border: $border-width-thin solid $color-border-light;
+      transition: all $transition-base;
 
       &:hover {
-        background: #e9ecef;
-        border-color: #667eea;
+        background: $color-gray-100;
+        border-color: $color-primary;
       }
 
       .result-name {
-        font-size: 16px;
-        color: #333;
-        font-weight: 500;
+        font-size: $font-size-base;
+        color: $color-text-primary;
+        font-weight: $font-weight-medium;
       }
 
       .btn {
-        padding: 8px 16px;
-        font-size: 14px;
-        border-radius: 4px;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s;
+        @include button-base;
+        padding: $spacing-sm $spacing-md;
+        font-size: $font-size-sm;
 
         &.btn-primary {
-          background-color: #667eea;
-          color: white;
-
-          &:hover {
-            background-color: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-          }
-
-          &:active {
-            transform: translateY(0);
-          }
+          @include button-variant($color-primary, $color-white, $color-primary-dark);
         }
 
         &.btn-sm {
-          padding: 6px 12px;
-          font-size: 13px;
+          padding: $spacing-xs $spacing-sm;
+          font-size: $font-size-xs;
         }
       }
     }
 
     .no-results {
-      padding: 20px;
+      @include alert-base;
+      @include alert-variant($color-warning-lighter, $color-warning);
+      padding: $spacing-lg;
       text-align: center;
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      border-radius: 6px;
-      color: #856404;
     }
   }
 }
 
 .muted {
-  color: #999;
-  font-size: 14px;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
 }

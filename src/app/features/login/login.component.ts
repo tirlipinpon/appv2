@@ -19,7 +19,7 @@ export class LoginComponent implements OnInit {
   readonly isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
   loginForm: FormGroup = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
+    email: ['tony-ster@hotmail.com', [Validators.required, Validators.email]],
     password: ['tony-ster@hotmail.com', [Validators.required, Validators.minLength(6)]],
   });
   forgotPasswordForm: FormGroup = this.fb.group({
