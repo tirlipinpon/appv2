@@ -5,7 +5,7 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ChildStore } from './store/index';
 import { Application } from './components/application/application';
 import { SchoolService } from './services/school/school.service';
-import { ErrorSnackbarService } from '../../services/snackbar/error-snackbar.service';
+import { ErrorSnackbarService } from '../../shared/services/snackbar/error-snackbar.service';
 import type { Child } from './types/child';
 import type { School } from './types/school';
 import { Subscription } from 'rxjs';
@@ -84,6 +84,8 @@ export class ChildComponent implements OnInit, OnDestroy {
 
   // Effects pour gérer les réactions aux changements (créés conditionnellement dans ngOnInit)
   private childListEffect?: EffectRef;
+  private createChildEffect?: EffectRef;
+  private updateChildEffect?: EffectRef;
 
   async ngOnInit(): Promise<void> {
     this.initializeForm();
@@ -302,26 +304,56 @@ export class ChildComponent implements OnInit, OnDestroy {
     if (wasCreating) {
       // Créer le profil et réagir via un effet à l'ajout
       const initialCount = this.store.children().length;
+      
+      // Détruire l'effet précédent s'il existe
+      if (this.createChildEffect) {
+        this.createChildEffect.destroy();
+      }
+      
       this.application.createChildProfile(profileData);
-      effect(() => {
-        const loading = this.isLoading();
-        const current = this.store.children().length;
-        if (!loading && current > initialCount) {
-          this.showSuccess.set(true);
-          this.application.loadChildren();
-          this.router.navigate(['/dashboard']);
-        }
+      
+      // Créer l'effet dans un contexte d'injection
+      this.createChildEffect = runInInjectionContext(this.injector, () => {
+        return effect(() => {
+          const loading = this.isLoading();
+          const current = this.store.children().length;
+          if (!loading && current > initialCount) {
+            this.showSuccess.set(true);
+            this.application.loadChildren();
+            this.router.navigate(['/dashboard']);
+            // Détruire l'effet après navigation
+            if (this.createChildEffect) {
+              this.createChildEffect.destroy();
+              this.createChildEffect = undefined;
+            }
+          }
+        });
       });
-      } else if (childId) {
-        // Mettre à jour le profil et marquer le succès de façon réactive
-        this.application.updateChildProfile(childId, profileData);
-        effect(() => {
+    } else if (childId) {
+      // Mettre à jour le profil et marquer le succès de façon réactive
+      
+      // Détruire l'effet précédent s'il existe
+      if (this.updateChildEffect) {
+        this.updateChildEffect.destroy();
+      }
+      
+      this.application.updateChildProfile(childId, profileData);
+      
+      // Créer l'effet dans un contexte d'injection
+      this.updateChildEffect = runInInjectionContext(this.injector, () => {
+        return effect(() => {
           const loading = this.isLoading();
           if (!loading) {
             this.showSuccess.set(true);
+            // Détruire l'effet après affichage du succès
+            if (this.updateChildEffect) {
+              this.updateChildEffect.destroy();
+              this.updateChildEffect = undefined;
+            }
           }
         });
-      }
+      });
+    }
   }
 
   ngOnDestroy(): void {
@@ -330,6 +362,15 @@ export class ChildComponent implements OnInit, OnDestroy {
     if (this.childListEffect) {
       this.childListEffect.destroy();
       this.childListEffect = undefined;
+    }
+    // Désactiver les effets de création/mise à jour
+    if (this.createChildEffect) {
+      this.createChildEffect.destroy();
+      this.createChildEffect = undefined;
+    }
+    if (this.updateChildEffect) {
+      this.updateChildEffect.destroy();
+      this.updateChildEffect = undefined;
     }
   }
 
@@ -355,4 +396,3 @@ export class ChildComponent implements OnInit, OnDestroy {
     }
   }
 }
-

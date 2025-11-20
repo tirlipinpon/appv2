@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { SupabaseService } from '../../../services/supabase/supabase.service';
+import { BehaviorSubject } from 'rxjs';
+import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
 import { AuthCoreService } from '../core/auth-core.service';
 
 export interface Profile {

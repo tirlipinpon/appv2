@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { SupabaseService } from '../../../../services/supabase/supabase.service';
+import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { School, SchoolCreate } from '../../types/school';
 import type { PostgrestError } from '@supabase/supabase-js';
 

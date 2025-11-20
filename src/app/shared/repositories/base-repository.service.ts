@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { SupabaseService } from '../../services/supabase/supabase.service';
+import { SupabaseService } from '../services/supabase/supabase.service';
 import { AuthCoreService } from '../../core/auth/core/auth-core.service';
 import { CacheService } from '../services/cache/cache.service';
 import { LoggerService } from '../services/logging/logger.service';

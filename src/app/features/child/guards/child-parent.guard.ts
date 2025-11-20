@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn, ActivatedRouteSnapshot } from '@angular/router';
-import { AuthService } from '../../../services/auth/auth.service';
-import { SupabaseService } from '../../../services/supabase/supabase.service';
+import { AuthService } from '../../../shared/services/auth/auth.service';
+import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
 import { map, take, switchMap } from 'rxjs/operators';
 import { from } from 'rxjs';
 

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { from, Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import type { PostgrestError } from '@supabase/supabase-js';
-import { SupabaseService } from '../../../../services/supabase/supabase.service';
+import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { Subject } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
 

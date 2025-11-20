@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { SupabaseService } from '../../../services/supabase/supabase.service';
-import { AuthCoreService } from '../core/auth-core.service';
-import { ProfileService } from '../profile/profile.service';
+import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
+import { AuthCoreService } from '../../../core/auth/core/auth-core.service';
+import { ProfileService } from '../../../core/auth/profile/profile.service';
 
 /**
  * Service responsable de la gestion des mots de passe

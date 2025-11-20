@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { SupabaseService } from '../../../services/supabase/supabase.service';
-import { ProfileService } from '../profile/profile.service';
-import { AuthCoreService } from '../core/auth-core.service';
+import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
+import { ProfileService } from '../../../core/auth/profile/profile.service';
+import { AuthCoreService } from '../../../core/auth/core/auth-core.service';
 import type { User } from '@supabase/supabase-js';
 
 export interface ConfirmationResult {

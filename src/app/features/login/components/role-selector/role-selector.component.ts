@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService, Profile } from '../../../../services/auth/auth.service';
+import { AuthService, Profile } from '../../../../shared/services/auth/auth.service';
 import { ParentStore } from '../../../parent/store/index';
 import { TrackByUtils } from '../../../../shared/utils/track-by.util';
 

@@ -4,7 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { RouterModule } from '@angular/router';
 import { ParentStore } from './store/index';
 import { Application } from './components/application/application';
-import { ErrorSnackbarService } from '../../services/snackbar/error-snackbar.service';
+import { ErrorSnackbarService } from '../../shared/services/snackbar/error-snackbar.service';
 import type { Parent } from './types/parent';
 
 @Component({

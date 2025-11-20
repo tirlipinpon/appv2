@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { AuthService, ServiceError } from '../../../../services/auth/auth.service';
+import { AuthService, ServiceError } from '../../../../shared/services/auth/auth.service';
 import { passwordMatchValidator } from '../../utils/password-match.validator';
 
 type SignupRole = 'parent' | 'prof';

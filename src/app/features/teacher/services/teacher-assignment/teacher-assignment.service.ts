@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { SupabaseService } from '../../../../services/supabase/supabase.service';
-import { AuthService } from '../../../../services/auth/auth.service';
+import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
+import { AuthService } from '../../../../shared/services/auth/auth.service';
 import type { TeacherAssignment, TeacherAssignmentCreate, TeacherAssignmentUpdate } from '../../types/teacher-assignment';
 import type { PostgrestError } from '@supabase/supabase-js';
 

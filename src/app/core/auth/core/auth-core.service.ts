@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { SupabaseService } from '../../../services/supabase/supabase.service';
+import { BehaviorSubject } from 'rxjs';
+import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
 import type { User, Session } from '@supabase/supabase-js';
 
 export interface SignInResult {

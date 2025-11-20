@@ -111,4 +111,3 @@ export class ErrorSnackbarService {
     this.snackBarRefs.length = 0;
   }
 }
-

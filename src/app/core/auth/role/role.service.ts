@@ -1,5 +1,5 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { SupabaseService } from '../../../services/supabase/supabase.service';
+import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
 import { ProfileService } from '../profile/profile.service';
 import { AuthCoreService } from '../core/auth-core.service';
 

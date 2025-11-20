@@ -5,7 +5,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { AssignmentsComponent } from './components/assignments/assignments.component';
 import { TeacherStore } from './store/index';
 import { Application } from './components/application/application';
-import { ErrorSnackbarService } from '../../services/snackbar/error-snackbar.service';
+import { ErrorSnackbarService } from '../../shared/services/snackbar/error-snackbar.service';
 import type { Teacher } from './types/teacher';
 
 @Component({

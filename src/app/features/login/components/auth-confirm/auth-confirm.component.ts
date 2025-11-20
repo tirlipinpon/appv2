@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { EmailConfirmationService } from '../../../../core/auth/confirmation/email-confirmation.service';
+import { EmailConfirmationService } from '../../services/email-confirmation.service';
 import { LoggerService } from '../../../../shared/services/logging/logger.service';
 
 /**

@@ -11,8 +11,8 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import type { Session } from '@supabase/supabase-js';
-import { AuthService } from '../../../../services/auth/auth.service';
-import { SupabaseService } from '../../../../services/supabase/supabase.service';
+import { AuthService } from '../../../../shared/services/auth/auth.service';
+import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 
 const passwordsMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
   const password = group.get('password')?.value;

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, NavigationEnd, Router } from '@angular/router';
-import { AuthService, Profile } from '../../services/auth/auth.service';
+import { AuthService, Profile } from '../../shared/services/auth/auth.service';
 import { ParentStore } from '../parent/store/index';
 import { ChildStore } from '../child/store/index';
 import { TeacherStore } from '../teacher/store/index';

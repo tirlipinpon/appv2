@@ -5,7 +5,7 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { Infrastructure } from '../infrastructure/infrastructure';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import type { Subject } from '../../types/subject';
-import { ErrorSnackbarService } from '../../../../services/snackbar/error-snackbar.service';
+import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error-snackbar.service';
 
 @Component({
   selector: 'app-subjects',
