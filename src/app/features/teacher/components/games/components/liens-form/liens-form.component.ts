@@ -30,10 +30,11 @@ export class LiensFormComponent implements OnChanges {
       const reponses = this.reponsesArray.value.filter((r: string) => r && r.trim());
       
       // Générer automatiquement les liens : chaque mot à l'index i est associé à la réponse à l'index i
-      const liens = mots.map((_, index) => ({
-        mot_index: index,
-        reponse_index: index,
-      }));
+      // Utiliser le contenu (string) plutôt que les index pour permettre le mélange
+      const liens = mots.map((mot, index) => ({
+        mot: mot,
+        reponse: reponses[index] || '',
+      })).filter(lien => lien.mot && lien.reponse); // Filtrer les associations incomplètes
 
       // Valider que le nombre de mots correspond au nombre de réponses
       const isValid = mots.length > 0 && reponses.length > 0 && mots.length === reponses.length;

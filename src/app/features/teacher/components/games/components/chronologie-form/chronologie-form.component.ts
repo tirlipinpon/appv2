@@ -22,20 +22,27 @@ export class ChronologieFormComponent implements OnChanges {
   constructor() {
     this.form = this.fb.group({
       mots: this.fb.array<FormControl<string>>([]),
-      ordre_correct: this.fb.array<FormControl<number>>([]),
+      ordre_correct: this.fb.array<FormControl<string>>([]),
     });
 
     this.form.valueChanges.subscribe(() => {
-      if (this.form.valid) {
+      const mots = this.motsArray.value.filter((m: string) => m && m.trim());
+      const ordreCorrect = this.ordreCorrectArray.value
+        .filter((m: string | null) => m && m.trim()) as string[];
+
+      // Valider que tous les mots sont dans l'ordre correct
+      const isValid = mots.length > 0 && 
+                      ordreCorrect.length === mots.length &&
+                      mots.every(mot => ordreCorrect.includes(mot));
+
+      if (isValid) {
         const chronologieData: ChronologieData = {
-          mots: this.motsArray.value.filter((m: string) => m && m.trim()),
-          ordre_correct: this.ordreCorrectArray.value
-            .map((o: number | null) => o ?? 0)
-            .filter((o: number) => typeof o === 'number' && o >= 0),
+          mots: mots,
+          ordre_correct: ordreCorrect, // Stocker les strings dans l'ordre correct
         };
         this.dataChange.emit(chronologieData);
       }
-      this.validityChange.emit(this.form.valid);
+      this.validityChange.emit(isValid);
     });
   }
 
@@ -43,29 +50,29 @@ export class ChronologieFormComponent implements OnChanges {
     return this.form.get('mots') as FormArray<FormControl<string>>;
   }
 
-  get ordreCorrectArray(): FormArray<FormControl<number>> {
-    return this.form.get('ordre_correct') as FormArray<FormControl<number>>;
+  get ordreCorrectArray(): FormArray<FormControl<string>> {
+    return this.form.get('ordre_correct') as FormArray<FormControl<string>>;
   }
 
   addMot(): void {
-    const newIndex = this.motsArray.length;
-    this.motsArray.push(new FormControl<string>('', { nonNullable: true }));
-    // Ajouter automatiquement l'index à l'ordre correct
-    this.ordreCorrectArray.push(new FormControl<number>(newIndex, { nonNullable: true }));
+    const newMot = '';
+    this.motsArray.push(new FormControl<string>(newMot, { nonNullable: true }));
+    // Ajouter automatiquement le mot à l'ordre correct (même position)
+    this.ordreCorrectArray.push(new FormControl<string>(newMot, { nonNullable: true }));
   }
 
   removeMot(index: number): void {
+    const motASupprimer = this.motsArray.at(index).value;
     this.motsArray.removeAt(index);
-    this.ordreCorrectArray.removeAt(index);
-    // Réajuster les indices dans ordre_correct
-    this.ordreCorrectArray.controls.forEach((control, i) => {
-      const currentValue = control.value;
-      if (currentValue > index) {
-        control.patchValue(currentValue - 1);
-      } else if (currentValue === index) {
-        control.patchValue(i);
-      }
-    });
+    
+    // Supprimer le mot de l'ordre correct
+    const ordreIndex = this.ordreCorrectArray.value.findIndex((m: string) => m === motASupprimer);
+    if (ordreIndex !== -1) {
+      this.ordreCorrectArray.removeAt(ordreIndex);
+    }
+    
+    // Réajuster : si un mot a été supprimé, mettre à jour les références dans ordre_correct
+    // Mais comme on utilise maintenant des strings, pas besoin de réajuster les index
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -73,11 +80,35 @@ export class ChronologieFormComponent implements OnChanges {
       this.motsArray.clear();
       this.ordreCorrectArray.clear();
 
-      this.initialData.mots.forEach((mot, index) => {
+      // Charger les mots
+      this.initialData.mots.forEach((mot) => {
         this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
-        const ordreIndex = this.initialData!.ordre_correct[index] ?? index;
-        this.ordreCorrectArray.push(new FormControl<number>(ordreIndex, { nonNullable: true }));
       });
+
+      // Charger l'ordre correct (peut être des strings ou des numbers pour rétrocompatibilité)
+      const ordreCorrect = this.initialData.ordre_correct;
+      if (ordreCorrect && ordreCorrect.length > 0) {
+        // Si ce sont des numbers (ancien format), convertir en strings
+        if (typeof ordreCorrect[0] === 'number') {
+          const ordreAsNumbers = ordreCorrect as unknown as number[];
+          ordreAsNumbers.forEach((index) => {
+            const mot = this.initialData!.mots[index];
+            if (mot) {
+              this.ordreCorrectArray.push(new FormControl<string>(mot, { nonNullable: true }));
+            }
+          });
+        } else {
+          // Nouveau format : strings directement
+          ordreCorrect.forEach((mot) => {
+            this.ordreCorrectArray.push(new FormControl<string>(mot, { nonNullable: true }));
+          });
+        }
+      } else {
+        // Si pas d'ordre défini, utiliser l'ordre par défaut (ordre d'ajout)
+        this.initialData.mots.forEach((mot) => {
+          this.ordreCorrectArray.push(new FormControl<string>(mot, { nonNullable: true }));
+        });
+      }
     }
   }
 }

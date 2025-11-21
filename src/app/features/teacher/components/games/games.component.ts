@@ -13,6 +13,7 @@ import { ChronologieFormComponent } from './components/chronologie-form/chronolo
 import { QcmFormComponent } from './components/qcm-form/qcm-form.component';
 import type { Game } from '../../types/game';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../types/game-data';
+import { normalizeGameData } from '../../utils/game-data-mapper';
 
 @Component({
   selector: 'app-games',
@@ -170,9 +171,13 @@ export class GamesComponent implements OnInit {
       question: game.question || '',
     });
 
-    // Charger les données spécifiques depuis metadata
+    // Charger les données spécifiques depuis metadata et normaliser si nécessaire
     if (game.metadata) {
-      this.initialGameData.set(game.metadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData);
+      const normalizedMetadata = normalizeGameData(
+        this.getGameTypeName(game.game_type_id),
+        game.metadata as Record<string, unknown>
+      );
+      this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData);
     }
 
     // Charger les aides

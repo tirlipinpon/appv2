@@ -16,13 +16,13 @@ export interface ReponseLibreData {
 export interface LiensData {
   mots: string[];
   reponses: string[];
-  liens: { mot_index: number; reponse_index: number }[]; // Les associations correctes
+  liens: { mot: string; reponse: string }[]; // Les associations correctes par contenu (pas par index)
 }
 
 // Chronologie : suite de mots à mettre dans un ordre
 export interface ChronologieData {
   mots: string[];
-  ordre_correct: number[]; // Indices dans l'ordre correct
+  ordre_correct: string[]; // Mots dans l'ordre correct (par contenu, pas par index)
 }
 
 // QCM : plusieurs propositions dont une ou plusieurs justes
