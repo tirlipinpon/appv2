@@ -1,0 +1,112 @@
+<div class="games-container">
+  <a [routerLink]="['/teacher-subjects', subjectId()]" class="btn-back">← Retour à la matière</a>
+  <h1>Gestion des jeux</h1>
+  
+  <div *ngIf="currentSubjectName()" class="subject-info">
+    <h2>Matière : {{ currentSubjectName() }}</h2>
+  </div>
+
+  <div class="game-form-section">
+    <h3>{{ isEditing() ? 'Modifier le jeu' : 'Créer un nouveau jeu' }}</h3>
+    <form [formGroup]="gameForm" (ngSubmit)="isEditing() ? update() : create()">
+      <div class="form-group">
+        <label for="game_type_id">Type de jeu *</label>
+        <select id="game_type_id" formControlName="game_type_id">
+          <option value="">Sélectionner un type</option>
+          <option *ngFor="let gt of gameTypes()" [value]="gt.id">{{ gt.name }}</option>
+        </select>
+        <span class="error-message" *ngIf="gameForm.get('game_type_id')?.hasError('required') && gameForm.get('game_type_id')?.touched">
+          Le type de jeu est requis.
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="instructions">Instructions</label>
+        <textarea id="instructions" rows="4" formControlName="instructions" placeholder="Instructions pour jouer"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="question">Question *</label>
+        <textarea id="question" rows="3" formControlName="question" placeholder="Phrase ou plusieurs mots pour la question"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Propositions de réponses</label>
+        <div formArrayName="propositions" class="propositions-list">
+          <div *ngFor="let prop of propositionsArray.controls; let i = index" class="proposition-item">
+            <input type="text" [formControlName]="i" [placeholder]="'Proposition ' + (i + 1)">
+            <button type="button" class="btn btn-danger btn-small" (click)="removeProposition(i)">×</button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-small" (click)="addProposition()">+ Ajouter une proposition</button>
+      </div>
+
+      <div class="form-group">
+        <label for="reponse_valide">Réponse valide *</label>
+        <select id="reponse_valide" formControlName="reponse_valide" [disabled]="validPropositions.length === 0">
+          <option value="">Sélectionner une proposition</option>
+          <option *ngFor="let prop of validPropositions" [value]="prop">{{ prop }}</option>
+        </select>
+        <small class="form-hint" *ngIf="validPropositions.length === 0">Ajoutez d'abord des propositions ci-dessus</small>
+      </div>
+
+      <div class="form-group">
+        <label>Aides</label>
+        <div formArrayName="aides" class="aides-list">
+          <div *ngFor="let aide of aidesArray.controls; let i = index" class="aide-item">
+            <textarea rows="2" [formControlName]="i" [placeholder]="'Aide ' + (i + 1)"></textarea>
+            <button type="button" class="btn btn-danger btn-small" (click)="removeAide(i)">×</button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-small" (click)="addAide()">+ Ajouter une aide</button>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="gameForm.invalid || isLoading()">
+          {{ isEditing() ? 'Enregistrer' : 'Créer' }}
+        </button>
+        <button *ngIf="isEditing()" type="button" class="btn btn-secondary" (click)="cancelEdit()">
+          Annuler
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="games-list-section">
+    <h3>Mes jeux ({{ games().length }})</h3>
+    <div *ngIf="isLoading()" class="loading">Chargement...</div>
+    <div *ngIf="!isLoading() && games().length === 0" class="empty-state">
+      <p>Aucun jeu créé pour cette matière.</p>
+    </div>
+    <ul *ngIf="!isLoading() && games().length > 0" class="games-list">
+      <li *ngFor="let game of games()" class="game-item">
+        <div class="game-header">
+          <h4>{{ game.name }}</h4>
+          <span class="game-type-badge">{{ getGameTypeName(game.game_type_id) }}</span>
+        </div>
+        <div class="game-details">
+          <p *ngIf="game.question" class="game-question"><strong>Question:</strong> {{ game.question }}</p>
+          <div *ngIf="game.reponses" class="game-reponses">
+            <p><strong>Propositions:</strong></p>
+            <ul>
+              <li *ngFor="let prop of game.reponses.propositions">{{ prop }}</li>
+            </ul>
+            <p><strong>Réponse valide:</strong> {{ game.reponses.reponse_valide }}</p>
+          </div>
+          <div *ngIf="game.aides && game.aides.length > 0" class="game-aides">
+            <p><strong>Aides:</strong></p>
+            <ul>
+              <li *ngFor="let aide of game.aides">{{ aide }}</li>
+            </ul>
+          </div>
+          <p *ngIf="game.instructions" class="game-instructions">{{ game.instructions }}</p>
+        </div>
+        <div class="game-actions">
+          <button class="btn btn-secondary" (click)="startEdit(game)">Modifier</button>
+          <button class="btn btn-danger" (click)="delete(game.id)">Supprimer</button>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+

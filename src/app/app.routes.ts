@@ -84,6 +84,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'teacher-subjects/:id/games',
+    loadComponent: () => import('./features/teacher/components/games/games.component').then(m => m.GamesComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'child-subjects/:childId',
     loadComponent: () => import('./features/child/components/subjects/child-subjects.component').then(m => m.ChildSubjectsComponent),
     canActivate: [authGuard, childParentGuard]
