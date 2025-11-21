@@ -1,0 +1,29 @@
+<div [formGroup]="form" class="chronologie-form">
+  <div class="form-group">
+    <label>Mots à ordonner</label>
+    <div formArrayName="mots" class="mots-list">
+      <div *ngFor="let mot of motsArray.controls; let i = index" class="mot-row">
+        <input type="text" [formControlName]="i" [placeholder]="'Mot ' + (i + 1)">
+        <span class="ordre-indicator">Ordre: {{ ordreCorrectArray.at(i).value }}</span>
+        <button type="button" class="btn btn-danger btn-small" (click)="removeMot(i)">×</button>
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary btn-small" (click)="addMot()">+ Ajouter un mot</button>
+    <p class="hint">L'ordre correct est automatiquement défini selon l'ordre d'ajout. Vous pouvez réorganiser en déplaçant les éléments.</p>
+  </div>
+
+  <div class="ordre-section">
+    <h4>Ordre correct</h4>
+    <div formArrayName="ordre_correct" class="ordre-list">
+      <div *ngFor="let ordre of ordreCorrectArray.controls; let i = index" class="ordre-row">
+        <label>Position {{ i + 1 }}:</label>
+        <select [formControlName]="i">
+          <option *ngFor="let mot of motsArray.controls; let motIndex = index" [value]="motIndex">
+            {{ mot.value || 'Mot ' + (motIndex + 1) }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,18 @@
+<div [formGroup]="form" class="qcm-form">
+  <div class="form-group">
+    <label>Propositions</label>
+    <p class="hint">Cochez les cases pour indiquer les réponses valides (une ou plusieurs)</p>
+    <div formArrayName="propositions" class="propositions-list">
+      <div *ngFor="let prop of propositionsArray.controls; let i = index" class="proposition-row">
+        <input type="text" [formControlName]="i" [placeholder]="'Proposition ' + (i + 1)" class="proposition-input">
+        <label class="checkbox-label">
+          <input type="checkbox" [formControl]="reponsesValidesArray.at(i)">
+          Réponse valide
+        </label>
+        <button type="button" class="btn btn-danger btn-small" (click)="removeProposition(i)">×</button>
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary btn-small" (click)="addProposition()">+ Ajouter une proposition</button>
+  </div>
+</div>
+

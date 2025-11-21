@@ -11,7 +11,7 @@
     <form [formGroup]="gameForm" (ngSubmit)="isEditing() ? update() : create()">
       <div class="form-group">
         <label for="game_type_id">Type de jeu *</label>
-        <select id="game_type_id" formControlName="game_type_id">
+        <select id="game_type_id" formControlName="game_type_id" (change)="onGameTypeChange()">
           <option value="">Sélectionner un type</option>
           <option *ngFor="let gt of gameTypes()" [value]="gt.id">{{ gt.name }}</option>
         </select>
@@ -26,28 +26,51 @@
       </div>
 
       <div class="form-group">
-        <label for="question">Question *</label>
-        <textarea id="question" rows="3" formControlName="question" placeholder="Phrase ou plusieurs mots pour la question"></textarea>
+        <label for="question">Question</label>
+        <textarea id="question" rows="3" formControlName="question" placeholder="Phrase ou plusieurs mots pour la question (optionnel)"></textarea>
       </div>
 
-      <div class="form-group">
-        <label>Propositions de réponses</label>
-        <div formArrayName="propositions" class="propositions-list">
-          <div *ngFor="let prop of propositionsArray.controls; let i = index" class="proposition-item">
-            <input type="text" [formControlName]="i" [placeholder]="'Proposition ' + (i + 1)">
-            <button type="button" class="btn btn-danger btn-small" (click)="removeProposition(i)">×</button>
-          </div>
-        </div>
-        <button type="button" class="btn btn-secondary btn-small" (click)="addProposition()">+ Ajouter une proposition</button>
-      </div>
+      <!-- Composants spécifiques selon le type de jeu -->
+      <div class="game-specific-form" *ngIf="selectedGameTypeName()">
+        <!-- Case vide -->
+        <app-case-vide-form
+          *ngIf="selectedGameTypeName() === 'case vide'"
+          [initialData]="getInitialDataForCaseVide()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-case-vide-form>
 
-      <div class="form-group">
-        <label for="reponse_valide">Réponse valide *</label>
-        <select id="reponse_valide" formControlName="reponse_valide" [disabled]="validPropositions.length === 0">
-          <option value="">Sélectionner une proposition</option>
-          <option *ngFor="let prop of validPropositions" [value]="prop">{{ prop }}</option>
-        </select>
-        <small class="form-hint" *ngIf="validPropositions.length === 0">Ajoutez d'abord des propositions ci-dessus</small>
+        <!-- Réponse libre -->
+        <app-reponse-libre-form
+          *ngIf="selectedGameTypeName() === 'reponse libre'"
+          [initialData]="getInitialDataForReponseLibre()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-reponse-libre-form>
+
+        <!-- Liens -->
+        <app-liens-form
+          *ngIf="selectedGameTypeName() === 'liens'"
+          [initialData]="getInitialDataForLiens()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-liens-form>
+
+        <!-- Chronologie -->
+        <app-chronologie-form
+          *ngIf="selectedGameTypeName() === 'chronologie'"
+          [initialData]="getInitialDataForChronologie()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-chronologie-form>
+
+        <!-- QCM -->
+        <app-qcm-form
+          *ngIf="selectedGameTypeName() === 'qcm'"
+          [initialData]="getInitialDataForQcm()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-qcm-form>
       </div>
 
       <div class="form-group">
@@ -62,7 +85,7 @@
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="gameForm.invalid || isLoading()">
+        <button type="submit" class="btn btn-primary" [disabled]="gameForm.invalid || isLoading() || !gameSpecificValid()">
           {{ isEditing() ? 'Enregistrer' : 'Créer' }}
         </button>
         <button *ngIf="isEditing()" type="button" class="btn btn-secondary" (click)="cancelEdit()">
@@ -86,20 +109,13 @@
         </div>
         <div class="game-details">
           <p *ngIf="game.question" class="game-question"><strong>Question:</strong> {{ game.question }}</p>
-          <div *ngIf="game.reponses" class="game-reponses">
-            <p><strong>Propositions:</strong></p>
-            <ul>
-              <li *ngFor="let prop of game.reponses.propositions">{{ prop }}</li>
-            </ul>
-            <p><strong>Réponse valide:</strong> {{ game.reponses.reponse_valide }}</p>
-          </div>
+          <p *ngIf="game.instructions" class="game-instructions">{{ game.instructions }}</p>
           <div *ngIf="game.aides && game.aides.length > 0" class="game-aides">
             <p><strong>Aides:</strong></p>
             <ul>
               <li *ngFor="let aide of game.aides">{{ aide }}</li>
             </ul>
           </div>
-          <p *ngIf="game.instructions" class="game-instructions">{{ game.instructions }}</p>
         </div>
         <div class="game-actions">
           <button class="btn btn-secondary" (click)="startEdit(game)">Modifier</button>
@@ -109,4 +125,3 @@
     </ul>
   </div>
 </div>
-

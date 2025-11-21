@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray, FormControl } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -6,12 +6,27 @@ import { GamesApplication } from './application/application';
 import { GamesStore } from '../../store/games.store';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error-snackbar.service';
-import type { Game, GameReponses } from '../../types/game';
+import { CaseVideFormComponent } from './components/case-vide-form/case-vide-form.component';
+import { ReponseLibreFormComponent } from './components/reponse-libre-form/reponse-libre-form.component';
+import { LiensFormComponent } from './components/liens-form/liens-form.component';
+import { ChronologieFormComponent } from './components/chronologie-form/chronologie-form.component';
+import { QcmFormComponent } from './components/qcm-form/qcm-form.component';
+import type { Game } from '../../types/game';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../types/game-data';
 
 @Component({
   selector: 'app-games',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    CaseVideFormComponent,
+    ReponseLibreFormComponent,
+    LiensFormComponent,
+    ChronologieFormComponent,
+    QcmFormComponent,
+  ],
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
 })
@@ -26,6 +41,7 @@ export class GamesComponent implements OnInit {
 
   readonly subjectId = signal<string | null>(null);
   readonly editingGameId = signal<string | null>(null);
+  readonly selectedGameTypeName = signal<string | null>(null);
 
   readonly games = computed(() => this.gamesStore.games());
   readonly gameTypes = computed(() => this.gamesStore.gameTypes());
@@ -43,74 +59,22 @@ export class GamesComponent implements OnInit {
     return subject?.name || '';
   });
 
-  // Effet pour pré-remplir le formulaire lors de l'édition
-  private readonly patchFormFromGame = effect(() => {
-    const gameId = this.editingGameId();
-    if (gameId) {
-      const game = this.games().find(g => g.id === gameId);
-      if (game) {
-        // Réinitialiser les FormArrays
-        this.propositionsArray.clear();
-        this.aidesArray.clear();
+  // Données des composants spécifiques
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | null>(null);
+  readonly gameSpecificValid = signal<boolean>(false);
 
-        // Remplir les champs de base
-        this.gameForm.patchValue({
-          instructions: game.instructions || '',
-          game_type_id: game.game_type_id || '',
-          question: game.question || '',
-          reponse_valide: game.reponses?.reponse_valide || '',
-        });
-
-        // Remplir les propositions
-        if (game.reponses?.propositions) {
-          game.reponses.propositions.forEach((prop: string) => {
-            const propValue: string = prop || '';
-            this.propositionsArray.push(new FormControl<string>(propValue, { nonNullable: true }));
-          });
-        }
-
-        // Remplir les aides
-        if (game.aides) {
-          game.aides.forEach((aide: string) => {
-            const aideValue: string = aide || '';
-            this.aidesArray.push(new FormControl<string>(aideValue, { nonNullable: true }));
-          });
-        }
-
-        this.gameForm.updateValueAndValidity();
-      }
-    }
-  });
-
-  // Effet pour gérer les erreurs du store
-  private readonly handleErrors = effect(() => {
-    const errors = this.gamesStore.error();
-    if (errors.length > 0) {
-      errors.forEach(error => this.errorSnackbar.showError(error));
-      this.gamesStore.clearError();
-    }
-  });
+  // Données initiales pour l'édition
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | null>(null);
 
   gameForm = this.fb.group({
     instructions: [''],
     game_type_id: ['', Validators.required],
     question: [''],
-    propositions: this.fb.array<FormControl<string>>([]),
-    reponse_valide: [''],
     aides: this.fb.array<FormControl<string>>([]),
   });
 
-  get propositionsArray(): FormArray<FormControl<string>> {
-    return this.gameForm.get('propositions') as FormArray<FormControl<string>>;
-  }
-
   get aidesArray(): FormArray<FormControl<string>> {
     return this.gameForm.get('aides') as FormArray<FormControl<string>>;
-  }
-
-  // Obtenir les propositions valides (non vides) pour le select de réponse valide
-  get validPropositions(): string[] {
-    return this.propositionsArray.value.filter((p: string) => p && p.trim());
   }
 
   ngOnInit(): void {
@@ -123,52 +87,76 @@ export class GamesComponent implements OnInit {
     this.application.loadGameTypes();
     this.application.loadGamesBySubject(id);
     this.subjectsStore.loadSubjects();
-    
-    // Initialiser avec une proposition et une aide vides pour faciliter l'utilisation
-    if (this.propositionsArray.length === 0) {
-      this.addProposition();
-    }
-    if (this.aidesArray.length === 0) {
-      this.addAide();
-    }
   }
 
   isEditing(): boolean {
     return this.editingGameId() !== null;
   }
 
+  getSelectedGameTypeName(): string | null {
+    const gameTypeId = this.gameForm.get('game_type_id')?.value;
+    if (!gameTypeId) return null;
+    const gameType = this.gameTypes().find(gt => gt.id === gameTypeId);
+    return gameType?.name || null;
+  }
+
+  onGameTypeChange(): void {
+    const gameTypeId = this.gameForm.get('game_type_id')?.value;
+    const gameType = this.gameTypes().find(gt => gt.id === gameTypeId);
+    this.selectedGameTypeName.set(gameType?.name || null);
+    
+    // Si on change de type, réinitialiser les données spécifiques sauf si on est en mode édition
+    if (!this.isEditing()) {
+      this.gameSpecificData.set(null);
+      this.gameSpecificValid.set(false);
+      this.initialGameData.set(null);
+    } else {
+      // En mode édition, charger les données du jeu actuel si le type correspond
+      const gameId = this.editingGameId();
+      if (gameId) {
+        const game = this.games().find(g => g.id === gameId);
+        if (game && game.metadata && game.game_type_id === gameTypeId) {
+          this.initialGameData.set(game.metadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData);
+        } else {
+          this.initialGameData.set(null);
+        }
+      }
+    }
+  }
+
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData): void {
+    this.gameSpecificData.set(data);
+  }
+
+  onGameValidityChange(valid: boolean): void {
+    this.gameSpecificValid.set(valid);
+  }
+
   create(): void {
-    if (!this.gameForm.valid || !this.subjectId()) return;
+    if (!this.gameForm.valid || !this.subjectId() || !this.gameSpecificValid()) return;
     const v = this.gameForm.value;
     const subjectId = this.subjectId()!;
+    const gameData = this.gameSpecificData();
+    if (!gameData) return;
 
-    // Construire l'objet reponses
-    const propositions = this.propositionsArray.value.filter((p: string) => p && p.trim());
-    const reponses: GameReponses | null = (propositions.length > 0 && v.reponse_valide)
-      ? {
-          propositions: propositions,
-          reponse_valide: v.reponse_valide.trim(),
-        }
-      : null;
-
-    // Construire le tableau aides
-    const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
-
-    // Générer un nom automatique basé sur le type de jeu et la question
-    const gameType = this.gameTypes().find(gt => gt.id === v.game_type_id);
-    const gameTypeName = gameType?.name || 'Jeu';
+    // Générer un nom automatique
+    const gameTypeName = this.selectedGameTypeName() || 'Jeu';
     const questionPreview = v.question?.trim() ? v.question.trim().substring(0, 30) : '';
     const autoName = questionPreview ? `${gameTypeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}` : gameTypeName;
 
+    // Construire les aides
+    const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
+
+    // Stocker les données spécifiques dans metadata
     this.application.createGame({
       subject_id: subjectId,
       game_type_id: v.game_type_id!,
       name: autoName,
       instructions: v.instructions || null,
       question: v.question?.trim() || null,
-      reponses: reponses,
+      reponses: null, // On utilise metadata pour les données spécifiques
       aides: aides.length > 0 ? aides : null,
-      metadata: null,
+      metadata: gameData as unknown as Record<string, unknown>,
     });
 
     this.resetForm();
@@ -176,6 +164,27 @@ export class GamesComponent implements OnInit {
 
   startEdit(game: Game): void {
     this.editingGameId.set(game.id);
+    this.gameForm.patchValue({
+      instructions: game.instructions || '',
+      game_type_id: game.game_type_id || '',
+      question: game.question || '',
+    });
+
+    // Charger les données spécifiques depuis metadata
+    if (game.metadata) {
+      this.initialGameData.set(game.metadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData);
+    }
+
+    // Charger les aides
+    this.aidesArray.clear();
+    if (game.aides) {
+      game.aides.forEach(aide => {
+        this.aidesArray.push(new FormControl<string>(aide, { nonNullable: true }));
+      });
+    }
+
+    const gameType = this.gameTypes().find(gt => gt.id === game.game_type_id);
+    this.selectedGameTypeName.set(gameType?.name || null);
   }
 
   cancelEdit(): void {
@@ -185,40 +194,44 @@ export class GamesComponent implements OnInit {
 
   private resetForm(): void {
     this.gameForm.reset();
-    this.propositionsArray.clear();
     this.aidesArray.clear();
     this.gameForm.patchValue({ game_type_id: '' });
+    this.selectedGameTypeName.set(null);
+    this.gameSpecificData.set(null);
+    this.gameSpecificValid.set(false);
+    this.initialGameData.set(null);
+  }
+
+  addAide(): void {
+    this.aidesArray.push(new FormControl<string>('', { nonNullable: true }));
+  }
+
+  removeAide(index: number): void {
+    this.aidesArray.removeAt(index);
   }
 
   update(): void {
     const gameId = this.editingGameId();
-    if (!gameId || !this.gameForm.valid) return;
+    if (!gameId || !this.gameForm.valid || !this.gameSpecificValid()) return;
     const v = this.gameForm.value;
+    const gameData = this.gameSpecificData();
+    if (!gameData) return;
 
-    // Construire l'objet reponses
-    const propositions = this.propositionsArray.value.filter((p: string) => p && p.trim());
-    const reponses: GameReponses | null = (propositions.length > 0 && v.reponse_valide)
-      ? {
-          propositions: propositions,
-          reponse_valide: v.reponse_valide.trim(),
-        }
-      : null;
-
-    // Construire le tableau aides
-    const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
-
-    // Générer un nom automatique basé sur le type de jeu et la question
-    const gameType = this.gameTypes().find(gt => gt.id === v.game_type_id);
-    const gameTypeName = gameType?.name || 'Jeu';
+    // Générer un nom automatique
+    const gameTypeName = this.selectedGameTypeName() || 'Jeu';
     const questionPreview = v.question?.trim() ? v.question.trim().substring(0, 30) : '';
     const autoName = questionPreview ? `${gameTypeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}` : gameTypeName;
+
+    // Construire les aides
+    const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
 
     this.application.updateGame(gameId, {
       name: autoName,
       instructions: v.instructions || null,
       question: v.question?.trim() || null,
-      reponses: reponses,
+      reponses: null,
       aides: aides.length > 0 ? aides : null,
+      metadata: gameData as unknown as Record<string, unknown>,
       game_type_id: v.game_type_id!,
     });
 
@@ -236,28 +249,48 @@ export class GamesComponent implements OnInit {
     return gameType?.name || 'Type inconnu';
   }
 
-  addProposition(): void {
-    this.propositionsArray.push(new FormControl<string>('', { nonNullable: true }));
-  }
-
-  removeProposition(index: number): void {
-    const currentReponseValide = this.gameForm.get('reponse_valide')?.value;
-    const propositionToRemove = this.propositionsArray.at(index).value;
-    
-    this.propositionsArray.removeAt(index);
-    
-    // Si la réponse valide était la proposition supprimée, ou si elle n'existe plus dans les propositions valides, réinitialiser
-    if (currentReponseValide && (currentReponseValide === propositionToRemove || !this.validPropositions.includes(currentReponseValide))) {
-      this.gameForm.patchValue({ reponse_valide: '' });
+  getInitialDataForCaseVide(): CaseVideData | null {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    if (currentType === 'case vide' && data && 'debut_phrase' in data) {
+      return data as CaseVideData;
     }
+    return null;
   }
 
-  addAide(): void {
-    this.aidesArray.push(new FormControl<string>('', { nonNullable: true }));
+  getInitialDataForReponseLibre(): ReponseLibreData | null {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    if (currentType === 'reponse libre' && data && 'reponse_valide' in data && !('debut_phrase' in data)) {
+      return data as ReponseLibreData;
+    }
+    return null;
   }
 
-  removeAide(index: number): void {
-    this.aidesArray.removeAt(index);
+  getInitialDataForLiens(): LiensData | null {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    if (currentType === 'liens' && data && 'mots' in data && 'reponses' in data && 'liens' in data) {
+      return data as LiensData;
+    }
+    return null;
+  }
+
+  getInitialDataForChronologie(): ChronologieData | null {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    if (currentType === 'chronologie' && data && 'mots' in data && 'ordre_correct' in data && !('reponses' in data)) {
+      return data as ChronologieData;
+    }
+    return null;
+  }
+
+  getInitialDataForQcm(): QcmData | null {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    if (currentType === 'qcm' && data && 'propositions' in data && 'reponses_valides' in data) {
+      return data as QcmData;
+    }
+    return null;
   }
 }
-

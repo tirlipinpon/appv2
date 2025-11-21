@@ -1,0 +1,14 @@
+<div [formGroup]="form" class="reponse-libre-form">
+  <div class="form-group">
+    <label for="reponse_valide">Réponse valide *</label>
+    <input 
+      id="reponse_valide" 
+      type="text" 
+      formControlName="reponse_valide" 
+      placeholder="Ex: Paris">
+    <span class="error-message" *ngIf="form.get('reponse_valide')?.hasError('required') && form.get('reponse_valide')?.touched">
+      La réponse est requise.
+    </span>
+  </div>
+</div>
+

@@ -1,0 +1,45 @@
+<div [formGroup]="form" class="case-vide-form">
+  <div class="form-group">
+    <label for="debut_phrase">Début de phrase *</label>
+    <textarea 
+      id="debut_phrase" 
+      formControlName="debut_phrase" 
+      rows="2" 
+      placeholder="Ex: La capitale de la France est"></textarea>
+    <span class="error-message" *ngIf="form.get('debut_phrase')?.hasError('required') && form.get('debut_phrase')?.touched">
+      Le début de phrase est requis.
+    </span>
+  </div>
+
+  <div class="form-group">
+    <label for="reponse_valide">Réponse (case vide) *</label>
+    <input 
+      id="reponse_valide" 
+      type="text" 
+      formControlName="reponse_valide" 
+      placeholder="Ex: Paris">
+    <span class="error-message" *ngIf="form.get('reponse_valide')?.hasError('required') && form.get('reponse_valide')?.touched">
+      La réponse est requise.
+    </span>
+  </div>
+
+  <div class="form-group">
+    <label for="fin_phrase">Fin de phrase *</label>
+    <textarea 
+      id="fin_phrase" 
+      formControlName="fin_phrase" 
+      rows="2" 
+      placeholder="Ex: . C'est une ville magnifique."></textarea>
+    <span class="error-message" *ngIf="form.get('fin_phrase')?.hasError('required') && form.get('fin_phrase')?.touched">
+      La fin de phrase est requise.
+    </span>
+  </div>
+
+  <div class="preview" *ngIf="form.get('debut_phrase')?.value && form.get('reponse_valide')?.value && form.get('fin_phrase')?.value">
+    <strong>Aperçu:</strong> 
+    <span class="debut">{{ form.get('debut_phrase')?.value }}</span>
+    <span class="case-vide">[{{ form.get('reponse_valide')?.value }}]</span>
+    <span class="fin">{{ form.get('fin_phrase')?.value }}</span>
+  </div>
+</div>
+
