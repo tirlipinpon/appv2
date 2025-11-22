@@ -47,5 +47,8 @@ body:
         - Ajouter ou mettre à jour les tests unitaires si nécessaire
         - Ajouter des commentaires pour toute question ou ambiguïté avant de commencer
         - Vérifier que les tests existants passent après correction
+        - Créer une branche dédiée pour le bugfix
+        - Pusher les changements sur Git
+        - Ouvrir une Pull Request vers la branche principale
     validations:
       required: true
