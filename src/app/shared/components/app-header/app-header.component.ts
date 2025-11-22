@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, computed, signal, effect } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, computed, signal, effect, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { AuthService, Profile } from '../../services/auth/auth.service';
@@ -9,6 +9,23 @@ import { firstValueFrom } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
 import type { Parent } from '../../../features/parent/types/parent';
 import type { Teacher } from '../../../features/teacher/types/teacher';
+
+export interface HeaderNavItem {
+  label: string;
+  route: string | string[];
+  queryParams?: Record<string, unknown>;
+  icon?: string;
+  visible?: () => boolean;
+  exact?: boolean;
+}
+
+export interface HeaderConfig {
+  brandTitle: string;
+  brandRoute?: string | string[];
+  navItems?: HeaderNavItem[];
+  showUserInfo?: boolean;
+  showRoleBadge?: boolean;
+}
 
 @Component({
   selector: 'app-header',
@@ -23,6 +40,14 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
   private readonly parentService = inject(ParentService);
   private readonly teacherService = inject(TeacherService);
   
+  // Inputs pour la configuration générique
+  @Input() config?: HeaderConfig;
+  @Input() navItems?: HeaderNavItem[];
+  @Input() brandTitle?: string;
+  @Input() brandRoute?: string | string[];
+  @Input() showUserInfo = true;
+  @Input() showRoleBadge = true;
+  
   profile = signal<Profile | null>(null);
   currentUser = signal<User | null>(null);
   activeRole = signal<string | null>(null);
@@ -36,6 +61,27 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
   private isLoadingParent = false;
   private isLoadingTeacher = false;
+  
+  // Computed pour les éléments de navigation visibles
+  readonly visibleNavItems = computed(() => {
+    const items = this.navItems || this.getDefaultNavItems();
+    return items.filter(item => {
+      if (item.visible) {
+        return item.visible();
+      }
+      return true;
+    });
+  });
+  
+  // Computed pour le titre de la marque
+  readonly displayBrandTitle = computed(() => {
+    return this.brandTitle || this.config?.brandTitle || '📚 App Éducative';
+  });
+  
+  // Computed pour la route de la marque
+  readonly displayBrandRoute = computed(() => {
+    return this.brandRoute || this.config?.brandRoute || '/dashboard';
+  });
   
   readonly isAuthenticated = computed(() => {
     // Vérifier à la fois l'utilisateur ET le profil pour s'assurer que l'utilisateur est vraiment connecté
@@ -249,6 +295,68 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
 
   closeMenu() {
     this.isMenuOpen.set(false);
+  }
+
+  /**
+   * Génère les éléments de navigation par défaut basés sur le rôle actif
+   */
+  private getDefaultNavItems(): HeaderNavItem[] {
+    const items: HeaderNavItem[] = [];
+    
+    if (!this.isAuthenticated()) {
+      return items;
+    }
+
+    // Tableau de bord - toujours visible si authentifié
+    items.push({
+      label: 'Tableau de bord',
+      route: '/dashboard',
+      icon: '🏠',
+      visible: () => this.isAuthenticated()
+    });
+
+    // Éléments spécifiques au rôle parent
+    if (this.activeRole() === 'parent') {
+      items.push({
+        label: 'Mon profil parent',
+        route: '/parent-profile',
+        icon: '👤',
+        visible: () => this.isAuthenticated() && this.activeRole() === 'parent'
+      });
+      items.push({
+        label: 'Ajouter un enfant',
+        route: '/child-profile',
+        icon: '➕',
+        visible: () => this.isAuthenticated() && this.activeRole() === 'parent'
+      });
+    }
+
+    // Éléments spécifiques au rôle professeur
+    if (this.activeRole() === 'prof') {
+      items.push({
+        label: 'Mon profil professeur',
+        route: '/teacher-profile',
+        icon: '👨‍🏫',
+        visible: () => this.isAuthenticated() && this.activeRole() === 'prof'
+      });
+      items.push({
+        label: 'Mes affectations',
+        route: '/teacher-assignments',
+        queryParams: { tab: 'assignments' },
+        icon: '📚',
+        visible: () => this.isAuthenticated() && this.activeRole() === 'prof'
+      });
+    }
+
+    // Changer de rôle - visible si plusieurs rôles
+    items.push({
+      label: 'Changer de rôle',
+      route: '/select-role',
+      icon: '🔄',
+      visible: () => this.isAuthenticated() && this.hasMultipleRoles()
+    });
+
+    return items;
   }
 
   /**

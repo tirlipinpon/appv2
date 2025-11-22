@@ -63,8 +63,9 @@
             <div class="child-actions">
               <a 
                 [routerLink]="['/child-profile', child.id]" 
-                class="btn btn-secondary btn-sm">
-                ✏️ Modifier
+                class="btn btn-secondary btn-sm"
+                title="Modifier">
+                ✏️
               </a>
               <a 
                 [routerLink]="['/child-subjects', child.id]" 
@@ -74,8 +75,9 @@
               <button 
                 type="button"
                 (click)="setChildActiveStatus(child.id, false, $event)" 
-                class="btn btn-danger btn-sm">
-                🗑️ Désactiver
+                class="btn btn-danger btn-sm"
+                title="Désactiver">
+                🗑️
               </button>
             </div>
           </div>
@@ -94,8 +96,9 @@
             <div class="child-actions">
               <a 
                 [routerLink]="['/child-profile', child.id]" 
-                class="btn btn-secondary btn-sm">
-                ✏️ Modifier
+                class="btn btn-secondary btn-sm"
+                title="Modifier">
+                ✏️
               </a>
               <button 
                 type="button"
