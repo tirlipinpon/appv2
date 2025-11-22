@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 
@@ -15,9 +15,13 @@ export interface ActionLink {
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './action-links.component.html',
-  styleUrl: './action-links.component.scss'
+  styleUrls: ['./action-links.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActionLinksComponent {
   @Input({ required: true }) actions: ActionLink[] = [];
-}
 
+  trackByAction(index: number, action: ActionLink): string | number {
+    return Array.isArray(action.route) ? action.route.join('|') : action.route ?? index;
+  }
+}
