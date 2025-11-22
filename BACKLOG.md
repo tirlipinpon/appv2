@@ -37,3 +37,9 @@ _Historique des issues résolues_
 - Utiliser les labels GitHub : `bug`, `feature`, `enhancement`, `documentation`
 - Utiliser les milestones pour regrouper les features
 - Référencer les issues dans les commits : `git commit -m "Fix: Corrige le problème #123"`
+
+---
+
+## 🧪 Test Pull Request
+
+Cette section a été ajoutée pour tester la création d'une pull request via MCP GitHub.
