@@ -1,0 +1,32 @@
+name: Feature
+description: Nouvelle fonctionnalité
+labels: ["type:feature", "priority:medium"]
+body:
+  - type: textarea
+    id: objectif
+    attributes:
+      label: 🎯 Objectif
+      description: Décris l'objectif précis de la fonctionnalité
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 🛠️ À faire
+      description: Liste les étapes techniques une par une
+      placeholder: |
+        - Etape 1
+        - Etape 2
+        - Etape 3
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 📌 Critères d'acceptation
+      description: Qu'est-ce qui détermine que la tâche est réussie ?
+      placeholder: |
+        - Le composant compile sans erreur
+        - La page s'affiche correctement
+    validations:
+      required: true
