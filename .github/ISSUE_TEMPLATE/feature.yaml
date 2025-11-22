@@ -9,24 +9,35 @@ body:
       description: Décris l'objectif précis de la fonctionnalité
     validations:
       required: true
+
   - type: textarea
     id: tasks
     attributes:
       label: 🛠️ À faire
       description: Liste les étapes techniques une par une
       placeholder: |
-        - Etape 1
-        - Etape 2
-        - Etape 3
+        - Vérifier le lint et corriger les erreurs éventuelles
+        - Vérifier que le build compile
+        - Modifier uniquement les composants nécessaires
+        - Ajouter ou mettre à jour les tests unitaires si nécessaire
+        - Ajouter les fichiers / imports manquants
+        - Commenter toute question ou ambiguïté avant de commencer
+        - Créer une branche dédiée pour la feature
+        - Pusher les changements sur Git
+        - Ouvrir une Pull Request vers la branche principale
     validations:
       required: true
+
   - type: textarea
     id: acceptance
     attributes:
-      label: 📌 Critères d'acceptation
-      description: Qu'est-ce qui détermine que la tâche est réussie ?
+      label: 📌 Critères d’acceptation
+      description: Qu’est-ce qui détermine que la tâche est réussie ?
       placeholder: |
-        - Le composant compile sans erreur
-        - La page s'affiche correctement
+        - La page/feature compile sans erreur
+        - Tous les tests unitaires passent
+        - Le lint ne génère aucune erreur
+        - Cursor a commenté si quelque chose n'était pas clair
+        - La Pull Request a été créée et merge-ready
     validations:
       required: true

@@ -1,0 +1,15 @@
+<div class="action-links">
+  <a
+    *ngFor="let action of actions"
+    [routerLink]="action.route"
+    [queryParams]="action.queryParams"
+    class="btn"
+    [class.btn-primary]="action.variant === 'primary' || (!action.variant && !action.icon)"
+    [class.btn-secondary]="action.variant === 'secondary'"
+    [class.btn-add]="action.variant === 'add' || action.icon?.includes('➕')"
+    [class.btn-edit]="action.variant === 'edit'">
+    <span *ngIf="action.icon" class="icon">{{ action.icon }}</span>
+    <span class="label">{{ action.label }}</span>
+  </a>
+</div>
+
