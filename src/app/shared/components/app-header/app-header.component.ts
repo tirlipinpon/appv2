@@ -13,7 +13,7 @@ import type { Teacher } from '../../../features/teacher/types/teacher';
 export interface HeaderNavItem {
   label: string;
   route: string | string[];
-  queryParams?: Record<string, any>;
+  queryParams?: Record<string, unknown>;
   icon?: string;
   visible?: () => boolean;
   exact?: boolean;
@@ -45,8 +45,8 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
   @Input() navItems?: HeaderNavItem[];
   @Input() brandTitle?: string;
   @Input() brandRoute?: string | string[];
-  @Input() showUserInfo: boolean = true;
-  @Input() showRoleBadge: boolean = true;
+  @Input() showUserInfo = true;
+  @Input() showRoleBadge = true;
   
   profile = signal<Profile | null>(null);
   currentUser = signal<User | null>(null);

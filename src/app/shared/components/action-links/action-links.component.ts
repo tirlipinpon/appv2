@@ -5,7 +5,7 @@ import { RouterModule } from '@angular/router';
 export interface ActionLink {
   label: string;
   route: string | string[];
-  queryParams?: Record<string, any>;
+  queryParams?: Record<string, unknown>;
   variant?: 'primary' | 'secondary' | 'add' | 'edit';
   icon?: string;
 }
