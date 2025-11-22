@@ -8,8 +8,20 @@
 
   <main class="teacher-content">
     <nav class="tabs">
-      <a [routerLink]="[]" [queryParams]="{ tab: 'profile' }" [class.active]="activeTab() === 'profile'">Profil</a>
-      <a [routerLink]="[]" [queryParams]="{ tab: 'assignments' }" [class.active]="activeTab() === 'assignments'">Affectations</a>
+      <a 
+        [routerLink]="[]" 
+        [queryParams]="{ tab: 'profile' }" 
+        [class.active]="activeTab() === 'profile'"
+        class="tab-link">
+        👤 Mon profil
+      </a>
+      <a 
+        [routerLink]="[]" 
+        [queryParams]="{ tab: 'assignments' }" 
+        [class.active]="activeTab() === 'assignments'"
+        class="tab-link">
+        📚 Mes affectations
+      </a>
     </nav>
 
     <div *ngIf="showSuccess()" class="success-message">

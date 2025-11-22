@@ -147,6 +147,13 @@
         <p *ngIf="assignment.school_level">Niveau: {{ assignment.school_level }}</p>
       </div>
       <div class="assignment-actions">
+        <a 
+          *ngIf="assignment.subject_id"
+          [routerLink]="['/teacher-subjects', assignment.subject_id]" 
+          [queryParams]="{ school_id: assignment.school_id, school_level: assignment.school_level }"
+          class="btn btn-secondary btn-sm">
+          ✏️ Gérer
+        </a>
         <button type="button" (click)="onDeleteAssignment(assignment.id)" class="btn btn-danger btn-sm">
           🗑️ Supprimer
         </button>

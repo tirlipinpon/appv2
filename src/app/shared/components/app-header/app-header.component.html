@@ -63,6 +63,7 @@
             <li class="nav-item">
               <a 
                 routerLink="/teacher-assignments" 
+                [queryParams]="{ tab: 'assignments' }"
                 routerLinkActive="active"
                 class="nav-link"
                 (click)="closeMenu()">
@@ -91,8 +92,8 @@
         <div class="user-info">
           <span class="user-name" aria-label="Utilisateur connecté">{{ displayName() }}</span>
           @if (activeRole()) {
-            <span class="user-role active-role" [attr.aria-label]="'Rôle actif: ' + activeRole()">
-              Rôle actif: {{ activeRole() }}
+            <span class="user-role active-role" [attr.aria-label]="'Rôle actif: ' + activeRoleLabel()">
+              Rôle actif: {{ activeRoleLabel() }}
             </span>
           }
         </div>

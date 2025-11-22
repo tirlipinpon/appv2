@@ -36,24 +36,57 @@ export class SubjectsComponent implements OnInit {
   private readonly patchFormFromStore = effect(() => {
     const sid = this.subjectId();
     const list = this.subjects();
-    if (sid) {
+    
+    // Remplir si on a un ID et des sujets dans le store
+    if (sid && list.length > 0) {
       const subj = list.find(x => x.id === sid);
       if (subj) {
-        this.subjectForm.get('name')?.setValue(subj.name || '');
-        this.subjectForm.patchValue({
-          description: subj.description || '',
-          type: subj.type || 'scolaire',
+        const currentName = this.subjectForm.get('name')?.value;
+        const currentDesc = this.subjectForm.get('description')?.value;
+        const currentType = this.subjectForm.get('type')?.value;
+        
+        // Toujours remplir si le formulaire est vide ou si les valeurs sont différentes
+        const shouldFill = !currentName || 
+                          currentName.trim() === '' ||
+                          currentName !== subj.name || 
+                          currentDesc !== (subj.description || '') ||
+                          currentType !== subj.type;
+        
+        console.log('[SubjectsComponent] Effect: vérification', {
+          sid,
+          subjectFound: !!subj,
+          currentName,
+          subjectName: subj.name,
+          shouldFill,
+          formExists: !!this.subjectForm
         });
-        this.subjectForm.updateValueAndValidity();
+        
+        if (shouldFill) {
+          console.log('[SubjectsComponent] Effect: remplissage du formulaire depuis le store', subj);
+          this.fillFormFromSubject(subj);
+        } else {
+          console.log('[SubjectsComponent] Effect: formulaire déjà rempli, pas de changement nécessaire');
+        }
+      } else {
+        console.warn('[SubjectsComponent] Effect: sujet non trouvé dans le store avec ID:', sid, 'Liste:', list.map(s => ({ id: s.id, name: s.name })));
       }
+    } else {
+      console.log('[SubjectsComponent] Effect: conditions non remplies', { sid, listLength: list.length });
     }
-  });
+  }, { allowSignalWrites: true });
 
   subjectForm = this.fb.group({
     name: ['', Validators.required, [/* async */ this.nameUniqueValidator()]],
     description: [''],
     type: ['scolaire', Validators.required],
   });
+
+  constructor() {
+    // Écouter les changements du formulaire pour déboguer
+    this.subjectForm.get('name')?.valueChanges.subscribe(value => {
+      console.log('[SubjectsComponent] name valueChanges:', value);
+    });
+  }
 
   linkForm = this.fb.group({
     school_id: ['', Validators.required],
@@ -65,9 +98,12 @@ export class SubjectsComponent implements OnInit {
 
   ngOnInit(): void {
     this.store.loadSchools();
+    // Toujours charger tous les sujets pour s'assurer d'avoir la matière complète
     this.store.loadSubjects();
     const id = this.route.snapshot.paramMap.get('id');
     this.subjectId.set(id);
+    
+    console.log('[SubjectsComponent] Initialisation avec subjectId:', id);
 
     // Préselection via query params (ex: depuis le dashboard/affectations)
     const q = this.route.snapshot.queryParamMap;
@@ -94,24 +130,38 @@ export class SubjectsComponent implements OnInit {
 
     if (id) {
       this.loadLinks(id);
-      const s = this.subjects().find(x => x.id === id);
-      if (s) {
-        // Remplir explicitement le champ 'name' pour éviter d'avoir à le retaper
-        this.subjectForm.get('name')?.setValue(s.name || '');
-        this.subjectForm.patchValue({ description: s.description || '', type: s.type || 'scolaire' });
-        this.subjectForm.updateValueAndValidity();
-      }
+      
+      // Utiliser setTimeout pour s'assurer que le formulaire est bien initialisé
+      setTimeout(() => {
+        // Essayer de remplir depuis le store d'abord (si disponible)
+        const s = this.subjects().find(x => x.id === id);
+        if (s) {
+          console.log('[SubjectsComponent] Remplissage depuis le store (immédiat)', s);
+          this.fillFormFromSubject(s);
+        } else {
+          console.log('[SubjectsComponent] Sujet non trouvé dans le store, chargement depuis l\'infrastructure');
+        }
+      }, 0);
 
-      // Sécuriser: charger directement depuis l'infra au cas où le store n'a pas encore les sujets
-      this.infra.getSubjects().subscribe(({ subjects }) => {
+      // Toujours charger depuis l'infra pour s'assurer d'avoir les données à jour
+      // et remplir le formulaire même si le store n'a pas encore les sujets
+      this.infra.getSubjects().subscribe(({ subjects, error }) => {
+        if (error) {
+          console.error('[SubjectsComponent] Erreur lors du chargement des sujets:', error);
+          return;
+        }
+        
         const found = (subjects || []).find(x => x.id === id);
         if (found) {
-          this.subjectForm.get('name')?.setValue(found.name || '');
-          this.subjectForm.patchValue({ description: found.description || '', type: found.type || 'scolaire' });
-          this.subjectForm.updateValueAndValidity();
+          console.log('[SubjectsComponent] Remplissage depuis l\'infrastructure', found);
+          this.fillFormFromSubject(found);
+        } else {
+          console.warn('[SubjectsComponent] Sujet non trouvé avec l\'ID:', id);
         }
       });
-      // (effet de pré-remplissage déclaré en champ de classe)
+      
+      // Écouter aussi les changements du store pour remplir le formulaire quand les données arrivent
+      // (l'effect patchFormFromStore se déclenchera aussi)
     }
   }
 
@@ -270,6 +320,70 @@ export class SubjectsComponent implements OnInit {
   getSchoolName(schoolId: string): string {
     const school = this.schools().find(s => s.id === schoolId);
     return school ? school.name : 'École inconnue';
+  }
+
+  /**
+   * Méthode pour remplir le formulaire avec les données d'un sujet
+   */
+  private fillFormFromSubject(subject: Subject | null | undefined): void {
+    if (!subject) {
+      console.warn('[SubjectsComponent] fillFormFromSubject: sujet null ou undefined');
+      return;
+    }
+
+    console.log('[SubjectsComponent] fillFormFromSubject appelé avec:', subject);
+    
+    // Vérifier que le formulaire existe
+    if (!this.subjectForm) {
+      console.error('[SubjectsComponent] fillFormFromSubject: formulaire non initialisé');
+      return;
+    }
+
+    // Remplir le formulaire
+    const nameControl = this.subjectForm.get('name');
+    const descriptionControl = this.subjectForm.get('description');
+    const typeControl = this.subjectForm.get('type');
+    
+    if (nameControl) {
+      nameControl.setValue(subject.name || '', { emitEvent: false, onlySelf: true });
+    }
+    
+    if (descriptionControl) {
+      descriptionControl.setValue(subject.description || '', { emitEvent: false, onlySelf: true });
+    }
+    
+    if (typeControl) {
+      typeControl.setValue(subject.type || 'scolaire', { emitEvent: false, onlySelf: true });
+    }
+    
+    // Marquer les champs comme touchés pour que les valeurs s'affichent
+    nameControl?.markAsTouched();
+    descriptionControl?.markAsTouched();
+    typeControl?.markAsTouched();
+    
+    // Mettre à jour la validité
+    this.subjectForm.updateValueAndValidity({ emitEvent: false });
+
+    // Vérifier que les valeurs ont bien été assignées
+    setTimeout(() => {
+      const actualName = this.subjectForm.get('name')?.value;
+      const actualDesc = this.subjectForm.get('description')?.value;
+      const actualType = this.subjectForm.get('type')?.value;
+      
+      console.log('[SubjectsComponent] fillFormFromSubject: formulaire rempli', {
+        expected: { name: subject.name, description: subject.description, type: subject.type },
+        actual: { name: actualName, description: actualDesc, type: actualType },
+        match: actualName === subject.name && actualDesc === (subject.description || '') && actualType === subject.type
+      });
+      
+      // Si les valeurs ne correspondent pas, réessayer
+      if (actualName !== subject.name || actualDesc !== (subject.description || '') || actualType !== subject.type) {
+        console.warn('[SubjectsComponent] fillFormFromSubject: valeurs non correspondantes, nouvelle tentative');
+        if (nameControl) nameControl.setValue(subject.name || '');
+        if (descriptionControl) descriptionControl.setValue(subject.description || '');
+        if (typeControl) typeControl.setValue(subject.type || 'scolaire');
+      }
+    }, 100);
   }
 }
 
