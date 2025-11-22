@@ -210,23 +210,20 @@ export class AssignmentsComponent implements OnInit {
           if (linkError) {
             this.errorSnackbarService.showError(linkError.message || 'Erreur lors de l\'association matière ↔ école/niveau');
           }
-          // Attendre un peu pour s'assurer que le lien est bien créé avant de recharger
-          setTimeout(() => {
-            // Recharger la liste filtrée
-            this.tryLoadSubjectsForSelection();
-            this.creatingSubject.set(false);
-            this.showCreateSubject.set(false);
-            this.subjectForm.reset();
-          }, 300);
+          // Le lien est créé, on peut directement recharger la liste
+          // Pas besoin de setTimeout, l'opération est déjà terminée dans le callback
+          this.tryLoadSubjectsForSelection();
+          this.creatingSubject.set(false);
+          this.showCreateSubject.set(false);
+          this.subjectForm.reset();
         });
       } else {
         // Pas d'école/niveau sélectionnés: ajouter la matière au store directement si elle est de type 'extra' ou 'optionnelle'
         if (subject && (formValue.type === 'extra' || formValue.type === 'optionnelle')) {
           // Les matières extra/optionnelle sont globales, elles apparaîtront dans la liste
           // Recharger la liste filtrée pour les inclure
-          setTimeout(() => {
-            this.tryLoadSubjectsForSelection();
-          }, 300);
+          // Pas besoin de setTimeout, la matière est déjà créée dans le callback
+          this.tryLoadSubjectsForSelection();
         }
         this.creatingSubject.set(false);
         this.showCreateSubject.set(false);

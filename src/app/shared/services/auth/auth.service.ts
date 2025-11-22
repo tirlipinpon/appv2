@@ -67,6 +67,9 @@ export class AuthService {
     if (session) {
       this.currentUserSubject.next(session.user);
       await this.loadProfile();
+      // Ne pas restaurer automatiquement le rôle ici
+      // La restauration se fera dans les composants qui en ont besoin (login, dashboard)
+      // Cela évite de restaurer quand l'utilisateur arrive sur /select-role
     }
 
     // Écouter les changements d'authentification
@@ -74,10 +77,22 @@ export class AuthService {
       if ((event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') && session) {
         this.currentUserSubject.next(session.user);
         await this.loadProfile();
+        // Ne pas restaurer automatiquement le rôle ici
+        // La restauration se fera dans les composants qui en ont besoin (login)
       } else if (event === 'SIGNED_OUT') {
+        const user = this.getCurrentUser();
         this.currentUserSubject.next(null);
         this.currentProfileSubject.next(null);
         this.activeRoleSignal.set(null);
+        
+        // Nettoyer le rôle sauvegardé dans localStorage
+        if (user) {
+          try {
+            localStorage.removeItem(`activeRole_${user.id}`);
+          } catch (error) {
+            console.warn('[AuthService] Impossible de supprimer le rôle sauvegardé:', error);
+          }
+        }
       }
     });
   }
@@ -371,10 +386,21 @@ export class AuthService {
   }
 
   async signOut(): Promise<void> {
+    const user = this.getCurrentUser();
     await this.supabaseService.client.auth.signOut();
     this.currentUserSubject.next(null);
     this.currentProfileSubject.next(null);
     this.activeRoleSignal.set(null);
+    
+    // Nettoyer le rôle sauvegardé dans localStorage
+    if (user) {
+      try {
+        localStorage.removeItem(`activeRole_${user.id}`);
+      } catch (error) {
+        console.warn('[AuthService] Impossible de supprimer le rôle sauvegardé:', error);
+      }
+    }
+    
     this.router.navigate(['/login']);
   }
 
@@ -463,6 +489,19 @@ export class AuthService {
         }
 
         this.currentProfileSubject.next(data);
+        
+        // Restaurer le rôle sauvegardé après avoir chargé le profil
+        if (data && data.roles && data.roles.length > 0) {
+          if (data.roles.length === 1) {
+            // Un seul rôle, le définir automatiquement
+            this.activeRoleSignal.set(data.roles[0]);
+            this.saveActiveRole(data.roles[0]);
+          } else {
+            // Plusieurs rôles, restaurer le rôle sauvegardé
+            this.restoreActiveRole();
+          }
+        }
+        
         return data;
       } finally {
         // Réinitialiser la promesse après le chargement
@@ -479,6 +518,11 @@ export class AuthService {
       // Si un seul rôle, le définir automatiquement
       if (profile.roles.length === 1) {
         this.activeRoleSignal.set(profile.roles[0]);
+        this.saveActiveRole(profile.roles[0]);
+      } else {
+        // Pour plusieurs rôles, restaurer automatiquement le rôle sauvegardé lors du rechargement
+        // Cela permet de conserver le dernier rôle sélectionné après un refresh
+        this.restoreActiveRole();
       }
     }
   }
@@ -529,6 +573,51 @@ export class AuthService {
     const profile = this.currentProfileSubject.value;
     if (profile && profile.roles.includes(role)) {
       this.activeRoleSignal.set(role);
+      this.saveActiveRole(role);
+    }
+  }
+
+  /**
+   * Sauvegarde le rôle actif dans localStorage
+   */
+  private saveActiveRole(role: string): void {
+    const user = this.getCurrentUser();
+    if (user) {
+      try {
+        localStorage.setItem(`activeRole_${user.id}`, role);
+      } catch (error) {
+        console.warn('[AuthService] Impossible de sauvegarder le rôle actif:', error);
+      }
+    }
+  }
+
+  /**
+   * Restaure le dernier rôle actif depuis localStorage
+   */
+  private restoreActiveRole(): void {
+    const user = this.getCurrentUser();
+    const profile = this.currentProfileSubject.value;
+    
+    if (!user || !profile || profile.roles.length === 0) {
+      return;
+    }
+
+    try {
+      const savedRole = localStorage.getItem(`activeRole_${user.id}`);
+      if (savedRole && profile.roles.includes(savedRole)) {
+        console.log('[AuthService] Restauration du rôle actif:', savedRole);
+        this.activeRoleSignal.set(savedRole);
+      } else if (profile.roles.length === 1) {
+        // Si un seul rôle, le définir automatiquement
+        this.activeRoleSignal.set(profile.roles[0]);
+        this.saveActiveRole(profile.roles[0]);
+      }
+    } catch (error) {
+      console.warn('[AuthService] Impossible de restaurer le rôle actif:', error);
+      // En cas d'erreur, utiliser le premier rôle si un seul rôle disponible
+      if (profile.roles.length === 1) {
+        this.activeRoleSignal.set(profile.roles[0]);
+      }
     }
   }
 

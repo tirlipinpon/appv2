@@ -31,7 +31,61 @@ export class LoginComponent implements OnInit {
   addRoleAfterLogin: string | null = null;
   isForgotPasswordMode = false;
 
-  ngOnInit() {
+  async ngOnInit() {
+    // Vérifier si l'utilisateur est déjà connecté
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser) {
+      // L'utilisateur est déjà connecté, vérifier le profil
+      const profile = await this.authService.getProfile();
+      if (profile) {
+        // Si plusieurs rôles, essayer de restaurer le dernier rôle sélectionné
+        if (this.authService.hasMultipleRoles()) {
+          const user = this.authService.getCurrentUser();
+          if (user) {
+            try {
+              const savedRole = localStorage.getItem(`activeRole_${user.id}`);
+              if (savedRole && profile.roles.includes(savedRole)) {
+                // Rôle sauvegardé trouvé, le restaurer et rediriger
+                this.authService.setActiveRole(savedRole);
+                const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+                if (returnUrl) {
+                  this.router.navigateByUrl(returnUrl);
+                } else {
+                  this.router.navigate(['/dashboard']);
+                }
+              } else {
+                // Pas de rôle sauvegardé, rediriger vers le sélecteur
+                const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+                if (returnUrl) {
+                  this.router.navigate(['/select-role'], { queryParams: { returnUrl } });
+                } else {
+                  this.router.navigate(['/select-role']);
+                }
+              }
+            } catch (error) {
+              // En cas d'erreur, rediriger vers le sélecteur
+              this.router.navigate(['/select-role']);
+            }
+          } else {
+            this.router.navigate(['/select-role']);
+          }
+        } else if (profile.roles.length === 1) {
+          // Un seul rôle, définir automatiquement et rediriger
+          this.authService.setActiveRole(profile.roles[0]);
+          const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+          if (returnUrl) {
+            this.router.navigateByUrl(returnUrl);
+          } else {
+            this.router.navigate(['/dashboard']);
+          }
+        } else {
+          // Pas de rôle, rediriger vers le sélecteur
+          this.router.navigate(['/select-role']);
+        }
+        return;
+      }
+    }
+
     // Vérifier les query params pour ajouter un rôle après connexion
     this.route.queryParams.subscribe(params => {
       if (params['addRole']) {
@@ -103,7 +157,8 @@ export class LoginComponent implements OnInit {
       const profile = await this.authService.getProfile();
       
       if (profile) {
-        // Si plusieurs rôles, rediriger vers le sélecteur de rôle
+        // Si plusieurs rôles, toujours rediriger vers le sélecteur pour laisser l'utilisateur choisir
+        // Le rôle sauvegardé sera restauré automatiquement par le dashboard ou le role-selector si nécessaire
         if (this.authService.hasMultipleRoles()) {
           this.router.navigate(['/select-role']);
         } else if (profile.roles.length === 1) {

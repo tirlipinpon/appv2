@@ -1,21 +1,40 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { AuthService } from '../../../shared/services/auth/auth.service';
-import { map, take } from 'rxjs/operators';
+import { from, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 
 export const authGuard: CanActivateFn = (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  return authService.currentUser$.pipe(
-    take(1),
-    map(user => {
-      if (user) {
+  // Vérifier d'abord si l'utilisateur est déjà chargé (cas synchrone)
+  const currentUser = authService.getCurrentUser();
+  if (currentUser) {
+    return true;
+  }
+
+  // Sinon, vérifier la session de manière asynchrone
+  // Cela garantit que la session est vérifiée même lors d'un reload
+  return from(authService.getSession()).pipe(
+    map(session => {
+      if (session?.user) {
+        // La session existe, autoriser l'accès
+        // Le BehaviorSubject sera mis à jour par initializeAuth() de manière asynchrone
         return true;
-      } else {
-        router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
-        return false;
       }
+      // Pas de session, rediriger vers login
+      router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
+      return false;
+    }),
+    catchError(() => {
+      // En cas d'erreur, vérifier une dernière fois de manière synchrone
+      const user = authService.getCurrentUser();
+      if (user) {
+        return of(true);
+      }
+      router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
+      return of(false);
     })
   );
 };

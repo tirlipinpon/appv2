@@ -63,6 +63,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
     this.activeRole = this.authService.getActiveRole();
+    
+    // Si aucun rôle actif mais que le profil a des rôles, essayer de restaurer
+    if (!this.activeRole && this.profile) {
+      if (this.profile.roles.length === 1) {
+        // Un seul rôle, le définir automatiquement
+        this.authService.setActiveRole(this.profile.roles[0]);
+        this.activeRole = this.profile.roles[0];
+      } else if (this.profile.roles.length > 1) {
+        // Plusieurs rôles, essayer de restaurer le dernier rôle sélectionné
+        const user = this.authService.getCurrentUser();
+        if (user) {
+          try {
+            const savedRole = localStorage.getItem(`activeRole_${user.id}`);
+            if (savedRole && this.profile.roles.includes(savedRole)) {
+              this.authService.setActiveRole(savedRole);
+              this.activeRole = savedRole;
+            } else {
+              // Pas de rôle sauvegardé, rediriger vers le sélecteur
+              this.router.navigate(['/select-role']);
+              return;
+            }
+          } catch (error) {
+            // En cas d'erreur, rediriger vers le sélecteur
+            this.router.navigate(['/select-role']);
+            return;
+          }
+        } else {
+          this.router.navigate(['/select-role']);
+          return;
+        }
+      } else {
+        // Pas de rôle, rediriger vers le sélecteur
+        this.router.navigate(['/select-role']);
+        return;
+      }
+    }
+    
     this.activeRoleSig.set(this.activeRole);
     
     // Si le rôle actif est parent, charger le profil et vérifier le statut
