@@ -1,8 +1,8 @@
 <header class="app-header" role="banner">
   <div class="header-container">
     <div class="header-brand">
-      <a routerLink="/dashboard" class="brand-link" aria-label="Retour au tableau de bord">
-        <h1 class="brand-title">📚 App Éducative</h1>
+      <a [routerLink]="displayBrandRoute()" class="brand-link" aria-label="Retour au tableau de bord">
+        <h1 class="brand-title">{{ displayBrandTitle() }}</h1>
       </a>
     </div>
 
@@ -17,86 +17,37 @@
       </button>
 
       <ul class="nav-list" id="main-menu" [class.menu-open]="isMenuOpen()">
-        @if (isAuthenticated()) {
+        @for (item of visibleNavItems(); track item.label) {
           <li class="nav-item">
             <a 
-              routerLink="/dashboard" 
+              [routerLink]="item.route" 
+              [queryParams]="item.queryParams"
               routerLinkActive="active"
-              [routerLinkActiveOptions]="{exact: false}"
+              [routerLinkActiveOptions]="{exact: item.exact ?? false}"
               class="nav-link"
               (click)="closeMenu()">
-              🏠 Tableau de bord
+              @if (item.icon) {
+                <span class="nav-icon">{{ item.icon }}</span>
+              }
+              <span class="nav-label">{{ item.label }}</span>
             </a>
           </li>
-
-          @if (activeRole() === 'parent') {
-            <li class="nav-item">
-              <a 
-                routerLink="/parent-profile" 
-                routerLinkActive="active"
-                class="nav-link"
-                (click)="closeMenu()">
-                👤 Mon profil parent
-              </a>
-            </li>
-            <li class="nav-item">
-              <a 
-                routerLink="/child-profile" 
-                routerLinkActive="active"
-                class="nav-link"
-                (click)="closeMenu()">
-                ➕ Ajouter un enfant
-              </a>
-            </li>
-          }
-
-          @if (activeRole() === 'prof') {
-            <li class="nav-item">
-              <a 
-                routerLink="/teacher-profile" 
-                routerLinkActive="active"
-                class="nav-link"
-                (click)="closeMenu()">
-                👨‍🏫 Mon profil professeur
-              </a>
-            </li>
-            <li class="nav-item">
-              <a 
-                routerLink="/teacher-assignments" 
-                [queryParams]="{ tab: 'assignments' }"
-                routerLinkActive="active"
-                class="nav-link"
-                (click)="closeMenu()">
-                📚 Mes affectations
-              </a>
-            </li>
-          }
-
-          @if (hasMultipleRoles()) {
-            <li class="nav-item">
-              <a 
-                routerLink="/select-role" 
-                routerLinkActive="active"
-                class="nav-link"
-                (click)="closeMenu()">
-                🔄 Changer de rôle
-              </a>
-            </li>
-          }
         }
       </ul>
     </nav>
 
     <div class="header-actions">
       @if (isAuthenticated()) {
-        <div class="user-info">
-          <span class="user-name" aria-label="Utilisateur connecté">{{ displayName() }}</span>
-          @if (activeRole()) {
-            <span class="user-role active-role" [attr.aria-label]="'Rôle actif: ' + activeRoleLabel()">
-              Rôle actif: {{ activeRoleLabel() }}
-            </span>
-          }
-        </div>
+        @if (showUserInfo && (config?.showUserInfo !== false)) {
+          <div class="user-info">
+            <span class="user-name" aria-label="Utilisateur connecté">{{ displayName() }}</span>
+            @if (activeRole() && (showRoleBadge && (config?.showRoleBadge !== false))) {
+              <span class="user-role active-role" [attr.aria-label]="'Rôle actif: ' + activeRoleLabel()">
+                Rôle actif: {{ activeRoleLabel() }}
+              </span>
+            }
+          </div>
+        }
         <button 
           class="btn-logout" 
           (click)="logout()"
