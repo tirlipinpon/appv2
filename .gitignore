@@ -51,3 +51,6 @@ src/environments/environment.prod.ts
 # Keep example files
 !src/environments/environment.example.ts
 !src/environments/environment.prod.example.ts
+
+# MCP Configuration (contains tokens)
+.cursor/mcp-config.json
