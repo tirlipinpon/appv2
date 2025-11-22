@@ -7,37 +7,16 @@
       <p *ngIf="activeRole === 'admin'">Vous êtes connecté en tant qu'administrateur.</p>
 
       <!-- Liens vers l'édition/création pour les parents -->
-      <div *ngIf="activeRole === 'parent'" class="action-links">
-        <a 
-          routerLink="/parent-profile" 
-          class="btn btn-primary"
-          [class.btn-add]="isCreatingParent()"
-          [class.btn-edit]="!isCreatingParent()">
-          {{ parentButtonText() }}
-        </a>
-        <a 
-          routerLink="/child-profile" 
-          class="btn btn-primary btn-add">
-          ➕ Ajouter un enfant
-        </a>
-      </div>
+      <app-action-links 
+        *ngIf="activeRole === 'parent'" 
+        [actions]="parentActions()">
+      </app-action-links>
 
       <!-- Liens vers l'édition/création pour les professeurs -->
-      <div *ngIf="activeRole === 'prof'" class="action-links">
-        <a 
-          routerLink="/teacher-profile" 
-          class="btn btn-primary"
-          [class.btn-add]="!hasTeacher()"
-          [class.btn-edit]="hasTeacher()">
-          {{ teacherButtonText() }}
-        </a>
-        <a 
-          routerLink="/teacher-assignments" 
-          [queryParams]="{ tab: 'assignments' }"
-          class="btn btn-secondary">
-          📚 Mes affectations
-        </a>
-      </div>
+      <app-action-links 
+        *ngIf="activeRole === 'prof'" 
+        [actions]="teacherActions()">
+      </app-action-links>
 
       <!-- Section Affectations pour les professeurs -->
       <div *ngIf="activeRole === 'prof' && hasTeacher()" class="assignments-section">

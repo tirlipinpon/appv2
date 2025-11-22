@@ -8,11 +8,12 @@ import { TeacherStore } from '../teacher/store/index';
 import { TeacherAssignmentStore } from '../teacher/store/assignments.store';
 import { Child } from '../child/types/child';
 import { filter, Subscription } from 'rxjs';
+import { ActionLinksComponent, ActionLink } from '../../shared/components/action-links/action-links.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, ActionLinksComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -48,6 +49,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly hasActiveChildren = computed(() => this.activeChildren().length > 0);
   readonly hasInactiveChildren = computed(() => this.inactiveChildren().length > 0);
   readonly childrenCount = computed(() => this.activeChildren().length);
+
+  // Computed signals pour les actions
+  readonly parentActions = computed<ActionLink[]>(() => {
+    return [
+      {
+        label: this.parentButtonText(),
+        route: '/parent-profile',
+        variant: this.isCreatingParent() ? 'add' : 'edit'
+      },
+      {
+        label: 'Ajouter un enfant',
+        route: '/child-profile',
+        icon: '➕',
+        variant: 'add'
+      }
+    ];
+  });
+
+  readonly teacherActions = computed<ActionLink[]>(() => {
+    return [
+      {
+        label: this.teacherButtonText(),
+        route: '/teacher-profile',
+        variant: this.hasTeacher() ? 'edit' : 'add'
+      },
+      {
+        label: 'Mes affectations',
+        route: '/teacher-assignments',
+        queryParams: { tab: 'assignments' },
+        icon: '📚',
+        variant: 'secondary'
+      }
+    ];
+  });
 
   // Effect créé en contexte d'injection (champ de classe), pas dans ngOnInit
   private readonly loadAssignmentsEffect = effect(() => {
