@@ -6,6 +6,7 @@ import { Infrastructure } from '../infrastructure/infrastructure';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import type { Subject } from '../../types/subject';
 import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error-snackbar.service';
+import { ToastService } from '../../../../shared/services/toast/toast.service';
 
 @Component({
   selector: 'app-subjects',
@@ -20,6 +21,7 @@ export class SubjectsComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly infra = inject(Infrastructure);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
+  private readonly toastService = inject(ToastService);
   readonly store = inject(TeacherAssignmentStore);
 
   readonly subjectId = signal<string | null>(null);
@@ -231,7 +233,7 @@ export class SubjectsComponent implements OnInit {
       }
       // Succès même si 'subject' est null (aucun champ réellement changé)
       this.store.loadSubjects();
-      this.errorSnackbar.showError('Matière enregistrée.');
+      this.toastService.success('Matière enregistrée.');
     });
   }
 
