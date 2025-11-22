@@ -8,13 +8,14 @@ import { SchoolService } from './services/school/school.service';
 import { ErrorSnackbarService } from '../../shared/services/snackbar/error-snackbar.service';
 import type { Child } from './types/child';
 import type { School } from './types/school';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { SchoolLevelSelectComponent } from '../../shared/components/school-level-select/school-level-select.component';
+import { AvatarPinGeneratorComponent } from './components/avatar-pin-generator/avatar-pin-generator.component';
 
 @Component({
   selector: 'app-child',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent, AvatarPinGeneratorComponent],
   templateUrl: './child.component.html',
   styleUrl: './child.component.scss',
 })
@@ -39,6 +40,12 @@ export class ChildComponent implements OnInit, OnDestroy {
   readonly schools = signal<School[]>([]);
   readonly showOtherSchoolInput = signal(false);
   readonly otherSchoolName = signal('');
+
+  // Avatar et PIN
+  readonly avatarSeed = signal<string | null>(null);
+  readonly avatarStyle = signal<'fun-emoji' | 'bottts'>('fun-emoji');
+  readonly loginPin = signal<string | null>(null);
+  readonly avatarPinValid = signal(false);
 
   // Formulaire réactif
   childForm!: FormGroup;
@@ -165,6 +172,11 @@ export class ChildComponent implements OnInit, OnDestroy {
         this.otherSchoolName.set('');
       }
     });
+
+    // Écouter les changements de genre pour mettre à jour l'avatar
+    this.childForm.get('gender')?.valueChanges.subscribe((gender) => {
+      // Le composant avatar-pin-generator se mettra à jour automatiquement via l'input binding
+    });
   }
 
   selectCreateFromScratch(): void {
@@ -176,6 +188,9 @@ export class ChildComponent implements OnInit, OnDestroy {
     this.showCopySelection.set(false);
     this.sourceChildId.set(null);
     this.store.setSelectedChild(null); // S'assurer qu'aucun enfant n'est sélectionné
+    this.avatarSeed.set(null);
+    this.avatarStyle.set('fun-emoji');
+    this.loginPin.set(null);
     this.initializeForm(); // Réinitialiser le formulaire vide
     this.showForm.set(true);
   }
@@ -210,6 +225,11 @@ export class ChildComponent implements OnInit, OnDestroy {
         notes: child.notes || '',
         avatar_url: child.avatar_url || '',
       });
+
+      // Mettre à jour les signaux pour avatar et PIN
+      this.avatarSeed.set(child.avatar_seed || null);
+      this.avatarStyle.set((child.avatar_style as 'fun-emoji' | 'bottts') || 'fun-emoji');
+      this.loginPin.set(child.login_pin || null);
       
       // Si on est en mode copie, marquer le prénom comme requis et touché pour afficher l'erreur
       if (isCopyMode) {
@@ -218,7 +238,7 @@ export class ChildComponent implements OnInit, OnDestroy {
     }
   }
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     if (this.childForm.valid) {
       const formValue = this.childForm.value;
       
@@ -290,6 +310,27 @@ export class ChildComponent implements OnInit, OnDestroy {
         finalSchoolId = formValue.school_id;
       }
 
+      // Valider l'unicité de la paire (avatar_seed, login_pin) avant de sauvegarder
+      const currentAvatarSeed = this.avatarSeed();
+      const currentLoginPin = this.loginPin();
+      
+      if (currentAvatarSeed && currentLoginPin) {
+        const childId = this.currentChildId();
+        try {
+          const uniquenessResult = await firstValueFrom(
+            this.application.checkAvatarPinUniqueness(currentAvatarSeed, currentLoginPin, childId || undefined)
+          );
+          
+          if (!uniquenessResult.isUnique) {
+            this.store.setError('Cette combinaison d\'avatar et de code PIN est déjà utilisée. Veuillez générer un nouvel avatar ou changer le code PIN.');
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking avatar/pin uniqueness:', error);
+          // En cas d'erreur, on continue pour ne pas bloquer l'utilisateur
+        }
+      }
+
       this.createOrUpdateChild(finalSchoolId, formValue);
     }
   }
@@ -304,6 +345,9 @@ export class ChildComponent implements OnInit, OnDestroy {
       school_level: formValue.school_level || null,
       notes: formValue.notes || null,
       avatar_url: formValue.avatar_url || null,
+      avatar_seed: this.avatarSeed() || null,
+      avatar_style: this.avatarStyle() || null,
+      login_pin: this.loginPin() || null,
     };
 
     const wasCreating = this.isCreating();
@@ -402,5 +446,21 @@ export class ChildComponent implements OnInit, OnDestroy {
       // Si on annule une création, retourner au dashboard
       this.router.navigate(['/dashboard']);
     }
+  }
+
+  onAvatarSeedChange(seed: string | null): void {
+    this.avatarSeed.set(seed);
+  }
+
+  onAvatarStyleChange(style: 'fun-emoji' | 'bottts'): void {
+    this.avatarStyle.set(style);
+  }
+
+  onLoginPinChange(pin: string | null): void {
+    this.loginPin.set(pin);
+  }
+
+  onValidationChange(isValid: boolean): void {
+    this.avatarPinValid.set(isValid);
   }
 }

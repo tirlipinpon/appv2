@@ -1,0 +1,61 @@
+<div class="avatar-pin-generator">
+  <h3>Avatar et code de connexion</h3>
+  <p class="description">
+    Générez un avatar unique et définissez un code PIN à 4 chiffres pour permettre à votre enfant de se connecter facilement.
+  </p>
+
+  <div class="avatar-section">
+    <div class="style-selector">
+      <label for="avatarStyle">Style d'avatar :</label>
+      <select 
+        id="avatarStyle"
+        [value]="selectedStyle()" 
+        (change)="onStyleChange($any($event.target).value)"
+        class="form-control">
+        <option value="fun-emoji">Fun Emoji</option>
+        <option value="bottts">Bottts</option>
+      </select>
+    </div>
+    <div class="avatar-preview">
+      @if (avatarUrl()) {
+        <img [src]="avatarUrl()" alt="Avatar de l'enfant" class="avatar-image" />
+      } @else {
+        <div class="avatar-placeholder">
+          <span>Avatar</span>
+        </div>
+      }
+    </div>
+    <button 
+      type="button" 
+      (click)="generateNewAvatar()" 
+      class="btn btn-secondary btn-generate">
+      🎲 Générer un nouvel avatar
+    </button>
+  </div>
+
+  <div class="pin-section">
+    <div class="form-group">
+      <label for="loginPin">Code PIN (4 chiffres) *</label>
+      <input
+        id="loginPin"
+        type="text"
+        [formControl]="pinControl"
+        class="form-control"
+        [class.invalid]="pinInvalid"
+        placeholder="0000"
+        maxlength="4"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        (input)="onPinInput($event)"
+        (keypress)="onPinKeyPress($event)"
+      />
+      @if (pinInvalid) {
+        <span class="error-text">{{ pinErrorMessage }}</span>
+      }
+      <p class="help-text">
+        Ce code permettra à votre enfant de se connecter facilement sans email.
+      </p>
+    </div>
+  </div>
+</div>
+

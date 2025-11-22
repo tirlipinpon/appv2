@@ -27,8 +27,16 @@ export class Application {
   /**
    * Met à jour le profil enfant
    */
-  updateChildProfile(childId: string, updates: Partial<{ firstname: string | null; lastname: string | null; birthdate: string | null; gender: string | null; school_level: string | null; notes: string | null; avatar_url: string | null }>): void {
+  updateChildProfile(childId: string, updates: Partial<{ firstname: string | null; lastname: string | null; birthdate: string | null; gender: string | null; school_level: string | null; notes: string | null; avatar_url: string | null; avatar_seed: string | null; avatar_style: string | null; login_pin: string | null }>): void {
     this.store.updateChildProfile({ childId, updates: updates as Partial<Child> });
+  }
+
+  /**
+   * Vérifie l'unicité de la paire (avatar_seed, login_pin)
+   * Retourne un Observable pour permettre l'attente du résultat
+   */
+  checkAvatarPinUniqueness(avatarSeed: string | null, loginPin: string | null, excludeChildId?: string) {
+    return this.infrastructure.checkAvatarPinUniqueness(avatarSeed, loginPin, excludeChildId);
   }
 
   /**

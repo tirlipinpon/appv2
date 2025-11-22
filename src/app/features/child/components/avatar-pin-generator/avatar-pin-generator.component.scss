@@ -1,0 +1,109 @@
+@use '../../../../../styles/variables' as *;
+@use '../../../../../styles/mixins' as *;
+
+.avatar-pin-generator {
+  margin: $spacing-2xl 0;
+  padding: $spacing-xl;
+  border: $border-width-thin solid $color-border-light;
+  border-radius: $border-radius-md;
+  background: $color-bg-secondary;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: $spacing-sm;
+    color: $color-text-primary;
+    font-size: $font-size-xl;
+  }
+
+  .description {
+    margin-bottom: $spacing-xl;
+    color: $color-text-secondary;
+    font-size: $font-size-sm;
+  }
+
+  .avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-2xl;
+    padding: $spacing-xl;
+    background: $color-bg-primary;
+    border-radius: $border-radius-md;
+
+    .avatar-preview {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      .avatar-image {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        border: $border-width-medium solid $color-border-light;
+        box-shadow: $shadow-sm;
+      }
+
+      .avatar-placeholder {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        border: $border-width-medium dashed $color-border-light;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: $color-bg-secondary;
+        color: $color-text-secondary;
+        font-size: $font-size-sm;
+      }
+    }
+
+    .btn-generate {
+      @include button-base;
+      @include button-variant($color-secondary, $color-text-primary, $color-secondary-dark);
+      padding: $spacing-sm $spacing-lg;
+      font-size: $font-size-base;
+    }
+  }
+
+  .pin-section {
+    .form-group {
+      label {
+        display: block;
+        margin-bottom: $spacing-sm;
+        color: $color-text-primary;
+        font-weight: $font-weight-medium;
+        font-size: $font-size-base;
+      }
+
+      .form-control {
+        @include form-control-base;
+        width: 100%;
+        max-width: 200px;
+        text-align: center;
+        font-size: $font-size-xl;
+        letter-spacing: $spacing-md;
+        font-weight: $font-weight-semibold;
+
+        &.invalid {
+          @include form-control-invalid;
+        }
+      }
+
+      .error-text {
+        display: block;
+        margin-top: $spacing-xs;
+        color: $color-danger;
+        font-size: $font-size-sm;
+      }
+
+      .help-text {
+        margin-top: $spacing-sm;
+        margin-bottom: 0;
+        color: $color-text-secondary;
+        font-size: $font-size-xs;
+      }
+    }
+  }
+}
+

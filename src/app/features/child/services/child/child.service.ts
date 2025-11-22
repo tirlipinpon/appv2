@@ -165,5 +165,44 @@ export class ChildService {
       catchError((error) => of({ child: null, error }))
     );
   }
+
+  /**
+   * Vérifie l'unicité de la paire (avatar_seed, login_pin)
+   * Retourne true si la combinaison est unique (ou si l'un des deux est null)
+   * Retourne false si la combinaison existe déjà pour un autre enfant
+   */
+  checkAvatarPinUniqueness(avatarSeed: string | null, loginPin: string | null, excludeChildId?: string): Observable<{ isUnique: boolean; error: PostgrestError | null }> {
+    // Si l'un des deux est null, on considère que c'est unique (pas de contrainte)
+    if (!avatarSeed || !loginPin) {
+      return of({ isUnique: true, error: null });
+    }
+
+    let query = this.supabaseService.client
+      .from('children')
+      .select('id')
+      .eq('avatar_seed', avatarSeed)
+      .eq('login_pin', loginPin);
+
+    // Exclure l'enfant actuel si on est en mode édition
+    if (excludeChildId) {
+      query = query.neq('id', excludeChildId);
+    }
+
+    return from(query).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error checking avatar/pin uniqueness:', error);
+          // En cas d'erreur, on considère que c'est unique pour ne pas bloquer
+          return { isUnique: true, error };
+        }
+        // Si on trouve des résultats, la combinaison n'est pas unique
+        return { isUnique: (data?.length || 0) === 0, error: null };
+      }),
+      catchError((error) => {
+        console.error('Error checking avatar/pin uniqueness:', error);
+        return of({ isUnique: true, error });
+      })
+    );
+  }
 }
 

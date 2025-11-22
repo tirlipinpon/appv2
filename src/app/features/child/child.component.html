@@ -171,20 +171,21 @@
         ></textarea>
       </div>
 
-      <div class="form-group">
-        <label for="avatar_url">URL de l'avatar</label>
-        <input
-          id="avatar_url"
-          type="url"
-          formControlName="avatar_url"
-          class="form-control"
-        />
-      </div>
+      <app-avatar-pin-generator
+        [initialAvatarSeed]="avatarSeed()"
+        [initialAvatarStyle]="avatarStyle()"
+        [initialLoginPin]="loginPin()"
+        [childId]="currentChildId() || null"
+        (avatarSeedChange)="onAvatarSeedChange($event)"
+        (avatarStyleChange)="onAvatarStyleChange($event)"
+        (loginPinChange)="onLoginPinChange($event)"
+        (validationChange)="onValidationChange($event)"
+      />
 
       <div class="form-actions">
         <button 
           type="submit" 
-          [disabled]="childForm.invalid || isLoading()" 
+          [disabled]="childForm.invalid || isLoading() || !avatarPinValid()" 
           class="btn btn-primary"
           [class.btn-add]="isCreating()"
           [class.btn-edit]="!isCreating()">

@@ -9,6 +9,9 @@ export interface Child {
   school_level: string | null;
   notes: string | null;
   avatar_url: string | null;
+  avatar_seed: string | null;
+  avatar_style: string | null;
+  login_pin: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -23,5 +26,8 @@ export interface ChildUpdate {
   school_level?: string | null;
   notes?: string | null;
   avatar_url?: string | null;
+  avatar_seed?: string | null;
+  avatar_style?: string | null;
+  login_pin?: string | null;
 }
 

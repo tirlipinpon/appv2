@@ -69,5 +69,17 @@ export class Infrastructure {
       })
     );
   }
+
+  /**
+   * Vérifie l'unicité de la paire (avatar_seed, login_pin)
+   */
+  checkAvatarPinUniqueness(avatarSeed: string | null, loginPin: string | null, excludeChildId?: string): Observable<{ isUnique: boolean; error: PostgrestError | null }> {
+    return this.childService.checkAvatarPinUniqueness(avatarSeed, loginPin, excludeChildId).pipe(
+      catchError((error: PostgrestError) => {
+        // En cas d'erreur, on considère que c'est unique pour ne pas bloquer
+        return of({ isUnique: true, error });
+      })
+    );
+  }
 }
 
