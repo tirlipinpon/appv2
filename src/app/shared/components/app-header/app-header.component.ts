@@ -9,6 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
 import type { Parent } from '../../../features/parent/types/parent';
 import type { Teacher } from '../../../features/teacher/types/teacher';
+import { APP_VERSION } from '../../../core/version';
 
 export interface HeaderNavItem {
   label: string;
@@ -76,6 +77,11 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
   // Computed pour le titre de la marque
   readonly displayBrandTitle = computed(() => {
     return this.brandTitle || this.config?.brandTitle || '📚 App Éducative';
+  });
+  
+  // Computed pour la version de l'application
+  readonly appVersion = computed(() => {
+    return APP_VERSION;
   });
   
   // Computed pour la route de la marque

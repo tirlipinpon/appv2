@@ -2,7 +2,10 @@
   <div class="header-container">
     <div class="header-brand">
       <a [routerLink]="displayBrandRoute()" class="brand-link" aria-label="Retour au tableau de bord">
-        <h1 class="brand-title">{{ displayBrandTitle() }}</h1>
+        <h1 class="brand-title">
+          {{ displayBrandTitle() }}
+          <span class="brand-version">v{{ appVersion() }}</span>
+        </h1>
       </a>
     </div>
 

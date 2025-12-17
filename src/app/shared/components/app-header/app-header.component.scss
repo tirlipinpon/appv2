@@ -90,6 +90,24 @@
 
     color: $color-primary;
 
+    display: flex;
+
+    align-items: baseline;
+
+    gap: $spacing-xs;
+
+    .brand-version {
+
+      font-size: 0.75rem;
+
+      font-weight: $font-weight-normal;
+
+      color: $color-text-secondary;
+
+      opacity: 0.7;
+
+    }
+
   }
 
 }

@@ -52,5 +52,8 @@ src/environments/environment.prod.ts
 !src/environments/environment.example.ts
 !src/environments/environment.prod.example.ts
 
+# Generated version file
+src/app/core/version.ts
+
 # MCP Configuration (contains tokens)
 .cursor/mcp-config.json

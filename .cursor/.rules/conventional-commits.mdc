@@ -1,0 +1,94 @@
+---
+alwaysApply: true
+---
+
+# Conventional Commits - Règle pour l'IA
+
+## Règle stricte : TOUJOURS utiliser Conventional Commits
+
+Lorsque je fais des commits Git, je DOIS TOUJOURS utiliser le format Conventional Commits.
+
+## Format obligatoire
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+## Types de commits à utiliser
+
+### `feat:` - Nouvelle fonctionnalité (MINOR)
+- Utiliser pour toute nouvelle fonctionnalité ajoutée
+- Exemple : `feat: ajouter l'affichage de la version dans le header`
+- Exemple avec scope : `feat(header): ajouter l'affichage de la version`
+
+### `fix:` - Correction de bug (PATCH)
+- Utiliser pour corriger des bugs
+- Exemple : `fix: corriger l'erreur d'affichage de la version`
+- Exemple avec scope : `fix(header): corriger l'affichage de la version`
+
+### `refactor:` - Refactoring (PATCH)
+- Utiliser pour du refactoring de code sans changement de fonctionnalité
+- Exemple : `refactor: améliorer la structure du composant header`
+- Exemple avec scope : `refactor(header): améliorer la structure du composant`
+
+### `perf:` - Amélioration de performance (PATCH)
+- Utiliser pour les améliorations de performance
+- Exemple : `perf: optimiser le chargement des composants`
+
+### `style:` - Changements de style/formatage (PATCH)
+- Utiliser pour les changements de formatage, indentation, etc.
+- Exemple : `style: formater le code selon les règles ESLint`
+
+### `docs:` - Documentation (PATCH)
+- Utiliser pour les changements de documentation
+- Exemple : `docs: mettre à jour le README avec les nouvelles instructions`
+
+### `chore:` - Tâches de maintenance (PATCH)
+- Utiliser pour les tâches de maintenance, dépendances, scripts, etc.
+- Exemple : `chore: mettre à jour les dépendances npm`
+
+### `BREAKING CHANGE:` ou `!` - Changement incompatible (MAJOR)
+- Utiliser pour les changements qui cassent la compatibilité
+- Format 1 : `feat!: modifier l'API du service auth`
+- Format 2 : `feat(scope)!: modifier l'API du service auth`
+- Format 3 : Dans le corps du commit :
+  ```
+  feat: modifier l'API du service auth
+  
+  BREAKING CHANGE: L'API du service auth a été complètement refactorisée
+  ```
+
+## Règles strictes
+
+1. **TOUJOURS** commencer le message de commit par un type valide
+2. **TOUJOURS** utiliser le format `<type>: <description>` ou `<type>(scope): <description>`
+3. **JAMAIS** faire de commits sans type (ex: "ajouter fonctionnalité" → utiliser "feat: ajouter fonctionnalité")
+4. **TOUJOURS** utiliser des descriptions claires et concises
+5. **TOUJOURS** utiliser le français pour les descriptions (cohérent avec le projet)
+
+## Exemples de bons commits
+
+✅ `feat: ajouter l'affichage de la version dans le header`
+✅ `fix(header): corriger l'erreur d'affichage de la version`
+✅ `refactor: améliorer la structure du script d'incrémentation`
+✅ `docs: ajouter la documentation sur le versionnement automatique`
+✅ `chore: mettre à jour les scripts de build`
+✅ `feat!: modifier l'API du service auth pour utiliser les tokens`
+
+## Exemples de mauvais commits (À ÉVITER)
+
+❌ `ajouter fonctionnalité` → `feat: ajouter fonctionnalité`
+❌ `fix bug` → `fix: corriger le bug`
+❌ `update` → `chore: mettre à jour`
+❌ `changements` → `refactor: améliorer la structure`
+
+## Impact sur le versionnement
+
+Ces conventions sont utilisées par le script `scripts/increment-version.js` pour déterminer automatiquement le type de version :
+- `feat:` → incrémente MINOR
+- `fix:`, `refactor:`, `perf:`, `style:`, `docs:`, `chore:` → incrémente PATCH
+- `BREAKING CHANGE:` ou `!` → incrémente MAJOR
