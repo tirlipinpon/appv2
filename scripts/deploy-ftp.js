@@ -149,16 +149,26 @@ async function deploy() {
     }
     
     // Supprimer les fichiers existants dans la destination
-    // TEMPORAIREMENT DÉSACTIVÉ POUR LE PREMIER TEST
-    // console.log(`🗑️  Suppression des fichiers existants dans ${FTP_DESTINATION}...`);
-    // try {
-    //   await removeDirectory(client, FTP_DESTINATION);
-    //   console.log('✅ Fichiers existants supprimés\n');
-    // } catch (error) {
-    //   console.warn(`⚠️  Avertissement lors de la suppression: ${error.message}`);
-    //   console.log('⏭️  Continuation du déploiement...\n');
-    // }
-    console.log('⏭️  Étape de suppression désactivée pour le test\n');
+    console.log(`🗑️  Suppression des fichiers existants dans ${FTP_DESTINATION}...`);
+    try {
+      // On est déjà dans le répertoire de destination, donc on supprime le contenu du répertoire courant
+      const files = await client.list('.');
+      for (const file of files) {
+        if (file.name === '.' || file.name === '..') continue;
+        
+        const filePath = file.name;
+        if (file.isDirectory) {
+          await removeDirectory(client, filePath);
+          await client.removeDir(filePath);
+        } else {
+          await client.remove(filePath);
+        }
+      }
+      console.log('✅ Fichiers existants supprimés\n');
+    } catch (error) {
+      console.warn(`⚠️  Avertissement lors de la suppression: ${error.message}`);
+      console.log('⏭️  Continuation du déploiement...\n');
+    }
     
     // Vérifier le répertoire courant avant l'upload
     const currentDir = await client.pwd();
