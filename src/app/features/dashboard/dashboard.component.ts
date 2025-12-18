@@ -7,8 +7,9 @@ import { ChildStore } from '../child/store/index';
 import { TeacherStore } from '../teacher/store/index';
 import { TeacherAssignmentStore } from '../teacher/store/assignments.store';
 import { Child } from '../child/types/child';
-import { filter, Subscription } from 'rxjs';
+import { filter, Subscription, forkJoin } from 'rxjs';
 import { ActionLinksComponent, ActionLink } from '../../shared/components/action-links/action-links.component';
+import { Infrastructure } from '../teacher/components/infrastructure/infrastructure';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,6 +21,7 @@ import { ActionLinksComponent, ActionLink } from '../../shared/components/action
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly infrastructure = inject(Infrastructure);
   readonly parentStore = inject(ParentStore);
   readonly childStore = inject(ChildStore);
   readonly teacherStore = inject(TeacherStore);
@@ -29,6 +31,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
   private lastLoadedTeacherId: string | null = null;
   private readonly activeRoleSig = signal<string | null>(null);
+
+  // Stats de jeux par subject_id
+  readonly gamesStats = signal<Record<string, { stats: Record<string, number>; total: number }>>({});
 
   // Computed signals pour le bouton parent
   readonly hasParent = computed(() => this.parentStore.hasParent());
@@ -91,6 +96,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (teacher && this.lastLoadedTeacherId !== teacher.id) {
         this.lastLoadedTeacherId = teacher.id;
         this.teacherAssignmentStore.loadAssignments(teacher.id);
+      }
+    }
+  });
+
+  // Effect pour charger les stats de jeux quand les assignments changent
+  private readonly loadGamesStatsEffect = effect(() => {
+    if (this.activeRoleSig() === 'prof') {
+      const assignments = this.teacherAssignments();
+      if (assignments.length > 0) {
+        this.loadGamesStatsForAssignments(assignments);
       }
     }
   });
@@ -200,5 +215,53 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const joinedName = assignment && assignment.subject && assignment.subject.name;
     if (joinedName && typeof joinedName === 'string') return joinedName;
     return assignment && assignment.subject_id ? this.getSubjectName(assignment.subject_id) : 'Matière inconnue';
+  }
+
+  // Méthodes pour les statistiques de jeux
+  private loadGamesStatsForAssignments(assignments: any[]): void {
+    // Créer un tableau d'observables pour charger les stats de chaque matière
+    const statsObservables = assignments.map(assignment =>
+      this.infrastructure.getGamesStatsBySubject(assignment.subject_id)
+    );
+
+    // Charger toutes les stats en parallèle
+    forkJoin(statsObservables).subscribe({
+      next: (results) => {
+        const newStats: Record<string, { stats: Record<string, number>; total: number }> = {};
+        
+        assignments.forEach((assignment, index) => {
+          const result = results[index];
+          if (!result.error && result.total > 0) {
+            newStats[assignment.subject_id] = {
+              stats: result.stats,
+              total: result.total
+            };
+          }
+        });
+
+        this.gamesStats.set(newStats);
+      },
+      error: (error) => {
+        console.error('Erreur lors du chargement des stats de jeux:', error);
+      }
+    });
+  }
+
+  getGamesStatsForAssignment(subjectId: string): { stats: Record<string, number>; total: number } | null {
+    return this.gamesStats()[subjectId] || null;
+  }
+
+  formatGamesStats(subjectId: string): string {
+    const stats = this.getGamesStatsForAssignment(subjectId);
+    if (!stats || stats.total === 0) {
+      return '';
+    }
+
+    // Formater : "QCM (3) • Liens (2) • Chronologie (1)"
+    const formattedTypes = Object.entries(stats.stats)
+      .map(([type, count]) => `${type} (${count})`)
+      .join(' • ');
+
+    return `🎮 ${stats.total} jeu${stats.total > 1 ? 'x' : ''} : ${formattedTypes}`;
   }
 }

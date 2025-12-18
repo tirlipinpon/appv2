@@ -87,5 +87,40 @@ export class GameService {
       }))
     );
   }
+
+  /**
+   * Récupère les statistiques de jeux pour une matière (count par type)
+   * Retourne un objet { typeName: count } et le total
+   */
+  getGamesStatsBySubject(subjectId: string): Observable<{ 
+    stats: Record<string, number>; 
+    total: number;
+    error: PostgrestError | null 
+  }> {
+    return from(
+      this.supabaseService.client
+        .from('games')
+        .select('id, game_type:game_types(name)')
+        .eq('subject_id', subjectId)
+    ).pipe(
+      map(({ data, error }) => {
+        if (error || !data) {
+          return { stats: {}, total: 0, error: error || null };
+        }
+
+        // Grouper et compter par type
+        const stats: Record<string, number> = {};
+        let total = 0;
+
+        data.forEach((game: any) => {
+          const typeName = game.game_type?.name || 'Inconnu';
+          stats[typeName] = (stats[typeName] || 0) + 1;
+          total++;
+        });
+
+        return { stats, total, error: null };
+      })
+    );
+  }
 }
 

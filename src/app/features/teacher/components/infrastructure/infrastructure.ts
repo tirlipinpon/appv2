@@ -121,6 +121,14 @@ export class Infrastructure {
     return this.gameService.deleteGame(id);
   }
 
+  getGamesStatsBySubject(subjectId: string): Observable<{ 
+    stats: Record<string, number>; 
+    total: number;
+    error: PostgrestError | null 
+  }> {
+    return this.gameService.getGamesStatsBySubject(subjectId);
+  }
+
   // ===== Génération IA =====
   generateGamesWithAI(request: AIGameGenerationRequest): Observable<{ games?: GameCreate[]; error?: PostgrestError | null }> {
     return this.getGameTypes().pipe(
