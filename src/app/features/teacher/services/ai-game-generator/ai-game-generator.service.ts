@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, catchError, throwError } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
+import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import { GameCreate } from '../../types/game';
 import { GameType } from '../../types/game-type';
 import type {
@@ -8,25 +9,20 @@ import type {
   AIRawResponse,
   AIRawGameResponse,
 } from '../../types/ai-game-generation';
-import OpenAI from 'openai';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AIGameGeneratorService {
-  private openai: OpenAI;
+  private readonly supabaseService = inject(SupabaseService);
 
   constructor() {
-    // DeepSeek API is compatible with OpenAI SDK
-    this.openai = new OpenAI({
-      apiKey: environment.deepseek.apiKey,
-      baseURL: environment.deepseek.baseUrl,
-      dangerouslyAllowBrowser: true, // Nécessaire pour utilisation côté client
-    });
+    // Service utilise maintenant le proxy Supabase Edge Function
+    // au lieu d'appeler directement l'API DeepSeek (problème CORS résolu)
   }
 
   /**
-   * Génère des jeux pédagogiques via l'API DeepSeek
+   * Génère des jeux pédagogiques via l'API DeepSeek (via proxy Supabase)
    */
   generateGames(
     request: AIGameGenerationRequest,
@@ -35,24 +31,7 @@ export class AIGameGeneratorService {
   ): Observable<GameCreate[]> {
     const prompt = this.buildPrompt(request, gameTypes, pdfText);
 
-    return from(
-      this.openai.chat.completions.create({
-        model: environment.deepseek.model,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      })
-    ).pipe(
+    return from(this.callDeepSeekProxy(prompt)).pipe(
       map((response) => {
         const content = response.choices[0]?.message?.content;
         if (!content) {
@@ -76,6 +55,58 @@ export class AIGameGeneratorService {
         );
       })
     );
+  }
+
+  /**
+   * Appelle le proxy Supabase Edge Function pour DeepSeek
+   */
+  private async callDeepSeekProxy(prompt: string): Promise<any> {
+    // Obtenir la session Supabase pour l'authentification
+    const {
+      data: { session },
+    } = await this.supabaseService.client.auth.getSession();
+
+    // Construire les headers
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      apikey: environment.supabaseAnonKey,
+    };
+
+    // Ajouter le token d'authentification si disponible
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    // Appeler le proxy Supabase Edge Function
+    const response = await fetch(environment.deepseekProxy.url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: environment.deepseek.model,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(
+        `Proxy Error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`
+      );
+    }
+
+    return await response.json();
   }
 
   /**
