@@ -27,18 +27,19 @@
     </div>
 
     <div class="form-group">
-      <label for="subject">Sujet du jeu *</label>
+      <label for="subject">Thème/Sujet du jeu *</label>
       <input 
         type="text" 
         id="subject" 
         formControlName="subject" 
-        placeholder="Ex: Les fractions, La Révolution française, etc."
+        placeholder="Ex: Les fractions, La Révolution française, Les tables de multiplication..."
       />
+      <small *ngIf="subjectName" class="form-hint">Pour la matière : <strong>{{ subjectName }}</strong></small>
       <span class="error-message" *ngIf="generatorForm.get('subject')?.hasError('required') && generatorForm.get('subject')?.touched">
-        Le sujet est requis
+        Le thème/sujet est requis
       </span>
       <span class="error-message" *ngIf="generatorForm.get('subject')?.hasError('minlength') && generatorForm.get('subject')?.touched">
-        Le sujet doit contenir au moins 3 caractères
+        Le thème/sujet doit contenir au moins 3 caractères
       </span>
     </div>
 

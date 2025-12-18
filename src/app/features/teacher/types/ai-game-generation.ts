@@ -1,7 +1,8 @@
 import { GameCreate } from './game';
 
 export interface AIGameGenerationRequest {
-  subject: string;
+  subjectName: string; // Nom de la matière scolaire (ex: "Mathématiques", "Histoire")
+  subject: string; // Thème/sujet du jeu (ex: "Les fractions", "La Révolution française")
   pdfFile?: File;
   numberOfGames: number;
   schoolYearLabel: string; // ex: "CP", "6ème", "Terminale"

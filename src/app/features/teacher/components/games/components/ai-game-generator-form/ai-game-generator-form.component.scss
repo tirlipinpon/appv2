@@ -221,5 +221,17 @@
       }
     }
   }
+
+  .form-hint {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #6c757d;
+
+    strong {
+      color: #495057;
+      font-weight: 600;
+    }
+  }
 }
 

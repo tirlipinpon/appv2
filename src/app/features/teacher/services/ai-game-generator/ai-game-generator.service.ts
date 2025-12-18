@@ -9,6 +9,7 @@ import type {
   AIRawResponse,
   AIRawGameResponse,
 } from '../../types/ai-game-generation';
+import { getAgeFromSchoolYear } from '../../utils/school-levels.util';
 
 @Injectable({
   providedIn: 'root',
@@ -117,7 +118,7 @@ export class AIGameGeneratorService {
     gameTypes: GameType[],
     pdfText?: string
   ): string {
-    const ageRange = this.getAgeRangeFromSchoolYear(request.schoolYearLabel);
+    const ageRange = getAgeFromSchoolYear(request.schoolYearLabel);
 
     // Construire la liste des types de jeux disponibles avec leur structure
     const gameTypesDescription = gameTypes
@@ -133,8 +134,8 @@ Structure metadata: ${this.getMetadataStructureDescription(gt.name)}
     return `Tu es un générateur de jeux pédagogiques adapté au système éducatif français.
 
 CONTEXTE:
-- Matière: ${request.subject}
-- Sujet fourni: ${request.subject}
+- Matière scolaire: ${request.subjectName}
+- Thème/Sujet: ${request.subject}
 - Niveau scolaire: ${request.schoolYearLabel}
 - Âge approximatif des élèves: ${ageRange}
 - Difficulté demandée: ${request.difficulty}/5
@@ -216,35 +217,6 @@ IMPORTANT:
         metadata: rawGame.metadata,
       };
     });
-  }
-
-  /**
-   * Détermine la tranche d'âge à partir du niveau scolaire
-   */
-  private getAgeRangeFromSchoolYear(schoolYear: string): string {
-    const mapping: Record<string, string> = {
-      CP: '6-7 ans',
-      CE1: '7-8 ans',
-      CE2: '8-9 ans',
-      CM1: '9-10 ans',
-      CM2: '10-11 ans',
-      '6ème': '11-12 ans',
-      '6eme': '11-12 ans',
-      '5ème': '12-13 ans',
-      '5eme': '12-13 ans',
-      '4ème': '13-14 ans',
-      '4eme': '13-14 ans',
-      '3ème': '14-15 ans',
-      '3eme': '14-15 ans',
-      Seconde: '15-16 ans',
-      '2nde': '15-16 ans',
-      Première: '16-17 ans',
-      '1ère': '16-17 ans',
-      '1ere': '16-17 ans',
-      Terminale: '17-18 ans',
-    };
-
-    return mapping[schoolYear] || '10-15 ans (estimation)';
   }
 
   /**

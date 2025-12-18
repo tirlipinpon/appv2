@@ -10,6 +10,7 @@
   <section class="ai-generation-section">
     <app-ai-game-generator-form
       [subjectId]="subjectId()!"
+      [subjectName]="currentSubjectName()"
       [schoolYearLabel]="schoolYearLabel()"
       [isGenerating]="isGenerating()"
       (generate)="onGenerateGamesWithAI($event)">
