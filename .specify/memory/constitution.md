@@ -1,23 +1,33 @@
 <!--
   SYNC IMPACT REPORT
 
-  Version Change: Initial → 1.0.0
+  Version Change: 1.0.0 → 1.0.1
 
-  New Constitution Created:
-  - All placeholders filled with project-specific values
-  - 5 core principles defined based on .cursor/rules and Angular/NgRx best practices
-  - Technical constraints section added
-  - Development workflow section added
-  - Governance rules established
+  Amendment Type: PATCH (clarification and expansion)
+
+  Modified Principles:
+  - Principle IV: Testabilité & Type Safety
+    * Section: Règles contraignantes - Tests E2E Cypress OBLIGATOIRES
+    * Change: Expanded from 2 test categories to 5 comprehensive categories
+    * Old: "parcours critiques d'authentification et workflows multi-rôles"
+    * New: 5 categories covering all critical paths (Auth, Entities, Navigation, Forms, Error States)
+
+  Added Test Categories:
+  1. Authentification & Autorisation (expanded with password reset, role addition)
+  2. Gestion des entités principales (NEW - child, teacher, subjects management)
+  3. Navigation et permissions (NEW - guards, redirections, role switching)
+  4. Formulaires critiques (NEW - validations, business forms)
+  5. États et gestion d'erreurs (NEW - toasts, loading, empty states, network errors)
 
   Templates Requiring Updates:
-  - ✅ plan-template.md: Constitution Check gate already present
-  - ✅ spec-template.md: User story format aligns with testability principle
-  - ✅ tasks-template.md: Task categorization supports layered architecture
+  - ✅ plan-template.md: No changes needed - Constitution Check still valid
+  - ✅ spec-template.md: No changes needed - User story format still aligned
+  - ✅ tasks-template.md: No changes needed - Task categorization still supports testing discipline
 
-  Follow-up Actions: None - All placeholders resolved
+  Follow-up Actions: None - All test categories documented
 
-  Validation Date: 2025-12-18
+  Amendment Date: 2025-12-18
+  Previous Validation Date: 2025-12-18
 -->
 
 # appv2 Constitution
@@ -79,7 +89,12 @@ Le code DOIT être fortement typé et systématiquement testé selon la criticit
 - Le type `any` est INTERDIT sauf justification documentée
 - Interfaces typées obligatoires pour toutes les entités métier
 - Tests unitaires OBLIGATOIRES pour : services, utils, stores
-- Tests E2E Cypress OBLIGATOIRES pour : parcours critiques d'authentification et workflows multi-rôles
+- Tests E2E Cypress OBLIGATOIRES pour :
+  - **Authentification & Autorisation** : connexion, inscription parent/professeur, confirmation email, réinitialisation mot de passe, ajout de rôle à compte existant, sélection de rôle pour utilisateurs multi-rôles
+  - **Gestion des entités principales** : création/modification/suppression d'enfant, génération PIN et avatar, gestion des matières et sujets (teacher), ajout/modification de devoirs
+  - **Navigation et permissions** : guards de protection selon rôle (auth, role, child-parent), redirections après login selon rôle actif, changement de rôle pour utilisateurs multi-rôles
+  - **Formulaires critiques** : inscriptions avec validation, formulaires métier (child-form, subject-form), gestion des erreurs de validation
+  - **États et gestion d'erreurs** : affichage des toasts/messages d'erreur, états de chargement, états vides (pas d'enfants, pas de devoirs), erreurs réseau
 - Les guards, repositories et services métier doivent avoir une couverture > 80%
 - Chaque test doit avoir un nom explicite décrivant le comportement testé
 
@@ -242,4 +257,4 @@ features/[feature-name]/
 - En cas de conflit avec autre documentation, la constitution prime
 - `.cursor/rules` fournit les détails d'implémentation alignés avec cette constitution
 
-**Version**: 1.0.0 | **Ratified**: 2025-12-18 | **Last Amended**: 2025-12-18
+**Version**: 1.0.1 | **Ratified**: 2025-12-18 | **Last Amended**: 2025-12-18
