@@ -1,0 +1,254 @@
+import { Injectable, inject } from '@angular/core';
+import { Observable, from, map, catchError, throwError } from 'rxjs';
+import { environment } from '../../../../../environments/environment';
+import { GameCreate } from '../../types/game';
+import { GameType } from '../../types/game-type';
+import type {
+  AIGameGenerationRequest,
+  AIRawResponse,
+  AIRawGameResponse,
+} from '../../types/ai-game-generation';
+import OpenAI from 'openai';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class AIGameGeneratorService {
+  private openai: OpenAI;
+
+  constructor() {
+    // DeepSeek API is compatible with OpenAI SDK
+    this.openai = new OpenAI({
+      apiKey: environment.deepseek.apiKey,
+      baseURL: environment.deepseek.baseUrl,
+      dangerouslyAllowBrowser: true, // Nécessaire pour utilisation côté client
+    });
+  }
+
+  /**
+   * Génère des jeux pédagogiques via l'API DeepSeek
+   */
+  generateGames(
+    request: AIGameGenerationRequest,
+    gameTypes: GameType[],
+    pdfText?: string
+  ): Observable<GameCreate[]> {
+    const prompt = this.buildPrompt(request, gameTypes, pdfText);
+
+    return from(
+      this.openai.chat.completions.create({
+        model: environment.deepseek.model,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+      })
+    ).pipe(
+      map((response) => {
+        const content = response.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error('Aucune réponse de l\'IA');
+        }
+
+        const parsedResponse: AIRawResponse = JSON.parse(content);
+        return this.transformToGameCreate(
+          parsedResponse.games,
+          request.subjectId,
+          gameTypes
+        );
+      }),
+      catchError((error) => {
+        console.error('Erreur lors de la génération des jeux:', error);
+        return throwError(
+          () =>
+            new Error(
+              `Erreur lors de la génération: ${error.message || 'Erreur inconnue'}`
+            )
+        );
+      })
+    );
+  }
+
+  /**
+   * Construit le prompt pour DeepSeek
+   */
+  private buildPrompt(
+    request: AIGameGenerationRequest,
+    gameTypes: GameType[],
+    pdfText?: string
+  ): string {
+    const ageRange = this.getAgeRangeFromSchoolYear(request.schoolYearLabel);
+
+    // Construire la liste des types de jeux disponibles avec leur structure
+    const gameTypesDescription = gameTypes
+      .map((gt) => {
+        return `
+**${gt.name}**:
+${gt.description || 'Pas de description'}
+Structure metadata: ${this.getMetadataStructureDescription(gt.name)}
+`;
+      })
+      .join('\n');
+
+    return `Tu es un générateur de jeux pédagogiques adapté au système éducatif français.
+
+CONTEXTE:
+- Matière: ${request.subject}
+- Sujet fourni: ${request.subject}
+- Niveau scolaire: ${request.schoolYearLabel}
+- Âge approximatif des élèves: ${ageRange}
+- Difficulté demandée: ${request.difficulty}/5
+${pdfText ? `- Contexte additionnel (extrait PDF):\n${pdfText.substring(0, 3000)}` : ''}
+
+TYPES DE JEUX DISPONIBLES:
+${gameTypesDescription}
+
+CONSIGNES STRICTES:
+1. Génère EXACTEMENT ${request.numberOfGames} jeux variés adaptés au niveau ${request.schoolYearLabel}
+2. Ajuste le vocabulaire et la complexité selon l'âge (${ageRange})
+3. Répartis intelligemment les types de jeux selon le sujet et le niveau
+4. Chaque jeu DOIT avoir entre 1 et 3 aides progressives (adaptées à l'âge)
+5. Respecte STRICTEMENT la structure JSON et metadata de chaque type
+6. Pour les QCM: 3-5 propositions selon le niveau
+7. Pour les liens: nombre égal de mots et réponses (3-6 paires selon le niveau)
+8. Pour la chronologie: 3-8 éléments selon le niveau
+9. Utilise un français adapté à l'âge (vocabulaire simple pour primaire, plus complexe pour lycée)
+
+FORMAT DE RÉPONSE (JSON STRICT - OBLIGATOIRE):
+{
+  "games": [
+    {
+      "type_name": "qcm",
+      "question": "La question du jeu",
+      "instructions": "Instructions claires pour jouer",
+      "metadata": {
+        "propositions": ["Réponse 1", "Réponse 2", "Réponse 3"],
+        "reponses_valides": ["Réponse 1"]
+      },
+      "aides": ["Première aide", "Deuxième aide"]
+    }
+  ]
+}
+
+IMPORTANT: 
+- Retourne UNIQUEMENT du JSON valide, aucun texte avant ou après
+- Le champ "metadata" doit correspondre EXACTEMENT à la structure du type de jeu
+- Les aides doivent être progressives (de plus en plus explicites)`;
+  }
+
+  /**
+   * Transforme la réponse brute de l'IA en objets GameCreate
+   */
+  private transformToGameCreate(
+    rawGames: AIRawGameResponse[],
+    subjectId: string,
+    gameTypes: GameType[]
+  ): GameCreate[] {
+    return rawGames.map((rawGame) => {
+      // Trouver l'ID du type de jeu
+      const gameType = gameTypes.find(
+        (gt) => gt.name.toLowerCase() === rawGame.type_name.toLowerCase()
+      );
+
+      if (!gameType) {
+        console.warn(
+          `Type de jeu "${rawGame.type_name}" non trouvé, utilisation du premier type disponible`
+        );
+      }
+
+      const gameTypeId = gameType?.id || gameTypes[0]?.id || '';
+
+      // Générer un nom automatique
+      const typeName = gameType?.name || rawGame.type_name;
+      const questionPreview = rawGame.question?.substring(0, 30) || '';
+      const autoName = questionPreview
+        ? `${typeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}`
+        : typeName;
+
+      return {
+        subject_id: subjectId,
+        game_type_id: gameTypeId,
+        name: autoName,
+        instructions: rawGame.instructions || null,
+        question: rawGame.question || null,
+        reponses: null, // On utilise metadata pour les données spécifiques
+        aides: rawGame.aides && rawGame.aides.length > 0 ? rawGame.aides : null,
+        metadata: rawGame.metadata,
+      };
+    });
+  }
+
+  /**
+   * Détermine la tranche d'âge à partir du niveau scolaire
+   */
+  private getAgeRangeFromSchoolYear(schoolYear: string): string {
+    const mapping: Record<string, string> = {
+      CP: '6-7 ans',
+      CE1: '7-8 ans',
+      CE2: '8-9 ans',
+      CM1: '9-10 ans',
+      CM2: '10-11 ans',
+      '6ème': '11-12 ans',
+      '6eme': '11-12 ans',
+      '5ème': '12-13 ans',
+      '5eme': '12-13 ans',
+      '4ème': '13-14 ans',
+      '4eme': '13-14 ans',
+      '3ème': '14-15 ans',
+      '3eme': '14-15 ans',
+      Seconde: '15-16 ans',
+      '2nde': '15-16 ans',
+      Première: '16-17 ans',
+      '1ère': '16-17 ans',
+      '1ere': '16-17 ans',
+      Terminale: '17-18 ans',
+    };
+
+    return mapping[schoolYear] || '10-15 ans (estimation)';
+  }
+
+  /**
+   * Retourne la description de la structure metadata pour un type de jeu
+   */
+  private getMetadataStructureDescription(typeName: string): string {
+    const structures: Record<string, string> = {
+      'case vide':
+        '{ debut_phrase: string, fin_phrase: string, reponse_valide: string }',
+      'reponse libre': '{ reponse_valide: string }',
+      liens: '{ mots: string[], reponses: string[], liens: {mot: string, reponse: string}[] }',
+      chronologie: '{ mots: string[], ordre_correct: string[] }',
+      qcm: '{ propositions: string[], reponses_valides: string[] }',
+    };
+
+    return (
+      structures[typeName.toLowerCase()] ||
+      '{ structure spécifique au type }'
+    );
+  }
+
+  /**
+   * Extrait le texte d'un fichier PDF (version browser avec pdfjs-dist)
+   * Note: pdf-parse ne fonctionne que côté serveur, on désactive cette fonctionnalité pour le moment
+   */
+  async extractTextFromPDF(file: File): Promise<string> {
+    try {
+      // TODO: Implémenter l'extraction PDF côté client avec pdfjs-dist
+      // Pour le moment, on retourne un message indiquant que la fonctionnalité est en développement
+      console.warn('Extraction PDF: Fonctionnalité en cours de développement');
+      return `[Document PDF fourni: ${file.name}]\nNote: L'extraction automatique du contenu PDF sera disponible prochainement.`;
+    } catch (error) {
+      console.error('Erreur lors de l\'extraction du PDF:', error);
+      throw new Error('Impossible de lire le fichier PDF');
+    }
+  }
+}
+

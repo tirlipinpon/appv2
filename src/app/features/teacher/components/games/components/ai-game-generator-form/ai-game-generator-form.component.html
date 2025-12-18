@@ -1,0 +1,110 @@
+<div class="ai-generator-form">
+  <h3>Génération de jeux par IA</h3>
+
+  <div *ngIf="schoolYearLabel" class="school-year-info">
+    <span class="label">Niveau scolaire détecté:</span>
+    <span class="value">{{ schoolYearLabel }}</span>
+  </div>
+
+  <div *ngIf="!schoolYearLabel" class="warning-message warning-no-assignment">
+    ⚠️ Aucune affectation détectée pour cette matière. 
+    <a routerLink="/teacher-subjects/assignments" class="link-primary">Créer une affectation</a> 
+    ou sélectionnez un niveau manuellement ci-dessous.
+  </div>
+
+  <form [formGroup]="generatorForm" (ngSubmit)="onSubmit()">
+    <div class="form-group" *ngIf="!schoolYearLabel">
+      <label for="manualSchoolLevel">Niveau scolaire *</label>
+      <select 
+        id="manualSchoolLevel" 
+        formControlName="manualSchoolLevel"
+        required
+      >
+        <option value="">Sélectionner un niveau...</option>
+        <option *ngFor="let level of availableSchoolLevels" [value]="level.value">{{ level.label }}</option>
+      </select>
+      <small>Ce niveau sera utilisé pour adapter les jeux générés</small>
+    </div>
+
+    <div class="form-group">
+      <label for="subject">Sujet du jeu *</label>
+      <input 
+        type="text" 
+        id="subject" 
+        formControlName="subject" 
+        placeholder="Ex: Les fractions, La Révolution française, etc."
+      />
+      <span class="error-message" *ngIf="generatorForm.get('subject')?.hasError('required') && generatorForm.get('subject')?.touched">
+        Le sujet est requis
+      </span>
+      <span class="error-message" *ngIf="generatorForm.get('subject')?.hasError('minlength') && generatorForm.get('subject')?.touched">
+        Le sujet doit contenir au moins 3 caractères
+      </span>
+    </div>
+
+    <div class="form-group">
+      <label for="pdfFile">Document PDF (optionnel)</label>
+      <div class="file-upload-zone">
+        <input 
+          type="file" 
+          id="pdfFile" 
+          accept="application/pdf"
+          (change)="onFileSelected($event)"
+        />
+        <div *ngIf="!selectedFile()" class="file-placeholder">
+          <span>📄 Joindre un PDF pour fournir du contexte à l'IA</span>
+          <small>Maximum 10MB</small>
+        </div>
+        <div *ngIf="selectedFile()" class="file-selected">
+          <span>{{ selectedFile()!.name }}</span>
+          <button type="button" class="btn-remove" (click)="removeFile()" [disabled]="isGenerating">×</button>
+        </div>
+      </div>
+      <span class="error-message" *ngIf="fileError()">{{ fileError() }}</span>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="numberOfGames">Nombre de jeux *</label>
+        <input 
+          type="number" 
+          id="numberOfGames" 
+          formControlName="numberOfGames"
+          min="1"
+          max="20"
+        />
+        <small>Entre 1 et 20 jeux</small>
+      </div>
+
+      <div class="form-group">
+        <label for="difficulty">
+          Difficulté: {{ getDifficultyLabel(generatorForm.get('difficulty')?.value || 3) }}
+        </label>
+        <input 
+          type="range" 
+          id="difficulty" 
+          formControlName="difficulty"
+          min="1"
+          max="5"
+          step="1"
+        />
+        <div class="difficulty-labels">
+          <span>Facile</span>
+          <span>Difficile</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button 
+        type="submit" 
+        class="btn btn-primary btn-generate"
+        [disabled]="generatorForm.invalid || isGenerating || (!schoolYearLabel && !generatorForm.get('manualSchoolLevel')?.value)"
+      >
+        <span *ngIf="!isGenerating">🤖 Générer avec l'IA</span>
+        <span *ngIf="isGenerating">⏳ Génération en cours...</span>
+      </button>
+    </div>
+  </form>
+</div>
+

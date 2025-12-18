@@ -6,13 +6,17 @@ import { GamesApplication } from './application/application';
 import { GamesStore } from '../../store/games.store';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error-snackbar.service';
+import { TeacherService } from '../../services/teacher/teacher.service';
 import { CaseVideFormComponent } from './components/case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from './components/reponse-libre-form/reponse-libre-form.component';
 import { LiensFormComponent } from './components/liens-form/liens-form.component';
 import { ChronologieFormComponent } from './components/chronologie-form/chronologie-form.component';
 import { QcmFormComponent } from './components/qcm-form/qcm-form.component';
-import type { Game } from '../../types/game';
+import { AIGameGeneratorFormComponent } from './components/ai-game-generator-form/ai-game-generator-form.component';
+import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
+import type { Game, GameCreate } from '../../types/game';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../types/game-data';
+import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 import { normalizeGameData } from '../../utils/game-data-mapper';
 
 @Component({
@@ -27,6 +31,8 @@ import { normalizeGameData } from '../../utils/game-data-mapper';
     LiensFormComponent,
     ChronologieFormComponent,
     QcmFormComponent,
+    AIGameGeneratorFormComponent,
+    AIGeneratedPreviewComponent,
   ],
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
@@ -60,6 +66,23 @@ export class GamesComponent implements OnInit {
     return subject?.name || '';
   });
 
+  // Récupération automatique du niveau scolaire depuis school_level
+  readonly schoolYearLabel = computed(() => {
+    const subjectId = this.subjectId();
+    if (!subjectId) return null;
+
+    const assignments = this.subjectsStore.assignments();
+    const assignment = assignments.find(a => a.subject_id === subjectId);
+    
+    // Utiliser school_level directement depuis l'assignment
+    return assignment?.school_level || null;
+  });
+
+  // États pour la génération IA
+  readonly generatedGames = computed(() => this.gamesStore.generatedGames());
+  readonly isGenerating = computed(() => this.gamesStore.isGenerating());
+  readonly generationProgress = computed(() => this.gamesStore.generationProgress());
+
   // Données des composants spécifiques
   readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
@@ -84,10 +107,28 @@ export class GamesComponent implements OnInit {
       this.router.navigate(['/teacher-subjects']);
       return;
     }
+    
     this.subjectId.set(id);
     this.application.loadGameTypes();
     this.application.loadGamesBySubject(id);
     this.subjectsStore.loadSubjects();
+    
+    // Charger les assignments du professeur pour obtenir le school_level
+    // IMPORTANT: Utiliser teacher.id et non user.id car teacher_assignments.teacher_id fait référence à teachers.id
+    const teacherService = inject(TeacherService);
+    teacherService.getTeacherProfile().subscribe({
+      next: (teacher) => {
+        if (teacher?.id) {
+          this.subjectsStore.loadAssignments(teacher.id);
+        } else {
+          console.warn('[GamesComponent] Profil professeur non trouvé, impossible de charger les assignments');
+        }
+      },
+      error: (err) => {
+        console.error('[GamesComponent] Erreur lors du chargement du profil enseignant', err);
+        this.errorSnackbar.showError('Impossible de charger le profil enseignant');
+      }
+    });
   }
 
   isEditing(): boolean {
@@ -297,5 +338,34 @@ export class GamesComponent implements OnInit {
       return data as QcmData;
     }
     return null;
+  }
+
+  // Méthodes pour la génération IA
+  onGenerateGamesWithAI(request: AIGameGenerationRequest): void {
+    this.application.generateGamesWithAI(request);
+  }
+
+  onEditGeneratedGame(tempId: string): void {
+    this.application.toggleEditGeneratedGame(tempId);
+  }
+
+  onRemoveGeneratedGame(tempId: string): void {
+    this.application.removeGeneratedGame(tempId);
+  }
+
+  onUpdateGeneratedGame(event: { tempId: string; updates: Partial<GameCreate> }): void {
+    this.application.updateGeneratedGame(event.tempId, event.updates);
+  }
+
+  onSaveAllGeneratedGames(): void {
+    if (confirm(`Êtes-vous sûr de vouloir sauvegarder tous les jeux générés (${this.generatedGames().length}) ?`)) {
+      this.application.validateGeneratedGames();
+    }
+  }
+
+  onCancelAllGeneratedGames(): void {
+    if (confirm('Êtes-vous sûr de vouloir annuler la génération ? Tous les jeux générés seront perdus.')) {
+      this.application.cancelGeneration();
+    }
   }
 }

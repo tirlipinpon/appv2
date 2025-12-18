@@ -34,13 +34,22 @@ export class SchoolLevelSelectComponent implements ControlValueAccessor {
 	readonly isDisabled = signal<boolean>(false);
 
 	readonly options: SchoolLevelOption[] = [
-		{ value: '1ère', label: '1ère' },
-		{ value: '2ème', label: '2ème' },
-		{ value: '3ème', label: '3ème' },
-		{ value: '4ème', label: '4ème' },
-		{ value: '5ème', label: '5ème' },
-		{ value: '6ème', label: '6ème' },
-		{ value: 'autre', label: 'Autre' },
+		{ value: 'M1', label: 'M1 (Maternelle 1ère - 3 ans)' },
+		{ value: 'M2', label: 'M2 (Maternelle 2ème - 4 ans)' },
+		{ value: 'M3', label: 'M3 (Maternelle 3ème - 5 ans)' },
+		{ value: 'P1', label: 'P1 (Primaire 1ère - 6 ans)' },
+		{ value: 'P2', label: 'P2 (Primaire 2ème - 7 ans)' },
+		{ value: 'P3', label: 'P3 (Primaire 3ème - 8 ans)' },
+		{ value: 'P4', label: 'P4 (Primaire 4ème - 9 ans)' },
+		{ value: 'P5', label: 'P5 (Primaire 5ème - 10 ans)' },
+		{ value: 'P6', label: 'P6 (Primaire 6ème - 11 ans)' },
+		{ value: 'S1', label: 'S1 (Secondaire 1ère - 12 ans)' },
+		{ value: 'S2', label: 'S2 (Secondaire 2ème - 13 ans)' },
+		{ value: 'S3', label: 'S3 (Secondaire 3ème - 14 ans)' },
+		{ value: 'S4', label: 'S4 (Secondaire 4ème - 15 ans)' },
+		{ value: 'S5', label: 'S5 (Secondaire 5ème - 16 ans)' },
+		{ value: 'S6', label: 'S6 (Secondaire 6ème - 17 ans)' },
+		{ value: 'Autre', label: 'Autre' },
 	];
 	
 	writeValue(obj: string | null): void {

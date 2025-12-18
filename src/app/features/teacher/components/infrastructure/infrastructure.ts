@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, from, switchMap, map, catchError, of } from 'rxjs';
 import { TeacherService } from '../../services/teacher/teacher.service';
 import { SchoolService } from '../../services/school/school.service';
 import { SchoolYearService } from '../../services/school-year/school-year.service';
@@ -7,6 +7,7 @@ import { SubjectService } from '../../services/subject/subject.service';
 import { TeacherAssignmentService } from '../../services/teacher-assignment/teacher-assignment.service';
 import { GameTypeService } from '../../services/game-type/game-type.service';
 import { GameService } from '../../services/game/game.service';
+import { AIGameGeneratorService } from '../../services/ai-game-generator/ai-game-generator.service';
 import type { Teacher, TeacherUpdate } from '../../types/teacher';
 import type { School } from '../../types/school';
 import type { Subject } from '../../types/subject';
@@ -15,6 +16,7 @@ import type { GameType } from '../../types/game-type';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type { PostgrestError } from '@supabase/supabase-js';
 import type { SchoolYear } from '../../types/school';
+import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 
 @Injectable({
   providedIn: 'root',
@@ -27,6 +29,7 @@ export class Infrastructure {
   private readonly teacherAssignmentService = inject(TeacherAssignmentService);
   private readonly gameTypeService = inject(GameTypeService);
   private readonly gameService = inject(GameService);
+  private readonly aiGameGeneratorService = inject(AIGameGeneratorService);
 
   getTeacherProfile(): Observable<Teacher | null> {
     return this.teacherService.getTeacherProfile();
@@ -116,6 +119,45 @@ export class Infrastructure {
 
   deleteGame(id: string): Observable<{ error: PostgrestError | null }> {
     return this.gameService.deleteGame(id);
+  }
+
+  // ===== Génération IA =====
+  generateGamesWithAI(request: AIGameGenerationRequest): Observable<{ games?: GameCreate[]; error?: PostgrestError | null }> {
+    return this.getGameTypes().pipe(
+      switchMap((gameTypesResult) => {
+        if (gameTypesResult.error) {
+          return of({ error: gameTypesResult.error });
+        }
+
+        // Si un PDF est fourni, extraire le texte
+        const pdfPromise = request.pdfFile 
+          ? this.aiGameGeneratorService.extractTextFromPDF(request.pdfFile)
+          : Promise.resolve(undefined);
+
+        return from(pdfPromise).pipe(
+          switchMap((pdfText) => {
+            return this.aiGameGeneratorService.generateGames(
+              request,
+              gameTypesResult.gameTypes,
+              pdfText
+            );
+          }),
+          map((games) => ({ games })),
+          catchError((error) => {
+            console.error('[Infrastructure] Erreur génération IA:', error);
+            return of({ 
+              error: { 
+                name: 'AIGenerationError',
+                message: error.message || 'Erreur lors de la génération des jeux',
+                details: error.toString(),
+                hint: null,
+                code: 'AI_ERROR'
+              } as unknown as PostgrestError
+            });
+          })
+        );
+      })
+    );
   }
 }
 

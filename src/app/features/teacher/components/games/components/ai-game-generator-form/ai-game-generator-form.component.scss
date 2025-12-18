@@ -1,0 +1,225 @@
+.ai-generator-form {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+
+  h3 {
+    margin-top: 0;
+    color: #495057;
+    font-size: 1.25rem;
+  }
+
+  .school-year-info {
+    background: #e7f3ff;
+    border-left: 4px solid #0066cc;
+    padding: 0.75rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+
+    .label {
+      font-weight: 600;
+      margin-right: 0.5rem;
+      color: #495057;
+    }
+
+    .value {
+      color: #0066cc;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #495057;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 1rem;
+
+      &:focus {
+        outline: none;
+        border-color: #0066cc;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+      }
+
+      &:disabled {
+        background: #e9ecef;
+        cursor: not-allowed;
+      }
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 0.5rem 0;
+    }
+
+    small {
+      display: block;
+      margin-top: 0.25rem;
+      color: #6c757d;
+      font-size: 0.875rem;
+    }
+
+    .error-message {
+      display: block;
+      margin-top: 0.25rem;
+      color: #dc3545;
+      font-size: 0.875rem;
+    }
+  }
+
+  .file-upload-zone {
+    border: 2px dashed #ced4da;
+    border-radius: 4px;
+    padding: 1rem;
+    text-align: center;
+    transition: border-color 0.2s;
+
+    &:hover {
+      border-color: #0066cc;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-placeholder {
+      cursor: pointer;
+      padding: 1rem;
+
+      span {
+        display: block;
+        color: #495057;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      small {
+        color: #6c757d;
+      }
+    }
+
+    .file-selected {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem;
+      background: #e7f3ff;
+      border-radius: 4px;
+
+      span {
+        color: #495057;
+        font-weight: 500;
+      }
+
+      .btn-remove {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 1.25rem;
+        line-height: 1;
+
+        &:hover:not(:disabled) {
+          background: #c82333;
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .difficulty-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+  }
+
+  .form-actions {
+    margin-top: 2rem;
+
+    .btn-generate {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+    }
+  }
+
+  .warning-message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    color: #856404;
+    font-size: 0.875rem;
+
+    &.warning-no-assignment {
+      margin-top: 0;
+      margin-bottom: 1rem;
+    }
+
+    .link-primary {
+      color: #0056b3;
+      text-decoration: underline;
+      font-weight: 600;
+      
+      &:hover {
+        color: #003d82;
+      }
+    }
+  }
+}
+

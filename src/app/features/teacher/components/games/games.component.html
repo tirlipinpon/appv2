@@ -6,6 +6,31 @@
     <h2>Matière : {{ currentSubjectName() }}</h2>
   </div>
 
+  <!-- Section Génération IA -->
+  <section class="ai-generation-section">
+    <app-ai-game-generator-form
+      [subjectId]="subjectId()!"
+      [schoolYearLabel]="schoolYearLabel()"
+      [isGenerating]="isGenerating()"
+      (generate)="onGenerateGamesWithAI($event)">
+    </app-ai-game-generator-form>
+
+    <app-ai-generated-preview
+      [generatedGames]="generatedGames()"
+      [gameTypes]="gameTypes()"
+      (edit)="onEditGeneratedGame($event)"
+      (remove)="onRemoveGeneratedGame($event)"
+      (updateGame)="onUpdateGeneratedGame($event)"
+      (saveAll)="onSaveAllGeneratedGames()"
+      (cancelAll)="onCancelAllGeneratedGames()">
+    </app-ai-generated-preview>
+  </section>
+
+  <!-- Séparateur visuel -->
+  <div class="section-divider" *ngIf="generatedGames().length === 0">
+    <span>OU</span>
+  </div>
+
   <div class="game-form-section">
     <h3>{{ isEditing() ? 'Modifier le jeu' : 'Créer un nouveau jeu' }}</h3>
     <form [formGroup]="gameForm" (ngSubmit)="isEditing() ? update() : create()">

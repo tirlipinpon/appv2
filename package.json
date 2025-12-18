@@ -1,6 +1,6 @@
 {
   "name": "appv2",
-  "version": "0.2.0",
+  "version": "0.6.0",
   "scripts": {
     "ng": "ng",
     "prebuild": "node scripts/increment-version.js && node scripts/generate-version.js",
@@ -41,6 +41,7 @@
     "@ngrx/signals": "^20.1.0",
     "@ngrx/store-devtools": "^20.1.0",
     "@supabase/supabase-js": "^2.80.0",
+    "openai": "^4.77.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

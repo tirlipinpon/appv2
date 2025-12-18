@@ -1,0 +1,247 @@
+.ai-generated-preview {
+  margin: 2rem 0;
+
+  .preview-header {
+    margin-bottom: 1.5rem;
+
+    h3 {
+      margin: 0 0 0.5rem 0;
+      color: #495057;
+      font-size: 1.5rem;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: #6c757d;
+      font-size: 0.95rem;
+    }
+  }
+
+  .games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .game-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: all 0.3s;
+
+    &.editing {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+
+    &:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e0e0e0;
+
+    .game-number {
+      font-weight: 700;
+      color: #495057;
+      font-size: 1.1rem;
+    }
+
+    .game-type-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+  }
+
+  .game-preview {
+    .game-content {
+      margin-bottom: 1.5rem;
+
+      .game-question {
+        margin: 0 0 0.75rem 0;
+        color: #212529;
+        font-size: 1.15rem;
+        font-weight: 600;
+      }
+
+      .game-instructions {
+        margin: 0 0 1rem 0;
+        color: #6c757d;
+        font-style: italic;
+      }
+
+      .game-metadata {
+        background: #f8f9fa;
+        border-left: 3px solid #667eea;
+        padding: 0.75rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+
+        strong {
+          color: #495057;
+        }
+      }
+
+      .game-aides {
+        margin-top: 1rem;
+
+        strong {
+          display: block;
+          margin-bottom: 0.5rem;
+          color: #495057;
+        }
+
+        ul {
+          margin: 0;
+          padding-left: 1.5rem;
+
+          li {
+            margin-bottom: 0.5rem;
+            color: #6c757d;
+          }
+        }
+      }
+    }
+
+    .game-actions {
+      display: flex;
+      gap: 0.75rem;
+
+      .btn {
+        flex: 1;
+        padding: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        transition: all 0.2s;
+
+        &.btn-secondary {
+          background: #6c757d;
+          color: white;
+
+          &:hover {
+            background: #5a6268;
+          }
+        }
+
+        &.btn-danger {
+          background: #dc3545;
+          color: white;
+
+          &:hover {
+            background: #c82333;
+          }
+        }
+      }
+    }
+  }
+
+  .game-edit {
+    .edit-notice {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin-bottom: 1.5rem;
+      color: #856404;
+      font-size: 0.9rem;
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e0e0e0;
+
+      .btn {
+        flex: 1;
+        padding: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        transition: all 0.2s;
+
+        &.btn-primary {
+          background: #28a745;
+          color: white;
+
+          &:hover {
+            background: #218838;
+          }
+        }
+
+        &.btn-secondary {
+          background: #6c757d;
+          color: white;
+
+          &:hover {
+            background: #5a6268;
+          }
+        }
+      }
+    }
+  }
+
+  .preview-actions {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e0e0e0;
+    display: flex;
+    gap: 1rem;
+
+    .btn {
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      transition: all 0.2s;
+
+      &.btn-large {
+        flex: 1;
+      }
+
+      &.btn-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+      }
+
+      &.btn-secondary {
+        background: #6c757d;
+        color: white;
+
+        &:hover {
+          background: #5a6268;
+        }
+      }
+    }
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
