@@ -1,0 +1,29 @@
+<li class="game-item">
+  <div class="game-header">
+    <h4>{{ game.name }}</h4>
+    <span class="game-type-badge">{{ gameTypeName }}</span>
+  </div>
+  <div class="game-details">
+    @if (game.question) {
+      <p class="game-question"><strong>Question:</strong> {{ game.question }}</p>
+    }
+    @if (game.instructions) {
+      <p class="game-instructions">{{ game.instructions }}</p>
+    }
+    @if (game.aides && game.aides.length > 0) {
+      <div class="game-aides">
+        <p><strong>Aides:</strong></p>
+        <ul>
+          @for (aide of game.aides; track aide) {
+            <li>{{ aide }}</li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+  <div class="game-actions">
+    <button class="btn btn-secondary" (click)="onEdit()">Modifier</button>
+    <button class="btn btn-danger" (click)="onDelete()">Supprimer</button>
+  </div>
+</li>
+

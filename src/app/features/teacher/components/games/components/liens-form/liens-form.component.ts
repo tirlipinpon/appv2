@@ -18,6 +18,7 @@ export class LiensFormComponent implements OnChanges {
   @Output() validityChange = new EventEmitter<boolean>();
 
   form: FormGroup;
+  private isInitializing = false;
 
   constructor() {
     this.form = this.fb.group({
@@ -26,6 +27,10 @@ export class LiensFormComponent implements OnChanges {
     });
 
     this.form.valueChanges.subscribe(() => {
+      // Ignorer les émissions pendant l'initialisation pour éviter les boucles infinies
+      if (this.isInitializing) {
+        return;
+      }
       const mots = this.motsArray.value.filter((m: string) => m && m.trim());
       const reponses = this.reponsesArray.value.filter((r: string) => r && r.trim());
       
@@ -78,6 +83,8 @@ export class LiensFormComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['initialData'] && this.initialData) {
+      // Activer le flag pour ignorer les émissions pendant l'initialisation
+      this.isInitializing = true;
       this.motsArray.clear();
       this.reponsesArray.clear();
 
@@ -88,6 +95,11 @@ export class LiensFormComponent implements OnChanges {
       this.initialData.reponses.forEach(reponse => {
         this.reponsesArray.push(new FormControl<string>(reponse, { nonNullable: true }));
       });
+      
+      // Désactiver le flag après le chargement initial
+      setTimeout(() => {
+        this.isInitializing = false;
+      }, 0);
     }
   }
 }

@@ -18,6 +18,7 @@ export class QcmFormComponent implements OnChanges {
   @Output() validityChange = new EventEmitter<boolean>();
 
   form: FormGroup;
+  private isInitializing = false;
 
   constructor() {
     this.form = this.fb.group({
@@ -26,6 +27,10 @@ export class QcmFormComponent implements OnChanges {
     });
 
     this.form.valueChanges.subscribe(() => {
+      // Ignorer les émissions pendant l'initialisation pour éviter les boucles infinies
+      if (this.isInitializing) {
+        return;
+      }
       if (this.form.valid) {
         const propositions = this.propositionsArray.value.filter((p: string) => p && p.trim());
         const reponsesValides = this.propositionsArray.controls
@@ -63,6 +68,8 @@ export class QcmFormComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['initialData'] && this.initialData) {
+      // Activer le flag pour ignorer les émissions pendant l'initialisation
+      this.isInitializing = true;
       this.propositionsArray.clear();
       this.reponsesValidesArray.clear();
 
@@ -71,6 +78,11 @@ export class QcmFormComponent implements OnChanges {
         const isValide = this.initialData!.reponses_valides.includes(proposition);
         this.reponsesValidesArray.push(new FormControl<boolean>(isValide, { nonNullable: true }));
       });
+      
+      // Désactiver le flag après le chargement initial
+      setTimeout(() => {
+        this.isInitializing = false;
+      }, 0);
     }
   }
 }

@@ -15,6 +15,7 @@ import { QcmFormComponent } from './components/qcm-form/qcm-form.component';
 import { AIGameGeneratorFormComponent } from './components/ai-game-generator-form/ai-game-generator-form.component';
 import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './components/game-global-fields/game-global-fields.component';
+import { GameCardComponent } from './components/game-card/game-card.component';
 import type { Game, GameCreate } from '../../types/game';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../types/game-data';
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
@@ -35,6 +36,7 @@ import { normalizeGameData } from '../../utils/game-data-mapper';
     AIGameGeneratorFormComponent,
     AIGeneratedPreviewComponent,
     GameGlobalFieldsComponent,
+    GameCardComponent,
   ],
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
@@ -110,6 +112,9 @@ export class GamesComponent implements OnInit {
   }
 
   onGlobalFieldsChange(data: GameGlobalFieldsData): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.component.ts:112',message:'onGlobalFieldsChange called',data:{hasInstructions:!!data.instructions,hasQuestion:!!data.question,aidesCount:data.aides?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     this.gameForm.patchValue({
       instructions: data.instructions || '',
       question: data.question || '',
@@ -122,6 +127,9 @@ export class GamesComponent implements OnInit {
         this.aidesArray.push(new FormControl<string>(aide, { nonNullable: true }));
       });
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.component.ts:125',message:'onGlobalFieldsChange completed',data:{aidesArrayLength:this.aidesArray.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
   }
 
   ngOnInit(): void {
@@ -189,10 +197,16 @@ export class GamesComponent implements OnInit {
   }
 
   onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.component.ts:191',message:'onGameDataChange called',data:{dataType:Object.keys(data)[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     this.gameSpecificData.set(data);
   }
 
   onGameValidityChange(valid: boolean): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.component.ts:195',message:'onGameValidityChange called',data:{valid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     this.gameSpecificValid.set(valid);
   }
 

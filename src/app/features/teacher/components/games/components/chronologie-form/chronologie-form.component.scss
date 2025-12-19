@@ -20,41 +20,15 @@
     font-size: 12px;
     color: #666;
     min-width: 80px;
+    font-weight: 600;
   }
 
   .hint {
     font-size: 12px;
     color: #666;
     margin-top: 8px;
+    margin-bottom: 12px;
     font-style: italic;
-  }
-
-  .ordre-section {
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 2px solid #e0e0e0;
-  }
-
-  .ordre-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
-  }
-
-  .ordre-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .ordre-row label {
-    min-width: 100px;
-    font-weight: 600;
-  }
-
-  .ordre-row select {
-    flex: 1;
   }
 }
 

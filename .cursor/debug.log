@@ -1,0 +1,22 @@
+{"location":"games.store.ts:189","message":"generateGamesWithAI started","data":{"numberOfGames":0},"timestamp":1766137926927,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:191","message":"switchMap entered","data":{"numberOfGames":3},"timestamp":1766137926928,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:198","message":"game generation result received","data":{"hasError":false,"hasGame":true,"gameIndex":0},"timestamp":1766137934132,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:212","message":"before patchState","data":{"currentGamesCount":0,"newProgress":33},"timestamp":1766137934144,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:216","message":"after patchState","data":{"newGamesCount":1},"timestamp":1766137934168,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:198","message":"game generation result received","data":{"hasError":false,"hasGame":true,"gameIndex":1},"timestamp":1766137963230,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:212","message":"before patchState","data":{"currentGamesCount":1,"newProgress":67},"timestamp":1766137963232,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:216","message":"after patchState","data":{"newGamesCount":2},"timestamp":1766137963234,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:198","message":"game generation result received","data":{"hasError":false,"hasGame":true,"gameIndex":2},"timestamp":1766137980472,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:212","message":"before patchState","data":{"currentGamesCount":2,"newProgress":100},"timestamp":1766137980473,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:216","message":"after patchState","data":{"newGamesCount":3},"timestamp":1766137980473,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:189","message":"generateGamesWithAI started","data":{"numberOfGames":0},"timestamp":1766138235326,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:191","message":"switchMap entered","data":{"numberOfGames":3},"timestamp":1766138235327,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:198","message":"game generation result received","data":{"hasError":false,"hasGame":true,"gameIndex":0},"timestamp":1766138244476,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:212","message":"before patchState","data":{"currentGamesCount":0,"newProgress":33},"timestamp":1766138244478,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:216","message":"after patchState","data":{"newGamesCount":1},"timestamp":1766138244480,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:198","message":"game generation result received","data":{"hasError":false,"hasGame":true,"gameIndex":1},"timestamp":1766138252127,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:212","message":"before patchState","data":{"currentGamesCount":1,"newProgress":67},"timestamp":1766138252128,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:216","message":"after patchState","data":{"newGamesCount":2},"timestamp":1766138252128,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:216","message":"after patchState","data":{"newGamesCount":3},"timestamp":1766138261660,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:212","message":"before patchState","data":{"currentGamesCount":2,"newProgress":100},"timestamp":1766138261659,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"games.store.ts:198","message":"game generation result received","data":{"hasError":false,"hasGame":true,"gameIndex":2},"timestamp":1766138261658,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}

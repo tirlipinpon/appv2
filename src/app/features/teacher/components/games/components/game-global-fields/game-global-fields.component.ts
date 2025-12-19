@@ -23,6 +23,7 @@ export class GameGlobalFieldsComponent implements OnChanges {
   @Output() validityChange = new EventEmitter<boolean>();
 
   form: FormGroup;
+  private isInitializing = false;
 
   constructor() {
     this.form = this.fb.group({
@@ -33,6 +34,10 @@ export class GameGlobalFieldsComponent implements OnChanges {
 
     // Émettre les changements
     this.form.valueChanges.subscribe(() => {
+      // Ignorer les émissions pendant l'initialisation pour éviter les boucles infinies
+      if (this.isInitializing) {
+        return;
+      }
       const instructions = this.form.get('instructions')?.value?.trim() || null;
       const question = this.form.get('question')?.value?.trim() || null;
       const aides = this.aidesArray.value
@@ -56,10 +61,12 @@ export class GameGlobalFieldsComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['initialData'] && this.initialData) {
+      // Activer le flag pour ignorer les émissions pendant l'initialisation
+      this.isInitializing = true;
       this.form.patchValue({
         instructions: this.initialData.instructions || '',
         question: this.initialData.question || '',
-      });
+      }, { emitEvent: false });
 
       // Charger les aides
       this.aidesArray.clear();
@@ -68,6 +75,11 @@ export class GameGlobalFieldsComponent implements OnChanges {
           this.aidesArray.push(new FormControl<string>(aide, { nonNullable: true }));
         });
       }
+      
+      // Désactiver le flag après le chargement initial
+      setTimeout(() => {
+        this.isInitializing = false;
+      }, 0);
     }
   }
 

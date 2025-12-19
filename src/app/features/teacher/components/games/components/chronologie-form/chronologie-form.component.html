@@ -1,33 +1,15 @@
 <div [formGroup]="form" class="chronologie-form">
   <div class="form-group">
     <label>Mots à ordonner</label>
+    <p class="hint">L'ordre dans lequel vous ajoutez les mots définit l'ordre correct. L'ordre peut être mélangé lors du jeu pour éviter la mémorisation des positions.</p>
     <div formArrayName="mots" class="mots-list">
       <div *ngFor="let mot of motsArray.controls; let i = index" class="mot-row">
+        <span class="ordre-indicator">Position {{ i + 1 }}</span>
         <input type="text" [formControlName]="i" [placeholder]="'Mot ' + (i + 1)">
         <button type="button" class="btn btn-danger btn-small" (click)="removeMot(i)">×</button>
       </div>
     </div>
     <button type="button" class="btn btn-secondary btn-small" (click)="addMot()">+ Ajouter un mot</button>
-    <p class="hint">Définissez l'ordre correct des mots ci-dessous. L'ordre peut être mélangé lors du jeu pour éviter la mémorisation des positions.</p>
-  </div>
-
-  <div class="ordre-section">
-    <h4>Ordre correct</h4>
-    <p class="hint">Définissez l'ordre dans lequel les mots doivent être placés (du premier au dernier)</p>
-    <div formArrayName="ordre_correct" class="ordre-list">
-      <div *ngFor="let ordre of ordreCorrectArray.controls; let i = index" class="ordre-row">
-        <label>Position {{ i + 1 }}:</label>
-        <select [formControlName]="i">
-          <option value="">Sélectionner un mot</option>
-          <option *ngFor="let mot of motsArray.controls" [value]="mot.value">
-            {{ mot.value || 'Mot non défini' }}
-          </option>
-        </select>
-      </div>
-    </div>
-    <p class="hint" *ngIf="motsArray.length > 0 && ordreCorrectArray.length !== motsArray.length">
-      ⚠️ Vous devez définir l'ordre pour tous les {{ motsArray.length }} mots.
-    </p>
   </div>
 </div>
 

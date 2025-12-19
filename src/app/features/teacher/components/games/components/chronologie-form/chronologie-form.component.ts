@@ -18,30 +18,41 @@ export class ChronologieFormComponent implements OnChanges {
   @Output() validityChange = new EventEmitter<boolean>();
 
   form: FormGroup;
+  private isInitializing = false;
 
   constructor() {
     this.form = this.fb.group({
       mots: this.fb.array<FormControl<string>>([]),
-      ordre_correct: this.fb.array<FormControl<string>>([]),
     });
 
     this.form.valueChanges.subscribe(() => {
+      // Ignorer les émissions pendant l'initialisation pour éviter les boucles infinies
+      if (this.isInitializing) {
+        return;
+      }
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:27',message:'valueChanges triggered',data:{motsCount:this.motsArray.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       const mots = this.motsArray.value.filter((m: string) => m && m.trim());
-      const ordreCorrect = this.ordreCorrectArray.value
-        .filter((m: string | null) => m && m.trim()) as string[];
-
-      // Valider que tous les mots sont dans l'ordre correct
-      const isValid = mots.length > 0 && 
-                      ordreCorrect.length === mots.length &&
-                      mots.every(mot => ordreCorrect.includes(mot));
+      
+      // L'ordre correct est simplement l'ordre des mots dans le FormArray
+      const ordreCorrect = [...mots];
+      
+      const isValid = mots.length > 0;
 
       if (isValid) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:40',message:'emitting dataChange',data:{motsCount:mots.length,isValid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         const chronologieData: ChronologieData = {
           mots: mots,
-          ordre_correct: ordreCorrect, // Stocker les strings dans l'ordre correct
+          ordre_correct: ordreCorrect, // L'ordre correct = l'ordre des mots
         };
         this.dataChange.emit(chronologieData);
       }
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:42',message:'emitting validityChange',data:{isValid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       this.validityChange.emit(isValid);
     });
   }
@@ -50,42 +61,29 @@ export class ChronologieFormComponent implements OnChanges {
     return this.form.get('mots') as FormArray<FormControl<string>>;
   }
 
-  get ordreCorrectArray(): FormArray<FormControl<string>> {
-    return this.form.get('ordre_correct') as FormArray<FormControl<string>>;
-  }
-
   addMot(): void {
     const newMot = '';
     this.motsArray.push(new FormControl<string>(newMot, { nonNullable: true }));
-    // Ajouter automatiquement le mot à l'ordre correct (même position)
-    this.ordreCorrectArray.push(new FormControl<string>(newMot, { nonNullable: true }));
   }
 
   removeMot(index: number): void {
-    const motASupprimer = this.motsArray.at(index).value;
     this.motsArray.removeAt(index);
-    
-    // Supprimer le mot de l'ordre correct
-    const ordreIndex = this.ordreCorrectArray.value.findIndex((m: string) => m === motASupprimer);
-    if (ordreIndex !== -1) {
-      this.ordreCorrectArray.removeAt(ordreIndex);
-    }
-    
-    // Réajuster : si un mot a été supprimé, mettre à jour les références dans ordre_correct
-    // Mais comme on utilise maintenant des strings, pas besoin de réajuster les index
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:59',message:'ngOnChanges called',data:{hasInitialData:!!this.initialData,changedKeys:Object.keys(changes)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     if (changes['initialData'] && this.initialData) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:61',message:'clearing motsArray before load',data:{currentLength:this.motsArray.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      // Activer le flag pour ignorer les émissions pendant l'initialisation
+      this.isInitializing = true;
       this.motsArray.clear();
-      this.ordreCorrectArray.clear();
 
-      // Charger les mots
-      this.initialData.mots.forEach((mot) => {
-        this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
-      });
-
-      // Charger l'ordre correct (peut être des strings ou des numbers pour rétrocompatibilité)
+      // Charger les mots dans l'ordre correct
+      // Si ordre_correct existe, utiliser cet ordre, sinon utiliser l'ordre des mots
       const ordreCorrect = this.initialData.ordre_correct;
       if (ordreCorrect && ordreCorrect.length > 0) {
         // Si ce sont des numbers (ancien format), convertir en strings
@@ -94,21 +92,30 @@ export class ChronologieFormComponent implements OnChanges {
           ordreAsNumbers.forEach((index) => {
             const mot = this.initialData!.mots[index];
             if (mot) {
-              this.ordreCorrectArray.push(new FormControl<string>(mot, { nonNullable: true }));
+              this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
             }
           });
         } else {
-          // Nouveau format : strings directement
+          // Nouveau format : utiliser l'ordre correct pour charger les mots
           ordreCorrect.forEach((mot) => {
-            this.ordreCorrectArray.push(new FormControl<string>(mot, { nonNullable: true }));
+            this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
           });
         }
       } else {
-        // Si pas d'ordre défini, utiliser l'ordre par défaut (ordre d'ajout)
+        // Si pas d'ordre défini, utiliser l'ordre des mots
         this.initialData.mots.forEach((mot) => {
-          this.ordreCorrectArray.push(new FormControl<string>(mot, { nonNullable: true }));
+          this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
         });
       }
+      
+      // Désactiver le flag après le chargement initial
+      // Utiliser setTimeout pour s'assurer que tous les valueChanges sont ignorés
+      setTimeout(() => {
+        this.isInitializing = false;
+      }, 0);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:87',message:'ngOnChanges completed - motsArray loaded',data:{finalLength:this.motsArray.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
     }
   }
 }
