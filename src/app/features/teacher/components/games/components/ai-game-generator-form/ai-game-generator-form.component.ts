@@ -18,6 +18,8 @@ export class AIGameGeneratorFormComponent {
   @Input() subjectId!: string;
   @Input() subjectName = ''; // Nom de la matière scolaire
   @Input() schoolYearLabel: string | null = null;
+  @Input() generationProgress = 0; // Progression de la génération (0-100)
+  @Input() generatedCount = 0; // Nombre de jeux déjà générés
   
   private _isGenerating = false;
   @Input() 

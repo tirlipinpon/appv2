@@ -23,7 +23,53 @@ export class AIGameGeneratorService {
   }
 
   /**
+   * Génère UN SEUL jeu pédagogique via l'API DeepSeek (via proxy Supabase)
+   * Pour générer plusieurs jeux, appeler cette méthode plusieurs fois
+   */
+  generateSingleGame(
+    request: AIGameGenerationRequest,
+    gameTypes: GameType[],
+    pdfText?: string
+  ): Observable<GameCreate> {
+    // Modifier la requête pour générer 1 seul jeu
+    const singleGameRequest = { ...request, numberOfGames: 1 };
+    const prompt = this.buildPrompt(singleGameRequest, gameTypes, pdfText);
+
+    return from(this.callDeepSeekProxy(prompt)).pipe(
+      map((response) => {
+        const content = response.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error('Aucune réponse de l\'IA');
+        }
+
+        const parsedResponse: AIRawResponse = JSON.parse(content);
+        if (!parsedResponse.games || parsedResponse.games.length === 0) {
+          throw new Error('Aucun jeu généré par l\'IA');
+        }
+
+        // Retourner uniquement le premier jeu
+        const games = this.transformToGameCreate(
+          parsedResponse.games,
+          request.subjectId,
+          gameTypes
+        );
+        return games[0];
+      }),
+      catchError((error) => {
+        console.error('Erreur lors de la génération du jeu:', error);
+        return throwError(
+          () =>
+            new Error(
+              `Erreur lors de la génération: ${error.message || 'Erreur inconnue'}`
+            )
+        );
+      })
+    );
+  }
+
+  /**
    * Génère des jeux pédagogiques via l'API DeepSeek (via proxy Supabase)
+   * @deprecated Utiliser generateSingleGame() avec des appels séquentiels pour un meilleur contrôle
    */
   generateGames(
     request: AIGameGenerationRequest,

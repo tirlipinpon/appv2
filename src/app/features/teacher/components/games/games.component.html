@@ -13,6 +13,8 @@
       [subjectName]="currentSubjectName()"
       [schoolYearLabel]="schoolYearLabel()"
       [isGenerating]="isGenerating()"
+      [generationProgress]="generationProgress()"
+      [generatedCount]="generatedGames().length"
       (generate)="onGenerateGamesWithAI($event)">
     </app-ai-game-generator-form>
 

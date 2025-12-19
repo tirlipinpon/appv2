@@ -103,8 +103,16 @@
         [disabled]="generatorForm.invalid || isGenerating || (!schoolYearLabel && !generatorForm.get('manualSchoolLevel')?.value)"
       >
         <span *ngIf="!isGenerating">🤖 Générer avec l'IA</span>
-        <span *ngIf="isGenerating">⏳ Génération en cours...</span>
+        <span *ngIf="isGenerating">
+          ⏳ Génération en cours... 
+          <span class="progress-text">({{ generatedCount }}/{{ generatorForm.value.numberOfGames }} jeux - {{ generationProgress }}%)</span>
+        </span>
       </button>
+      
+      <!-- Barre de progression -->
+      <div *ngIf="isGenerating" class="progress-bar-container">
+        <div class="progress-bar" [style.width.%]="generationProgress"></div>
+      </div>
     </div>
   </form>
 </div>

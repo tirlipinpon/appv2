@@ -130,6 +130,44 @@ export class Infrastructure {
   }
 
   // ===== Génération IA =====
+  generateSingleGameWithAI(request: AIGameGenerationRequest): Observable<{ game?: GameCreate; error?: PostgrestError | null }> {
+    return this.getGameTypes().pipe(
+      switchMap((gameTypesResult) => {
+        if (gameTypesResult.error) {
+          return of({ error: gameTypesResult.error });
+        }
+
+        // Si un PDF est fourni, extraire le texte
+        const pdfPromise = request.pdfFile 
+          ? this.aiGameGeneratorService.extractTextFromPDF(request.pdfFile)
+          : Promise.resolve(undefined);
+
+        return from(pdfPromise).pipe(
+          switchMap((pdfText) => {
+            return this.aiGameGeneratorService.generateSingleGame(
+              request,
+              gameTypesResult.gameTypes,
+              pdfText
+            );
+          }),
+          map((game) => ({ game })),
+          catchError((error) => {
+            console.error('[Infrastructure] Erreur génération IA:', error);
+            return of({ 
+              error: { 
+                name: 'AIGenerationError',
+                message: error.message || 'Erreur lors de la génération du jeu',
+                details: error.toString(),
+                hint: null,
+                code: 'AI_ERROR'
+              } as unknown as PostgrestError
+            });
+          })
+        );
+      })
+    );
+  }
+
   generateGamesWithAI(request: AIGameGenerationRequest): Observable<{ games?: GameCreate[]; error?: PostgrestError | null }> {
     return this.getGameTypes().pipe(
       switchMap((gameTypesResult) => {

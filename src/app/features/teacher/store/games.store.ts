@@ -2,7 +2,8 @@ import { inject } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
 import { withDevtools } from "@angular-architects/ngrx-toolkit";
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap, catchError, of, forkJoin } from 'rxjs';
+import { pipe, switchMap, tap, catchError, of, forkJoin, concat } from 'rxjs';
+import { toArray } from 'rxjs/operators';
 import { GameType } from '../types/game-type';
 import { Game, GameCreate, GameUpdate } from '../types/game';
 import { Infrastructure } from '../components/infrastructure/infrastructure';
@@ -182,35 +183,55 @@ export const GamesStore = signalStore(
       patchState(store, { games: [] });
     },
 
-    // Méthodes pour la génération IA
+    // Méthodes pour la génération IA (séquentielle - jeu par jeu)
     generateGamesWithAI: rxMethod<AIGameGenerationRequest>(
       pipe(
-        tap(() => patchState(store, { isGenerating: true, generationProgress: 0, error: [] })),
-        switchMap((request) =>
-          infrastructure.generateGamesWithAI(request).pipe(
-            tap((result) => {
-              if (result.error) {
-                const errorMessage = result.error.message || 'Erreur lors de la génération des jeux';
-                patchState(store, { 
-                  error: [errorMessage], 
-                  isGenerating: false,
-                  generationProgress: 0
-                });
-              } else if (result.games) {
-                // Ajouter des IDs temporaires et l'état d'édition (true par défaut pour édition immédiate)
-                const gamesWithState: GeneratedGameWithState[] = result.games.map((game, index) => ({
-                  ...game,
-                  _tempId: `temp-${Date.now()}-${index}`,
-                  _isEditing: true,
-                }));
-                patchState(store, { 
-                  generatedGames: gamesWithState, 
-                  isGenerating: false,
-                  generationProgress: 100
-                });
-              } else {
-                patchState(store, { isGenerating: false, generationProgress: 0 });
-              }
+        tap(() => patchState(store, { isGenerating: true, generationProgress: 0, error: [], generatedGames: [] })),
+        switchMap((request) => {
+          const numberOfGames = request.numberOfGames;
+          const games$ = [];
+
+          // Créer un observable pour chaque jeu à générer
+          for (let i = 0; i < numberOfGames; i++) {
+            games$.push(
+              infrastructure.generateSingleGameWithAI(request).pipe(
+                tap((result) => {
+                  if (result.error) {
+                    throw new Error(result.error.message || 'Erreur génération jeu');
+                  }
+                  
+                  if (result.game) {
+                    // Ajouter le jeu généré à la liste
+                    const newGame: GeneratedGameWithState = {
+                      ...result.game,
+                      _tempId: `temp-${Date.now()}-${i}`,
+                      _isEditing: true,
+                    };
+                    
+                    const currentGames = store.generatedGames();
+                    patchState(store, { 
+                      generatedGames: [...currentGames, newGame],
+                      generationProgress: Math.round(((i + 1) / numberOfGames) * 100)
+                    });
+                  }
+                }),
+                catchError((error) => {
+                  console.error(`Erreur génération jeu ${i + 1}:`, error);
+                  // Continue même si un jeu échoue
+                  return of(null);
+                })
+              )
+            );
+          }
+
+          // Exécuter les observables de manière séquentielle (concat)
+          return concat(...games$).pipe(
+            toArray(), // Attendre que tous soient terminés
+            tap(() => {
+              patchState(store, { 
+                isGenerating: false,
+                generationProgress: 100
+              });
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la génération des jeux';
@@ -221,8 +242,8 @@ export const GamesStore = signalStore(
               });
               return of(null);
             })
-          )
-        )
+          );
+        })
       )
     ),
 

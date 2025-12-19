@@ -56,16 +56,12 @@ export class ParentSubjectService {
       return from(Promise.resolve({ subjects: [], error: null }));
     }
 
-    // Utiliser École + Niveau avec clé normalisée (school_level_key) - FILTRER par niveau de l'enfant
-    const simplify = (s: string) =>
-      s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, '');
-    const levelKey = simplify((schoolLevel || '').trim());
-
-    const linksQuery = levelKey
+    // Utiliser École + Niveau avec le code belge direct (M1-M3, P1-P6, S1-S6)
+    const linksQuery = schoolLevel
       ? client.from('school_level_subjects')
           .select('subject:subjects(*), school_level')
           .eq('school_id', schoolId)
-          .eq('school_level_key', levelKey)
+          .eq('school_level', schoolLevel)
       : client.from('school_level_subjects')
           .select('subject:subjects(*), school_level')
           .eq('school_id', schoolId);

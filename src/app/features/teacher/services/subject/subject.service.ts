@@ -36,29 +36,23 @@ export class SubjectService {
    */
   getSubjectsForSchoolLevel(schoolId: string, schoolLevel: string): Observable<{ subjects: Subject[]; error: PostgrestError | null }> {
     const client = this.supabaseService.client;
-    const simplify = (s: string) => s
-      .normalize('NFD').replace(/\p{Diacritic}/gu, '')
-      .toLowerCase().replace(/\s+/g, '');
-    const normalizeKey = (lvl: string | null | undefined): string => simplify((lvl || '').trim());
-
-    const targetKey = normalizeKey(schoolLevel);
     if (SubjectService.DEBUG) {
-      console.log('[SubjectService:getSubjectsForSchoolLevel] params', { schoolId, schoolLevel, targetKey });
+      console.log('[SubjectService:getSubjectsForSchoolLevel] params', { schoolId, schoolLevel });
     }
 
     return from(Promise.all([
       client
         .from('school_level_subjects')
-        .select('school_level_key, subject:subjects(*)')
+        .select('subject:subjects(*)')
         .eq('school_id', schoolId)
-        .eq('school_level_key', targetKey),
+        .eq('school_level', schoolLevel),
       client
         .from('subjects')
         .select('*')
         .in('type', ['extra', 'optionnelle'] as unknown as string[])
     ])).pipe(
       map(([linksRes, extrasRes]) => {
-        const linkRows = (linksRes.data as { school_level_key: string; subject: Subject }[] | null) || [];
+        const linkRows = (linksRes.data as { subject: Subject }[] | null) || [];
         const filteredLinked = linkRows.map(row => row.subject as Subject);
         const extraSubjects = (extrasRes.data as Subject[] | null) || [];
         const byId = new Map<string, Subject>();
@@ -142,11 +136,6 @@ export class SubjectService {
   }
 
   addSubjectLink(link: { subject_id: string; school_id: string; school_level: string; required?: boolean }): Observable<{ link: { id: string; subject_id: string; school_id: string; school_level: string; required: boolean } | null; error: PostgrestError | null }> {
-    const simplify = (s: string) => s
-      .normalize('NFD').replace(/\p{Diacritic}/gu, '')
-      .toLowerCase().replace(/\s+/g, '');
-    const school_level_key = simplify(link.school_level || '');
-
     return from(
       this.supabaseService.client
         .from('school_level_subjects')
@@ -154,7 +143,6 @@ export class SubjectService {
           subject_id: link.subject_id,
           school_id: link.school_id,
           school_level: link.school_level,
-          school_level_key,
           required: link.required ?? true,
         })
         .select()
