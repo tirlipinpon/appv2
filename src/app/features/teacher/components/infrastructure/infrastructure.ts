@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from, switchMap, map, catchError, of } from 'rxjs';
+import { Observable, from, switchMap, map, catchError, of, forkJoin } from 'rxjs';
 import { TeacherService } from '../../services/teacher/teacher.service';
 import { SchoolService } from '../../services/school/school.service';
 import { SchoolYearService } from '../../services/school-year/school-year.service';
@@ -131,10 +131,13 @@ export class Infrastructure {
 
   // ===== Génération IA =====
   generateSingleGameWithAI(request: AIGameGenerationRequest): Observable<{ game?: GameCreate; error?: PostgrestError | null }> {
-    return this.getGameTypes().pipe(
-      switchMap((gameTypesResult) => {
-        if (gameTypesResult.error) {
-          return of({ error: gameTypesResult.error });
+    return forkJoin({
+      gameTypes: this.getGameTypes(),
+      existingGames: this.getGamesBySubject(request.subjectId) // Récupérer les jeux existants
+    }).pipe(
+      switchMap(({ gameTypes, existingGames }) => {
+        if (gameTypes.error) {
+          return of({ error: gameTypes.error });
         }
 
         // Si un PDF est fourni, extraire le texte
@@ -146,8 +149,9 @@ export class Infrastructure {
           switchMap((pdfText) => {
             return this.aiGameGeneratorService.generateSingleGame(
               request,
-              gameTypesResult.gameTypes,
-              pdfText
+              gameTypes.gameTypes,
+              pdfText,
+              existingGames.games || [] // Passer les jeux existants
             );
           }),
           map((game) => ({ game })),

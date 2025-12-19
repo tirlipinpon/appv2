@@ -202,7 +202,15 @@ export const GamesStore = signalStore(
           // Créer un observable pour chaque jeu à générer
           for (let i = 0; i < numberOfGames; i++) {
             games$.push(
-              infrastructure.generateSingleGameWithAI(request).pipe(
+              infrastructure.generateSingleGameWithAI({
+                ...request,
+                // Passer les jeux déjà générés dans cette session pour éviter les doublons
+                alreadyGeneratedInSession: store.generatedGames().map(g => ({
+                  question: g.question,
+                  game_type_id: g.game_type_id,
+                  metadata: g.metadata
+                }))
+              }).pipe(
                 tap((result) => {
                   // #region agent log
                   fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.store.ts:198',message:'game generation result received',data:{hasError:!!result.error,hasGame:!!result.game,gameIndex:i},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});

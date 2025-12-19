@@ -8,6 +8,7 @@ export interface AIGameGenerationRequest {
   schoolYearLabel: string; // ex: "CP", "6ème", "Terminale"
   difficulty: number;
   subjectId: string;
+  alreadyGeneratedInSession?: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[]; // Jeux déjà générés dans cette session
 }
 
 export interface AIGameGenerationResponse {

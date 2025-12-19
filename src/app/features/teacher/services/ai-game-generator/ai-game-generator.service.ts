@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, catchError, throwError } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
-import { GameCreate } from '../../types/game';
+import { Game, GameCreate } from '../../types/game';
 import { GameType } from '../../types/game-type';
 import type {
   AIGameGenerationRequest,
@@ -10,6 +10,7 @@ import type {
   AIRawGameResponse,
 } from '../../types/ai-game-generation';
 import { getAgeFromSchoolYear } from '../../utils/school-levels.util';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../types/game-data';
 
 @Injectable({
   providedIn: 'root',
@@ -29,11 +30,12 @@ export class AIGameGeneratorService {
   generateSingleGame(
     request: AIGameGenerationRequest,
     gameTypes: GameType[],
-    pdfText?: string
+    pdfText?: string,
+    existingGames: Game[] = [] // Jeux existants dans la base de données
   ): Observable<GameCreate> {
     // Modifier la requête pour générer 1 seul jeu
     const singleGameRequest = { ...request, numberOfGames: 1 };
-    const prompt = this.buildPrompt(singleGameRequest, gameTypes, pdfText);
+    const prompt = this.buildPrompt(singleGameRequest, gameTypes, pdfText, existingGames, request.alreadyGeneratedInSession || []);
 
     return from(this.callDeepSeekProxy(prompt)).pipe(
       map((response) => {
@@ -162,7 +164,9 @@ export class AIGameGeneratorService {
   private buildPrompt(
     request: AIGameGenerationRequest,
     gameTypes: GameType[],
-    pdfText?: string
+    pdfText?: string,
+    existingGames: Game[] = [],
+    alreadyGeneratedInSession: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[] = []
   ): string {
     const ageRange = getAgeFromSchoolYear(request.schoolYearLabel);
 
@@ -177,6 +181,44 @@ Structure metadata: ${this.getMetadataStructureDescription(gt.name)}
       })
       .join('\n');
 
+    // Construire la liste des jeux existants pour éviter les doublons
+    let existingGamesSection = '';
+    const allExistingGames = [...existingGames, ...alreadyGeneratedInSession.map(g => ({
+      question: g.question,
+      game_type_id: g.game_type_id,
+      metadata: g.metadata,
+      instructions: null
+    } as Game))];
+    
+    if (allExistingGames.length > 0) {
+      const existingGamesList = allExistingGames
+        .slice(0, 15) // Limiter à 15 jeux pour ne pas surcharger le prompt
+        .map((game, index) => {
+          const gameTypeName = gameTypes.find(gt => gt.id === game.game_type_id)?.name || 'Type inconnu';
+          return `
+Jeu existant #${index + 1}:
+- Type: ${gameTypeName}
+- Question: ${game.question || 'N/A'}
+- Instructions: ${game.instructions || 'N/A'}
+${game.metadata ? `- Contenu: ${this.formatMetadataForPrompt(game.metadata, gameTypeName)}` : ''}
+`;
+        })
+        .join('\n');
+
+      existingGamesSection = `
+JEUX EXISTANTS POUR CETTE MATIÈRE (${allExistingGames.length} jeu(x) déjà créé(s)):
+${existingGamesList}
+
+IMPORTANT - ÉVITER LES DOUBLONS:
+- Ne PAS générer de jeux avec des questions identiques ou très similaires
+- Ne PAS répéter les mêmes types de jeux si possible (varier les types)
+- Ne PAS utiliser les mêmes formulations ou structures
+- Créer des jeux NOUVEAUX et ORIGINAUX qui complètent ceux existants
+- Si beaucoup de jeux existent déjà, proposer des angles différents ou des niveaux de difficulté variés
+- Varier les approches pédagogiques (exemples concrets, cas pratiques, réflexion, etc.)
+`;
+    }
+
     return `Tu es un générateur de jeux pédagogiques adapté au système éducatif français.
 
 CONTEXTE:
@@ -187,19 +229,22 @@ CONTEXTE:
 - Difficulté demandée: ${request.difficulty}/5
 ${pdfText ? `- Contexte additionnel (extrait PDF):\n${pdfText.substring(0, 3000)}` : ''}
 
+${existingGamesSection}
+
 TYPES DE JEUX DISPONIBLES:
 ${gameTypesDescription}
 
 CONSIGNES STRICTES:
 1. Génère EXACTEMENT ${request.numberOfGames} jeux variés adaptés au niveau ${request.schoolYearLabel}
-2. Ajuste le vocabulaire et la complexité selon l'âge (${ageRange})
-3. Répartis intelligemment les types de jeux selon le sujet et le niveau
+2. ${allExistingGames.length > 0 ? 'ÉVITE ABSOLUMENT de créer des jeux similaires à ceux listés ci-dessus. ' : ''}Ajuste le vocabulaire et la complexité selon l'âge (${ageRange})
+3. Répartis intelligemment les types de jeux selon le sujet et le niveau${allExistingGames.length > 0 ? ' (privilégie les types de jeux peu ou pas utilisés dans les jeux existants)' : ''}
 4. Chaque jeu DOIT avoir entre 1 et 3 aides progressives (adaptées à l'âge)
 5. Respecte STRICTEMENT la structure JSON et metadata de chaque type
 6. Pour les QCM: 3-5 propositions selon le niveau
 7. Pour les liens: nombre égal de mots et réponses (3-6 paires selon le niveau)
 8. Pour la chronologie: 3-8 éléments selon le niveau
 9. Utilise un français adapté à l'âge (vocabulaire simple pour primaire, plus complexe pour lycée)
+${allExistingGames.length > 0 ? '10. CRÉATIVITÉ: Propose des questions et angles NOUVEAUX, différents de ceux déjà existants. Varie les approches (exemples concrets, cas pratiques, réflexion, application, etc.)' : ''}
 
 FORMAT DE RÉPONSE (JSON STRICT - OBLIGATOIRE):
 {
@@ -330,6 +375,49 @@ IMPORTANT:
       structures[typeName.toLowerCase()] ||
       '{ structure spécifique au type }'
     );
+  }
+
+  /**
+   * Formate les métadonnées d'un jeu pour l'affichage dans le prompt
+   */
+  private formatMetadataForPrompt(metadata: Record<string, unknown>, gameTypeName: string): string {
+    const typeName = gameTypeName.toLowerCase();
+    
+    try {
+      if (typeName === 'qcm') {
+        const qcm = metadata as unknown as { propositions?: string[]; reponses_valides?: string[] };
+        const propositions = qcm.propositions?.slice(0, 3).join(', ') || '';
+        return `${qcm.propositions?.length || 0} propositions${propositions ? ` (ex: ${propositions}...)` : ''}`;
+      }
+      
+      if (typeName === 'case vide') {
+        const caseVide = metadata as unknown as { debut_phrase?: string; fin_phrase?: string };
+        const phrase = `${caseVide.debut_phrase || ''} ___ ${caseVide.fin_phrase || ''}`;
+        return phrase.length > 80 ? `"${phrase.substring(0, 80)}..."` : `"${phrase}"`;
+      }
+      
+      if (typeName === 'reponse libre') {
+        const reponseLibre = metadata as unknown as { reponse_valide?: string };
+        const reponse = reponseLibre.reponse_valide || 'N/A';
+        return reponse.length > 60 ? `Réponse: "${reponse.substring(0, 60)}..."` : `Réponse: "${reponse}"`;
+      }
+      
+      if (typeName === 'liens') {
+        const liens = metadata as unknown as { mots?: string[] };
+        const mots = liens.mots?.slice(0, 3).join(', ') || '';
+        return `${liens.mots?.length || 0} mots à relier${mots ? ` (ex: ${mots}...)` : ''}`;
+      }
+      
+      if (typeName === 'chronologie') {
+        const chronologie = metadata as unknown as { mots?: string[] };
+        const mots = chronologie.mots?.slice(0, 3).join(', ') || '';
+        return `${chronologie.mots?.length || 0} éléments à ordonner${mots ? ` (ex: ${mots}...)` : ''}`;
+      }
+      
+      return JSON.stringify(metadata).substring(0, 100);
+    } catch (error) {
+      return JSON.stringify(metadata).substring(0, 100);
+    }
   }
 
   /**
