@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import type { Game, GameUpdate } from '../../../../types/game';
 import type { GameType } from '../../../../types/game-type';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
 import { LiensFormComponent } from '../liens-form/liens-form.component';
 import { ChronologieFormComponent } from '../chronologie-form/chronologie-form.component';
 import { QcmFormComponent } from '../qcm-form/qcm-form.component';
+import { VraiFauxFormComponent } from '../vrai-faux-form/vrai-faux-form.component';
 import { GameGlobalFieldsComponent } from '../game-global-fields/game-global-fields.component';
 import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
@@ -25,6 +26,7 @@ import { normalizeGameData } from '../../../../utils/game-data-mapper';
     LiensFormComponent,
     ChronologieFormComponent,
     QcmFormComponent,
+    VraiFauxFormComponent,
     GameGlobalFieldsComponent,
     GamePreviewComponent,
   ],
@@ -53,9 +55,9 @@ export class GameCardComponent implements OnInit, OnChanges {
       this.initializeEditMode();
     }
   }
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly currentGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly previewIsOpen = signal<boolean>(false);
@@ -96,7 +98,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         this.currentGameTypeName(),
         this.game.metadata as Record<string, unknown>
       );
-      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData;
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData;
       this.initialGameData.set(gameData);
       this.gameSpecificData.set(gameData); // Initialiser aussi gameSpecificData
       this.gameSpecificValid.set(true); // Considérer comme valide si les données existent
@@ -111,7 +113,7 @@ export class GameCardComponent implements OnInit, OnChanges {
     // La validité est toujours vraie pour les champs globaux (optionnels)
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData): void {
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData): void {
     this.gameSpecificData.set(data);
   }
 
@@ -218,6 +220,15 @@ export class GameCardComponent implements OnInit, OnChanges {
     return null;
   }
 
+  getInitialDataForVraiFaux(): VraiFauxData | null {
+    const data = this.initialGameData();
+    const currentType = this.currentGameTypeName();
+    if (currentType.toLowerCase() === 'vrai/faux' && data && 'enonces' in data) {
+      return data as VraiFauxData;
+    }
+    return null;
+  }
+
   formatMetadataForDisplay(): string {
     const typeName = this.currentGameTypeName().toLowerCase();
     const metadata = this.game.metadata;
@@ -245,6 +256,10 @@ export class GameCardComponent implements OnInit, OnChanges {
         case 'chronologie':
           const chronologie = metadata as unknown as ChronologieData;
           return `${chronologie.mots?.length || 0} éléments à ordonner`;
+        
+        case 'vrai/faux':
+          const vraiFaux = metadata as unknown as VraiFauxData;
+          return `${vraiFaux.enonces?.length || 0} énoncé(s)`;
         
         default:
           return JSON.stringify(metadata).substring(0, 100);

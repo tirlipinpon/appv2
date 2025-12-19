@@ -99,6 +99,14 @@
         </app-chronologie-form>
       }
 
+      @if (currentGameTypeName().toLowerCase() === 'vrai/faux') {
+        <app-vrai-faux-form 
+          [initialData]="getInitialDataForVraiFaux()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-vrai-faux-form>
+      }
+
       <div class="edit-actions">
         <button class="btn btn-primary" (click)="saveEdit()" [disabled]="!gameSpecificValid()">
           ✅ Enregistrer

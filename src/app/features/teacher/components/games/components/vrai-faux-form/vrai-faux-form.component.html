@@ -1,0 +1,22 @@
+<div [formGroup]="form" class="vrai-faux-form">
+  <div class="form-group">
+    <label>Énoncés</label>
+    <p class="hint">Pour chaque énoncé, indiquez si la réponse correcte est Vrai ou Faux</p>
+    <div formArrayName="enonces" class="enonces-list">
+      <div *ngFor="let enonce of enoncesArray.controls; let i = index" [formGroupName]="i" class="enonce-row">
+        <input type="text" formControlName="texte" [placeholder]="'Énoncé ' + (i + 1)" class="enonce-input">
+        <label class="radio-label">
+          <input type="radio" formControlName="reponse_correcte" [value]="true" name="reponse_{{i}}">
+          Vrai
+        </label>
+        <label class="radio-label">
+          <input type="radio" formControlName="reponse_correcte" [value]="false" name="reponse_{{i}}">
+          Faux
+        </label>
+        <button type="button" class="btn btn-danger btn-small" (click)="removeEnonce(i)">×</button>
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary btn-small" (click)="addEnonce()">+ Ajouter un énoncé</button>
+  </div>
+</div>
+

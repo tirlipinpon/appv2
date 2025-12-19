@@ -236,19 +236,50 @@
 
   // Liens Preview
   .liens-preview {
+    .liens-grid-container {
+      position: relative;
+      margin-bottom: $spacing-lg;
+    }
+
     .liens-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: $spacing-lg;
-      margin-bottom: $spacing-lg;
+      position: relative;
 
       @media (max-width: 768px) {
         grid-template-columns: 1fr;
+      }
+
+      .links-svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+
+        .link-line {
+          stroke: $color-primary;
+          transition: stroke 0.3s ease;
+
+          &.correct {
+            stroke: $color-success;
+          }
+
+          &.incorrect {
+            stroke: $color-danger;
+          }
+        }
       }
     }
 
     .mots-column,
     .reponses-column {
+      position: relative;
+      z-index: 2;
+
       h4 {
         margin-bottom: $spacing-md;
         font-size: $font-size-base;
@@ -264,6 +295,11 @@
       margin-bottom: $spacing-sm;
       cursor: pointer;
       transition: all $transition-base;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 2;
 
       &:hover:not(.disabled) {
         background-color: $color-gray-100;
@@ -285,12 +321,29 @@
         opacity: 0.6;
       }
 
-      .link-indicator {
-        display: block;
-        margin-top: $spacing-xs;
-        font-size: $font-size-sm;
-        color: $color-success;
-        font-weight: $font-weight-semibold;
+      .mot-text {
+        flex: 1;
+      }
+
+      .link-circle {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: $color-gray-300;
+        border: 2px solid $color-border-light;
+        margin-left: $spacing-sm;
+        flex-shrink: 0;
+        transition: all $transition-base;
+      }
+
+      &.linked .link-circle {
+        background: $color-success;
+        border-color: $color-success;
+      }
+
+      &.selected .link-circle {
+        background: $color-primary;
+        border-color: $color-primary;
       }
     }
 
@@ -302,6 +355,11 @@
       margin-bottom: $spacing-sm;
       cursor: pointer;
       transition: all $transition-base;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 2;
 
       &:hover:not(.disabled) {
         background-color: $color-gray-100;
@@ -316,6 +374,27 @@
       &.disabled {
         cursor: not-allowed;
         opacity: 0.6;
+      }
+
+      .reponse-text {
+        flex: 1;
+        text-align: right;
+      }
+
+      .link-circle {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: $color-gray-300;
+        border: 2px solid $color-border-light;
+        margin-right: $spacing-sm;
+        flex-shrink: 0;
+        transition: all $transition-base;
+      }
+
+      &.selected .link-circle {
+        background: $color-primary;
+        border-color: $color-primary;
       }
     }
   }
@@ -333,6 +412,125 @@
   // Chronologie Preview - Les styles sont gérés par le composant chronologie-game
   .chronologie-preview {
     // Pas de styles spécifiques nécessaires, le composant enfant gère tout
+  }
+
+  // Vrai/Faux Preview
+  .vrai-faux-preview {
+    .vrai-faux-grid {
+      margin-bottom: $spacing-lg;
+    }
+
+    .vrai-faux-header {
+      display: grid;
+      grid-template-columns: 80px 1fr 80px;
+      gap: $spacing-md;
+      margin-bottom: $spacing-md;
+      padding-bottom: $spacing-sm;
+      border-bottom: 2px solid $color-border-light;
+
+      .header-column {
+        text-align: center;
+        font-weight: $font-weight-semibold;
+        font-size: $font-size-base;
+        color: $color-text-primary;
+      }
+
+      .vrai-column {
+        color: $color-success;
+      }
+
+      .faux-column {
+        color: $color-danger;
+      }
+
+      .enonce-column {
+        // Colonne vide pour l'alignement
+      }
+    }
+
+    .vrai-faux-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 80px;
+      gap: $spacing-md;
+      align-items: center;
+      margin-bottom: $spacing-md;
+      padding: $spacing-md;
+      background: $color-gray-50;
+      border-radius: $border-radius-sm;
+      transition: all $transition-base;
+
+      &:hover {
+        background-color: $color-gray-100;
+      }
+    }
+
+    .vrai-button,
+    .faux-button {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 2px solid $color-border-light;
+      background: $color-gray-100;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all $transition-base;
+      margin: 0 auto;
+
+      &:hover:not(:disabled) {
+        border-color: $color-primary;
+        background: $color-gray-200;
+      }
+
+      &.selected {
+        border-color: $color-primary;
+        background: $color-primary-light;
+      }
+
+      &.correct {
+        border-color: $color-success;
+        background: $color-success;
+      }
+
+      &.incorrect {
+        border-color: $color-danger;
+        background: $color-danger;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+
+      .circle {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: $color-gray-400;
+        transition: all $transition-base;
+      }
+
+      &.selected .circle {
+        background: $color-primary;
+      }
+
+      &.correct .circle {
+        background: white;
+      }
+
+      &.incorrect .circle {
+        background: white;
+      }
+    }
+
+    .enonce-text {
+      padding: $spacing-sm $spacing-md;
+      text-align: center;
+      font-size: $font-size-base;
+      color: $color-text-primary;
+      line-height: 1.5;
+    }
   }
 
   .btn {

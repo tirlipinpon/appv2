@@ -127,6 +127,15 @@
               (validityChange)="onGameValidityChange($event)">
             </app-qcm-form>
           }
+
+          <!-- Vrai/Faux -->
+          @if (selectedGameTypeName()?.toLowerCase() === 'vrai/faux') {
+            <app-vrai-faux-form
+              [initialData]="getInitialDataForVraiFaux()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-vrai-faux-form>
+          }
         </div>
       }
 

@@ -95,6 +95,14 @@
           (validityChange)="onGameValidityChange($event)">
         </app-chronologie-form>
 
+        <!-- Vrai/Faux -->
+        <app-vrai-faux-form 
+          *ngIf="getGameTypeName(game).toLowerCase() === 'vrai/faux'"
+          [initialData]="getInitialDataForVraiFaux(game)"
+          (dataChange)="onGameDataChange(game, $event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-vrai-faux-form>
+
         <div class="edit-actions">
           <button class="btn btn-primary" (click)="toggleEdit(game)">
             ✅ Terminer l'édition

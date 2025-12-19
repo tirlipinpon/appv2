@@ -31,6 +31,11 @@ export interface QcmData {
   reponses_valides: string[]; // Une ou plusieurs réponses valides
 }
 
+// Vrai/Faux : liste d'énoncés avec réponse Vrai ou Faux
+export interface VraiFauxData {
+  enonces: { texte: string; reponse_correcte: boolean }[];
+}
+
 // Union type pour toutes les structures de données de jeu
-export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData;
+export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData;
 
