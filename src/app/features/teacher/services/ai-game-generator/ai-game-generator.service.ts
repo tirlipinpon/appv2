@@ -160,20 +160,68 @@ FORMAT DE RÉPONSE (JSON STRICT - OBLIGATOIRE):
   "games": [
     {
       "type_name": "qcm",
-      "question": "La question du jeu",
-      "instructions": "Instructions claires pour jouer",
+      "question": "Question du jeu",
+      "instructions": "Sélectionne la ou les bonnes réponses",
       "metadata": {
-        "propositions": ["Réponse 1", "Réponse 2", "Réponse 3"],
-        "reponses_valides": ["Réponse 1"]
+        "propositions": ["Réponse A", "Réponse B", "Réponse C"],
+        "reponses_valides": ["Réponse A"]
       },
       "aides": ["Première aide", "Deuxième aide"]
+    },
+    {
+      "type_name": "case vide",
+      "question": "Question pour le jeu à trous",
+      "instructions": "Complète la phrase avec le mot manquant",
+      "metadata": {
+        "debut_phrase": "Le chat est ",
+        "fin_phrase": " dans le jardin",
+        "reponse_valide": "caché"
+      },
+      "aides": ["Indice 1", "Indice 2"]
+    },
+    {
+      "type_name": "liens",
+      "question": "Question pour relier les éléments",
+      "instructions": "Relie chaque mot à sa bonne réponse",
+      "metadata": {
+        "mots": ["Mot 1", "Mot 2", "Mot 3"],
+        "reponses": ["Réponse 1", "Réponse 2", "Réponse 3"],
+        "liens": [
+          {"mot": "Mot 1", "reponse": "Réponse 1"},
+          {"mot": "Mot 2", "reponse": "Réponse 2"},
+          {"mot": "Mot 3", "reponse": "Réponse 3"}
+        ]
+      },
+      "aides": ["Aide 1", "Aide 2"]
+    },
+    {
+      "type_name": "chronologie",
+      "question": "Question pour ordonner",
+      "instructions": "Remets les éléments dans le bon ordre chronologique",
+      "metadata": {
+        "mots": ["Événement 1", "Événement 2", "Événement 3"],
+        "ordre_correct": ["Événement 1", "Événement 2", "Événement 3"]
+      },
+      "aides": ["Indice ordre", "Indice dates"]
+    },
+    {
+      "type_name": "reponse libre",
+      "question": "Question ouverte",
+      "instructions": "Réponds à la question",
+      "metadata": {
+        "reponse_valide": "La réponse attendue"
+      },
+      "aides": ["Piste 1", "Piste 2"]
     }
   ]
 }
 
 IMPORTANT: 
 - Retourne UNIQUEMENT du JSON valide, aucun texte avant ou après
+- TOUS les jeux DOIVENT avoir: type_name, question, instructions, metadata, aides
 - Le champ "metadata" doit correspondre EXACTEMENT à la structure du type de jeu
+- Pour "liens": les tableaux mots/reponses doivent avoir la MÊME taille et liens doit relier chaque mot à SA réponse
+- Pour "chronologie": ordre_correct contient les mots dans le bon ordre (même contenu que mots mais réordonné)
 - Les aides doivent être progressives (de plus en plus explicites)`;
   }
 
