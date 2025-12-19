@@ -45,6 +45,16 @@
           ⚠️ Mode édition - Utilisez le formulaire ci-dessous pour modifier le jeu
         </div>
 
+        <!-- Champs globaux (instructions, question, aides) -->
+        <app-game-global-fields
+          [initialData]="getGlobalFieldsData(game)"
+          (dataChange)="onGlobalFieldsChange(game, $event)"
+          (validityChange)="onGlobalFieldsValidityChange()">
+        </app-game-global-fields>
+
+        <hr class="form-divider">
+
+        <!-- Formulaires spécifiques pour chaque type -->
         <!-- QCM -->
         <app-qcm-form 
           *ngIf="getGameTypeName(game).toLowerCase() === 'qcm'"

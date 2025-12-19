@@ -48,15 +48,12 @@
         </span>
       </div>
 
-      <div class="form-group">
-        <label for="instructions">Instructions</label>
-        <textarea id="instructions" rows="4" formControlName="instructions" placeholder="Instructions pour jouer"></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="question">Question</label>
-        <textarea id="question" rows="3" formControlName="question" placeholder="Phrase ou plusieurs mots pour la question (optionnel)"></textarea>
-      </div>
+      <!-- Champs globaux (instructions, question, aides) -->
+      <app-game-global-fields
+        [initialData]="initialGlobalFields()"
+        (dataChange)="onGlobalFieldsChange($event)"
+        (validityChange)="() => {}">
+      </app-game-global-fields>
 
       <!-- Composants spécifiques selon le type de jeu -->
       <div class="game-specific-form" *ngIf="selectedGameTypeName()">
@@ -99,17 +96,6 @@
           (dataChange)="onGameDataChange($event)"
           (validityChange)="onGameValidityChange($event)">
         </app-qcm-form>
-      </div>
-
-      <div class="form-group">
-        <label>Aides</label>
-        <div formArrayName="aides" class="aides-list">
-          <div *ngFor="let aide of aidesArray.controls; let i = index" class="aide-item">
-            <textarea rows="2" [formControlName]="i" [placeholder]="'Aide ' + (i + 1)"></textarea>
-            <button type="button" class="btn btn-danger btn-small" (click)="removeAide(i)">×</button>
-          </div>
-        </div>
-        <button type="button" class="btn btn-secondary btn-small" (click)="addAide()">+ Ajouter une aide</button>
       </div>
 
       <div class="form-actions">

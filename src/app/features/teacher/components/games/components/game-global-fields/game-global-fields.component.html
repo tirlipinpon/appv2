@@ -1,0 +1,47 @@
+<div class="game-global-fields">
+  <div class="form-group">
+    <label for="instructions">Instructions</label>
+    <textarea 
+      id="instructions"
+      class="form-control"
+      rows="2"
+      formControlName="instructions"
+      placeholder="Instructions pour l'élève"></textarea>
+  </div>
+
+  <div class="form-group">
+    <label for="question">Question</label>
+    <input 
+      id="question"
+      type="text"
+      class="form-control"
+      formControlName="question"
+      placeholder="Question du jeu">
+  </div>
+
+  <div class="form-group">
+    <label for="aides">Aides</label>
+    <div *ngFor="let aideControl of aidesArray.controls; let i = index" class="aide-item">
+      <input 
+        type="text"
+        class="form-control"
+        [id]="'aide-' + i"
+        [formControl]="aideControl"
+        placeholder="Aide {{ i + 1 }}">
+      <button 
+        type="button"
+        class="btn btn-danger btn-sm"
+        (click)="removeAide(i)"
+        aria-label="Supprimer l'aide {{ i + 1 }}">
+        ✕
+      </button>
+    </div>
+    <button 
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="addAide()">
+      + Ajouter une aide
+    </button>
+  </div>
+</div>
+

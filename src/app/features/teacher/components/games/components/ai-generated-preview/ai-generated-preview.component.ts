@@ -5,6 +5,7 @@ import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-f
 import { LiensFormComponent } from '../liens-form/liens-form.component';
 import { ChronologieFormComponent } from '../chronologie-form/chronologie-form.component';
 import { QcmFormComponent } from '../qcm-form/qcm-form.component';
+import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import type { GeneratedGameWithState } from '../../../../types/ai-game-generation';
 import type { GameType } from '../../../../types/game-type';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../../../types/game-data';
@@ -19,6 +20,7 @@ import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmDat
     LiensFormComponent,
     ChronologieFormComponent,
     QcmFormComponent,
+    GameGlobalFieldsComponent,
   ],
   templateUrl: './ai-generated-preview.component.html',
   styleUrls: ['./ai-generated-preview.component.scss'],
@@ -57,6 +59,29 @@ export class AIGeneratedPreviewComponent {
 
   onGameValidityChange(valid: boolean): void {
     // La validité est gérée par les composants enfants
+  }
+
+  onGlobalFieldsChange(game: GeneratedGameWithState, data: GameGlobalFieldsData): void {
+    this.updateGame.emit({
+      tempId: game._tempId,
+      updates: {
+        instructions: data.instructions,
+        question: data.question,
+        aides: data.aides,
+      }
+    });
+  }
+
+  getGlobalFieldsData(game: GeneratedGameWithState): GameGlobalFieldsData {
+    return {
+      instructions: game.instructions || null,
+      question: game.question || null,
+      aides: game.aides || null,
+    };
+  }
+
+  onGlobalFieldsValidityChange(): void {
+    // La validité est toujours vraie pour les champs globaux (optionnels)
   }
 
   getInitialDataForCaseVide(game: GeneratedGameWithState): CaseVideData | null {

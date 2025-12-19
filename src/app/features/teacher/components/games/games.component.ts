@@ -14,6 +14,7 @@ import { ChronologieFormComponent } from './components/chronologie-form/chronolo
 import { QcmFormComponent } from './components/qcm-form/qcm-form.component';
 import { AIGameGeneratorFormComponent } from './components/ai-game-generator-form/ai-game-generator-form.component';
 import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
+import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './components/game-global-fields/game-global-fields.component';
 import type { Game, GameCreate } from '../../types/game';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../types/game-data';
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
@@ -33,6 +34,7 @@ import { normalizeGameData } from '../../utils/game-data-mapper';
     QcmFormComponent,
     AIGameGeneratorFormComponent,
     AIGeneratedPreviewComponent,
+    GameGlobalFieldsComponent,
   ],
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
@@ -89,6 +91,7 @@ export class GamesComponent implements OnInit {
 
   // Données initiales pour l'édition
   readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | null>(null);
+  readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
 
   gameForm = this.fb.group({
     instructions: [''],
@@ -99,6 +102,21 @@ export class GamesComponent implements OnInit {
 
   get aidesArray(): FormArray<FormControl<string>> {
     return this.gameForm.get('aides') as FormArray<FormControl<string>>;
+  }
+
+  onGlobalFieldsChange(data: GameGlobalFieldsData): void {
+    this.gameForm.patchValue({
+      instructions: data.instructions || '',
+      question: data.question || '',
+    }, { emitEvent: false });
+
+    // Mettre à jour les aides
+    this.aidesArray.clear();
+    if (data.aides && data.aides.length > 0) {
+      data.aides.forEach(aide => {
+        this.aidesArray.push(new FormControl<string>(aide, { nonNullable: true }));
+      });
+    }
   }
 
   ngOnInit(): void {
@@ -207,9 +225,14 @@ export class GamesComponent implements OnInit {
   startEdit(game: Game): void {
     this.editingGameId.set(game.id);
     this.gameForm.patchValue({
-      instructions: game.instructions || '',
       game_type_id: game.game_type_id || '',
-      question: game.question || '',
+    });
+
+    // Charger les champs globaux
+    this.initialGlobalFields.set({
+      instructions: game.instructions || null,
+      question: game.question || null,
+      aides: game.aides || null,
     });
 
     // Charger les données spécifiques depuis metadata et normaliser si nécessaire
@@ -219,14 +242,6 @@ export class GamesComponent implements OnInit {
         game.metadata as Record<string, unknown>
       );
       this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData);
-    }
-
-    // Charger les aides
-    this.aidesArray.clear();
-    if (game.aides) {
-      game.aides.forEach(aide => {
-        this.aidesArray.push(new FormControl<string>(aide, { nonNullable: true }));
-      });
     }
 
     const gameType = this.gameTypes().find(gt => gt.id === game.game_type_id);
@@ -246,14 +261,7 @@ export class GamesComponent implements OnInit {
     this.gameSpecificData.set(null);
     this.gameSpecificValid.set(false);
     this.initialGameData.set(null);
-  }
-
-  addAide(): void {
-    this.aidesArray.push(new FormControl<string>('', { nonNullable: true }));
-  }
-
-  removeAide(index: number): void {
-    this.aidesArray.removeAt(index);
+    this.initialGlobalFields.set(null);
   }
 
   update(): void {

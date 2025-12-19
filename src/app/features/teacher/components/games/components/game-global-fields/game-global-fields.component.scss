@@ -1,0 +1,86 @@
+.game-global-fields {
+  .form-group {
+    margin-bottom: 1rem;
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #495057;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+      font-family: inherit;
+
+      &:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .aide-item {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      align-items: center;
+
+      .form-control {
+        flex: 1;
+      }
+
+      .btn-sm {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        transition: all 0.2s;
+        white-space: nowrap;
+
+        &.btn-danger {
+          background: #dc3545;
+          color: white;
+
+          &:hover {
+            background: #c82333;
+          }
+        }
+      }
+    }
+
+    .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      transition: all 0.2s;
+      margin-top: 0.5rem;
+
+      &.btn-secondary {
+        background: #6c757d;
+        color: white;
+
+        &:hover {
+          background: #5a6268;
+        }
+      }
+    }
+  }
+}
+
