@@ -145,27 +145,38 @@
     }
   </div>
 
-  <div class="games-list-section">
-    <h3>Mes jeux ({{ games().length }})</h3>
-    @if (isLoading()) {
-      <div class="loading">Chargement...</div>
-    }
-    @if (!isLoading() && games().length === 0) {
-      <div class="empty-state">
-        <p>Aucun jeu créé pour cette matière.</p>
+  <!-- Section Liste des jeux avec toggle -->
+  <section class="games-list-section collapsible-section">
+    <div class="section-header" (click)="toggleGamesList()">
+      <h3>📋 Mes jeux ({{ games().length }})</h3>
+      <button type="button" class="toggle-btn" [attr.aria-expanded]="isGamesListExpanded()">
+        {{ isGamesListExpanded() ? '−' : '+' }}
+      </button>
+    </div>
+    @if (isGamesListExpanded()) {
+      <div class="section-content">
+        @if (isLoading()) {
+          <div class="loading">Chargement...</div>
+        }
+        @if (!isLoading() && games().length === 0) {
+          <div class="empty-state">
+            <p>Aucun jeu créé pour cette matière.</p>
+          </div>
+        }
+        @if (!isLoading() && games().length > 0) {
+          <ul class="games-list">
+            @for (game of games(); track game.id) {
+              <app-game-card
+                [game]="game"
+                [gameTypeName]="getGameTypeName(game.game_type_id)"
+                [gameTypes]="gameTypes()"
+                (update)="updateGameFromCard($event.gameId, $event.updates)"
+                (delete)="delete($event)">
+              </app-game-card>
+            }
+          </ul>
+        }
       </div>
     }
-    @if (!isLoading() && games().length > 0) {
-      <ul class="games-list">
-        @for (game of games(); track game.id) {
-          <app-game-card
-            [game]="game"
-            [gameTypeName]="getGameTypeName(game.game_type_id)"
-            (edit)="startEdit($event)"
-            (delete)="delete($event)">
-          </app-game-card>
-        }
-      </ul>
-    }
-  </div>
+  </section>
 </div>

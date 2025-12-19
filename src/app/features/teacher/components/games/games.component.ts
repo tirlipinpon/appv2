@@ -16,7 +16,7 @@ import { AIGameGeneratorFormComponent } from './components/ai-game-generator-for
 import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './components/game-global-fields/game-global-fields.component';
 import { GameCardComponent } from './components/game-card/game-card.component';
-import type { Game, GameCreate } from '../../types/game';
+import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../types/game-data';
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 import { normalizeGameData } from '../../utils/game-data-mapper';
@@ -99,6 +99,7 @@ export class GamesComponent implements OnInit {
   // États des toggles pour les sections
   readonly isAIGenerationExpanded = signal<boolean>(false);
   readonly isManualCreationExpanded = signal<boolean>(false);
+  readonly isGamesListExpanded = signal<boolean>(true); // Ouvert par défaut
 
   gameForm = this.fb.group({
     instructions: [''],
@@ -222,6 +223,10 @@ export class GamesComponent implements OnInit {
     this.isManualCreationExpanded.update(v => !v);
   }
 
+  toggleGamesList(): void {
+    this.isGamesListExpanded.update(v => !v);
+  }
+
   create(): void {
     if (!this.gameForm.valid || !this.subjectId() || !this.gameSpecificValid()) return;
     const v = this.gameForm.value;
@@ -320,6 +325,10 @@ export class GamesComponent implements OnInit {
     });
 
     this.cancelEdit();
+  }
+
+  updateGameFromCard(gameId: string, updates: GameUpdate): void {
+    this.application.updateGame(gameId, updates);
   }
 
   delete(gameId: string): void {

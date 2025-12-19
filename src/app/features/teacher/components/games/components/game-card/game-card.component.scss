@@ -3,6 +3,16 @@
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
+  transition: all 0.3s;
+
+  &.editing {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  }
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .game-header {
@@ -123,5 +133,78 @@
   background: #e53935;
   border-color: #e53935;
   color: #fff;
+}
+
+.game-preview {
+  .game-content {
+    margin-bottom: 1.5rem;
+
+    .game-question {
+      margin: 0 0 0.75rem 0;
+      color: #212529;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .game-instructions {
+      margin: 0 0 1rem 0;
+      color: #6c757d;
+      font-style: italic;
+    }
+
+    .game-metadata {
+      background: #f8f9fa;
+      border-left: 3px solid #667eea;
+      padding: 0.75rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+
+      strong {
+        color: #495057;
+      }
+    }
+
+    .game-aides {
+      margin-top: 1rem;
+
+      strong {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #495057;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 1.5rem;
+        color: #6c757d;
+      }
+    }
+  }
+}
+
+.game-edit {
+  .edit-notice {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 1.5rem;
+    color: #856404;
+    font-size: 0.9rem;
+  }
+
+  .form-divider {
+    margin: 1.5rem 0;
+    border: none;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .edit-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e0e0e0;
+  }
 }
 

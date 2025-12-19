@@ -1,29 +1,113 @@
-<li class="game-item">
+<li class="game-item" [class.editing]="isEditing()">
   <div class="game-header">
     <h4>{{ game.name }}</h4>
-    <span class="game-type-badge">{{ gameTypeName }}</span>
+    <span class="game-type-badge">{{ currentGameTypeName() }}</span>
   </div>
-  <div class="game-details">
-    @if (game.question) {
-      <p class="game-question"><strong>Question:</strong> {{ game.question }}</p>
-    }
-    @if (game.instructions) {
-      <p class="game-instructions">{{ game.instructions }}</p>
-    }
-    @if (game.aides && game.aides.length > 0) {
-      <div class="game-aides">
-        <p><strong>Aides:</strong></p>
-        <ul>
-          @for (aide of game.aides; track aide) {
-            <li>{{ aide }}</li>
-          }
-        </ul>
+
+  <!-- Mode lecture -->
+  @if (!isEditing()) {
+    <div class="game-preview">
+      <div class="game-content">
+        @if (game.question) {
+          <h4 class="game-question">{{ game.question }}</h4>
+        }
+        @if (game.instructions) {
+          <p class="game-instructions">{{ game.instructions }}</p>
+        }
+        
+        <div class="game-metadata">
+          <strong>Contenu:</strong> {{ formatMetadataForDisplay() }}
+        </div>
+
+        @if (game.aides && game.aides.length > 0) {
+          <div class="game-aides">
+            <strong>Aides ({{ game.aides.length }}):</strong>
+            <ul>
+              @for (aide of game.aides; track aide) {
+                <li>{{ aide }}</li>
+              }
+            </ul>
+          </div>
+        }
       </div>
-    }
-  </div>
-  <div class="game-actions">
-    <button class="btn btn-secondary" (click)="onEdit()">Modifier</button>
-    <button class="btn btn-danger" (click)="onDelete()">Supprimer</button>
-  </div>
+
+      <div class="game-actions">
+        <button class="btn btn-secondary" (click)="toggleEdit()">
+          ✏️ Modifier
+        </button>
+        <button class="btn btn-danger" (click)="onDeleteClick()">
+          🗑️ Supprimer
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Mode édition -->
+  @if (isEditing()) {
+    <div class="game-edit">
+      <div class="edit-notice">
+        ⚠️ Mode édition - Utilisez le formulaire ci-dessous pour modifier le jeu
+      </div>
+
+      <!-- Champs globaux (instructions, question, aides) -->
+      <app-game-global-fields
+        [initialData]="initialGlobalFields()"
+        (dataChange)="onGlobalFieldsChange($event)"
+        (validityChange)="onGlobalFieldsValidityChange()">
+      </app-game-global-fields>
+
+      <hr class="form-divider">
+
+      <!-- Formulaires spécifiques pour chaque type -->
+      @if (currentGameTypeName().toLowerCase() === 'qcm') {
+        <app-qcm-form 
+          [initialData]="getInitialDataForQcm()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-qcm-form>
+      }
+
+      @if (currentGameTypeName().toLowerCase() === 'case vide') {
+        <app-case-vide-form 
+          [initialData]="getInitialDataForCaseVide()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-case-vide-form>
+      }
+
+      @if (currentGameTypeName().toLowerCase() === 'reponse libre') {
+        <app-reponse-libre-form 
+          [initialData]="getInitialDataForReponseLibre()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-reponse-libre-form>
+      }
+
+      @if (currentGameTypeName().toLowerCase() === 'liens') {
+        <app-liens-form 
+          [initialData]="getInitialDataForLiens()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-liens-form>
+      }
+
+      @if (currentGameTypeName().toLowerCase() === 'chronologie') {
+        <app-chronologie-form 
+          [initialData]="getInitialDataForChronologie()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-chronologie-form>
+      }
+
+      <div class="edit-actions">
+        <button class="btn btn-primary" (click)="saveEdit()" [disabled]="!gameSpecificValid()">
+          ✅ Enregistrer
+        </button>
+        <button class="btn btn-secondary" (click)="cancelEdit()">
+          ❌ Annuler
+        </button>
+      </div>
+    </div>
+  }
 </li>
 

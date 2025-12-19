@@ -20,3 +20,12 @@
 {"location":"games.store.ts:216","message":"after patchState","data":{"newGamesCount":3},"timestamp":1766138261660,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
 {"location":"games.store.ts:212","message":"before patchState","data":{"currentGamesCount":2,"newProgress":100},"timestamp":1766138261659,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
 {"location":"games.store.ts:198","message":"game generation result received","data":{"hasError":false,"hasGame":true,"gameIndex":2},"timestamp":1766138261658,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"chronologie-form.component.ts:59","message":"ngOnChanges called","data":{"hasInitialData":true,"changedKeys":["initialData"]},"timestamp":1766140041405,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"chronologie-form.component.ts:61","message":"clearing motsArray before load","data":{"currentLength":0},"timestamp":1766140041406,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"chronologie-form.component.ts:87","message":"ngOnChanges completed - motsArray loaded","data":{"finalLength":5},"timestamp":1766140041407,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"chronologie-form.component.ts:59","message":"ngOnChanges called","data":{"hasInitialData":true,"changedKeys":["initialData"]},"timestamp":1766140049986,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"chronologie-form.component.ts:61","message":"clearing motsArray before load","data":{"currentLength":0},"timestamp":1766140049987,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"chronologie-form.component.ts:87","message":"ngOnChanges completed - motsArray loaded","data":{"finalLength":5},"timestamp":1766140049988,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"chronologie-form.component.ts:59","message":"ngOnChanges called","data":{"hasInitialData":true,"changedKeys":["initialData"]},"timestamp":1766140066304,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"chronologie-form.component.ts:87","message":"ngOnChanges completed - motsArray loaded","data":{"finalLength":5},"timestamp":1766140066305,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"chronologie-form.component.ts:61","message":"clearing motsArray before load","data":{"currentLength":0},"timestamp":1766140066305,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}

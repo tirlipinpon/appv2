@@ -206,9 +206,9 @@ export const GamesStore = signalStore(
                 ...request,
                 // Passer les jeux déjà générés dans cette session pour éviter les doublons
                 alreadyGeneratedInSession: store.generatedGames().map(g => ({
-                  question: g.question,
+                  question: g.question ?? null,
                   game_type_id: g.game_type_id,
-                  metadata: g.metadata
+                  metadata: g.metadata ?? null
                 }))
               }).pipe(
                 tap((result) => {
