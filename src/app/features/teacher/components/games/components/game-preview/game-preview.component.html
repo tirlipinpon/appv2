@@ -176,51 +176,13 @@
         <!-- Chronologie -->
         @if (chronologieData) {
           <div class="preview-content chronologie-preview">
-            @if (isSubmitted() && isCorrect() !== null) {
-              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-                @if (isCorrect()) {
-                  ✅ Ordre correct !
-                } @else {
-                  ❌ Ordre incorrect.
-                }
-              </div>
-            }
-            <div class="chronologie-section">
-              <h4>Mots disponibles</h4>
-              <div class="available-words">
-                @for (mot of getRemainingWords(); track mot) {
-                  <button 
-                    class="btn btn-word" 
-                    (click)="moveToOrder(mot)"
-                    [disabled]="isSubmitted()">
-                    {{ mot }}
-                  </button>
-                }
-              </div>
-            </div>
-            <div class="chronologie-section">
-              <h4>Votre ordre</h4>
-              <div class="ordered-words">
-                @for (mot of userOrder(); track $index; let i = $index) {
-                  <div class="ordered-item">
-                    <span class="order-number">{{ i + 1 }}</span>
-                    <span class="word-text">{{ mot }}</span>
-                    <button 
-                      class="btn btn-small btn-danger" 
-                      (click)="removeFromOrder(i)"
-                      [disabled]="isSubmitted()">
-                      ×
-                    </button>
-                  </div>
-                }
-              </div>
-            </div>
-            <button class="btn btn-primary" (click)="submitChronologie()" [disabled]="isSubmitted() || !canSubmitChronologie()">
-              Valider
-            </button>
-            @if (isSubmitted()) {
-              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
-            }
+            <app-chronologie-game
+              [chronologieData]="chronologieData"
+              [showResult]="isSubmitted()"
+              [disabled]="false"
+              (orderChanged)="onChronologieOrderChanged($event)"
+              (validated)="onChronologieValidated($event)">
+            </app-chronologie-game>
           </div>
         }
       </div>

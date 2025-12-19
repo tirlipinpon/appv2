@@ -1,17 +1,19 @@
-import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, FormControl, Validators } from '@angular/forms';
+import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import type { ChronologieData } from '../../../../types/game-data';
 
 @Component({
   selector: 'app-chronologie-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
   templateUrl: './chronologie-form.component.html',
   styleUrls: ['./chronologie-form.component.scss'],
 })
 export class ChronologieFormComponent implements OnChanges {
   private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() initialData: ChronologieData | null = null;
   @Output() dataChange = new EventEmitter<ChronologieData>();
@@ -68,6 +70,29 @@ export class ChronologieFormComponent implements OnChanges {
 
   removeMot(index: number): void {
     this.motsArray.removeAt(index);
+  }
+
+  /**
+   * Gère le drop lors du drag and drop pour réordonner les mots
+   */
+  drop(event: CdkDragDrop<FormArray>): void {
+    if (event.previousIndex === event.currentIndex) {
+      return; // Pas de changement
+    }
+    
+    // Réordonner les FormControls dans le FormArray
+    moveItemInArray(this.motsArray.controls, event.previousIndex, event.currentIndex);
+    
+    // Forcer la détection de changement pour que le template se mette à jour
+    this.cdr.detectChanges();
+    
+    // Déclencher valueChanges pour sauvegarder le nouvel ordre
+    // On utilise patchValue avec les valeurs actuelles pour forcer l'émission
+    const wasInitializing = this.isInitializing;
+    this.isInitializing = false; // S'assurer que valueChanges peut s'exécuter
+    const values = this.motsArray.controls.map(control => control.value);
+    this.motsArray.patchValue(values, { emitEvent: true });
+    this.isInitializing = wasInitializing;
   }
 
   ngOnChanges(changes: SimpleChanges): void {

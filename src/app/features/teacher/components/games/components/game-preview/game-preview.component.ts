@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { QcmGameComponent } from '../qcm-game/qcm-game.component';
+import { ChronologieGameComponent } from '../chronologie-game/chronologie-game.component';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, QcmGameComponent],
+  imports: [CommonModule, QcmGameComponent, ChronologieGameComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
@@ -26,8 +27,6 @@ export class GamePreviewComponent {
   // Pour Liens - associations faites par l'utilisateur (mot -> reponse)
   userLinks = signal<Map<string, string>>(new Map());
 
-  // Pour Chronologie - ordre choisi par l'utilisateur
-  userOrder = signal<string[]>([]);
 
   // État de validation (pour montrer si c'est correct ou non)
   isSubmitted = signal<boolean>(false);
@@ -39,10 +38,9 @@ export class GamePreviewComponent {
   }
 
   reset(): void {
-    // Le composant qcm-game se réinitialise automatiquement via son propre reset()
+    // Les composants de jeu se réinitialisent automatiquement via leur propre reset()
     this.userAnswer.set('');
     this.userLinks.set(new Map());
-    this.userOrder.set([]);
     this.selectedMotForLink.set(null);
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
@@ -146,36 +144,13 @@ export class GamePreviewComponent {
   }
 
   // Méthodes pour Chronologie
-  moveToOrder(mot: string): void {
-    if (this.isSubmitted()) return;
-    const order = [...this.userOrder()];
-    if (!order.includes(mot)) {
-      order.push(mot);
-    }
-    this.userOrder.set(order);
+  onChronologieOrderChanged(order: string[]): void {
+    // L'ordre est géré par le composant chronologie-game
   }
 
-  removeFromOrder(index: number): void {
-    if (this.isSubmitted()) return;
-    const order = [...this.userOrder()];
-    order.splice(index, 1);
-    this.userOrder.set(order);
-  }
-
-  submitChronologie(): void {
-    if (this.isSubmitted()) return;
-    const chronologieData = this.gameData as ChronologieData;
-    if (!chronologieData) return;
-
-    const isValid = JSON.stringify(this.userOrder()) === JSON.stringify(chronologieData.ordre_correct);
+  onChronologieValidated(isValid: boolean): void {
     this.isSubmitted.set(true);
     this.isCorrect.set(isValid);
-  }
-
-  getRemainingWords(): string[] {
-    const chronologieData = this.gameData as ChronologieData;
-    if (!chronologieData) return [];
-    return chronologieData.mots.filter(mot => !this.userOrder().includes(mot));
   }
 
   // Getters pour éviter les castings dans le template
@@ -232,11 +207,6 @@ export class GamePreviewComponent {
     return this.reponseLibreData?.reponse_valide || '';
   }
 
-  canSubmitChronologie(): boolean {
-    const chronologieData = this.chronologieData;
-    if (!chronologieData) return false;
-    return this.userOrder().length === chronologieData.mots.length;
-  }
 
   // Helper pour les aides
   hasAides(): boolean {

@@ -1,9 +1,26 @@
 <div [formGroup]="form" class="chronologie-form">
   <div class="form-group">
     <label>Mots à ordonner</label>
-    <p class="hint">L'ordre dans lequel vous ajoutez les mots définit l'ordre correct. L'ordre peut être mélangé lors du jeu pour éviter la mémorisation des positions.</p>
-    <div formArrayName="mots" class="mots-list">
-      <div *ngFor="let mot of motsArray.controls; let i = index" class="mot-row">
+    <p class="hint">L'ordre dans lequel vous placez les mots définit l'ordre correct. Vous pouvez réordonner les mots en les faisant glisser-déposer. L'ordre peut être mélangé lors du jeu pour éviter la mémorisation des positions.</p>
+    <div 
+      formArrayName="mots" 
+      class="mots-list"
+      cdkDropList
+      (cdkDropListDropped)="drop($event)">
+      <div 
+        *ngFor="let mot of motsArray.controls; let i = index" 
+        class="mot-row"
+        cdkDrag>
+        <div class="drag-handle" cdkDragHandle>
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="3" cy="4" r="1.5" fill="currentColor"/>
+            <circle cx="3" cy="10" r="1.5" fill="currentColor"/>
+            <circle cx="3" cy="16" r="1.5" fill="currentColor"/>
+            <circle cx="9" cy="4" r="1.5" fill="currentColor"/>
+            <circle cx="9" cy="10" r="1.5" fill="currentColor"/>
+            <circle cx="9" cy="16" r="1.5" fill="currentColor"/>
+          </svg>
+        </div>
         <span class="ordre-indicator">Position {{ i + 1 }}</span>
         <input type="text" [formControlName]="i" [placeholder]="'Mot ' + (i + 1)">
         <button type="button" class="btn btn-danger btn-small" (click)="removeMot(i)">×</button>
