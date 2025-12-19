@@ -47,36 +47,13 @@
         <!-- QCM -->
         @if (qcmData) {
           <div class="preview-content qcm-preview">
-            @if (isSubmitted() && isCorrect() !== null) {
-              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-                @if (isCorrect()) {
-                  ✅ Bonne réponse !
-                } @else {
-                  ❌ Mauvaise réponse. Les bonnes réponses étaient : {{ getQcmValidAnswersText() }}
-                }
-              </div>
-            }
-            <div class="propositions-list">
-              @for (prop of qcmData.propositions; track $index) {
-                <label class="proposition-item" [class.selected]="selectedAnswers().has($index)" [class.disabled]="isSubmitted()">
-                  <input 
-                    type="checkbox" 
-                    [checked]="selectedAnswers().has($index)"
-                    (change)="toggleQcmAnswer($index)"
-                    [disabled]="isSubmitted()">
-                  <span>{{ prop }}</span>
-                  @if (isSubmitted() && isReponseValideQcm(prop)) {
-                    <span class="correct-indicator">✓ Correcte</span>
-                  }
-                </label>
-              }
-            </div>
-            <button class="btn btn-primary" (click)="submitQcm()" [disabled]="isSubmitted() || selectedAnswers().size === 0">
-              Valider
-            </button>
-            @if (isSubmitted()) {
-              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
-            }
+            <app-qcm-game
+              [qcmData]="qcmData"
+              [showResult]="isSubmitted()"
+              [disabled]="false"
+              (answerSelected)="onQcmAnswerSelected($event)"
+              (validated)="onQcmValidated($event)">
+            </app-qcm-game>
           </div>
         }
 

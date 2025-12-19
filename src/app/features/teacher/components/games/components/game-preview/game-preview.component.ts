@@ -2,11 +2,12 @@ import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
+import { QcmGameComponent } from '../qcm-game/qcm-game.component';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, QcmGameComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
@@ -18,8 +19,6 @@ export class GamePreviewComponent {
   
   @Output() closed = new EventEmitter<void>();
 
-  // Pour QCM - réponses sélectionnées
-  selectedAnswers = signal<Set<number>>(new Set());
 
   // Pour Case Vide et Réponse Libre - réponse saisie
   userAnswer = signal<string>('');
@@ -40,7 +39,7 @@ export class GamePreviewComponent {
   }
 
   reset(): void {
-    this.selectedAnswers.set(new Set());
+    // Le composant qcm-game se réinitialise automatiquement via son propre reset()
     this.userAnswer.set('');
     this.userLinks.set(new Map());
     this.userOrder.set([]);
@@ -56,26 +55,11 @@ export class GamePreviewComponent {
   }
 
   // Méthodes pour QCM
-  toggleQcmAnswer(index: number): void {
-    if (this.isSubmitted()) return;
-    const answers = new Set(this.selectedAnswers());
-    if (answers.has(index)) {
-      answers.delete(index);
-    } else {
-      answers.add(index);
-    }
-    this.selectedAnswers.set(answers);
+  onQcmAnswerSelected(selectedTexts: string[]): void {
+    // Les réponses sont déjà gérées par le composant qcm-game
   }
 
-  submitQcm(): void {
-    if (this.isSubmitted()) return;
-    const qcmData = this.gameData as QcmData;
-    if (!qcmData) return;
-
-    const selectedPropositions = Array.from(this.selectedAnswers()).map(i => qcmData.propositions[i]);
-    const isValid = selectedPropositions.length === qcmData.reponses_valides.length &&
-      selectedPropositions.every(prop => qcmData.reponses_valides.includes(prop));
-
+  onQcmValidated(isValid: boolean): void {
     this.isSubmitted.set(true);
     this.isCorrect.set(isValid);
   }
@@ -239,13 +223,6 @@ export class GamePreviewComponent {
     return this.userLinks().get(mot) || null;
   }
 
-  isReponseValideQcm(prop: string): boolean {
-    return this.qcmData?.reponses_valides.includes(prop) || false;
-  }
-
-  getQcmValidAnswersText(): string {
-    return this.qcmData?.reponses_valides.join(', ') || '';
-  }
 
   getCaseVideReponseValide(): string {
     return this.caseVideData?.reponse_valide || '';

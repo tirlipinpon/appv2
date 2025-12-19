@@ -75,6 +75,8 @@
   padding: $spacing-lg;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; // Permet au flex item de shrink et d'activer le scroll
 
   .game-instructions {
     margin-bottom: $spacing-md;
