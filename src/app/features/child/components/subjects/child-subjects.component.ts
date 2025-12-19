@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ParentSubjectService } from '../../services/subject/parent-subject.service';
 import type { Subject } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
+import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
 
 @Component({
   selector: 'app-child-subjects',
@@ -321,6 +322,9 @@ export class ChildSubjectsComponent implements OnInit {
       }
     });
   }
+
+  // Utilise directement la fonction utils
+  readonly getSchoolLevelLabel = getSchoolLevelLabel;
 }
 
 

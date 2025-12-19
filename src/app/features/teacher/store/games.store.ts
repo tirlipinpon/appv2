@@ -197,11 +197,11 @@ export const GamesStore = signalStore(
                   generationProgress: 0
                 });
               } else if (result.games) {
-                // Ajouter des IDs temporaires et l'état d'édition
+                // Ajouter des IDs temporaires et l'état d'édition (true par défaut pour édition immédiate)
                 const gamesWithState: GeneratedGameWithState[] = result.games.map((game, index) => ({
                   ...game,
                   _tempId: `temp-${Date.now()}-${index}`,
-                  _isEditing: false,
+                  _isEditing: true,
                 }));
                 patchState(store, { 
                   generatedGames: gamesWithState, 

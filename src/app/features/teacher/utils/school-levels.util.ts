@@ -77,7 +77,7 @@ export function getAgeFromSchoolYear(schoolYear: string): string {
     if (level.age === 3 || level.age === 17) {
       return `${level.age} ans`;
     }
-    return `${level.age}-${level.age + 1} ans`;
+    return `${level.age - 1}-${level.age} ans`;
   }
   
   // Fallback si le niveau n'est pas trouvé
@@ -86,11 +86,13 @@ export function getAgeFromSchoolYear(schoolYear: string): string {
 
 /**
  * Retourne le label complet d'un niveau scolaire
+ * Gère les valeurs null/undefined en retournant une chaîne vide
  * 
- * @param schoolYear Le code du niveau (ex: "P3")
- * @returns Le label complet (ex: "P3 (Primaire 3ème - 8 ans)")
+ * @param schoolYear Le code du niveau (ex: "P3") ou null/undefined
+ * @returns Le label complet (ex: "P3 (Primaire 3ème - 8 ans)") ou chaîne vide si null/undefined
  */
-export function getSchoolLevelLabel(schoolYear: string): string {
+export function getSchoolLevelLabel(schoolYear: string | null | undefined): string {
+  if (!schoolYear) return '';
   const level = SCHOOL_LEVELS.find(l => l.value === schoolYear);
   return level?.label || schoolYear;
 }

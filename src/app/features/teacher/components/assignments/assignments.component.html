@@ -141,11 +141,11 @@
     </div>
 
     <div *ngFor="let assignment of assignments()" class="assignment-card">
-      <div class="assignment-info">
-        <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
-        <p *ngIf="assignment.school_id">École: {{ getSchoolName(assignment.school_id, assignment) }}</p>
-        <p *ngIf="assignment.school_level">Niveau: {{ assignment.school_level }}</p>
-      </div>
+        <div class="assignment-info">
+          <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
+          <p *ngIf="assignment.school_id">École: {{ getSchoolName(assignment.school_id, assignment) }}</p>
+          <p *ngIf="assignment.school_level">Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
+        </div>
       <div class="assignment-actions">
         <a 
           *ngIf="assignment.subject_id"

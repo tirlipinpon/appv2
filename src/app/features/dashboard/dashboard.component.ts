@@ -10,6 +10,7 @@ import { Child } from '../child/types/child';
 import { filter, Subscription, forkJoin } from 'rxjs';
 import { ActionLinksComponent, ActionLink } from '../../shared/components/action-links/action-links.component';
 import { Infrastructure } from '../teacher/components/infrastructure/infrastructure';
+import { getSchoolLevelLabel } from '../teacher/utils/school-levels.util';
 
 @Component({
   selector: 'app-dashboard',
@@ -264,4 +265,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     return `🎮 ${stats.total} jeu${stats.total > 1 ? 'x' : ''} : ${formattedTypes}`;
   }
+
+  // Utilise directement la fonction utils
+  readonly getSchoolLevelLabel = getSchoolLevelLabel;
 }

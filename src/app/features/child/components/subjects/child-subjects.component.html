@@ -14,7 +14,7 @@
       </div>
       <div class="info-item" *ngIf="c.school_level">
         <span class="info-label">Niveau:</span>
-        <span class="info-value">{{ c.school_level }}</span>
+        <span class="info-value">{{ getSchoolLevelLabel(c.school_level) }}</span>
       </div>
     </div>
 
@@ -75,7 +75,7 @@
       <div *ngIf="searchQuery().trim().length >= 2" class="search-results">
         <div *ngIf="searchResults().length > 0">
           <div *ngFor="let s of searchResults()" class="search-result-item">
-            <span class="result-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="s.school_level" class="school-level-badge"> - {{ s.school_level }}</span></span>
+            <span class="result-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="s.school_level" class="school-level-badge"> - {{ getSchoolLevelLabel(s.school_level) }}</span></span>
             <button 
               type="button" 
               class="btn btn-primary btn-sm" 

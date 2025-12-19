@@ -9,6 +9,7 @@ import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error
 import { SchoolLevelSelectComponent } from '../../../../shared/components/school-level-select/school-level-select.component';
 import { Infrastructure } from '../infrastructure/infrastructure';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
+import { getSchoolLevelLabel } from '../../utils/school-levels.util';
 
 @Component({
   selector: 'app-assignments',
@@ -296,5 +297,8 @@ export class AssignmentsComponent implements OnInit {
     if (joinedName && typeof joinedName === 'string') return joinedName;
     return assignment && assignment.subject_id ? this.getSubjectName(assignment.subject_id) : 'Matière inconnue';
   }
+
+  // Utilise directement la fonction utils
+  readonly getSchoolLevelLabel = getSchoolLevelLabel;
 }
 
