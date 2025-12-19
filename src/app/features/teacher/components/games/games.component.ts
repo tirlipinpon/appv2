@@ -45,6 +45,7 @@ export class GamesComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly application = inject(GamesApplication);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
+  private readonly teacherService = inject(TeacherService);
   readonly gamesStore = inject(GamesStore);
   readonly subjectsStore = inject(TeacherAssignmentStore);
 
@@ -93,6 +94,10 @@ export class GamesComponent implements OnInit {
   readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
 
+  // États des toggles pour les sections
+  readonly isAIGenerationExpanded = signal<boolean>(false);
+  readonly isManualCreationExpanded = signal<boolean>(false);
+
   gameForm = this.fb.group({
     instructions: [''],
     game_type_id: ['', Validators.required],
@@ -133,8 +138,7 @@ export class GamesComponent implements OnInit {
     
     // Charger les assignments du professeur pour obtenir le school_level
     // IMPORTANT: Utiliser teacher.id et non user.id car teacher_assignments.teacher_id fait référence à teachers.id
-    const teacherService = inject(TeacherService);
-    teacherService.getTeacherProfile().subscribe({
+    this.teacherService.getTeacherProfile().subscribe({
       next: (teacher) => {
         if (teacher?.id) {
           this.subjectsStore.loadAssignments(teacher.id);
@@ -190,6 +194,18 @@ export class GamesComponent implements OnInit {
 
   onGameValidityChange(valid: boolean): void {
     this.gameSpecificValid.set(valid);
+  }
+
+  onGlobalFieldsValidityChange(): void {
+    // La validité est toujours vraie pour les champs globaux (optionnels)
+  }
+
+  toggleAIGeneration(): void {
+    this.isAIGenerationExpanded.update(v => !v);
+  }
+
+  toggleManualCreation(): void {
+    this.isManualCreationExpanded.update(v => !v);
   }
 
   create(): void {

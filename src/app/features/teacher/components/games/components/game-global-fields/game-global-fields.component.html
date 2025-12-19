@@ -1,4 +1,4 @@
-<div class="game-global-fields">
+<div [formGroup]="form" class="game-global-fields">
   <div class="form-group">
     <label for="instructions">Instructions</label>
     <textarea 
@@ -21,21 +21,23 @@
 
   <div class="form-group">
     <label for="aides">Aides</label>
-    <div *ngFor="let aideControl of aidesArray.controls; let i = index" class="aide-item">
-      <input 
-        type="text"
-        class="form-control"
-        [id]="'aide-' + i"
-        [formControl]="aideControl"
-        placeholder="Aide {{ i + 1 }}">
-      <button 
-        type="button"
-        class="btn btn-danger btn-sm"
-        (click)="removeAide(i)"
-        aria-label="Supprimer l'aide {{ i + 1 }}">
-        ✕
-      </button>
-    </div>
+    @for (aideControl of aidesArray.controls; track $index) {
+      <div class="aide-item">
+        <input 
+          type="text"
+          class="form-control"
+          [id]="'aide-' + $index"
+          [formControl]="aideControl"
+          placeholder="Aide {{ $index + 1 }}">
+        <button 
+          type="button"
+          class="btn btn-danger btn-sm"
+          (click)="removeAide($index)"
+          aria-label="Supprimer l'aide {{ $index + 1 }}">
+          ✕
+        </button>
+      </div>
+    }
     <button 
       type="button"
       class="btn btn-secondary btn-sm"

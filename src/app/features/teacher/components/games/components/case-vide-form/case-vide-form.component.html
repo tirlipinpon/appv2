@@ -6,9 +6,11 @@
       formControlName="debut_phrase" 
       rows="2" 
       placeholder="Ex: La capitale de la France est"></textarea>
-    <span class="error-message" *ngIf="form.get('debut_phrase')?.hasError('required') && form.get('debut_phrase')?.touched">
-      Le début de phrase est requis.
-    </span>
+    @if (form.get('debut_phrase')?.hasError('required') && form.get('debut_phrase')?.touched) {
+      <span class="error-message">
+        Le début de phrase est requis.
+      </span>
+    }
   </div>
 
   <div class="form-group">
@@ -18,9 +20,11 @@
       type="text" 
       formControlName="reponse_valide" 
       placeholder="Ex: Paris">
-    <span class="error-message" *ngIf="form.get('reponse_valide')?.hasError('required') && form.get('reponse_valide')?.touched">
-      La réponse est requise.
-    </span>
+    @if (form.get('reponse_valide')?.hasError('required') && form.get('reponse_valide')?.touched) {
+      <span class="error-message">
+        La réponse est requise.
+      </span>
+    }
   </div>
 
   <div class="form-group">
@@ -30,16 +34,20 @@
       formControlName="fin_phrase" 
       rows="2" 
       placeholder="Ex: . C'est une ville magnifique."></textarea>
-    <span class="error-message" *ngIf="form.get('fin_phrase')?.hasError('required') && form.get('fin_phrase')?.touched">
-      La fin de phrase est requise.
-    </span>
+    @if (form.get('fin_phrase')?.hasError('required') && form.get('fin_phrase')?.touched) {
+      <span class="error-message">
+        La fin de phrase est requise.
+      </span>
+    }
   </div>
 
-  <div class="preview" *ngIf="form.get('debut_phrase')?.value && form.get('reponse_valide')?.value && form.get('fin_phrase')?.value">
-    <strong>Aperçu:</strong> 
-    <span class="debut">{{ form.get('debut_phrase')?.value }}</span>
-    <span class="case-vide">[{{ form.get('reponse_valide')?.value }}]</span>
-    <span class="fin">{{ form.get('fin_phrase')?.value }}</span>
-  </div>
+  @if (form.get('debut_phrase')?.value && form.get('reponse_valide')?.value && form.get('fin_phrase')?.value) {
+    <div class="preview">
+      <strong>Aperçu:</strong> 
+      <span class="debut">{{ form.get('debut_phrase')?.value }}</span>
+      <span class="case-vide">[{{ form.get('reponse_valide')?.value }}]</span>
+      <span class="fin">{{ form.get('fin_phrase')?.value }}</span>
+    </div>
+  }
 </div>
 

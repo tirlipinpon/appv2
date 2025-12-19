@@ -2,140 +2,192 @@
   <a [routerLink]="['/teacher-subjects', subjectId()]" class="btn-back">← Retour à la matière</a>
   <h1>Gestion des jeux</h1>
   
-  <div *ngIf="currentSubjectName()" class="subject-info">
-    <h2>Matière : {{ currentSubjectName() }}</h2>
-  </div>
+  @if (currentSubjectName()) {
+    <div class="subject-info">
+      <h2>Matière : {{ currentSubjectName() }}</h2>
+    </div>
+  }
 
   <!-- Section Génération IA -->
-  <section class="ai-generation-section">
-    <app-ai-game-generator-form
-      [subjectId]="subjectId()!"
-      [subjectName]="currentSubjectName()"
-      [schoolYearLabel]="schoolYearLabel()"
-      [isGenerating]="isGenerating()"
-      [generationProgress]="generationProgress()"
-      [generatedCount]="generatedGames().length"
-      (generate)="onGenerateGamesWithAI($event)">
-    </app-ai-game-generator-form>
+  <section class="ai-generation-section collapsible-section">
+    <div class="section-header" (click)="toggleAIGeneration()">
+      <h3>🤖 Génération de jeux par IA</h3>
+      <button type="button" class="toggle-btn" [attr.aria-expanded]="isAIGenerationExpanded()">
+        {{ isAIGenerationExpanded() ? '−' : '+' }}
+      </button>
+    </div>
+    @if (isAIGenerationExpanded()) {
+      <div class="section-content">
+        <app-ai-game-generator-form
+          [subjectId]="subjectId()!"
+          [subjectName]="currentSubjectName()"
+          [schoolYearLabel]="schoolYearLabel()"
+          [isGenerating]="isGenerating()"
+          [generationProgress]="generationProgress()"
+          [generatedCount]="generatedGames().length"
+          (generate)="onGenerateGamesWithAI($event)">
+        </app-ai-game-generator-form>
 
-    <app-ai-generated-preview
-      [generatedGames]="generatedGames()"
-      [gameTypes]="gameTypes()"
-      (edit)="onEditGeneratedGame($event)"
-      (remove)="onRemoveGeneratedGame($event)"
-      (updateGame)="onUpdateGeneratedGame($event)"
-      (saveAll)="onSaveAllGeneratedGames()"
-      (cancelAll)="onCancelAllGeneratedGames()">
-    </app-ai-generated-preview>
+        <app-ai-generated-preview
+          [generatedGames]="generatedGames()"
+          [gameTypes]="gameTypes()"
+          (edit)="onEditGeneratedGame($event)"
+          (remove)="onRemoveGeneratedGame($event)"
+          (updateGame)="onUpdateGeneratedGame($event)"
+          (saveAll)="onSaveAllGeneratedGames()"
+          (cancelAll)="onCancelAllGeneratedGames()">
+        </app-ai-generated-preview>
+      </div>
+    }
   </section>
 
   <!-- Séparateur visuel -->
-  <div class="section-divider" *ngIf="generatedGames().length === 0">
-    <span>OU</span>
-  </div>
+  @if (generatedGames().length === 0) {
+    <div class="section-divider">
+      <span>OU</span>
+    </div>
+  }
 
-  <div class="game-form-section">
-    <h3>{{ isEditing() ? 'Modifier le jeu' : 'Créer un nouveau jeu' }}</h3>
-    <form [formGroup]="gameForm" (ngSubmit)="isEditing() ? update() : create()">
+  <div class="game-form-section collapsible-section">
+    <div class="section-header" (click)="toggleManualCreation()">
+      <h3>{{ isEditing() ? '✏️ Modifier le jeu' : '➕ Créer un nouveau jeu' }}</h3>
+      <button type="button" class="toggle-btn" [attr.aria-expanded]="isManualCreationExpanded()">
+        {{ isManualCreationExpanded() ? '−' : '+' }}
+      </button>
+    </div>
+    @if (isManualCreationExpanded()) {
+      <div class="section-content">
+        <form [formGroup]="gameForm" (ngSubmit)="isEditing() ? update() : create()">
       <div class="form-group">
         <label for="game_type_id">Type de jeu *</label>
         <select id="game_type_id" formControlName="game_type_id" (change)="onGameTypeChange()">
           <option value="">Sélectionner un type</option>
-          <option *ngFor="let gt of gameTypes()" [value]="gt.id">{{ gt.name }}</option>
+          @for (gt of gameTypes(); track gt.id) {
+            <option [value]="gt.id">{{ gt.name }}</option>
+          }
         </select>
-        <span class="error-message" *ngIf="gameForm.get('game_type_id')?.hasError('required') && gameForm.get('game_type_id')?.touched">
-          Le type de jeu est requis.
-        </span>
+        @if (gameForm.get('game_type_id')?.hasError('required') && gameForm.get('game_type_id')?.touched) {
+          <span class="error-message">
+            Le type de jeu est requis.
+          </span>
+        }
       </div>
 
       <!-- Champs globaux (instructions, question, aides) -->
       <app-game-global-fields
         [initialData]="initialGlobalFields()"
         (dataChange)="onGlobalFieldsChange($event)"
-        (validityChange)="() => {}">
+        (validityChange)="onGlobalFieldsValidityChange()">
       </app-game-global-fields>
 
       <!-- Composants spécifiques selon le type de jeu -->
-      <div class="game-specific-form" *ngIf="selectedGameTypeName()">
-        <!-- Case vide -->
-        <app-case-vide-form
-          *ngIf="selectedGameTypeName() === 'case vide'"
-          [initialData]="getInitialDataForCaseVide()"
-          (dataChange)="onGameDataChange($event)"
-          (validityChange)="onGameValidityChange($event)">
-        </app-case-vide-form>
+      @if (selectedGameTypeName()) {
+        <div class="game-specific-form">
+          <!-- Case vide -->
+          @if (selectedGameTypeName() === 'case vide') {
+            <app-case-vide-form
+              [initialData]="getInitialDataForCaseVide()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-case-vide-form>
+          }
 
-        <!-- Réponse libre -->
-        <app-reponse-libre-form
-          *ngIf="selectedGameTypeName() === 'reponse libre'"
-          [initialData]="getInitialDataForReponseLibre()"
-          (dataChange)="onGameDataChange($event)"
-          (validityChange)="onGameValidityChange($event)">
-        </app-reponse-libre-form>
+          <!-- Réponse libre -->
+          @if (selectedGameTypeName() === 'reponse libre') {
+            <app-reponse-libre-form
+              [initialData]="getInitialDataForReponseLibre()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-reponse-libre-form>
+          }
 
-        <!-- Liens -->
-        <app-liens-form
-          *ngIf="selectedGameTypeName() === 'liens'"
-          [initialData]="getInitialDataForLiens()"
-          (dataChange)="onGameDataChange($event)"
-          (validityChange)="onGameValidityChange($event)">
-        </app-liens-form>
+          <!-- Liens -->
+          @if (selectedGameTypeName() === 'liens') {
+            <app-liens-form
+              [initialData]="getInitialDataForLiens()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-liens-form>
+          }
 
-        <!-- Chronologie -->
-        <app-chronologie-form
-          *ngIf="selectedGameTypeName() === 'chronologie'"
-          [initialData]="getInitialDataForChronologie()"
-          (dataChange)="onGameDataChange($event)"
-          (validityChange)="onGameValidityChange($event)">
-        </app-chronologie-form>
+          <!-- Chronologie -->
+          @if (selectedGameTypeName() === 'chronologie') {
+            <app-chronologie-form
+              [initialData]="getInitialDataForChronologie()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-chronologie-form>
+          }
 
-        <!-- QCM -->
-        <app-qcm-form
-          *ngIf="selectedGameTypeName() === 'qcm'"
-          [initialData]="getInitialDataForQcm()"
-          (dataChange)="onGameDataChange($event)"
-          (validityChange)="onGameValidityChange($event)">
-        </app-qcm-form>
-      </div>
+          <!-- QCM -->
+          @if (selectedGameTypeName() === 'qcm') {
+            <app-qcm-form
+              [initialData]="getInitialDataForQcm()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-qcm-form>
+          }
+        </div>
+      }
 
       <div class="form-actions">
         <button type="submit" class="btn btn-primary" [disabled]="gameForm.invalid || isLoading() || !gameSpecificValid()">
           {{ isEditing() ? 'Enregistrer' : 'Créer' }}
         </button>
-        <button *ngIf="isEditing()" type="button" class="btn btn-secondary" (click)="cancelEdit()">
-          Annuler
-        </button>
-      </div>
-    </form>
+          @if (isEditing()) {
+            <button type="button" class="btn btn-secondary" (click)="cancelEdit()">
+              Annuler
+            </button>
+          }
+        </div>
+      </form>
+    </div>
+    }
   </div>
 
   <div class="games-list-section">
     <h3>Mes jeux ({{ games().length }})</h3>
-    <div *ngIf="isLoading()" class="loading">Chargement...</div>
-    <div *ngIf="!isLoading() && games().length === 0" class="empty-state">
-      <p>Aucun jeu créé pour cette matière.</p>
-    </div>
-    <ul *ngIf="!isLoading() && games().length > 0" class="games-list">
-      <li *ngFor="let game of games()" class="game-item">
-        <div class="game-header">
-          <h4>{{ game.name }}</h4>
-          <span class="game-type-badge">{{ getGameTypeName(game.game_type_id) }}</span>
-        </div>
-        <div class="game-details">
-          <p *ngIf="game.question" class="game-question"><strong>Question:</strong> {{ game.question }}</p>
-          <p *ngIf="game.instructions" class="game-instructions">{{ game.instructions }}</p>
-          <div *ngIf="game.aides && game.aides.length > 0" class="game-aides">
-            <p><strong>Aides:</strong></p>
-            <ul>
-              <li *ngFor="let aide of game.aides">{{ aide }}</li>
-            </ul>
-          </div>
-        </div>
-        <div class="game-actions">
-          <button class="btn btn-secondary" (click)="startEdit(game)">Modifier</button>
-          <button class="btn btn-danger" (click)="delete(game.id)">Supprimer</button>
-        </div>
-      </li>
-    </ul>
+    @if (isLoading()) {
+      <div class="loading">Chargement...</div>
+    }
+    @if (!isLoading() && games().length === 0) {
+      <div class="empty-state">
+        <p>Aucun jeu créé pour cette matière.</p>
+      </div>
+    }
+    @if (!isLoading() && games().length > 0) {
+      <ul class="games-list">
+        @for (game of games(); track game.id) {
+          <li class="game-item">
+            <div class="game-header">
+              <h4>{{ game.name }}</h4>
+              <span class="game-type-badge">{{ getGameTypeName(game.game_type_id) }}</span>
+            </div>
+            <div class="game-details">
+              @if (game.question) {
+                <p class="game-question"><strong>Question:</strong> {{ game.question }}</p>
+              }
+              @if (game.instructions) {
+                <p class="game-instructions">{{ game.instructions }}</p>
+              }
+              @if (game.aides && game.aides.length > 0) {
+                <div class="game-aides">
+                  <p><strong>Aides:</strong></p>
+                  <ul>
+                    @for (aide of game.aides; track aide) {
+                      <li>{{ aide }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+            <div class="game-actions">
+              <button class="btn btn-secondary" (click)="startEdit(game)">Modifier</button>
+              <button class="btn btn-danger" (click)="delete(game.id)">Supprimer</button>
+            </div>
+          </li>
+        }
+      </ul>
+    }
   </div>
 </div>
