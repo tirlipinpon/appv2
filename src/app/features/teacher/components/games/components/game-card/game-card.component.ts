@@ -11,6 +11,7 @@ import { LiensFormComponent } from '../liens-form/liens-form.component';
 import { ChronologieFormComponent } from '../chronologie-form/chronologie-form.component';
 import { QcmFormComponent } from '../qcm-form/qcm-form.component';
 import { GameGlobalFieldsComponent } from '../game-global-fields/game-global-fields.component';
+import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
 
 @Component({
@@ -25,6 +26,7 @@ import { normalizeGameData } from '../../../../utils/game-data-mapper';
     ChronologieFormComponent,
     QcmFormComponent,
     GameGlobalFieldsComponent,
+    GamePreviewComponent,
   ],
   templateUrl: './game-card.component.html',
   styleUrl: './game-card.component.scss',
@@ -56,6 +58,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly currentGlobalFields = signal<GameGlobalFieldsData | null>(null);
+  readonly previewIsOpen = signal<boolean>(false);
 
   readonly currentGameTypeName = computed(() => {
     if (this.gameTypes.length > 0) {
@@ -160,6 +163,14 @@ export class GameCardComponent implements OnInit, OnChanges {
 
   onDeleteClick(): void {
     this.delete.emit(this.game.id);
+  }
+
+  openPreview(): void {
+    this.previewIsOpen.set(true);
+  }
+
+  closePreview(): void {
+    this.previewIsOpen.set(false);
   }
 
   getInitialDataForCaseVide(): CaseVideData | null {

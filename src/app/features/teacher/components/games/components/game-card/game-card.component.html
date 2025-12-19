@@ -103,6 +103,9 @@
         <button class="btn btn-primary" (click)="saveEdit()" [disabled]="!gameSpecificValid()">
           ✅ Enregistrer
         </button>
+        <button class="btn btn-info" (click)="openPreview()" [disabled]="!gameSpecificValid()">
+          👁️ Prévisualiser
+        </button>
         <button class="btn btn-secondary" (click)="cancelEdit()">
           ❌ Annuler
         </button>
@@ -110,4 +113,13 @@
     </div>
   }
 </li>
+
+<!-- Prévisualisation du jeu -->
+<app-game-preview
+  [isOpen]="previewIsOpen()"
+  [gameTypeName]="currentGameTypeName()"
+  [globalFields]="currentGlobalFields()"
+  [gameData]="gameSpecificData()"
+  (closed)="closePreview()">
+</app-game-preview>
 

@@ -191,129 +191,88 @@ Structure metadata: ${this.getMetadataStructureDescription(gt.name)}
     } as Game))];
     
     if (allExistingGames.length > 0) {
-      const existingGamesList = allExistingGames
-        .slice(0, 15) // Limiter à 15 jeux pour ne pas surcharger le prompt
+      const MAX_GAMES_TO_SHOW = 15; // Garder 15 jeux
+      const totalGames = allExistingGames.length;
+      
+      // Trier par date de création (les plus récents en premier) si disponible
+      // Sinon, prendre les derniers de la liste
+      const recentGames = allExistingGames.slice(-MAX_GAMES_TO_SHOW).reverse();
+      
+      // Créer un résumé statistique des types de jeux
+      const gameTypeStats = this.getGameTypeStatistics(allExistingGames, gameTypes);
+      
+      // Format ultra-compact pour chaque jeu (une seule ligne)
+      const existingGamesList = recentGames
         .map((game, index) => {
-          const gameTypeName = gameTypes.find(gt => gt.id === game.game_type_id)?.name || 'Type inconnu';
-          return `
-Jeu existant #${index + 1}:
-- Type: ${gameTypeName}
-- Question: ${game.question || 'N/A'}
-- Instructions: ${game.instructions || 'N/A'}
-${game.metadata ? `- Contenu: ${this.formatMetadataForPrompt(game.metadata, gameTypeName)}` : ''}
-`;
+          const gameTypeName = gameTypes.find(gt => gt.id === game.game_type_id)?.name || 'Inconnu';
+          // Limiter la question à 50 caractères max
+          const questionPreview = game.question 
+            ? (game.question.length > 50 ? game.question.substring(0, 50) + '...' : game.question)
+            : 'Sans question';
+          // Format compact : [Type] Question (sans instructions ni métadonnées détaillées)
+          return `${index + 1}. [${gameTypeName}] ${questionPreview}`;
         })
         .join('\n');
 
       existingGamesSection = `
-JEUX EXISTANTS POUR CETTE MATIÈRE (${allExistingGames.length} jeu(x) déjà créé(s)):
+JEUX EXISTANTS (${totalGames} total, ${recentGames.length} exemples récents):
+Distribution: ${gameTypeStats}
+Exemples:
 ${existingGamesList}
 
 IMPORTANT - ÉVITER LES DOUBLONS:
-- Ne PAS générer de jeux avec des questions identiques ou très similaires
-- Ne PAS répéter les mêmes types de jeux si possible (varier les types)
-- Ne PAS utiliser les mêmes formulations ou structures
-- Créer des jeux NOUVEAUX et ORIGINAUX qui complètent ceux existants
-- Si beaucoup de jeux existent déjà, proposer des angles différents ou des niveaux de difficulté variés
-- Varier les approches pédagogiques (exemples concrets, cas pratiques, réflexion, etc.)
+- Ne PAS créer de jeux similaires aux ${totalGames} jeux existants
+- Varier les types (distribution actuelle: ${gameTypeStats})
+- Proposer des angles NOUVEAUX et des approches différentes
+- Créer des jeux ORIGINAUX qui complètent l'existant
 `;
     }
 
     return `Tu es un générateur de jeux pédagogiques adapté au système éducatif français.
 
 CONTEXTE:
-- Matière scolaire: ${request.subjectName}
-- Thème/Sujet: ${request.subject}
-- Niveau scolaire: ${request.schoolYearLabel}
-- Âge approximatif des élèves: ${ageRange}
-- Difficulté demandée: ${request.difficulty}/5
-${pdfText ? `- Contexte additionnel (extrait PDF):\n${pdfText.substring(0, 3000)}` : ''}
+- Matière: ${request.subjectName}
+- Thème: ${request.subject}
+- Niveau: ${request.schoolYearLabel} (${ageRange})
+- Difficulté: ${request.difficulty}/5
+${pdfText ? `- PDF: ${pdfText.substring(0, 2000)}...` : ''}
 
 ${existingGamesSection}
 
-TYPES DE JEUX DISPONIBLES:
+TYPES DE JEUX:
 ${gameTypesDescription}
 
-CONSIGNES STRICTES:
-1. Génère EXACTEMENT ${request.numberOfGames} jeux variés adaptés au niveau ${request.schoolYearLabel}
-2. ${allExistingGames.length > 0 ? 'ÉVITE ABSOLUMENT de créer des jeux similaires à ceux listés ci-dessus. ' : ''}Ajuste le vocabulaire et la complexité selon l'âge (${ageRange})
-3. Répartis intelligemment les types de jeux selon le sujet et le niveau${allExistingGames.length > 0 ? ' (privilégie les types de jeux peu ou pas utilisés dans les jeux existants)' : ''}
-4. Chaque jeu DOIT avoir entre 1 et 3 aides progressives (adaptées à l'âge)
-5. Respecte STRICTEMENT la structure JSON et metadata de chaque type
-6. Pour les QCM: 3-5 propositions selon le niveau
-7. Pour les liens: nombre égal de mots et réponses (3-6 paires selon le niveau)
-8. Pour la chronologie: 3-8 éléments selon le niveau
-9. Utilise un français adapté à l'âge (vocabulaire simple pour primaire, plus complexe pour lycée)
-${allExistingGames.length > 0 ? '10. CRÉATIVITÉ: Propose des questions et angles NOUVEAUX, différents de ceux déjà existants. Varie les approches (exemples concrets, cas pratiques, réflexion, application, etc.)' : ''}
+CONSIGNES:
+1. Génère ${request.numberOfGames} jeux variés pour ${request.schoolYearLabel}
+2. ${allExistingGames.length > 0 ? 'ÉVITE les doublons avec les jeux existants. ' : ''}Adapte au niveau ${ageRange}
+3. Répartis les types intelligemment${allExistingGames.length > 0 ? ' (privilégie les types peu utilisés)' : ''}
+4. 1-3 aides progressives par jeu
+5. Respecte STRICTEMENT la structure JSON
+6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments
+7. Vocabulaire adapté à l'âge
+8. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
+${allExistingGames.length > 0 ? '9. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
 
-FORMAT DE RÉPONSE (JSON STRICT - OBLIGATOIRE):
+FORMAT JSON (OBLIGATOIRE):
 {
   "games": [
     {
       "type_name": "qcm",
-      "question": "Question du jeu",
-      "instructions": "Sélectionne la ou les bonnes réponses",
-      "metadata": {
-        "propositions": ["Réponse A", "Réponse B", "Réponse C"],
-        "reponses_valides": ["Réponse A"]
-      },
-      "aides": ["Première aide", "Deuxième aide"]
-    },
-    {
-      "type_name": "case vide",
-      "question": "Question pour le jeu à trous",
-      "instructions": "Complète la phrase avec le mot manquant",
-      "metadata": {
-        "debut_phrase": "Le chat est ",
-        "fin_phrase": " dans le jardin",
-        "reponse_valide": "caché"
-      },
-      "aides": ["Indice 1", "Indice 2"]
-    },
-    {
-      "type_name": "liens",
-      "question": "Question pour relier les éléments",
-      "instructions": "Relie chaque mot à sa bonne réponse",
-      "metadata": {
-        "mots": ["Mot 1", "Mot 2", "Mot 3"],
-        "reponses": ["Réponse 1", "Réponse 2", "Réponse 3"],
-        "liens": [
-          {"mot": "Mot 1", "reponse": "Réponse 1"},
-          {"mot": "Mot 2", "reponse": "Réponse 2"},
-          {"mot": "Mot 3", "reponse": "Réponse 3"}
-        ]
+      "question": "Question",
+      "instructions": "Instructions",
+      "metadata": { 
+        "propositions": ["Proposition A", "Proposition B", "Proposition C"],
+        "reponses_valides": ["Proposition A"]
       },
       "aides": ["Aide 1", "Aide 2"]
-    },
-    {
-      "type_name": "chronologie",
-      "question": "Question pour ordonner",
-      "instructions": "Remets les éléments dans le bon ordre chronologique",
-      "metadata": {
-        "mots": ["Événement 1", "Événement 2", "Événement 3"],
-        "ordre_correct": ["Événement 1", "Événement 2", "Événement 3"]
-      },
-      "aides": ["Indice ordre", "Indice dates"]
-    },
-    {
-      "type_name": "reponse libre",
-      "question": "Question ouverte",
-      "instructions": "Réponds à la question",
-      "metadata": {
-        "reponse_valide": "La réponse attendue"
-      },
-      "aides": ["Piste 1", "Piste 2"]
     }
   ]
 }
 
 IMPORTANT: 
-- Retourne UNIQUEMENT du JSON valide, aucun texte avant ou après
-- TOUS les jeux DOIVENT avoir: type_name, question, instructions, metadata, aides
-- Le champ "metadata" doit correspondre EXACTEMENT à la structure du type de jeu
-- Pour "liens": les tableaux mots/reponses doivent avoir la MÊME taille et liens doit relier chaque mot à SA réponse
-- Pour "chronologie": ordre_correct contient les mots dans le bon ordre (même contenu que mots mais réordonné)
-- Les aides doivent être progressives (de plus en plus explicites)`;
+- JSON valide uniquement, aucun texte avant/après
+- Pour QCM: propositions doit contenir des réponses DIFFÉRENTES (ex: ["100", "200", "300"] pas ["345", "345", "345"])
+- reponses_valides doit contenir UNIQUEMENT les propositions qui sont correctes (tableau de strings)`;
   }
 
   /**
@@ -345,6 +304,12 @@ IMPORTANT:
         ? `${typeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}`
         : typeName;
 
+      // Normaliser les métadonnées pour corriger les problèmes courants
+      let normalizedMetadata = rawGame.metadata;
+      if (rawGame.type_name.toLowerCase() === 'qcm' && rawGame.metadata) {
+        normalizedMetadata = this.normalizeQcmMetadata(rawGame.metadata);
+      }
+
       return {
         subject_id: subjectId,
         game_type_id: gameTypeId,
@@ -353,9 +318,54 @@ IMPORTANT:
         question: rawGame.question || null,
         reponses: null, // On utilise metadata pour les données spécifiques
         aides: rawGame.aides && rawGame.aides.length > 0 ? rawGame.aides : null,
-        metadata: rawGame.metadata,
+        metadata: normalizedMetadata,
       };
     });
+  }
+
+  /**
+   * Normalise les métadonnées QCM pour corriger les propositions dupliquées
+   */
+  private normalizeQcmMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+    const qcm = metadata as unknown as { propositions?: string[]; reponses_valides?: string[] };
+    
+    if (!qcm.propositions || !Array.isArray(qcm.propositions)) {
+      return metadata;
+    }
+
+    // Détecter et corriger les propositions dupliquées
+    const uniquePropositions: string[] = [];
+    const seen = new Set<string>();
+    
+    qcm.propositions.forEach((prop, index) => {
+      const trimmedProp = prop?.trim() || '';
+      if (trimmedProp && !seen.has(trimmedProp)) {
+        seen.add(trimmedProp);
+        uniquePropositions.push(trimmedProp);
+      } else if (trimmedProp && seen.has(trimmedProp)) {
+        // Proposition dupliquée détectée - ajouter un suffixe pour la différencier
+        let counter = 1;
+        let newProp = `${trimmedProp} (variante ${counter})`;
+        while (seen.has(newProp)) {
+          counter++;
+          newProp = `${trimmedProp} (variante ${counter})`;
+        }
+        seen.add(newProp);
+        uniquePropositions.push(newProp);
+        console.warn(`Proposition dupliquée détectée à l'index ${index}: "${trimmedProp}". Remplacée par "${newProp}"`);
+      }
+    });
+
+    // Filtrer les reponses_valides pour ne garder que celles qui existent dans les propositions uniques
+    const validReponses = qcm.reponses_valides?.filter((rep: string) => 
+      uniquePropositions.some(p => p === rep || p.startsWith(rep))
+    ) || [];
+
+    return {
+      ...metadata,
+      propositions: uniquePropositions,
+      reponses_valides: validReponses.length > 0 ? validReponses : (uniquePropositions.length > 0 ? [uniquePropositions[0]] : [])
+    };
   }
 
   /**
@@ -375,6 +385,24 @@ IMPORTANT:
       structures[typeName.toLowerCase()] ||
       '{ structure spécifique au type }'
     );
+  }
+
+  /**
+   * Calcule les statistiques de distribution des types de jeux
+   */
+  private getGameTypeStatistics(games: Game[], gameTypes: GameType[]): string {
+    const stats = new Map<string, number>();
+    
+    games.forEach(game => {
+      const gameTypeName = gameTypes.find(gt => gt.id === game.game_type_id)?.name || 'Inconnu';
+      stats.set(gameTypeName, (stats.get(gameTypeName) || 0) + 1);
+    });
+    
+    const statsArray = Array.from(stats.entries())
+      .map(([type, count]) => `${type}:${count}`)
+      .join(' ');
+    
+    return statsArray || 'Aucune';
   }
 
   /**

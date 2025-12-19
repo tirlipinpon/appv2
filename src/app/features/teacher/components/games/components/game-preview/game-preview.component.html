@@ -1,0 +1,257 @@
+@if (isOpen) {
+  <div 
+    class="preview-backdrop" 
+    (click)="onBackdropClick($event)"
+    (keydown.escape)="close()"
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1">
+    <div class="preview-container" (click)="$event.stopPropagation()" (keydown.escape)="close()" tabindex="0">
+      <div class="preview-header">
+        <h2 class="preview-title">🎮 Prévisualisation du jeu</h2>
+        <button 
+          class="preview-close"
+          type="button"
+          (click)="close()"
+          aria-label="Fermer la prévisualisation">
+          ×
+        </button>
+      </div>
+
+      <div class="preview-body">
+        <!-- Instructions et Question -->
+        @if (globalFields?.instructions) {
+          <div class="game-instructions">
+            <strong>Instructions:</strong> {{ globalFields?.instructions }}
+          </div>
+        }
+
+        @if (globalFields?.question) {
+          <div class="game-question">
+            <strong>Question:</strong> {{ globalFields?.question }}
+          </div>
+        }
+
+        <!-- Aides -->
+        @if (hasAides()) {
+          <div class="game-aides">
+            <strong>Aides:</strong>
+            <ul>
+              @for (aide of getAides(); track aide) {
+                <li>{{ aide }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        <!-- QCM -->
+        @if (qcmData) {
+          <div class="preview-content qcm-preview">
+            @if (isSubmitted() && isCorrect() !== null) {
+              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+                @if (isCorrect()) {
+                  ✅ Bonne réponse !
+                } @else {
+                  ❌ Mauvaise réponse. Les bonnes réponses étaient : {{ getQcmValidAnswersText() }}
+                }
+              </div>
+            }
+            <div class="propositions-list">
+              @for (prop of qcmData.propositions; track $index) {
+                <label class="proposition-item" [class.selected]="selectedAnswers().has($index)" [class.disabled]="isSubmitted()">
+                  <input 
+                    type="checkbox" 
+                    [checked]="selectedAnswers().has($index)"
+                    (change)="toggleQcmAnswer($index)"
+                    [disabled]="isSubmitted()">
+                  <span>{{ prop }}</span>
+                  @if (isSubmitted() && isReponseValideQcm(prop)) {
+                    <span class="correct-indicator">✓ Correcte</span>
+                  }
+                </label>
+              }
+            </div>
+            <button class="btn btn-primary" (click)="submitQcm()" [disabled]="isSubmitted() || selectedAnswers().size === 0">
+              Valider
+            </button>
+            @if (isSubmitted()) {
+              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
+            }
+          </div>
+        }
+
+        <!-- Case Vide -->
+        @if (caseVideData) {
+          <div class="preview-content case-vide-preview">
+            @if (isSubmitted() && isCorrect() !== null) {
+              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+                @if (isCorrect()) {
+                  ✅ Bonne réponse !
+                } @else {
+                  ❌ Mauvaise réponse. La bonne réponse était : "{{ getCaseVideReponseValide() }}"
+                }
+              </div>
+            }
+            <div class="case-vide-sentence">
+              <span>{{ caseVideData.debut_phrase }}</span>
+              <input 
+                type="text" 
+                [value]="userAnswer()"
+                (input)="userAnswer.set($any($event.target).value)"
+                [disabled]="isSubmitted()"
+                placeholder="?"
+                class="case-vide-input">
+              <span>{{ caseVideData.fin_phrase }}</span>
+            </div>
+            <button class="btn btn-primary" (click)="submitCaseVide()" [disabled]="isSubmitted() || !userAnswer().trim()">
+              Valider
+            </button>
+            @if (isSubmitted()) {
+              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
+            }
+          </div>
+        }
+
+        <!-- Réponse Libre -->
+        @if (reponseLibreData) {
+          <div class="preview-content reponse-libre-preview">
+            @if (isSubmitted() && isCorrect() !== null) {
+              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+                @if (isCorrect()) {
+                  ✅ Bonne réponse !
+                } @else {
+                  ❌ Mauvaise réponse. La bonne réponse était : "{{ getReponseLibreReponseValide() }}"
+                }
+              </div>
+            }
+            <div class="reponse-libre-input">
+              <input 
+                type="text" 
+                [value]="userAnswer()"
+                (input)="userAnswer.set($any($event.target).value)"
+                [disabled]="isSubmitted()"
+                placeholder="Votre réponse..."
+                class="text-input">
+            </div>
+            <button class="btn btn-primary" (click)="submitReponseLibre()" [disabled]="isSubmitted() || !userAnswer().trim()">
+              Valider
+            </button>
+            @if (isSubmitted()) {
+              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
+            }
+          </div>
+        }
+
+        <!-- Liens -->
+        @if (liensData) {
+          <div class="preview-content liens-preview">
+            @if (isSubmitted() && isCorrect() !== null) {
+              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+                @if (isCorrect()) {
+                  ✅ Tous les liens sont corrects !
+                } @else {
+                  ❌ Certains liens sont incorrects.
+                }
+              </div>
+            }
+            <div class="liens-grid">
+              <div class="mots-column">
+                <h4>Mots</h4>
+                @for (mot of getLiensMots(); track mot) {
+                  <div 
+                    class="mot-item"
+                    [class.selected]="isMotSelected(mot)"
+                    [class.linked]="getReponseForMot(mot)"
+                    (click)="selectMot(mot)"
+                    [class.disabled]="isSubmitted()">
+                    {{ mot }}
+                    @if (getReponseForMot(mot)) {
+                      <span class="link-indicator">→ {{ getReponseForMot(mot) }}</span>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="reponses-column">
+                <h4>Réponses</h4>
+                @for (reponse of getLiensReponses(); track reponse) {
+                  <div 
+                    class="reponse-item"
+                    [class.selected]="findMotForReponse(reponse) && isLinkSelected(findMotForReponse(reponse), reponse)"
+                    (click)="selectReponse(reponse)"
+                    [class.disabled]="isSubmitted()">
+                    {{ reponse }}
+                </div>
+                }
+              </div>
+            </div>
+            @if (selectedMotForLink()) {
+              <p class="hint">Sélectionnez une réponse pour lier avec "{{ selectedMotForLink() }}"</p>
+            }
+            <button class="btn btn-primary" (click)="submitLiens()" [disabled]="isSubmitted()">
+              Valider
+            </button>
+            @if (isSubmitted()) {
+              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
+            }
+          </div>
+        }
+
+        <!-- Chronologie -->
+        @if (chronologieData) {
+          <div class="preview-content chronologie-preview">
+            @if (isSubmitted() && isCorrect() !== null) {
+              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+                @if (isCorrect()) {
+                  ✅ Ordre correct !
+                } @else {
+                  ❌ Ordre incorrect.
+                }
+              </div>
+            }
+            <div class="chronologie-section">
+              <h4>Mots disponibles</h4>
+              <div class="available-words">
+                @for (mot of getRemainingWords(); track mot) {
+                  <button 
+                    class="btn btn-word" 
+                    (click)="moveToOrder(mot)"
+                    [disabled]="isSubmitted()">
+                    {{ mot }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="chronologie-section">
+              <h4>Votre ordre</h4>
+              <div class="ordered-words">
+                @for (mot of userOrder(); track $index; let i = $index) {
+                  <div class="ordered-item">
+                    <span class="order-number">{{ i + 1 }}</span>
+                    <span class="word-text">{{ mot }}</span>
+                    <button 
+                      class="btn btn-small btn-danger" 
+                      (click)="removeFromOrder(i)"
+                      [disabled]="isSubmitted()">
+                      ×
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+            <button class="btn btn-primary" (click)="submitChronologie()" [disabled]="isSubmitted() || !canSubmitChronologie()">
+              Valider
+            </button>
+            @if (isSubmitted()) {
+              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="preview-footer">
+        <button class="btn btn-secondary" (click)="close()">Fermer</button>
+      </div>
+    </div>
+  </div>
+}
+

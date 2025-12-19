@@ -186,16 +186,10 @@ export const GamesStore = signalStore(
     // Méthodes pour la génération IA (séquentielle - jeu par jeu)
     generateGamesWithAI: rxMethod<AIGameGenerationRequest>(
       pipe(
-        tap(() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.store.ts:189',message:'generateGamesWithAI started',data:{numberOfGames:0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
+        tap((request) => {
           patchState(store, { isGenerating: true, generationProgress: 0, error: [], generatedGames: [] });
         }),
         switchMap((request) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.store.ts:191',message:'switchMap entered',data:{numberOfGames:request.numberOfGames},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
           const numberOfGames = request.numberOfGames;
           const games$ = [];
 
@@ -212,9 +206,6 @@ export const GamesStore = signalStore(
                 }))
               }).pipe(
                 tap((result) => {
-                  // #region agent log
-                  fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.store.ts:198',message:'game generation result received',data:{hasError:!!result.error,hasGame:!!result.game,gameIndex:i},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                  // #endregion
                   if (result.error) {
                     throw new Error(result.error.message || 'Erreur génération jeu');
                   }
@@ -228,16 +219,10 @@ export const GamesStore = signalStore(
                     };
                     
                     const currentGames = store.generatedGames();
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.store.ts:212',message:'before patchState',data:{currentGamesCount:currentGames.length,newProgress:Math.round(((i + 1) / numberOfGames) * 100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
                     patchState(store, { 
                       generatedGames: [...currentGames, newGame],
                       generationProgress: Math.round(((i + 1) / numberOfGames) * 100)
                     });
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.store.ts:216',message:'after patchState',data:{newGamesCount:store.generatedGames().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
                   }
                 }),
                 catchError((error) => {
