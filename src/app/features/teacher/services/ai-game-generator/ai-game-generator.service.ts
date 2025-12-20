@@ -209,10 +209,25 @@ TYPES AUTORISÉS:
     // Construire la liste des types de jeux disponibles avec leur structure
     const gameTypesDescription = availableGameTypes
       .map((gt) => {
+        let typeSpecificInstructions = '';
+        
+        // Instructions spécifiques pour le type "case vide"
+        if (gt.name.toLowerCase() === 'case vide') {
+          typeSpecificInstructions = `
+EXEMPLE CONCRET pour "case vide":
+- Texte: "Le matin, le petit [chat] boit son bol de [lait]. Ensuite, il joue avec une [balle] dans le jardin."
+- Les mots entre crochets [mot] indiquent les cases vides à remplir
+- cases_vides: [{index: 1, reponse_correcte: "chat"}, {index: 2, reponse_correcte: "lait"}, {index: 3, reponse_correcte: "balle"}]
+- banque_mots: ["chat", "lait", "balle", "chien", "eau", "voiture"] (mots corrects + leurres)
+- IMPORTANT: Le texte doit contenir les mots entre crochets [mot] directement dans la phrase
+`;
+        }
+        
         return `
 **${gt.name}**:
 ${gt.description || 'Pas de description'}
 Structure metadata: ${this.getMetadataStructureDescription(gt.name)}
+${typeSpecificInstructions}
 `;
       })
       .join('\n');
@@ -291,7 +306,14 @@ CONSIGNES:
 6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: 4-20 paires
 7. Vocabulaire adapté à l'âge
 8. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
-${allExistingGames.length > 0 ? '9. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
+9. IMPORTANT CASE VIDE: 
+   - Le champ "texte" doit contenir une phrase COMPLÈTE avec les mots à trouver entre crochets [mot]
+   - Exemple: "Le matin, le petit [chat] boit son bol de [lait]."
+   - Chaque [mot] dans le texte correspond à une case vide à remplir
+   - Le champ "cases_vides" doit lister chaque case avec son index (1, 2, 3...) et la réponse correcte
+   - Le champ "banque_mots" doit contenir les mots corrects + 2-4 mots leurres (mots incorrects mais plausibles)
+   - Ne PAS utiliser l'ancien format (debut_phrase, fin_phrase) - utiliser TOUJOURS le nouveau format (texte, cases_vides, banque_mots)
+${allExistingGames.length > 0 ? '10. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
 
 FORMAT JSON (OBLIGATOIRE):
 {
@@ -303,6 +325,20 @@ FORMAT JSON (OBLIGATOIRE):
       "metadata": { 
         "propositions": ["Proposition A", "Proposition B", "Proposition C"],
         "reponses_valides": ["Proposition A"]
+      },
+      "aides": ["Aide 1", "Aide 2"]
+    },
+    {
+      "type_name": "case vide",
+      "question": "Complète les phrases en remplissant les cases vides",
+      "instructions": "Lis la phrase et choisis les bons mots dans la banque",
+      "metadata": {
+        "texte": "Le matin, le petit [chat] boit son bol de [lait].",
+        "cases_vides": [
+          {"index": 1, "reponse_correcte": "chat"},
+          {"index": 2, "reponse_correcte": "lait"}
+        ],
+        "banque_mots": ["chat", "lait", "chien", "eau"]
       },
       "aides": ["Aide 1", "Aide 2"]
     }
@@ -415,7 +451,7 @@ IMPORTANT:
   private getMetadataStructureDescription(typeName: string): string {
     const structures: Record<string, string> = {
       'case vide':
-        '{ debut_phrase: string, fin_phrase: string, reponse_valide: string }',
+        '{ texte: string (phrase avec [mot] pour chaque case vide), cases_vides: [{index: number, reponse_correcte: string}], banque_mots: string[] }',
       'reponse libre': '{ reponse_valide: string }',
       liens: '{ mots: string[], reponses: string[], liens: {mot: string, reponse: string}[] }',
       chronologie: '{ mots: string[], ordre_correct: string[] }',

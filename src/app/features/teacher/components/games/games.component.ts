@@ -349,8 +349,11 @@ export class GamesComponent implements OnInit {
   getInitialDataForCaseVide(): CaseVideData | null {
     const data = this.initialGameData();
     const currentType = this.selectedGameTypeName();
-    if (currentType === 'case vide' && data && 'debut_phrase' in data) {
-      return data as CaseVideData;
+    if (currentType === 'case vide' && data) {
+      // Accepter le nouveau format (texte + cases_vides) ou l'ancien format (debut_phrase)
+      if (('texte' in data && 'cases_vides' in data) || 'debut_phrase' in data) {
+        return data as CaseVideData;
+      }
     }
     return null;
   }

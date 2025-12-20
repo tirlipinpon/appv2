@@ -129,16 +129,22 @@ export class CaseVideFormComponent implements OnInit, OnChanges {
       if (this.initialData) {
         // Vérifier si c'est le nouveau format ou l'ancien
         if (this.initialData.texte && this.initialData.cases_vides) {
-          // Nouveau format - reconstruire le texte original avec les mots
-          // Le texte stocké contient [1], [2], etc., on doit le reconstruire avec les mots
+          // Nouveau format - vérifier si le texte contient déjà des mots entre crochets [mot] ou des placeholders [1], [2]
           let texteOriginal = this.initialData.texte;
           
-          // Remplacer [1], [2], etc. par les mots correspondants
-          this.initialData.cases_vides.forEach(caseVide => {
-            const placeholder = `[${caseVide.index}]`;
-            const word = caseVide.reponse_correcte;
-            texteOriginal = texteOriginal.replace(placeholder, `[${word}]`);
-          });
+          // Vérifier si le texte contient des placeholders numériques [1], [2], etc.
+          const hasNumericPlaceholders = /\[\d+\]/.test(texteOriginal);
+          
+          if (hasNumericPlaceholders) {
+            // Le texte stocké contient [1], [2], etc., on doit le reconstruire avec les mots
+            this.initialData.cases_vides.forEach(caseVide => {
+              const placeholder = `[${caseVide.index}]`;
+              const word = caseVide.reponse_correcte;
+              texteOriginal = texteOriginal.replace(placeholder, `[${word}]`);
+            });
+          }
+          // Sinon, le texte contient déjà les mots entre crochets [mot] (format généré par l'IA)
+          // On l'utilise tel quel
           
           this.form.patchValue({ texte: texteOriginal }, { emitEvent: false });
           this.extractedWords = this.extractWordsFromText(texteOriginal);
@@ -147,6 +153,13 @@ export class CaseVideFormComponent implements OnInit, OnChanges {
           this.motsLeurresArray.clear();
           if (this.initialData.mots_leurres) {
             this.initialData.mots_leurres.forEach(mot => {
+              this.motsLeurresArray.push(new FormControl<string>(mot, { nonNullable: true, validators: [Validators.required] }));
+            });
+          } else if (this.initialData.banque_mots && this.initialData.cases_vides) {
+            // Si pas de mots_leurres mais qu'on a banque_mots, extraire les leurres
+            const motsCorrects = this.initialData.cases_vides.map(cv => cv.reponse_correcte);
+            const motsLeurres = this.initialData.banque_mots.filter(mot => !motsCorrects.includes(mot));
+            motsLeurres.forEach(mot => {
               this.motsLeurresArray.push(new FormControl<string>(mot, { nonNullable: true, validators: [Validators.required] }));
             });
           }

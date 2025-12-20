@@ -88,8 +88,11 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForCaseVide(game: GeneratedGameWithState): CaseVideData | null {
     const typeName = this.getGameTypeName(game);
-    if (typeName.toLowerCase() === 'case vide' && game.metadata && 'debut_phrase' in game.metadata) {
-      return game.metadata as unknown as CaseVideData;
+    if (typeName.toLowerCase() === 'case vide' && game.metadata) {
+      // Accepter le nouveau format (texte + cases_vides) ou l'ancien format (debut_phrase)
+      if (('texte' in game.metadata && 'cases_vides' in game.metadata) || 'debut_phrase' in game.metadata) {
+        return game.metadata as unknown as CaseVideData;
+      }
     }
     return null;
   }
