@@ -147,5 +147,28 @@ export class AIGameGeneratorFormComponent {
     };
     return labels[value] || 'Moyen';
   }
+
+  resetForm(): void {
+    // Réinitialiser le formulaire aux valeurs par défaut
+    this.generatorForm.reset({
+      subject: '',
+      numberOfGames: 5,
+      difficulty: 3,
+      manualSchoolLevel: '',
+    });
+    
+    // Réinitialiser le fichier sélectionné
+    this.selectedFile.set(null);
+    this.fileError.set(null);
+    
+    // Réinitialiser l'input fichier dans le DOM
+    const fileInput = document.getElementById('pdfFile') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+    
+    // Réinitialiser les types de jeux sélectionnés
+    this.selectedGameTypeIds.set([]);
+  }
 }
 

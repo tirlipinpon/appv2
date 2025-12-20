@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray, FormControl } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -45,7 +45,7 @@ import { normalizeGameData } from '../../utils/game-data-mapper';
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
 })
-export class GamesComponent implements OnInit {
+export class GamesComponent implements OnInit, AfterViewInit {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -105,6 +105,12 @@ export class GamesComponent implements OnInit {
   readonly isManualCreationExpanded = signal<boolean>(false);
   readonly isGamesListExpanded = signal<boolean>(true); // Ouvert par défaut
 
+  // Référence au composant formulaire de génération IA
+  @ViewChild(AIGameGeneratorFormComponent) aiGeneratorForm?: AIGameGeneratorFormComponent;
+  
+  // Track si on vient de sauvegarder pour réinitialiser le formulaire
+  private previousGeneratedGamesLength = 0;
+
   gameForm = this.fb.group({
     instructions: [''],
     game_type_id: ['', Validators.required],
@@ -137,6 +143,24 @@ export class GamesComponent implements OnInit {
     // #endregion
   }
 
+  constructor() {
+    // Effect pour détecter quand les jeux générés sont sauvegardés (array devient vide après avoir été rempli)
+    effect(() => {
+      const currentLength = this.generatedGames().length;
+      
+      // Si on passe de non-vide à vide, cela signifie que la sauvegarde vient de se terminer
+      if (this.previousGeneratedGamesLength > 0 && currentLength === 0) {
+        // Réinitialiser le formulaire de génération IA
+        if (this.aiGeneratorForm) {
+          this.aiGeneratorForm.resetForm();
+        }
+      }
+      
+      // Mettre à jour la longueur précédente
+      this.previousGeneratedGamesLength = currentLength;
+    });
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
@@ -164,6 +188,11 @@ export class GamesComponent implements OnInit {
         this.errorSnackbar.showError('Impossible de charger le profil enseignant');
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Initialiser la longueur précédente après la vue initialisée
+    this.previousGeneratedGamesLength = this.generatedGames().length;
   }
 
   isEditing(): boolean {
