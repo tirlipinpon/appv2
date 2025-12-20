@@ -8,7 +8,8 @@ export interface AIGameGenerationRequest {
   schoolYearLabel: string; // ex: "CP", "6ème", "Terminale"
   difficulty: number;
   subjectId: string;
-  selectedGameTypeIds?: string[]; // IDs des types de jeux sélectionnés. Si vide/undefined, l'IA choisit parmi tous les types
+  selectedGameTypeIds?: string[]; // IDs des types de jeux sélectionnés initialement. Si vide/undefined, l'IA choisit parmi tous les types
+  remainingGameTypeIds?: string[]; // IDs des types de jeux restants à créer (mis à jour dynamiquement à chaque appel)
   alreadyGeneratedInSession?: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[]; // Jeux déjà générés dans cette session
 }
 

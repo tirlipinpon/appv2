@@ -103,6 +103,14 @@
           (validityChange)="onGameValidityChange($event)">
         </app-vrai-faux-form>
 
+        <!-- Memory -->
+        <app-memory-form 
+          *ngIf="getGameTypeName(game).toLowerCase() === 'memory'"
+          [initialData]="getInitialDataForMemory(game)"
+          (dataChange)="onGameDataChange(game, $event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-memory-form>
+
         <div class="edit-actions">
           <button class="btn btn-primary" (click)="toggleEdit(game)">
             ✅ Terminer l'édition

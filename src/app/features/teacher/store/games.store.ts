@@ -2,8 +2,8 @@ import { inject } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
 import { withDevtools } from "@angular-architects/ngrx-toolkit";
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap, catchError, of, forkJoin, concat } from 'rxjs';
-import { toArray } from 'rxjs/operators';
+import { pipe, switchMap, tap, catchError, of, forkJoin, concat, range } from 'rxjs';
+import { toArray, concatMap } from 'rxjs/operators';
 import { GameType } from '../types/game-type';
 import { Game, GameCreate, GameUpdate } from '../types/game';
 import { Infrastructure } from '../components/infrastructure/infrastructure';
@@ -191,13 +191,53 @@ export const GamesStore = signalStore(
         }),
         switchMap((request) => {
           const numberOfGames = request.numberOfGames;
-          const games$ = [];
-
-          // Créer un observable pour chaque jeu à générer
-          for (let i = 0; i < numberOfGames; i++) {
-            games$.push(
-              infrastructure.generateSingleGameWithAI({
+          
+          // Utiliser range et concatMap pour générer les jeux séquentiellement avec un accumulateur
+          return range(0, numberOfGames).pipe(
+            concatMap((i) => {
+              // Calculer les types déjà créés dans cette session (état mis à jour)
+              const alreadyCreatedTypeIds = store.generatedGames().map(g => g.game_type_id);
+              
+              // Calculer les types restants à créer
+              let remainingGameTypeIds: string[] | undefined = undefined;
+              if (request.selectedGameTypeIds && request.selectedGameTypeIds.length > 0) {
+                // Types non encore utilisés
+                const unusedTypes = request.selectedGameTypeIds.filter(
+                  typeId => !alreadyCreatedTypeIds.includes(typeId)
+                );
+                
+                if (unusedTypes.length > 0) {
+                  // Il reste des types non utilisés → les utiliser
+                  remainingGameTypeIds = unusedTypes;
+                } else {
+                  // Tous les types ont été utilisés → réutiliser les types mais en variant
+                  // Compter combien de fois chaque type a été utilisé
+                  const typeUsageCount = new Map<string, number>();
+                  request.selectedGameTypeIds.forEach(typeId => {
+                    const count = alreadyCreatedTypeIds.filter(id => id === typeId).length;
+                    typeUsageCount.set(typeId, count);
+                  });
+                  
+                  // Trouver le type le moins utilisé
+                  let leastUsedType = request.selectedGameTypeIds[0];
+                  let minCount = typeUsageCount.get(leastUsedType) || 0;
+                  
+                  request.selectedGameTypeIds.forEach(typeId => {
+                    const count = typeUsageCount.get(typeId) || 0;
+                    if (count < minCount) {
+                      minCount = count;
+                      leastUsedType = typeId;
+                    }
+                  });
+                  
+                  // Utiliser le type le moins utilisé
+                  remainingGameTypeIds = [leastUsedType];
+                }
+              }
+              
+              return infrastructure.generateSingleGameWithAI({
                 ...request,
+                remainingGameTypeIds: remainingGameTypeIds, // Passer les types restants
                 // Passer les jeux déjà générés dans cette session pour éviter les doublons
                 alreadyGeneratedInSession: store.generatedGames().map(g => ({
                   question: g.question ?? null,
@@ -230,12 +270,8 @@ export const GamesStore = signalStore(
                   // Continue même si un jeu échoue
                   return of(null);
                 })
-              )
-            );
-          }
-
-          // Exécuter les observables de manière séquentielle (concat)
-          return concat(...games$).pipe(
+              );
+            }),
             toArray(), // Attendre que tous soient terminés
             tap(() => {
               patchState(store, { 

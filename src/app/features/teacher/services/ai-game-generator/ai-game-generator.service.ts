@@ -173,35 +173,28 @@ export class AIGameGeneratorService {
     let availableGameTypes = gameTypes;
     let typeSelectionInstructions = '';
     
-    if (request.selectedGameTypeIds && request.selectedGameTypeIds.length > 0) {
-      availableGameTypes = gameTypes.filter(gt => request.selectedGameTypeIds!.includes(gt.id));
+    // Utiliser remainingGameTypeIds si disponible (priorité), sinon selectedGameTypeIds
+    const typesToUse = request.remainingGameTypeIds ?? request.selectedGameTypeIds;
+    
+    if (typesToUse && typesToUse.length > 0) {
+      availableGameTypes = gameTypes.filter(gt => typesToUse.includes(gt.id));
       const selectedTypeNames = availableGameTypes.map(gt => gt.name);
-      const numberOfGames = request.numberOfGames;
-      const numberOfSelectedTypes = request.selectedGameTypeIds.length;
+      const numberOfRemainingTypes = typesToUse.length;
 
-      if (numberOfSelectedTypes === 1) {
-        // Un seul type sélectionné : forcer ce type pour tous les jeux
+      if (numberOfRemainingTypes === 1) {
+        // Un seul type restant : forcer ce type
         typeSelectionInstructions = `
 TYPE OBLIGATOIRE:
-- Tu DOIS créer TOUS les ${numberOfGames} jeux du type "${selectedTypeNames[0]}" uniquement.
+- Tu DOIS créer ce jeu du type "${selectedTypeNames[0]}" uniquement.
 - Ne PAS utiliser d'autres types de jeux.
 `;
-      } else if (numberOfSelectedTypes > 1 && numberOfSelectedTypes < numberOfGames) {
-        // Plusieurs types sélectionnés mais moins que le nombre de jeux : l'IA choisit
+      } else if (numberOfRemainingTypes > 1) {
+        // Plusieurs types restants : choisir parmi eux
         typeSelectionInstructions = `
-TYPES AUTORISÉS:
-- Tu DOIS choisir parmi ces types uniquement: ${selectedTypeNames.join(', ')}.
-- Répartis intelligemment les types selon le nombre de jeux (${numberOfGames} jeux à créer).
-- Varie les types pour éviter la répétition.
-- Tu peux utiliser plusieurs fois le même type si nécessaire, mais privilégie la diversité.
-`;
-      } else if (numberOfSelectedTypes >= numberOfGames) {
-        // Assez de types pour tous les jeux : varier les types
-        typeSelectionInstructions = `
-TYPES AUTORISÉS:
-- Utilise ces types: ${selectedTypeNames.join(', ')}.
-- Varie les types pour chaque jeu autant que possible.
-- Ne PAS utiliser de types en dehors de cette liste.
+TYPES AUTORISÉS (choisir UN parmi ceux-ci):
+- Tu DOIS choisir UN type parmi: ${selectedTypeNames.join(', ')}.
+- IMPORTANT: Utilise un type qui n'a PAS encore été utilisé dans les jeux précédents.
+- Si tous les types ont déjà été utilisés, choisis celui qui a été le moins utilisé.
 `;
       }
     }
@@ -220,6 +213,17 @@ EXEMPLE CONCRET pour "case vide":
 - cases_vides: [{index: 1, reponse_correcte: "chat"}, {index: 2, reponse_correcte: "lait"}, {index: 3, reponse_correcte: "balle"}]
 - banque_mots: ["chat", "lait", "balle", "chien", "eau", "voiture"] (mots corrects + leurres)
 - IMPORTANT: Le texte doit contenir les mots entre crochets [mot] directement dans la phrase
+`;
+        }
+        
+        // Instructions spécifiques pour le type "memory"
+        if (gt.name.toLowerCase() === 'memory') {
+          typeSpecificInstructions = `
+EXEMPLE CONCRET pour "memory":
+- paires: EXACTEMENT 4 paires (pas plus, pas moins)
+- Chaque paire doit avoir une question et une réponse
+- Exemple: [{"question": "Quelle est la capitale de la France ?", "reponse": "Paris"}, {"question": "Combien font 2+2 ?", "reponse": "4"}, {"question": "Quelle couleur fait le mélange de rouge et bleu ?", "reponse": "Violet"}, {"question": "Combien de côtés a un triangle ?", "reponse": "3"}]
+- IMPORTANT: Le tableau paires doit contenir EXACTEMENT 4 éléments, ni plus ni moins
 `;
         }
         
@@ -303,17 +307,21 @@ CONSIGNES:
     : `Répartis les types intelligemment${allExistingGames.length > 0 ? ' (privilégie les types peu utilisés)' : ''}`}
 4. 1-3 aides progressives par jeu
 5. Respecte STRICTEMENT la structure JSON
-6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: 4-20 paires
+6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: EXACTEMENT 4 paires (pas plus, pas moins)
 7. Vocabulaire adapté à l'âge
 8. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
-9. IMPORTANT CASE VIDE: 
+9. IMPORTANT MEMORY: 
+   - Le champ "paires" doit contenir EXACTEMENT 4 paires (pas plus, pas moins)
+   - Chaque paire doit avoir une "question" (string) et une "reponse" (string)
+   - Ne JAMAIS créer plus ou moins de 4 paires
+10. IMPORTANT CASE VIDE: 
    - Le champ "texte" doit contenir une phrase COMPLÈTE avec les mots à trouver entre crochets [mot]
    - Exemple: "Le matin, le petit [chat] boit son bol de [lait]."
    - Chaque [mot] dans le texte correspond à une case vide à remplir
    - Le champ "cases_vides" doit lister chaque case avec son index (1, 2, 3...) et la réponse correcte
    - Le champ "banque_mots" doit contenir les mots corrects + 2-4 mots leurres (mots incorrects mais plausibles)
    - Ne PAS utiliser l'ancien format (debut_phrase, fin_phrase) - utiliser TOUJOURS le nouveau format (texte, cases_vides, banque_mots)
-${allExistingGames.length > 0 ? '10. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
+${allExistingGames.length > 0 ? '11. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
 
 FORMAT JSON (OBLIGATOIRE):
 {
@@ -349,7 +357,7 @@ IMPORTANT:
 - JSON valide uniquement, aucun texte avant/après
 - Pour QCM: propositions doit contenir des réponses DIFFÉRENTES (ex: ["100", "200", "300"] pas ["345", "345", "345"])
 - reponses_valides doit contenir UNIQUEMENT les propositions qui sont correctes (tableau de strings)
-- Pour Memory: paires doit contenir entre 4 et 20 paires, chaque paire avec question et reponse (strings)`;
+- Pour Memory: paires doit contenir EXACTEMENT 4 paires (pas plus, pas moins), chaque paire avec question et reponse (strings)`;
   }
 
   /**

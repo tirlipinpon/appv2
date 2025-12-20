@@ -6,10 +6,11 @@ import { LiensFormComponent } from '../liens-form/liens-form.component';
 import { ChronologieFormComponent } from '../chronologie-form/chronologie-form.component';
 import { QcmFormComponent } from '../qcm-form/qcm-form.component';
 import { VraiFauxFormComponent } from '../vrai-faux-form/vrai-faux-form.component';
+import { MemoryFormComponent } from '../memory-form/memory-form.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import type { GeneratedGameWithState } from '../../../../types/ai-game-generation';
 import type { GameType } from '../../../../types/game-type';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
 
 @Component({
   selector: 'app-ai-generated-preview',
@@ -22,6 +23,7 @@ import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmDat
     ChronologieFormComponent,
     QcmFormComponent,
     VraiFauxFormComponent,
+    MemoryFormComponent,
     GameGlobalFieldsComponent,
   ],
   templateUrl: './ai-generated-preview.component.html',
@@ -52,7 +54,7 @@ export class AIGeneratedPreviewComponent {
     }
   }
 
-  onGameDataChange(game: GeneratedGameWithState, data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData): void {
+  onGameDataChange(game: GeneratedGameWithState, data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData): void {
     this.updateGame.emit({
       tempId: game._tempId,
       updates: { metadata: data as unknown as Record<string, unknown> }
@@ -137,6 +139,14 @@ export class AIGeneratedPreviewComponent {
     return null;
   }
 
+  getInitialDataForMemory(game: GeneratedGameWithState): MemoryData | null {
+    const typeName = this.getGameTypeName(game);
+    if (typeName.toLowerCase() === 'memory' && game.metadata && 'paires' in game.metadata) {
+      return game.metadata as unknown as MemoryData;
+    }
+    return null;
+  }
+
   formatMetadataForDisplay(game: GeneratedGameWithState): string {
     const typeName = this.getGameTypeName(game).toLowerCase();
     const metadata = game.metadata;
@@ -167,6 +177,10 @@ export class AIGeneratedPreviewComponent {
       case 'vrai/faux':
         const vraiFaux = metadata as unknown as VraiFauxData;
         return `${vraiFaux.enonces?.length || 0} énoncé(s)`;
+      
+      case 'memory':
+        const memory = metadata as unknown as MemoryData;
+        return `${memory.paires?.length || 0} paire(s) de cartes`;
       
       default:
         return JSON.stringify(metadata).substring(0, 100);
