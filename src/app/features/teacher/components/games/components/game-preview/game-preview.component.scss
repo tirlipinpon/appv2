@@ -241,17 +241,19 @@
     .texte-with-cases {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
-      gap: $spacing-xs;
+      align-items: baseline;
+      gap: 2px;
       line-height: 1.8;
       margin-bottom: $spacing-lg;
       padding: $spacing-md;
       background: $color-bg-primary;
       border-radius: $border-radius-sm;
+      font-size: $font-size-base;
     }
 
     .texte-part {
       color: $color-text-primary;
+      white-space: pre-wrap; // Préserver les espaces et les retours à la ligne
     }
 
     .case-vide-drop {
@@ -266,6 +268,7 @@
       border-radius: $border-radius-sm;
       transition: all $transition-base;
       position: relative;
+      vertical-align: baseline; // Aligner avec le texte
 
       &.cdk-drop-list-dragging {
         border-color: $color-primary;

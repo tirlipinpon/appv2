@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData } from '../../../../types/game-data';
@@ -585,6 +585,15 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
       // Initialiser les mots disponibles avec tous les mots
       this.availableWords.set([...shuffled]);
       this.usedWords.set(new Set());
+      
+      // Initialiser les listes de drop pour toutes les cases vides
+      const caseLists = new Map<number, string[]>();
+      if (caseVideData.cases_vides) {
+        caseVideData.cases_vides.forEach(caseVide => {
+          caseLists.set(caseVide.index, []);
+        });
+      }
+      this.caseDropLists.set(caseLists);
     }
   }
 
@@ -653,6 +662,15 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   onWordDrop(event: CdkDragDrop<string[]>, caseIndex: number): void {
     if (this.isSubmitted()) return;
 
+    // Utiliser transferArrayItem pour que CDK fasse le transfert visuel
+    transferArrayItem(
+      event.previousContainer.data,
+      event.container.data,
+      event.previousIndex,
+      event.currentIndex >= 0 ? event.currentIndex : 0
+    );
+
+    // Maintenant synchroniser nos états avec les arrays modifiés par CDK
     const answers = new Map(this.userCaseVideAnswers());
     const used = new Set(this.usedWords());
     const available = [...this.availableWords()];
@@ -660,35 +678,31 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
     // Si on drop depuis la banque vers une case
     if (event.previousContainer.id === 'banque-mots') {
-      const word = event.previousContainer.data[event.previousIndex];
+      const word = event.container.data[0]; // Le mot qui vient d'être déposé
+      if (!word) return;
       
       // Si cette case avait déjà un mot, le remettre dans la banque
       const previousWord = answers.get(caseIndex);
-      if (previousWord) {
+      if (previousWord && previousWord !== word) {
         used.delete(previousWord);
         available.push(previousWord);
-        caseLists.set(caseIndex, []);
+        answers.delete(caseIndex);
       }
 
-      // Utiliser transferArrayItem pour le transfert
-      transferArrayItem(
-        event.previousContainer.data,
-        event.container.data,
-        event.previousIndex,
-        0
-      );
-
+      // Mettre à jour avec le nouveau mot
+      answers.set(caseIndex, word);
+      used.add(word);
+      
       // Retirer le mot de la banque disponible
       const wordIndex = available.indexOf(word);
       if (wordIndex > -1) {
         available.splice(wordIndex, 1);
       }
 
-      // Mettre à jour les réponses et les mots utilisés
-      answers.set(caseIndex, word);
-      used.add(word);
+      // Mettre à jour les listes de drop pour cette case
       caseLists.set(caseIndex, [word]);
 
+      // Mettre à jour tous les signals
       this.userCaseVideAnswers.set(answers);
       this.usedWords.set(used);
       this.availableWords.set(available);
@@ -697,36 +711,20 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     // Si on drop depuis une case vers une autre case (échange)
     else if (event.previousContainer.id.startsWith('case-')) {
       const previousCaseIndex = parseInt(event.previousContainer.id.replace('case-', ''), 10);
-      
-      const wordFromPrevious = event.previousContainer.data[event.previousIndex];
-      const wordInNewCase = event.container.data.length > 0 ? event.container.data[0] : undefined;
+      const wordFromPrevious = event.container.data[0];
+      const wordInNewCase = event.previousContainer.data[0]; // L'autre mot (s'il existe)
       
       if (wordFromPrevious) {
-        // Si la nouvelle case avait un mot, le mettre dans l'ancienne case
+        // Échanger les mots entre les deux cases
         if (wordInNewCase) {
-          transferArrayItem(
-            event.container.data,
-            event.previousContainer.data,
-            0,
-            0
-          );
           answers.set(previousCaseIndex, wordInNewCase);
           caseLists.set(previousCaseIndex, [wordInNewCase]);
         } else {
-          // Retirer le mot de l'ancienne case
-          event.previousContainer.data.splice(event.previousIndex, 1);
+          answers.delete(previousCaseIndex);
           caseLists.set(previousCaseIndex, []);
         }
         
-        // Mettre le mot dans la nouvelle case
-        transferArrayItem(
-          event.previousContainer.data,
-          event.container.data,
-          event.previousIndex,
-          0
-        );
         answers.set(caseIndex, wordFromPrevious);
-        answers.delete(previousCaseIndex);
         caseLists.set(caseIndex, [wordFromPrevious]);
         
         this.userCaseVideAnswers.set(answers);
@@ -765,29 +763,33 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   getCaseDropListData(caseIndex: number): string[] {
     const caseLists = this.caseDropLists();
+    
+    // S'assurer que la liste existe pour cette case
     if (!caseLists.has(caseIndex)) {
-      const word = this.userCaseVideAnswers().get(caseIndex);
-      const newMap = new Map(caseLists);
-      newMap.set(caseIndex, word ? [word] : []);
-      this.caseDropLists.set(newMap);
-      return newMap.get(caseIndex) || [];
-    }
-    const word = this.userCaseVideAnswers().get(caseIndex);
-    const currentList = caseLists.get(caseIndex) || [];
-    // Synchroniser avec userCaseVideAnswers
-    if (word && !currentList.includes(word)) {
-      const newMap = new Map(caseLists);
-      newMap.set(caseIndex, [word]);
-      this.caseDropLists.set(newMap);
-      return [word];
-    } else if (!word && currentList.length > 0) {
       const newMap = new Map(caseLists);
       newMap.set(caseIndex, []);
       this.caseDropLists.set(newMap);
       return [];
     }
-    return currentList;
+    
+    // Retourner la liste existante (même référence pour CDK)
+    // La synchronisation avec userCaseVideAnswers se fait dans onWordDrop
+    return caseLists.get(caseIndex) || [];
   }
+
+  // Computed signal pour tous les IDs des drop lists (banque + toutes les cases)
+  readonly connectedDropListIds = computed(() => {
+    const caseVideData = this.caseVideData;
+    const ids: string[] = ['banque-mots'];
+    
+    if (caseVideData && caseVideData.cases_vides) {
+      caseVideData.cases_vides.forEach(caseVide => {
+        ids.push(`case-${caseVide.index}`);
+      });
+    }
+    
+    return ids;
+  });
 
   isWordUsed(word: string): boolean {
     return this.usedWords().has(word);

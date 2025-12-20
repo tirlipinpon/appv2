@@ -79,11 +79,13 @@
                   cdkDropList
                   id="banque-mots"
                   class="banque-mots-list"
-                  [cdkDropListData]="getAvailableWords()">
+                  [cdkDropListData]="getAvailableWords()"
+                  [cdkDropListConnectedTo]="connectedDropListIds()">
                   @for (word of getAvailableWords(); track word) {
                     <div 
                       class="word-tag"
                       cdkDrag
+                      [cdkDragData]="word"
                       [class.used]="isWordUsed(word)">
                       {{ word }}
                     </div>
@@ -102,18 +104,19 @@
                       [id]="'case-' + part.index"
                       class="case-vide-drop"
                       [cdkDropListData]="getCaseDropListData(part.index)"
+                      [cdkDropListConnectedTo]="connectedDropListIds()"
                       (cdkDropListDropped)="onWordDrop($event, part.index)"
                       [class.filled]="getWordInCase(part.index)"
                       [class.correct]="isCaseCorrect(part.index) === true"
                       [class.incorrect]="isCaseCorrect(part.index) === false">
                       @if (getWordInCase(part.index)) {
-                        <div class="case-word" cdkDrag>
+                        <div class="case-word" cdkDrag [cdkDragData]="getWordInCase(part.index)">
                           {{ getWordInCase(part.index) }}
                           @if (!isSubmitted()) {
                             <button 
                               type="button" 
                               class="btn-remove-word"
-                              (click)="removeWordFromCase(part.index)"
+                              (click)="removeWordFromCase(part.index); $event.stopPropagation()"
                               title="Retirer ce mot">
                               ×
                             </button>
