@@ -132,9 +132,36 @@ export class AIGeneratedPreviewComponent {
   }
 
   getInitialDataForVraiFaux(game: GeneratedGameWithState): VraiFauxData | null {
-    const typeName = this.getGameTypeName(game);
-    if (typeName.toLowerCase() === 'vrai/faux' && game.metadata && 'enonces' in game.metadata) {
-      return game.metadata as unknown as VraiFauxData;
+    const typeName = this.getGameTypeName(game).toLowerCase();
+    // Normaliser le nom du type (peut être "vrai/faux", "vrai faux", etc.)
+    const normalizedTypeName = typeName.replace(/\s+/g, '/').toLowerCase();
+    
+    if ((normalizedTypeName === 'vrai/faux' || normalizedTypeName === 'vrai-faux') && game.metadata) {
+      const metadata = game.metadata as any;
+      
+      // Vérifier si les métadonnées contiennent des énoncés
+      if (metadata.enonces && Array.isArray(metadata.enonces)) {
+        // Normaliser les énoncés : s'assurer que chaque énoncé a texte et reponse_correcte
+        const normalizedEnonces = metadata.enonces.map((enonce: any) => {
+          if (typeof enonce === 'string') {
+            // Si c'est juste une string, créer un énoncé avec réponse par défaut
+            return { texte: enonce, reponse_correcte: true };
+          } else if (enonce && typeof enonce === 'object') {
+            // S'assurer que reponse_correcte est un boolean
+            return {
+              texte: enonce.texte || enonce.text || String(enonce),
+              reponse_correcte: typeof enonce.reponse_correcte === 'boolean' 
+                ? enonce.reponse_correcte 
+                : (enonce.reponse_correcte === 'vrai' || enonce.reponse_correcte === true || enonce.reponse_correcte === 'true')
+            };
+          }
+          return null;
+        }).filter((e: any) => e && e.texte);
+        
+        if (normalizedEnonces.length > 0) {
+          return { enonces: normalizedEnonces };
+        }
+      }
     }
     return null;
   }

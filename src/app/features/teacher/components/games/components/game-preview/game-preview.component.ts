@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
@@ -15,7 +15,8 @@ import { MemoryGameComponent } from '../memory-game/memory-game.component';
   styleUrl: './game-preview.component.scss',
 })
 export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
-  @Input() isOpen = false;
+  // Utiliser input() pour créer un signal qui réagit aux changements
+  isOpen = input<boolean>(false);
   @Input() gameTypeName = '';
   @Input() globalFields: GameGlobalFieldsData | null = null;
   @Input() gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null = null;
@@ -40,6 +41,9 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   availableWords = signal<string[]>([]);
   // Tableaux mutables pour chaque case vide (pour CDK drag-drop)
   caseDropLists = signal<Map<number, string[]>>(new Map());
+  
+  // Flag pour éviter les initialisations multiples
+  private caseVideInitialized = signal<boolean>(false);
   // Mots utilisés (retirés de la banque)
   usedWords = signal<Set<string>>(new Set());
 
@@ -73,7 +77,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
       this.userLinks();
       this.selectedMotForLink();
       // Délai pour laisser le DOM se mettre à jour
-      if (this.isOpen && this.liensData) {
+      if (this.isOpen() && this.liensData) {
         setTimeout(() => this.updateLinkPaths(), 100);
       }
     });
@@ -88,11 +92,11 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
     // Effet pour remélanger quand la modal s'ouvre
     effect(() => {
-      if (this.isOpen && this.liensData) {
+      if (this.isOpen() && this.liensData) {
         // Remélanger à chaque ouverture pour un nouvel ordre aléatoire
         this.shuffleLiensData();
       }
-      if (this.isOpen && this.vraiFauxData) {
+      if (this.isOpen() && this.vraiFauxData) {
         // Remélanger les énoncés Vrai/Faux à chaque ouverture
         this.shuffleVraiFauxData();
       }
@@ -106,23 +110,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
       }
     });
 
-    // Effet pour mélanger la banque de mots Case Vide quand les données changent
-    effect(() => {
-      const data = this.caseVideData;
-      if (data && data.banque_mots) {
-        this.shuffleBanqueMots();
-      }
-    });
-
-    // Effet pour remélanger la banque de mots Case Vide quand la modal s'ouvre
-    effect(() => {
-      if (this.isOpen && this.caseVideData && this.caseVideData.banque_mots) {
-        this.shuffleBanqueMots();
-        this.reset();
-      }
-    });
-
-    // Effet pour parser le texte avec cases quand les données changent
+    // Effet pour parser le texte quand les données changent
     effect(() => {
       const data = this.caseVideData;
       if (data && data.texte) {
@@ -131,11 +119,32 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
         this.parsedTexteParts.set([]);
       }
     });
+
+    // Effet pour initialiser Case Vide quand la modal s'ouvre ET que les données sont disponibles
+    effect(() => {
+      const isOpen = this.isOpen();
+      const data = this.caseVideData;
+      const alreadyInitialized = this.caseVideInitialized();
+      
+      // Si la modal est fermée, réinitialiser le flag
+      if (!isOpen) {
+        this.caseVideInitialized.set(false);
+        return;
+      }
+      
+      // Si la modal est ouverte et que les données sont disponibles et pas encore initialisé
+      if (isOpen && data && data.texte && data.banque_mots && !alreadyInitialized) {
+        // Initialiser immédiatement (sans délai pour éviter les problèmes d'affichage)
+        this.initializeCaseVide();
+        this.caseVideInitialized.set(true);
+      }
+    });
   }
 
   close(): void {
     this.closed.emit();
     this.reset();
+    this.caseVideInitialized.set(false);
   }
 
   reset(): void {
@@ -391,7 +400,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   // Méthodes pour les lignes SVG
   ngAfterViewInit(): void {
     this.setupResizeObserver();
-    if (this.isOpen && this.liensData) {
+    if (this.isOpen() && this.liensData) {
       // S'assurer que les données sont mélangées
       if (this.shuffledMots().length === 0) {
         this.shuffleLiensData();
@@ -588,6 +597,43 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     return userAnswer === enonce.reponse_correcte;
   }
 
+  // Méthode pour initialiser complètement Case Vide
+  private initializeCaseVide(): void {
+    const caseVideData = this.caseVideData;
+    if (!caseVideData) return;
+    
+    // Parser le texte avec cases
+    if (caseVideData.texte) {
+      this.parsedTexteParts.set(this.parseTexteWithCasesInternal(caseVideData.texte));
+    }
+    
+    // Réinitialiser l'état utilisateur AVANT de mélanger
+    this.userCaseVideAnswers.set(new Map());
+    this.usedWords.set(new Set());
+    this.isSubmitted.set(false);
+    this.isCorrect.set(null);
+    
+    // Mélanger la banque de mots (cela initialise aussi les caseDropLists)
+    if (caseVideData.banque_mots) {
+      this.shuffleBanqueMots();
+    } else {
+      // Si pas de banque de mots, initialiser quand même les caseDropLists
+      const caseLists = new Map<number, string[]>();
+      if (caseVideData.cases_vides) {
+        caseVideData.cases_vides.forEach(caseVide => {
+          caseLists.set(caseVide.index, []);
+        });
+      }
+      this.caseDropLists.set(caseLists);
+    }
+    
+    // Réinitialiser les mots disponibles avec tous les mots mélangés
+    const shuffled = this.shuffledBanqueMots();
+    if (shuffled.length > 0) {
+      this.availableWords.set([...shuffled]);
+    }
+  }
+
   // Méthodes pour Case Vide (nouveau format drag and drop)
   shuffleBanqueMots(): void {
     const caseVideData = this.caseVideData;
@@ -776,16 +822,9 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   getCaseDropListData(caseIndex: number): string[] {
     const caseLists = this.caseDropLists();
     
-    // S'assurer que la liste existe pour cette case
-    if (!caseLists.has(caseIndex)) {
-      const newMap = new Map(caseLists);
-      newMap.set(caseIndex, []);
-      this.caseDropLists.set(newMap);
-      return [];
-    }
-    
     // Retourner la liste existante (même référence pour CDK)
-    // La synchronisation avec userCaseVideAnswers se fait dans onWordDrop
+    // Si la liste n'existe pas, retourner un tableau vide
+    // L'initialisation se fait dans initializeCaseVide(), pas ici
     return caseLists.get(caseIndex) || [];
   }
 

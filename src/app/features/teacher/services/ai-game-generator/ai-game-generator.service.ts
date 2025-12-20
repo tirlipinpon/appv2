@@ -32,7 +32,7 @@ export class AIGameGeneratorService {
     gameTypes: GameType[],
     pdfText?: string,
     existingGames: Game[] = [], // Jeux existants dans la base de données
-    conversationHistory: Array<{userPrompt: string, aiResponse: AIRawResponse}> = [] // Historique conversationnel
+    conversationHistory: {userPrompt: string, aiResponse: AIRawResponse}[] = [] // Historique conversationnel
   ): Observable<{game: GameCreate, rawResponse: AIRawResponse, userPrompt: string}> {
     // Modifier la requête pour générer 1 seul jeu
     const singleGameRequest = { ...request, numberOfGames: 1 };
@@ -124,7 +124,7 @@ export class AIGameGeneratorService {
   /**
    * Appelle le proxy Supabase Edge Function pour DeepSeek
    */
-  private async callDeepSeekProxy(messages: Array<{role: string, content: string}>): Promise<any> {
+  private async callDeepSeekProxy(messages: {role: string, content: string}[]): Promise<{choices: {message: {content: string}}[]}> {
     // Obtenir la session Supabase pour l'authentification
     const {
       data: { session },
@@ -164,91 +164,12 @@ export class AIGameGeneratorService {
   }
 
   /**
-   * Construit les messages conversationnels avec historique
-   * Retourne les messages et le prompt utilisateur actuel
+   * Construit le prompt system avec toutes les règles, types de jeux et format JSON
+   * Ce prompt est envoyé une seule fois au début de la conversation
    */
-  private buildConversationMessages(
-    request: AIGameGenerationRequest,
-    gameTypes: GameType[],
-    pdfText?: string,
-    existingGames: Game[] = [],
-    conversationHistory: Array<{userPrompt: string, aiResponse: AIRawResponse}> = []
-  ): {messages: Array<{role: string, content: string}>, currentUserPrompt: string} {
-    const messages: Array<{role: string, content: string}> = [];
-    
-    // Message system
-    messages.push({
-      role: 'system',
-      content: 'Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.'
-    });
-    
-    // Historique conversationnel (limité à 10 dernières)
-    const recentHistory = conversationHistory.slice(-10); // Garder 10 dernières
-    for (const entry of recentHistory) {
-      messages.push({
-        role: 'user',
-        content: entry.userPrompt
-      });
-      messages.push({
-        role: 'assistant',
-        content: JSON.stringify({games: entry.aiResponse.games})
-      });
-    }
-    
-    // Nouvelle demande
-    const currentPrompt = this.buildPrompt(request, gameTypes, pdfText, existingGames, request.alreadyGeneratedInSession || []);
-    messages.push({
-      role: 'user',
-      content: currentPrompt
-    });
-    
-    return {messages, currentUserPrompt: currentPrompt};
-  }
-
-  /**
-   * Construit le prompt pour DeepSeek
-   */
-  private buildPrompt(
-    request: AIGameGenerationRequest,
-    gameTypes: GameType[],
-    pdfText?: string,
-    existingGames: Game[] = [],
-    alreadyGeneratedInSession: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[] = []
-  ): string {
-    const ageRange = getAgeFromSchoolYear(request.schoolYearLabel);
-
-    // Filtrer les types de jeux selon la sélection de l'utilisateur
-    let availableGameTypes = gameTypes;
-    let typeSelectionInstructions = '';
-    
-    // Utiliser remainingGameTypeIds si disponible (priorité), sinon selectedGameTypeIds
-    const typesToUse = request.remainingGameTypeIds ?? request.selectedGameTypeIds;
-    
-    if (typesToUse && typesToUse.length > 0) {
-      availableGameTypes = gameTypes.filter(gt => typesToUse.includes(gt.id));
-      const selectedTypeNames = availableGameTypes.map(gt => gt.name);
-      const numberOfRemainingTypes = typesToUse.length;
-
-      if (numberOfRemainingTypes === 1) {
-        // Un seul type restant : forcer ce type
-        typeSelectionInstructions = `
-TYPE OBLIGATOIRE:
-- Tu DOIS créer ce jeu du type "${selectedTypeNames[0]}" uniquement.
-- Ne PAS utiliser d'autres types de jeux.
-`;
-      } else if (numberOfRemainingTypes > 1) {
-        // Plusieurs types restants : choisir parmi eux
-        typeSelectionInstructions = `
-TYPES AUTORISÉS (choisir UN parmi ceux-ci):
-- Tu DOIS choisir UN type parmi: ${selectedTypeNames.join(', ')}.
-- IMPORTANT: Utilise un type qui n'a PAS encore été utilisé dans les jeux précédents.
-- Si tous les types ont déjà été utilisés, choisis celui qui a été le moins utilisé.
-`;
-      }
-    }
-
+  private buildSystemPrompt(gameTypes: GameType[]): string {
     // Construire la liste des types de jeux disponibles avec leur structure
-    const gameTypesDescription = availableGameTypes
+    const gameTypesDescription = gameTypes
       .map((gt) => {
         let typeSpecificInstructions = '';
         
@@ -275,6 +196,17 @@ EXEMPLE CONCRET pour "memory":
 `;
         }
         
+        // Instructions spécifiques pour le type "vrai/faux"
+        if (gt.name.toLowerCase() === 'vrai/faux' || gt.name.toLowerCase() === 'vrai-faux') {
+          typeSpecificInstructions = `
+EXEMPLE CONCRET pour "vrai/faux":
+- enonces: tableau d'énoncés avec texte et reponse_correcte (boolean)
+- Exemple: [{"texte": "Paris est la capitale de la France", "reponse_correcte": true}, {"texte": "2+2=5", "reponse_correcte": false}, {"texte": "L'eau bout à 100°C", "reponse_correcte": true}]
+- IMPORTANT: Chaque énoncé doit avoir "texte" (string) et "reponse_correcte" (boolean: true pour Vrai, false pour Faux)
+- Le champ "reponse_correcte" doit être un boolean, pas une string
+`;
+        }
+        
         return `
 **${gt.name}**:
 ${gt.description || 'Pas de description'}
@@ -284,93 +216,33 @@ ${typeSpecificInstructions}
       })
       .join('\n');
 
-    // Construire la liste des jeux existants pour éviter les doublons
-    let existingGamesSection = '';
-    const allExistingGames = [...existingGames, ...alreadyGeneratedInSession.map(g => ({
-      question: g.question,
-      game_type_id: g.game_type_id,
-      metadata: g.metadata,
-      instructions: null
-    } as Game))];
-    
-    if (allExistingGames.length > 0) {
-      const MAX_GAMES_TO_SHOW = 15; // Garder 15 jeux
-      const totalGames = allExistingGames.length;
-      
-      // Trier par date de création (les plus récents en premier) si disponible
-      // Sinon, prendre les derniers de la liste
-      const recentGames = allExistingGames.slice(-MAX_GAMES_TO_SHOW).reverse();
-      
-      // Créer un résumé statistique des types de jeux
-      const gameTypeStats = this.getGameTypeStatistics(allExistingGames, gameTypes);
-      
-      // Format ultra-compact pour chaque jeu (une seule ligne)
-      const existingGamesList = recentGames
-        .map((game, index) => {
-          const gameTypeName = gameTypes.find(gt => gt.id === game.game_type_id)?.name || 'Inconnu';
-          // Limiter la question à 50 caractères max
-          const questionPreview = game.question 
-            ? (game.question.length > 50 ? game.question.substring(0, 50) + '...' : game.question)
-            : 'Sans question';
-          // Format compact : [Type] Question (sans instructions ni métadonnées détaillées)
-          return `${index + 1}. [${gameTypeName}] ${questionPreview}`;
-        })
-        .join('\n');
-
-      existingGamesSection = `
-JEUX EXISTANTS (${totalGames} total, ${recentGames.length} exemples récents):
-Distribution: ${gameTypeStats}
-Exemples:
-${existingGamesList}
-
-IMPORTANT - ÉVITER LES DOUBLONS:
-- Ne PAS créer de jeux similaires aux ${totalGames} jeux existants
-- Varier les types (distribution actuelle: ${gameTypeStats})
-- Proposer des angles NOUVEAUX et des approches différentes
-- Créer des jeux ORIGINAUX qui complètent l'existant
-`;
-    }
-
-    return `Tu es un générateur de jeux pédagogiques adapté au système éducatif français.
-
-CONTEXTE:
-- Matière: ${request.subjectName}
-- Thème: ${request.subject}
-- Niveau: ${request.schoolYearLabel} (${ageRange})
-- Difficulté: ${request.difficulty}/5
-${pdfText ? `- PDF: ${pdfText.substring(0, 2000)}...` : ''}
-
-${existingGamesSection}
+    return `Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.
 
 TYPES DE JEUX DISPONIBLES:
 ${gameTypesDescription}
 
-${typeSelectionInstructions}
-
-CONSIGNES:
-1. Génère ${request.numberOfGames} jeux variés pour ${request.schoolYearLabel}
-2. ${allExistingGames.length > 0 ? 'ÉVITE les doublons avec les jeux existants. ' : ''}Adapte au niveau ${ageRange}
-3. ${request.selectedGameTypeIds && request.selectedGameTypeIds.length > 0 
-    ? 'Respecte STRICTEMENT les types autorisés ci-dessus.' 
-    : `Répartis les types intelligemment${allExistingGames.length > 0 ? ' (privilégie les types peu utilisés)' : ''}`}
-4. 1-3 aides progressives par jeu
-5. Respecte STRICTEMENT la structure JSON
-6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: EXACTEMENT 4 paires (pas plus, pas moins)
-7. Vocabulaire adapté à l'âge
-8. INTERDICTION ABSOLUE - IMAGES: Ne JAMAIS mentionner d'images, de photos, de dessins, de schémas ou de visuels dans les instructions ou questions. Les jeux n'ont PAS d'images pour le moment. Ne pas utiliser de phrases comme "Regarde l'image", "Observe la photo", "D'après l'image", etc.
-9. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
-10. IMPORTANT MEMORY: 
+RÈGLES STRICTES:
+1. Respecte STRICTEMENT la structure JSON fournie ci-dessous
+2. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: EXACTEMENT 4 paires (pas plus, pas moins)
+3. Vocabulaire adapté à l'âge de l'élève
+4. INTERDICTION ABSOLUE - IMAGES: Ne JAMAIS mentionner d'images, de photos, de dessins, de schémas ou de visuels dans les instructions ou questions. Les jeux n'ont PAS d'images pour le moment. Ne pas utiliser de phrases comme "Regarde l'image", "Observe la photo", "D'après l'image", etc.
+5. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
+6. IMPORTANT MEMORY: 
    - Le champ "paires" doit contenir EXACTEMENT 4 paires (pas plus, pas moins)
    - Chaque paire doit avoir une "question" (string) et une "reponse" (string)
    - Ne JAMAIS créer plus ou moins de 4 paires
-11. IMPORTANT CASE VIDE: 
+7. IMPORTANT CASE VIDE: 
    - Le champ "texte" doit contenir une phrase COMPLÈTE avec les mots à trouver entre crochets [mot]
    - Exemple: "Le matin, le petit [chat] boit son bol de [lait]."
    - Chaque [mot] dans le texte correspond à une case vide à remplir
    - Le champ "cases_vides" doit lister chaque case avec son index (1, 2, 3...) et la réponse correcte
    - Le champ "banque_mots" doit contenir les mots corrects + 2-4 mots leurres (mots incorrects mais plausibles)
    - Ne PAS utiliser l'ancien format (debut_phrase, fin_phrase) - utiliser TOUJOURS le nouveau format (texte, cases_vides, banque_mots)
-${allExistingGames.length > 0 ? '12. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
+8. IMPORTANT VRAI/FAUX:
+   - Le champ "enonces" doit être un tableau d'objets avec "texte" (string) et "reponse_correcte" (boolean)
+   - Exemple: [{"texte": "Paris est la capitale de la France", "reponse_correcte": true}, {"texte": "2+2=5", "reponse_correcte": false}]
+   - "reponse_correcte" doit être un boolean (true ou false), PAS une string ("vrai" ou "faux")
+   - Chaque énoncé doit être clair et testable (vrai ou faux sans ambiguïté)
 
 FORMAT JSON (OBLIGATOIRE):
 {
@@ -410,6 +282,236 @@ IMPORTANT:
   }
 
   /**
+   * Résume l'historique conversationnel en extrayant les jeux générés
+   * Filtre les jeux déjà présents dans alreadyGeneratedInSession pour éviter la duplication
+   * Retourne un résumé compact des jeux déjà générés
+   */
+  private summarizeGameHistory(
+    conversationHistory: {userPrompt: string, aiResponse: AIRawResponse}[],
+    alreadyGeneratedInSession: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[] = []
+  ): string {
+    if (conversationHistory.length === 0) {
+      return '';
+    }
+
+    // Extraire tous les jeux générés de l'historique
+    const allGeneratedGames: {type: string, question: string | null}[] = [];
+    conversationHistory.forEach(entry => {
+      if (entry.aiResponse.games) {
+        entry.aiResponse.games.forEach(game => {
+          allGeneratedGames.push({
+            type: game.type_name,
+            question: game.question
+          });
+        });
+      }
+    });
+
+    if (allGeneratedGames.length === 0) {
+      return '';
+    }
+
+    // Filtrer les jeux déjà présents dans alreadyGeneratedInSession pour éviter la duplication
+    const filteredGames = allGeneratedGames.filter(historyGame => {
+      // Vérifier si ce jeu est déjà dans alreadyGeneratedInSession
+      return !alreadyGeneratedInSession.some(sessionGame => {
+        // Comparer par question et type (on ne peut pas comparer par metadata car la structure peut varier)
+        return sessionGame.question === historyGame.question;
+      });
+    });
+
+    if (filteredGames.length === 0) {
+      return ''; // Tous les jeux sont déjà dans alreadyGeneratedInSession
+    }
+
+    // Créer un résumé compact : [Type] Angle pédagogique
+    const summary = filteredGames
+      .slice(-5) // Garder les 5 derniers
+      .map((game, index) => {
+        const questionPreview = game.question 
+          ? (game.question.length > 40 ? game.question.substring(0, 40) + '...' : game.question)
+          : 'Sans question';
+        return `${index + 1}. [${game.type}] ${questionPreview}`;
+      })
+      .join('\n');
+
+    return `Jeux déjà générés dans cette session (${filteredGames.length} total après filtrage, 5 derniers):
+${summary}`;
+  }
+
+  /**
+   * Construit les messages conversationnels avec historique
+   * Retourne les messages et le prompt utilisateur actuel
+   */
+  private buildConversationMessages(
+    request: AIGameGenerationRequest,
+    gameTypes: GameType[],
+    pdfText?: string,
+    existingGames: Game[] = [],
+    conversationHistory: {userPrompt: string, aiResponse: AIRawResponse}[] = []
+  ): {messages: {role: string, content: string}[], currentUserPrompt: string} {
+    const messages: {role: string, content: string}[] = [];
+    const isFirstMessage = conversationHistory.length === 0;
+    
+    // Message system (uniquement au premier message)
+    if (isFirstMessage) {
+      messages.push({
+        role: 'system',
+        content: this.buildSystemPrompt(gameTypes)
+      });
+    }
+    
+    // Résumer l'historique au lieu de tout inclure
+    // Filtrer les jeux déjà dans alreadyGeneratedInSession pour éviter la duplication
+    const historySummary = this.summarizeGameHistory(conversationHistory, request.alreadyGeneratedInSession || []);
+    
+    // Garder seulement les 3-5 derniers échanges complets pour le contexte immédiat
+    const recentHistory = conversationHistory.slice(-3); // Garder 3 derniers échanges
+    for (const entry of recentHistory) {
+      messages.push({
+        role: 'user',
+        content: entry.userPrompt
+      });
+      messages.push({
+        role: 'assistant',
+        content: JSON.stringify({games: entry.aiResponse.games})
+      });
+    }
+    
+    // Nouvelle demande avec résumé d'historique si disponible
+    const currentPrompt = this.buildPrompt(request, gameTypes, pdfText, existingGames, request.alreadyGeneratedInSession || [], historySummary);
+    messages.push({
+      role: 'user',
+      content: currentPrompt
+    });
+    
+    return {messages, currentUserPrompt: currentPrompt};
+  }
+
+  /**
+   * Construit le prompt utilisateur allégé (contexte spécifique uniquement)
+   * Les règles générales et types de jeux sont dans le system prompt
+   */
+  private buildPrompt(
+    request: AIGameGenerationRequest,
+    gameTypes: GameType[],
+    pdfText?: string,
+    existingGames: Game[] = [],
+    alreadyGeneratedInSession: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[] = [],
+    historySummary = ''
+  ): string {
+    const ageRange = getAgeFromSchoolYear(request.schoolYearLabel);
+
+    // Filtrer les types de jeux selon la sélection de l'utilisateur
+    let typeSelectionInstructions = '';
+    
+    // Utiliser remainingGameTypeIds si disponible (priorité), sinon selectedGameTypeIds
+    const typesToUse = request.remainingGameTypeIds ?? request.selectedGameTypeIds;
+    
+    if (typesToUse && typesToUse.length > 0) {
+      const availableGameTypes = gameTypes.filter(gt => typesToUse.includes(gt.id));
+      const selectedTypeNames = availableGameTypes.map(gt => gt.name);
+      const numberOfRemainingTypes = typesToUse.length;
+
+      if (numberOfRemainingTypes === 1) {
+        // Un seul type restant : forcer ce type
+        typeSelectionInstructions = `
+TYPE OBLIGATOIRE:
+- Tu DOIS créer ce jeu du type "${selectedTypeNames[0]}" uniquement.
+- Ne PAS utiliser d'autres types de jeux.
+`;
+      } else if (numberOfRemainingTypes > 1) {
+        // Plusieurs types restants : choisir parmi eux
+        typeSelectionInstructions = `
+TYPES AUTORISÉS (choisir UN parmi ceux-ci):
+- Tu DOIS choisir UN type parmi: ${selectedTypeNames.join(', ')}.
+- IMPORTANT: Utilise un type qui n'a PAS encore été utilisé dans les jeux précédents.
+- Si tous les types ont déjà été utilisés, choisis celui qui a été le moins utilisé.
+`;
+      }
+    }
+
+    // Construire la liste des jeux existants pour éviter les doublons
+    // Distinguer les jeux de la DB des jeux de la session
+    const dbGames = existingGames;
+    const sessionGames = alreadyGeneratedInSession.map(g => ({
+      question: g.question,
+      game_type_id: g.game_type_id,
+      metadata: g.metadata,
+      instructions: null
+    } as Game));
+    
+    const allExistingGames = [...dbGames, ...sessionGames];
+    
+    let existingGamesSection = '';
+    if (allExistingGames.length > 0) {
+      const MAX_GAMES_TO_SHOW = 5; // Réduire à 5 pour alléger
+      const totalGames = allExistingGames.length;
+      const dbGamesCount = dbGames.length;
+      const sessionGamesCount = sessionGames.length;
+      
+      // Prendre les jeux les plus récents
+      const recentGames = allExistingGames.slice(-MAX_GAMES_TO_SHOW).reverse();
+      
+      // Créer un résumé statistique des types de jeux
+      const gameTypeStats = this.getGameTypeStatistics(allExistingGames, gameTypes);
+      
+      // Format ultra-compact pour chaque jeu (une seule ligne)
+      const existingGamesList = recentGames
+        .map((game, index) => {
+          const gameTypeName = gameTypes.find(gt => gt.id === game.game_type_id)?.name || 'Inconnu';
+          // Limiter la question à 50 caractères max
+          const questionPreview = game.question 
+            ? (game.question.length > 50 ? game.question.substring(0, 50) + '...' : game.question)
+            : 'Sans question';
+          // Distinguer les jeux de la session avec un préfixe
+          const isSessionGame = sessionGames.some(sg => sg.question === game.question && sg.game_type_id === game.game_type_id);
+          const prefix = isSessionGame ? '[SESSION]' : '[DB]';
+          return `${index + 1}. ${prefix} [${gameTypeName}] ${questionPreview}`;
+        })
+        .join('\n');
+
+      existingGamesSection = `
+JEUX EXISTANTS (${totalGames} total: ${dbGamesCount} en base, ${sessionGamesCount} dans cette session):
+Distribution: ${gameTypeStats}
+Derniers exemples (${recentGames.length}):
+${existingGamesList}
+
+IMPORTANT - ÉVITER LES DOUBLONS:
+- Ne PAS créer de jeux similaires aux ${totalGames} jeux existants
+- Varier les types (distribution actuelle: ${gameTypeStats})
+- Proposer des angles NOUVEAUX et des approches différentes
+- Créer des jeux ORIGINAUX qui complètent l'existant
+`;
+    }
+
+    // Construire le prompt allégé
+    const prompt = `CONTEXTE:
+- Matière: ${request.subjectName}
+- Thème: ${request.subject}
+- Niveau: ${request.schoolYearLabel} (${ageRange})
+- Difficulté: ${request.difficulty}/5
+${pdfText ? `- PDF: ${pdfText.substring(0, 1000)}...` : ''}
+
+${existingGamesSection}
+
+${historySummary ? `${historySummary}\n` : ''}
+
+${typeSelectionInstructions}
+
+CONSIGNES SPÉCIFIQUES:
+1. Génère ${request.numberOfGames} jeu${request.numberOfGames > 1 ? 'x' : ''} varié${request.numberOfGames > 1 ? 's' : ''} pour ${request.schoolYearLabel}
+2. ${allExistingGames.length > 0 ? 'ÉVITE les doublons avec les jeux existants. ' : ''}Adapte au niveau ${ageRange}
+3. ${request.selectedGameTypeIds && request.selectedGameTypeIds.length > 0 
+    ? 'Respecte STRICTEMENT les types autorisés ci-dessus.' 
+    : `Répartis les types intelligemment${allExistingGames.length > 0 ? ' (privilégie les types peu utilisés)' : ''}`}
+${request.requestHelp ? `4. IMPORTANT - AIDE PÉDAGOGIQUE: Pour chaque jeu, ajoute une aide pédagogique détaillée dans le champ "aides". Cette aide doit expliquer comment utiliser le jeu, donner des conseils pédagogiques, et suggérer des variantes ou extensions possibles. L'aide doit être adaptée au niveau ${ageRange} et au thème ${request.subject}.` : '4. 1 aide progressive par jeu'}
+${allExistingGames.length > 0 ? '5. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}`;
+
+    return prompt;
+  }
+
+  /**
    * Transforme la réponse brute de l'IA en objets GameCreate
    */
   private transformToGameCreate(
@@ -442,6 +544,8 @@ IMPORTANT:
       let normalizedMetadata = rawGame.metadata;
       if (rawGame.type_name.toLowerCase() === 'qcm' && rawGame.metadata) {
         normalizedMetadata = this.normalizeQcmMetadata(rawGame.metadata);
+      } else if ((rawGame.type_name.toLowerCase() === 'vrai/faux' || rawGame.type_name.toLowerCase() === 'vrai-faux') && rawGame.metadata) {
+        normalizedMetadata = this.normalizeVraiFauxMetadata(rawGame.metadata);
       }
 
       return {
@@ -503,6 +607,55 @@ IMPORTANT:
   }
 
   /**
+   * Normalise les métadonnées Vrai/Faux pour corriger les problèmes courants
+   */
+  private normalizeVraiFauxMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+    interface VraiFauxMetadata {
+      enonces?: ({
+        texte?: string;
+        text?: string;
+        reponse_correcte?: boolean | string;
+      } | string)[];
+    }
+    
+    const vraiFaux = metadata as unknown as VraiFauxMetadata;
+    
+    if (!vraiFaux.enonces || !Array.isArray(vraiFaux.enonces)) {
+      // Si pas d'énoncés, retourner les métadonnées telles quelles
+      return metadata;
+    }
+
+    // Normaliser chaque énoncé
+    const normalizedEnonces = vraiFaux.enonces.map((enonce) => {
+      if (typeof enonce === 'string') {
+        // Si c'est juste une string, créer un énoncé avec réponse par défaut
+        return { texte: enonce, reponse_correcte: true };
+      } else if (enonce && typeof enonce === 'object') {
+        // S'assurer que reponse_correcte est un boolean
+        let reponseCorrecte: boolean;
+        if (typeof enonce.reponse_correcte === 'boolean') {
+          reponseCorrecte = enonce.reponse_correcte;
+        } else if (typeof enonce.reponse_correcte === 'string') {
+          reponseCorrecte = enonce.reponse_correcte.toLowerCase() === 'vrai' || enonce.reponse_correcte === 'true';
+        } else {
+          reponseCorrecte = true; // Par défaut
+        }
+        
+        return {
+          texte: enonce.texte || enonce.text || String(enonce),
+          reponse_correcte: reponseCorrecte
+        };
+      }
+      return null;
+    }).filter((e): e is {texte: string, reponse_correcte: boolean} => e !== null && e.texte !== undefined && e.texte.trim() !== '');
+
+    return {
+      ...metadata,
+      enonces: normalizedEnonces
+    };
+  }
+
+  /**
    * Retourne la description de la structure metadata pour un type de jeu
    */
   private getMetadataStructureDescription(typeName: string): string {
@@ -513,6 +666,8 @@ IMPORTANT:
       liens: '{ mots: string[], reponses: string[], liens: {mot: string, reponse: string}[] }',
       chronologie: '{ mots: string[], ordre_correct: string[] }',
       qcm: '{ propositions: string[], reponses_valides: string[] }',
+      'vrai/faux': '{ enonces: [{texte: string, reponse_correcte: boolean}[] }',
+      'vrai-faux': '{ enonces: [{texte: string, reponse_correcte: boolean}[] }',
       memory: '{ paires: {question: string, reponse: string}[] }',
     };
 
@@ -584,7 +739,7 @@ IMPORTANT:
       }
       
       return JSON.stringify(metadata).substring(0, 100);
-    } catch (error) {
+    } catch {
       return JSON.stringify(metadata).substring(0, 100);
     }
   }

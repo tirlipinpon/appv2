@@ -32,9 +32,6 @@ export class ChronologieFormComponent implements OnChanges {
       if (this.isInitializing) {
         return;
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:27',message:'valueChanges triggered',data:{motsCount:this.motsArray.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       const mots = this.motsArray.value.filter((m: string) => m && m.trim());
       
       // L'ordre correct est simplement l'ordre des mots dans le FormArray
@@ -43,18 +40,12 @@ export class ChronologieFormComponent implements OnChanges {
       const isValid = mots.length > 0;
 
       if (isValid) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:40',message:'emitting dataChange',data:{motsCount:mots.length,isValid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         const chronologieData: ChronologieData = {
           mots: mots,
           ordre_correct: ordreCorrect, // L'ordre correct = l'ordre des mots
         };
         this.dataChange.emit(chronologieData);
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:42',message:'emitting validityChange',data:{isValid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       this.validityChange.emit(isValid);
     });
   }
@@ -96,13 +87,7 @@ export class ChronologieFormComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:59',message:'ngOnChanges called',data:{hasInitialData:!!this.initialData,changedKeys:Object.keys(changes)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (changes['initialData'] && this.initialData) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:61',message:'clearing motsArray before load',data:{currentLength:this.motsArray.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       // Activer le flag pour ignorer les émissions pendant l'initialisation
       this.isInitializing = true;
       this.motsArray.clear();
@@ -138,9 +123,6 @@ export class ChronologieFormComponent implements OnChanges {
       setTimeout(() => {
         this.isInitializing = false;
       }, 0);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chronologie-form.component.ts:87',message:'ngOnChanges completed - motsArray loaded',data:{finalLength:this.motsArray.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
     }
   }
 }

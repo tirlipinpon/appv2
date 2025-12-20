@@ -186,6 +186,27 @@ export class GameCardComponent implements OnInit, OnChanges {
   }
 
   openPreview(): void {
+    // S'assurer que les données sont initialisées avant d'ouvrir la preview
+    if (!this.isEditing()) {
+      this.initializeEditMode();
+    }
+    // S'assurer que les données sont disponibles
+    if (!this.gameSpecificData() && this.game.metadata) {
+      const normalizedMetadata = normalizeGameData(
+        this.currentGameTypeName(),
+        this.game.metadata as Record<string, unknown>
+      );
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData;
+      this.gameSpecificData.set(gameData);
+    }
+    if (!this.currentGlobalFields()) {
+      const globalFields = {
+        instructions: this.game.instructions || null,
+        question: this.game.question || null,
+        aides: this.game.aides || null,
+      };
+      this.currentGlobalFields.set(globalFields);
+    }
     this.previewIsOpen.set(true);
   }
 

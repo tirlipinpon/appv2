@@ -11,6 +11,7 @@ export interface AIGameGenerationRequest {
   selectedGameTypeIds?: string[]; // IDs des types de jeux sélectionnés initialement. Si vide/undefined, l'IA choisit parmi tous les types
   remainingGameTypeIds?: string[]; // IDs des types de jeux restants à créer (mis à jour dynamiquement à chaque appel)
   alreadyGeneratedInSession?: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[]; // Jeux déjà générés dans cette session
+  requestHelp?: boolean; // Si true, demande une aide pédagogique en plus du jeu
 }
 
 export interface AIGameGenerationResponse {
