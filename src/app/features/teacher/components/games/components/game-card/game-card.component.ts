@@ -78,8 +78,9 @@ export class GameCardComponent implements OnInit, OnChanges {
       this.isEditing.set(false);
       this.isExpanded.set(false);
     } else {
-      // Sinon, simplement toggle l'état expanded
-      this.isExpanded.set(!this.isExpanded());
+      // Sinon, passer en mode édition pour voir tout le jeu complet
+      this.initializeEditMode();
+      this.isExpanded.set(true);
     }
   }
 

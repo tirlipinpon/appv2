@@ -18,16 +18,6 @@
     @if (game.question) {
       <h5 class="game-question">{{ game.question }}</h5>
     }
-    @if (!isEditing()) {
-      <div class="game-actions-summary">
-        <button class="btn btn-secondary btn-small" (click)="toggleEdit(); $event.stopPropagation()">
-          ✏️ Modifier
-        </button>
-        <button class="btn btn-danger btn-small" (click)="onDeleteClick(); $event.stopPropagation()">
-          🗑️ Supprimer
-        </button>
-      </div>
-    }
   </div>
 
   <!-- Mode lecture - Contenu détaillé (affiché seulement si expanded) -->
@@ -48,15 +38,6 @@
             </ul>
           </div>
         }
-      </div>
-
-      <div class="game-actions">
-        <button class="btn btn-secondary" (click)="toggleEdit(); $event.stopPropagation()">
-          ✏️ Modifier
-        </button>
-        <button class="btn btn-danger" (click)="onDeleteClick(); $event.stopPropagation()">
-          🗑️ Supprimer
-        </button>
       </div>
     </div>
   }
