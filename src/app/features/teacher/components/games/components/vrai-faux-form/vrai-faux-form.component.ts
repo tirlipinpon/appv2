@@ -50,9 +50,9 @@ export class VraiFauxFormComponent implements OnInit, OnChanges {
   }
 
   ngOnInit(): void {
-    // Ajouter un énoncé par défaut si aucune donnée initiale n'est fournie
-    if (!this.initialData && this.enoncesArray.length === 0) {
-      this.addEnonce();
+    // Initialiser seulement si ngOnChanges ne s'est pas déjà exécuté
+    if (this.enoncesArray.length === 0) {
+      this.initializeData();
     }
   }
 
@@ -72,30 +72,35 @@ export class VraiFauxFormComponent implements OnInit, OnChanges {
     this.enoncesArray.removeAt(index);
   }
 
+  private initializeData(): void {
+    // Activer le flag pour ignorer les émissions pendant l'initialisation
+    this.isInitializing = true;
+    this.enoncesArray.clear();
+
+    if (this.initialData && this.initialData.enonces && this.initialData.enonces.length > 0) {
+      // Charger les données initiales
+      this.initialData.enonces.forEach(enonce => {
+        const enonceGroup = this.fb.group({
+          texte: new FormControl<string>(enonce.texte, { nonNullable: true, validators: [Validators.required] }),
+          reponse_correcte: new FormControl<boolean>(enonce.reponse_correcte, { nonNullable: true }),
+        });
+        this.enoncesArray.push(enonceGroup);
+      });
+    } else {
+      // Ajouter un énoncé par défaut si aucune donnée
+      this.addEnonce();
+    }
+    
+    // Désactiver le flag après le chargement initial
+    setTimeout(() => {
+      this.isInitializing = false;
+    }, 0);
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['initialData']) {
-      // Activer le flag pour ignorer les émissions pendant l'initialisation
-      this.isInitializing = true;
-      this.enoncesArray.clear();
-
-      if (this.initialData && this.initialData.enonces.length > 0) {
-        // Charger les données initiales
-        this.initialData.enonces.forEach(enonce => {
-          const enonceGroup = this.fb.group({
-            texte: new FormControl<string>(enonce.texte, { nonNullable: true, validators: [Validators.required] }),
-            reponse_correcte: new FormControl<boolean>(enonce.reponse_correcte, { nonNullable: true }),
-          });
-          this.enoncesArray.push(enonceGroup);
-        });
-      } else {
-        // Ajouter un énoncé par défaut si aucune donnée
-        this.addEnonce();
-      }
-      
-      // Désactiver le flag après le chargement initial
-      setTimeout(() => {
-        this.isInitializing = false;
-      }, 0);
+      // Réinitialiser les données à chaque changement
+      this.initializeData();
     }
   }
 }
