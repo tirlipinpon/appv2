@@ -25,6 +25,7 @@
           [isGenerating]="isGenerating()"
           [generationProgress]="generationProgress()"
           [generatedCount]="generatedGames().length"
+          [gameTypes]="gameTypes()"
           (generate)="onGenerateGamesWithAI($event)">
         </app-ai-game-generator-form>
 

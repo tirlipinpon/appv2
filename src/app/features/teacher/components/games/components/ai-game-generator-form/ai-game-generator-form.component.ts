@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import type { AIGameGenerationRequest } from '../../../../types/ai-game-generation';
+import type { GameType } from '../../../../types/game-type';
 import { getSchoolLevelsForSelect } from '../../../../utils/school-levels.util';
 
 @Component({
@@ -20,6 +21,7 @@ export class AIGameGeneratorFormComponent {
   @Input() schoolYearLabel: string | null = null;
   @Input() generationProgress = 0; // Progression de la génération (0-100)
   @Input() generatedCount = 0; // Nombre de jeux déjà générés
+  @Input() gameTypes: GameType[] = []; // Types de jeux disponibles
   
   private _isGenerating = false;
   @Input() 
@@ -39,6 +41,7 @@ export class AIGameGeneratorFormComponent {
 
   selectedFile = signal<File | null>(null);
   fileError = signal<string | null>(null);
+  selectedGameTypeIds = signal<string[]>([]); // IDs des types de jeux sélectionnés
 
   // Niveaux scolaires disponibles pour le fallback manuel (système belge)
   readonly availableSchoolLevels = getSchoolLevelsForSelect();
@@ -99,7 +102,8 @@ export class AIGameGeneratorFormComponent {
     }
 
     const formValue = this.generatorForm.value;
-
+    const selectedIds = this.selectedGameTypeIds();
+    
     const request: AIGameGenerationRequest = {
       subjectName: this.subjectName, // Nom de la matière scolaire
       subject: formValue.subject!, // Thème/sujet du jeu
@@ -108,9 +112,29 @@ export class AIGameGeneratorFormComponent {
       schoolYearLabel: effectiveSchoolLevel,
       difficulty: formValue.difficulty!,
       subjectId: this.subjectId,
+      selectedGameTypeIds: selectedIds.length > 0 ? selectedIds : undefined, // Si vide, undefined pour utiliser tous les types
     };
 
     this.generate.emit(request);
+  }
+
+  toggleGameType(gameTypeId: string): void {
+    if (this.isGenerating) return; // Désactiver pendant la génération
+    
+    const current = this.selectedGameTypeIds();
+    const index = current.indexOf(gameTypeId);
+    
+    if (index >= 0) {
+      // Désélectionner
+      this.selectedGameTypeIds.set(current.filter(id => id !== gameTypeId));
+    } else {
+      // Sélectionner
+      this.selectedGameTypeIds.set([...current, gameTypeId]);
+    }
+  }
+
+  isGameTypeSelected(gameTypeId: string): boolean {
+    return this.selectedGameTypeIds().includes(gameTypeId);
   }
 
   getDifficultyLabel(value: number): string {

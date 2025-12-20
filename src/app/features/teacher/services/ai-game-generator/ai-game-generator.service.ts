@@ -169,8 +169,45 @@ export class AIGameGeneratorService {
   ): string {
     const ageRange = getAgeFromSchoolYear(request.schoolYearLabel);
 
+    // Filtrer les types de jeux selon la sélection de l'utilisateur
+    let availableGameTypes = gameTypes;
+    let typeSelectionInstructions = '';
+    
+    if (request.selectedGameTypeIds && request.selectedGameTypeIds.length > 0) {
+      availableGameTypes = gameTypes.filter(gt => request.selectedGameTypeIds!.includes(gt.id));
+      const selectedTypeNames = availableGameTypes.map(gt => gt.name);
+      const numberOfGames = request.numberOfGames;
+      const numberOfSelectedTypes = request.selectedGameTypeIds.length;
+
+      if (numberOfSelectedTypes === 1) {
+        // Un seul type sélectionné : forcer ce type pour tous les jeux
+        typeSelectionInstructions = `
+TYPE OBLIGATOIRE:
+- Tu DOIS créer TOUS les ${numberOfGames} jeux du type "${selectedTypeNames[0]}" uniquement.
+- Ne PAS utiliser d'autres types de jeux.
+`;
+      } else if (numberOfSelectedTypes > 1 && numberOfSelectedTypes < numberOfGames) {
+        // Plusieurs types sélectionnés mais moins que le nombre de jeux : l'IA choisit
+        typeSelectionInstructions = `
+TYPES AUTORISÉS:
+- Tu DOIS choisir parmi ces types uniquement: ${selectedTypeNames.join(', ')}.
+- Répartis intelligemment les types selon le nombre de jeux (${numberOfGames} jeux à créer).
+- Varie les types pour éviter la répétition.
+- Tu peux utiliser plusieurs fois le même type si nécessaire, mais privilégie la diversité.
+`;
+      } else if (numberOfSelectedTypes >= numberOfGames) {
+        // Assez de types pour tous les jeux : varier les types
+        typeSelectionInstructions = `
+TYPES AUTORISÉS:
+- Utilise ces types: ${selectedTypeNames.join(', ')}.
+- Varie les types pour chaque jeu autant que possible.
+- Ne PAS utiliser de types en dehors de cette liste.
+`;
+      }
+    }
+
     // Construire la liste des types de jeux disponibles avec leur structure
-    const gameTypesDescription = gameTypes
+    const gameTypesDescription = availableGameTypes
       .map((gt) => {
         return `
 **${gt.name}**:
@@ -238,13 +275,17 @@ ${pdfText ? `- PDF: ${pdfText.substring(0, 2000)}...` : ''}
 
 ${existingGamesSection}
 
-TYPES DE JEUX:
+TYPES DE JEUX DISPONIBLES:
 ${gameTypesDescription}
+
+${typeSelectionInstructions}
 
 CONSIGNES:
 1. Génère ${request.numberOfGames} jeux variés pour ${request.schoolYearLabel}
 2. ${allExistingGames.length > 0 ? 'ÉVITE les doublons avec les jeux existants. ' : ''}Adapte au niveau ${ageRange}
-3. Répartis les types intelligemment${allExistingGames.length > 0 ? ' (privilégie les types peu utilisés)' : ''}
+3. ${request.selectedGameTypeIds && request.selectedGameTypeIds.length > 0 
+    ? 'Respecte STRICTEMENT les types autorisés ci-dessus.' 
+    : `Répartis les types intelligemment${allExistingGames.length > 0 ? ' (privilégie les types peu utilisés)' : ''}`}
 4. 1-3 aides progressives par jeu
 5. Respecte STRICTEMENT la structure JSON
 6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: 4-20 paires

@@ -43,6 +43,42 @@
       </span>
     </div>
 
+    <div class="form-group" *ngIf="gameTypes.length > 0">
+      <div class="form-label">Types de jeux (optionnel)</div>
+      <div class="game-types-selection">
+        <div class="selection-info">
+          <small>
+            <span *ngIf="selectedGameTypeIds().length === 0">
+              Aucun type sélectionné - L'IA choisira parmi tous les types disponibles
+            </span>
+            <span *ngIf="selectedGameTypeIds().length > 0">
+              {{ selectedGameTypeIds().length }} type(s) sélectionné(s)
+            </span>
+          </small>
+        </div>
+        <div class="game-types-grid">
+          <label 
+            *ngFor="let gameType of gameTypes" 
+            class="game-type-checkbox"
+            [class.disabled]="isGenerating"
+          >
+            <input 
+              type="checkbox" 
+              [checked]="isGameTypeSelected(gameType.id)"
+              (change)="toggleGameType(gameType.id)"
+              [disabled]="isGenerating"
+            />
+            <div class="game-type-info">
+              <span class="game-type-name">{{ gameType.name }}</span>
+              <small class="game-type-description" *ngIf="gameType.description">
+                {{ gameType.description }}
+              </small>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <div class="form-group">
       <label for="pdfFile">Document PDF (optionnel)</label>
       <div class="file-upload-zone">
