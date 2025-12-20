@@ -178,6 +178,155 @@
 
   // Case Vide Preview
   .case-vide-preview {
+    .banque-mots-container {
+      margin-bottom: $spacing-lg;
+
+      h4 {
+        margin-bottom: $spacing-md;
+        font-size: $font-size-base;
+        font-weight: $font-weight-semibold;
+        color: $color-text-primary;
+      }
+    }
+
+    .banque-mots-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $spacing-sm;
+      padding: $spacing-md;
+      background: $color-gray-50;
+      border: 2px dashed $color-border-light;
+      border-radius: $border-radius-sm;
+      min-height: 60px;
+    }
+
+    .word-tag {
+      padding: $spacing-sm $spacing-md;
+      background: $color-primary-light;
+      color: $color-primary-dark;
+      border: 2px solid $color-primary;
+      border-radius: $border-radius-full;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      cursor: grab;
+      user-select: none;
+      transition: all $transition-base;
+
+      &:hover {
+        background: $color-primary;
+        color: $color-white;
+        transform: scale(1.05);
+      }
+
+      &:active {
+        cursor: grabbing;
+      }
+
+      &.used {
+        opacity: 0.3;
+        cursor: not-allowed;
+        background: $color-gray-200;
+        border-color: $color-gray-300;
+        color: $color-gray-500;
+      }
+
+      &.word-tag-preview {
+        background: $color-primary;
+        color: $color-white;
+        box-shadow: $shadow-lg;
+        transform: rotate(5deg);
+      }
+    }
+
+    .texte-with-cases {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: $spacing-xs;
+      line-height: 1.8;
+      margin-bottom: $spacing-lg;
+      padding: $spacing-md;
+      background: $color-bg-primary;
+      border-radius: $border-radius-sm;
+    }
+
+    .texte-part {
+      color: $color-text-primary;
+    }
+
+    .case-vide-drop {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 100px;
+      min-height: 40px;
+      padding: $spacing-sm $spacing-md;
+      background: $color-gray-100;
+      border: 2px dashed $color-border-light;
+      border-radius: $border-radius-sm;
+      transition: all $transition-base;
+      position: relative;
+
+      &.cdk-drop-list-dragging {
+        border-color: $color-primary;
+        background: $color-primary-light;
+      }
+
+      &.filled {
+        border-style: solid;
+        border-color: $color-primary;
+        background: $color-primary-light;
+      }
+
+      &.correct {
+        border-color: $color-success;
+        background: $color-success-lighter;
+      }
+
+      &.incorrect {
+        border-color: $color-danger;
+        background: $color-danger-lighter;
+      }
+    }
+
+    .case-placeholder {
+      color: $color-gray-400;
+      font-weight: $font-weight-semibold;
+    }
+
+    .case-word {
+      display: flex;
+      align-items: center;
+      gap: $spacing-xs;
+      padding: $spacing-xs $spacing-sm;
+      background: $color-white;
+      border-radius: $border-radius-sm;
+      font-weight: $font-weight-medium;
+      color: $color-text-primary;
+    }
+
+    .btn-remove-word {
+      background: $color-danger;
+      color: $color-white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0;
+      transition: all $transition-base;
+
+      &:hover {
+        background: $color-danger-dark;
+        transform: scale(1.1);
+      }
+    }
+
     .case-vide-sentence {
       display: flex;
       align-items: center;

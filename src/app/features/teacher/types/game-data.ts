@@ -1,10 +1,21 @@
 // Structures de données spécifiques pour chaque type de jeu
 
-// Case vide : début de phrase + case vide + fin de phrase
+// Case vide : texte avec plusieurs cases vides + banque de mots (drag and drop)
+// Supporte deux formats : ancien (rétrocompatibilité) et nouveau (drag and drop)
 export interface CaseVideData {
-  debut_phrase: string;
-  fin_phrase: string;
-  reponse_valide: string;
+  // Format nouveau (drag and drop)
+  texte?: string; // Texte avec placeholders [1], [2], etc. pour les cases vides
+  cases_vides?: { 
+    index: number; // Index du placeholder dans le texte (1, 2, 3...)
+    reponse_correcte: string; // Réponse correcte pour cette case
+  }[];
+  banque_mots?: string[]; // Tous les mots (corrects + leurres)
+  mots_leurres?: string[]; // Mots d'erreur qui ne doivent pas être utilisés
+  
+  // Format ancien (rétrocompatibilité)
+  debut_phrase?: string;
+  fin_phrase?: string;
+  reponse_valide?: string;
 }
 
 // Réponse libre : une seule réponse valide

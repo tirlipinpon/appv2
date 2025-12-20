@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { QcmGameComponent } from '../qcm-game/qcm-game.component';
@@ -8,7 +9,7 @@ import { ChronologieGameComponent } from '../chronologie-game/chronologie-game.c
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, QcmGameComponent, ChronologieGameComponent],
+  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
@@ -27,8 +28,22 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   private updateLinksTimeout?: number;
 
 
-  // Pour Case Vide et Réponse Libre - réponse saisie
+  // Pour Case Vide et Réponse Libre - réponse saisie (ancien format)
   userAnswer = signal<string>('');
+
+  // Pour Case Vide (nouveau format drag and drop) - réponses par index de case
+  userCaseVideAnswers = signal<Map<number, string>>(new Map());
+  // Banque de mots mélangée pour Case Vide
+  shuffledBanqueMots = signal<string[]>([]);
+  // Mots disponibles dans la banque (mutable pour CDK drag-drop)
+  availableWords = signal<string[]>([]);
+  // Tableaux mutables pour chaque case vide (pour CDK drag-drop)
+  caseDropLists = signal<Map<number, string[]>>(new Map());
+  // Mots utilisés (retirés de la banque)
+  usedWords = signal<Set<string>>(new Set());
+
+  // Texte parsé avec cases (computed pour réactivité)
+  parsedTexteParts = signal<Array<{ type: 'text' | 'case'; content: string; index?: number }>>([]);
 
   // Pour Liens - associations faites par l'utilisateur (mot -> reponse)
   userLinks = signal<Map<string, string>>(new Map());
@@ -89,6 +104,32 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
         this.shuffleVraiFauxData();
       }
     });
+
+    // Effet pour mélanger la banque de mots Case Vide quand les données changent
+    effect(() => {
+      const data = this.caseVideData;
+      if (data && data.banque_mots) {
+        this.shuffleBanqueMots();
+      }
+    });
+
+    // Effet pour remélanger la banque de mots Case Vide quand la modal s'ouvre
+    effect(() => {
+      if (this.isOpen && this.caseVideData && this.caseVideData.banque_mots) {
+        this.shuffleBanqueMots();
+        this.reset();
+      }
+    });
+
+    // Effet pour parser le texte avec cases quand les données changent
+    effect(() => {
+      const data = this.caseVideData;
+      if (data && data.texte) {
+        this.parsedTexteParts.set(this.parseTexteWithCasesInternal(data.texte));
+      } else {
+        this.parsedTexteParts.set([]);
+      }
+    });
   }
 
   close(): void {
@@ -102,12 +143,19 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     this.userLinks.set(new Map());
     this.selectedMotForLink.set(null);
     this.userVraiFauxAnswers.set(new Map());
+    this.userCaseVideAnswers.set(new Map());
+    this.usedWords.set(new Set());
+    this.caseDropLists.set(new Map());
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
     // Remélanger les mots et réponses
     this.shuffleLiensData();
     // Remélanger les énoncés Vrai/Faux
     this.shuffleVraiFauxData();
+    // Remélanger la banque de mots Case Vide
+    if (this.caseVideData && this.caseVideData.banque_mots) {
+      this.shuffleBanqueMots();
+    }
   }
 
   onBackdropClick(event: MouseEvent): void {
@@ -129,12 +177,34 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   // Méthodes pour Case Vide
   submitCaseVide(): void {
     if (this.isSubmitted()) return;
-    const caseVideData = this.gameData as CaseVideData;
+    const caseVideData = this.caseVideData;
     if (!caseVideData) return;
 
-    const isValid = this.userAnswer().trim().toLowerCase() === caseVideData.reponse_valide.trim().toLowerCase();
-    this.isSubmitted.set(true);
-    this.isCorrect.set(isValid);
+    // Vérifier si c'est le nouveau format (drag and drop) ou l'ancien format
+    if (caseVideData.texte && caseVideData.cases_vides) {
+      // Nouveau format : valider toutes les cases vides
+      const allFilled = caseVideData.cases_vides.every(caseVide => 
+        this.userCaseVideAnswers().has(caseVide.index)
+      );
+      
+      if (!allFilled) {
+        // Toutes les cases doivent être remplies
+        return;
+      }
+
+      const allCorrect = caseVideData.cases_vides.every(caseVide => {
+        const userAnswer = this.userCaseVideAnswers().get(caseVide.index);
+        return userAnswer?.toLowerCase().trim() === caseVide.reponse_correcte.toLowerCase().trim();
+      });
+
+      this.isSubmitted.set(true);
+      this.isCorrect.set(allCorrect);
+    } else if (caseVideData.debut_phrase && caseVideData.fin_phrase && caseVideData.reponse_valide) {
+      // Ancien format : validation simple
+      const isValid = this.userAnswer().trim().toLowerCase() === caseVideData.reponse_valide.trim().toLowerCase();
+      this.isSubmitted.set(true);
+      this.isCorrect.set(isValid);
+    }
   }
 
   // Méthodes pour Réponse Libre
@@ -290,11 +360,6 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   getReponseForMot(mot: string): string | null {
     return this.userLinks().get(mot) || null;
-  }
-
-
-  getCaseVideReponseValide(): string {
-    return this.caseVideData?.reponse_valide || '';
   }
 
   getReponseLibreReponseValide(): string {
@@ -509,6 +574,252 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     const userAnswer = this.userVraiFauxAnswers().get(texte);
     if (userAnswer === undefined) return null;
     return userAnswer === enonce.reponse_correcte;
+  }
+
+  // Méthodes pour Case Vide (nouveau format drag and drop)
+  shuffleBanqueMots(): void {
+    const caseVideData = this.caseVideData;
+    if (caseVideData && caseVideData.banque_mots) {
+      const shuffled = this.shuffleArray([...caseVideData.banque_mots]);
+      this.shuffledBanqueMots.set(shuffled);
+      // Initialiser les mots disponibles avec tous les mots
+      this.availableWords.set([...shuffled]);
+      this.usedWords.set(new Set());
+    }
+  }
+
+  getAvailableWords(): string[] {
+    return this.availableWords();
+  }
+
+  updateAvailableWords(): void {
+    const shuffled = this.shuffledBanqueMots();
+    const used = this.usedWords();
+    const available = shuffled.filter(word => !used.has(word));
+    this.availableWords.set(available);
+  }
+
+  parseTexteWithCases(): Array<{ type: 'text' | 'case'; content: string; index?: number }> {
+    return this.parsedTexteParts();
+  }
+
+  private parseTexteWithCasesInternal(texte: string): Array<{ type: 'text' | 'case'; content: string; index?: number }> {
+    if (!texte) {
+      return [];
+    }
+
+    const parts: Array<{ type: 'text' | 'case'; content: string; index?: number }> = [];
+    const placeholderRegex = /\[(\d+)\]/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = placeholderRegex.exec(texte)) !== null) {
+      // Ajouter le texte avant le placeholder
+      if (match.index > lastIndex) {
+        parts.push({
+          type: 'text',
+          content: texte.substring(lastIndex, match.index),
+        });
+      }
+      // Ajouter la case vide
+      const caseIndex = parseInt(match[1], 10);
+      parts.push({
+        type: 'case',
+        content: match[0],
+        index: caseIndex,
+      });
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Ajouter le texte restant
+    if (lastIndex < texte.length) {
+      parts.push({
+        type: 'text',
+        content: texte.substring(lastIndex),
+      });
+    }
+
+    // Si aucun placeholder n'a été trouvé, retourner le texte entier
+    if (parts.length === 0) {
+      parts.push({
+        type: 'text',
+        content: texte,
+      });
+    }
+
+    return parts;
+  }
+
+  onWordDrop(event: CdkDragDrop<string[]>, caseIndex: number): void {
+    if (this.isSubmitted()) return;
+
+    const answers = new Map(this.userCaseVideAnswers());
+    const used = new Set(this.usedWords());
+    const available = [...this.availableWords()];
+    const caseLists = new Map(this.caseDropLists());
+
+    // Si on drop depuis la banque vers une case
+    if (event.previousContainer.id === 'banque-mots') {
+      const word = event.previousContainer.data[event.previousIndex];
+      
+      // Si cette case avait déjà un mot, le remettre dans la banque
+      const previousWord = answers.get(caseIndex);
+      if (previousWord) {
+        used.delete(previousWord);
+        available.push(previousWord);
+        caseLists.set(caseIndex, []);
+      }
+
+      // Utiliser transferArrayItem pour le transfert
+      transferArrayItem(
+        event.previousContainer.data,
+        event.container.data,
+        event.previousIndex,
+        0
+      );
+
+      // Retirer le mot de la banque disponible
+      const wordIndex = available.indexOf(word);
+      if (wordIndex > -1) {
+        available.splice(wordIndex, 1);
+      }
+
+      // Mettre à jour les réponses et les mots utilisés
+      answers.set(caseIndex, word);
+      used.add(word);
+      caseLists.set(caseIndex, [word]);
+
+      this.userCaseVideAnswers.set(answers);
+      this.usedWords.set(used);
+      this.availableWords.set(available);
+      this.caseDropLists.set(caseLists);
+    }
+    // Si on drop depuis une case vers une autre case (échange)
+    else if (event.previousContainer.id.startsWith('case-')) {
+      const previousCaseIndex = parseInt(event.previousContainer.id.replace('case-', ''), 10);
+      
+      const wordFromPrevious = event.previousContainer.data[event.previousIndex];
+      const wordInNewCase = event.container.data.length > 0 ? event.container.data[0] : undefined;
+      
+      if (wordFromPrevious) {
+        // Si la nouvelle case avait un mot, le mettre dans l'ancienne case
+        if (wordInNewCase) {
+          transferArrayItem(
+            event.container.data,
+            event.previousContainer.data,
+            0,
+            0
+          );
+          answers.set(previousCaseIndex, wordInNewCase);
+          caseLists.set(previousCaseIndex, [wordInNewCase]);
+        } else {
+          // Retirer le mot de l'ancienne case
+          event.previousContainer.data.splice(event.previousIndex, 1);
+          caseLists.set(previousCaseIndex, []);
+        }
+        
+        // Mettre le mot dans la nouvelle case
+        transferArrayItem(
+          event.previousContainer.data,
+          event.container.data,
+          event.previousIndex,
+          0
+        );
+        answers.set(caseIndex, wordFromPrevious);
+        answers.delete(previousCaseIndex);
+        caseLists.set(caseIndex, [wordFromPrevious]);
+        
+        this.userCaseVideAnswers.set(answers);
+        this.caseDropLists.set(caseLists);
+      }
+    }
+  }
+
+  removeWordFromCase(caseIndex: number): void {
+    if (this.isSubmitted()) return;
+
+    const answers = new Map(this.userCaseVideAnswers());
+    const used = new Set(this.usedWords());
+    const caseLists = new Map(this.caseDropLists());
+
+    const word = answers.get(caseIndex);
+    if (word) {
+      answers.delete(caseIndex);
+      used.delete(word);
+      caseLists.set(caseIndex, []);
+      
+      // Remettre le mot dans la banque
+      const available = [...this.availableWords()];
+      available.push(word);
+      this.availableWords.set(available);
+      
+      this.userCaseVideAnswers.set(answers);
+      this.usedWords.set(used);
+      this.caseDropLists.set(caseLists);
+    }
+  }
+
+  getWordInCase(caseIndex: number): string | undefined {
+    return this.userCaseVideAnswers().get(caseIndex);
+  }
+
+  getCaseDropListData(caseIndex: number): string[] {
+    const caseLists = this.caseDropLists();
+    if (!caseLists.has(caseIndex)) {
+      const word = this.userCaseVideAnswers().get(caseIndex);
+      const newMap = new Map(caseLists);
+      newMap.set(caseIndex, word ? [word] : []);
+      this.caseDropLists.set(newMap);
+      return newMap.get(caseIndex) || [];
+    }
+    const word = this.userCaseVideAnswers().get(caseIndex);
+    const currentList = caseLists.get(caseIndex) || [];
+    // Synchroniser avec userCaseVideAnswers
+    if (word && !currentList.includes(word)) {
+      const newMap = new Map(caseLists);
+      newMap.set(caseIndex, [word]);
+      this.caseDropLists.set(newMap);
+      return [word];
+    } else if (!word && currentList.length > 0) {
+      const newMap = new Map(caseLists);
+      newMap.set(caseIndex, []);
+      this.caseDropLists.set(newMap);
+      return [];
+    }
+    return currentList;
+  }
+
+  isWordUsed(word: string): boolean {
+    return this.usedWords().has(word);
+  }
+
+  isCaseCorrect(caseIndex: number): boolean | null {
+    if (!this.isSubmitted()) return null;
+    const caseVideData = this.caseVideData;
+    if (!caseVideData || !caseVideData.cases_vides) return null;
+
+    const caseVide = caseVideData.cases_vides.find(c => c.index === caseIndex);
+    if (!caseVide) return null;
+
+    const userAnswer = this.userCaseVideAnswers().get(caseIndex);
+    return userAnswer?.toLowerCase().trim() === caseVide.reponse_correcte.toLowerCase().trim();
+  }
+
+  getCaseVideReponseValide(): string {
+    const caseVideData = this.caseVideData;
+    if (!caseVideData) return '';
+    
+    // Ancien format
+    if (caseVideData.reponse_valide) {
+      return caseVideData.reponse_valide;
+    }
+    
+    // Nouveau format - retourner toutes les réponses correctes
+    if (caseVideData.cases_vides) {
+      return caseVideData.cases_vides.map(c => c.reponse_correcte).join(', ');
+    }
+    
+    return '';
   }
 }
 

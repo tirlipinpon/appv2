@@ -6,11 +6,11 @@
       <div *ngFor="let enonce of enoncesArray.controls; let i = index" [formGroupName]="i" class="enonce-row">
         <input type="text" formControlName="texte" [placeholder]="'Énoncé ' + (i + 1)" class="enonce-input">
         <label class="radio-label">
-          <input type="radio" formControlName="reponse_correcte" [value]="true" name="reponse_{{i}}">
+          <input type="radio" formControlName="reponse_correcte" [value]="true">
           Vrai
         </label>
         <label class="radio-label">
-          <input type="radio" formControlName="reponse_correcte" [value]="false" name="reponse_{{i}}">
+          <input type="radio" formControlName="reponse_correcte" [value]="false">
           Faux
         </label>
         <button type="button" class="btn btn-danger btn-small" (click)="removeEnonce(i)">×</button>

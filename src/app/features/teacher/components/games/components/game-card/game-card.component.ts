@@ -178,8 +178,11 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForCaseVide(): CaseVideData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'case vide' && data && 'debut_phrase' in data) {
-      return data as CaseVideData;
+    if (currentType.toLowerCase() === 'case vide' && data) {
+      // Accepter le nouveau format (texte + cases_vides) ou l'ancien format (debut_phrase)
+      if (('texte' in data && 'cases_vides' in data) || 'debut_phrase' in data) {
+        return data as CaseVideData;
+      }
     }
     return null;
   }

@@ -1,31 +1,126 @@
 .case-vide-form {
   .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 12px;
+    font-style: italic;
+  }
+
+  .warning-message {
+    font-size: 12px;
+    color: #856404;
+    margin-top: 8px;
+    padding: 8px;
+    background: #fff3cd;
+    border-radius: 4px;
+  }
+
+  .error-message {
+    font-size: 12px;
+    color: #dc3545;
+    margin-top: 4px;
+    display: block;
+  }
+
+  textarea {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+
+    &:focus {
+      outline: none;
+      border-color: #1976d2;
+    }
+  }
+
+  .extracted-words-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 12px;
+    background: #e8f5e9;
+    border-radius: 6px;
+    border-left: 3px solid #4caf50;
+  }
+
+  .extracted-word-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 6px;
+  }
+
+  .word-index {
+    font-weight: bold;
+    color: #1976d2;
+    min-width: 40px;
+    text-align: center;
+  }
+
+  .word-value {
+    flex: 1;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .leurres-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .mot-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 6px;
+  }
+
+  .mot-input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+
+    &:focus {
+      outline: none;
+      border-color: #1976d2;
+    }
   }
 
   .preview {
-    margin-top: 16px;
-    padding: 12px;
+    margin-top: 20px;
+    padding: 16px;
     background: #f5f5f5;
     border-radius: 6px;
     border-left: 3px solid #1976d2;
 
-    .debut {
+    .preview-text {
+      margin-top: 8px;
+      line-height: 1.6;
       color: #333;
-    }
 
-    .case-vide {
-      background: #fff3cd;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: bold;
-      color: #856404;
-      margin: 0 4px;
-    }
-
-    .fin {
-      color: #333;
+      .case-vide-preview {
+        background: #fff3cd;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        color: #856404;
+        margin: 0 2px;
+      }
     }
   }
 }
-
