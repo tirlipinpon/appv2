@@ -16,7 +16,7 @@ import type { GameType } from '../../types/game-type';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type { PostgrestError } from '@supabase/supabase-js';
 import type { SchoolYear } from '../../types/school';
-import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
+import type { AIGameGenerationRequest, AIRawResponse } from '../../types/ai-game-generation';
 
 @Injectable({
   providedIn: 'root',
@@ -130,7 +130,10 @@ export class Infrastructure {
   }
 
   // ===== Génération IA =====
-  generateSingleGameWithAI(request: AIGameGenerationRequest): Observable<{ game?: GameCreate; error?: PostgrestError | null }> {
+  generateSingleGameWithAI(
+    request: AIGameGenerationRequest,
+    conversationHistory: Array<{userPrompt: string, aiResponse: AIRawResponse}> = []
+  ): Observable<{ game?: GameCreate; rawResponse?: AIRawResponse; userPrompt?: string; error?: PostgrestError | null }> {
     return forkJoin({
       gameTypes: this.getGameTypes(),
       existingGames: this.getGamesBySubject(request.subjectId) // Récupérer les jeux existants
@@ -151,10 +154,11 @@ export class Infrastructure {
               request,
               gameTypes.gameTypes,
               pdfText,
-              existingGames.games || [] // Passer les jeux existants
+              existingGames.games || [], // Passer les jeux existants
+              conversationHistory // Passer l'historique conversationnel
             );
           }),
-          map((game) => ({ game })),
+          map((result) => ({ game: result.game, rawResponse: result.rawResponse, userPrompt: result.userPrompt })),
           catchError((error) => {
             console.error('[Infrastructure] Erreur génération IA:', error);
             return of({ 

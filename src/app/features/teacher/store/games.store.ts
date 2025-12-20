@@ -7,7 +7,7 @@ import { toArray, concatMap } from 'rxjs/operators';
 import { GameType } from '../types/game-type';
 import { Game, GameCreate, GameUpdate } from '../types/game';
 import { Infrastructure } from '../components/infrastructure/infrastructure';
-import { GeneratedGameWithState, AIGameGenerationRequest } from '../types/ai-game-generation';
+import { GeneratedGameWithState, AIGameGenerationRequest, AIRawResponse } from '../types/ai-game-generation';
 
 export interface GamesState {
   games: Game[];
@@ -18,6 +18,8 @@ export interface GamesState {
   generatedGames: GeneratedGameWithState[];
   isGenerating: boolean;
   generationProgress: number;
+  // Historique des réponses de l'IA pour conversation
+  aiResponseHistory: Array<{userPrompt: string, aiResponse: AIRawResponse}>;
 }
 
 const initialState: GamesState = {
@@ -28,6 +30,7 @@ const initialState: GamesState = {
   generatedGames: [],
   isGenerating: false,
   generationProgress: 0,
+  aiResponseHistory: [],
 };
 
 export const GamesStore = signalStore(
@@ -235,6 +238,9 @@ export const GamesStore = signalStore(
                 }
               }
               
+              // Récupérer l'historique actuel
+              const currentHistory = store.aiResponseHistory();
+              
               return infrastructure.generateSingleGameWithAI({
                 ...request,
                 remainingGameTypeIds: remainingGameTypeIds, // Passer les types restants
@@ -244,13 +250,19 @@ export const GamesStore = signalStore(
                   game_type_id: g.game_type_id,
                   metadata: g.metadata ?? null
                 }))
-              }).pipe(
+              }, currentHistory).pipe(
                 tap((result) => {
                   if (result.error) {
                     throw new Error(result.error.message || 'Erreur génération jeu');
                   }
                   
-                  if (result.game) {
+                  if (result.game && result.rawResponse && result.userPrompt) {
+                    // Ajouter la nouvelle entrée à l'historique (limité à 10)
+                    const updatedHistory = [...currentHistory, {
+                      userPrompt: result.userPrompt,
+                      aiResponse: result.rawResponse
+                    }].slice(-10); // Garder les 10 dernières
+                    
                     // Ajouter le jeu généré à la liste
                     const newGame: GeneratedGameWithState = {
                       ...result.game,
@@ -261,6 +273,7 @@ export const GamesStore = signalStore(
                     const currentGames = store.generatedGames();
                     patchState(store, { 
                       generatedGames: [...currentGames, newGame],
+                      aiResponseHistory: updatedHistory,
                       generationProgress: Math.round(((i + 1) / numberOfGames) * 100)
                     });
                   }
@@ -376,7 +389,8 @@ export const GamesStore = signalStore(
       patchState(store, { 
         generatedGames: [], 
         isGenerating: false, 
-        generationProgress: 0 
+        generationProgress: 0,
+        aiResponseHistory: [] 
       });
     },
   }))

@@ -25,18 +25,20 @@ export class AIGameGeneratorService {
   /**
    * Génère UN SEUL jeu pédagogique via l'API DeepSeek (via proxy Supabase)
    * Pour générer plusieurs jeux, appeler cette méthode plusieurs fois
+   * Retourne le jeu transformé et la réponse brute de l'IA
    */
   generateSingleGame(
     request: AIGameGenerationRequest,
     gameTypes: GameType[],
     pdfText?: string,
-    existingGames: Game[] = [] // Jeux existants dans la base de données
-  ): Observable<GameCreate> {
+    existingGames: Game[] = [], // Jeux existants dans la base de données
+    conversationHistory: Array<{userPrompt: string, aiResponse: AIRawResponse}> = [] // Historique conversationnel
+  ): Observable<{game: GameCreate, rawResponse: AIRawResponse, userPrompt: string}> {
     // Modifier la requête pour générer 1 seul jeu
     const singleGameRequest = { ...request, numberOfGames: 1 };
-    const prompt = this.buildPrompt(singleGameRequest, gameTypes, pdfText, existingGames, request.alreadyGeneratedInSession || []);
+    const {messages, currentUserPrompt} = this.buildConversationMessages(singleGameRequest, gameTypes, pdfText, existingGames, conversationHistory);
 
-    return from(this.callDeepSeekProxy(prompt)).pipe(
+    return from(this.callDeepSeekProxy(messages)).pipe(
       map((response) => {
         const content = response.choices[0]?.message?.content;
         if (!content) {
@@ -48,13 +50,17 @@ export class AIGameGeneratorService {
           throw new Error('Aucun jeu généré par l\'IA');
         }
 
-        // Retourner uniquement le premier jeu
+        // Retourner le premier jeu transformé, la réponse brute et le prompt utilisateur
         const games = this.transformToGameCreate(
           parsedResponse.games,
           request.subjectId,
           gameTypes
         );
-        return games[0];
+        return {
+          game: games[0],
+          rawResponse: parsedResponse,
+          userPrompt: currentUserPrompt
+        };
       }),
       catchError((error) => {
         console.error('Erreur lors de la génération du jeu:', error);
@@ -78,8 +84,18 @@ export class AIGameGeneratorService {
     pdfText?: string
   ): Observable<GameCreate[]> {
     const prompt = this.buildPrompt(request, gameTypes, pdfText);
+    const messages = [
+      {
+        role: 'system',
+        content: 'Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.'
+      },
+      {
+        role: 'user',
+        content: prompt
+      }
+    ];
 
-    return from(this.callDeepSeekProxy(prompt)).pipe(
+    return from(this.callDeepSeekProxy(messages)).pipe(
       map((response) => {
         const content = response.choices[0]?.message?.content;
         if (!content) {
@@ -108,7 +124,7 @@ export class AIGameGeneratorService {
   /**
    * Appelle le proxy Supabase Edge Function pour DeepSeek
    */
-  private async callDeepSeekProxy(prompt: string): Promise<any> {
+  private async callDeepSeekProxy(messages: Array<{role: string, content: string}>): Promise<any> {
     // Obtenir la session Supabase pour l'authentification
     const {
       data: { session },
@@ -131,17 +147,7 @@ export class AIGameGeneratorService {
       headers,
       body: JSON.stringify({
         model: environment.deepseek.model,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+        messages,
         temperature: 0.7,
         response_format: { type: 'json_object' },
       }),
@@ -155,6 +161,48 @@ export class AIGameGeneratorService {
     }
 
     return await response.json();
+  }
+
+  /**
+   * Construit les messages conversationnels avec historique
+   * Retourne les messages et le prompt utilisateur actuel
+   */
+  private buildConversationMessages(
+    request: AIGameGenerationRequest,
+    gameTypes: GameType[],
+    pdfText?: string,
+    existingGames: Game[] = [],
+    conversationHistory: Array<{userPrompt: string, aiResponse: AIRawResponse}> = []
+  ): {messages: Array<{role: string, content: string}>, currentUserPrompt: string} {
+    const messages: Array<{role: string, content: string}> = [];
+    
+    // Message system
+    messages.push({
+      role: 'system',
+      content: 'Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.'
+    });
+    
+    // Historique conversationnel (limité à 10 dernières)
+    const recentHistory = conversationHistory.slice(-10); // Garder 10 dernières
+    for (const entry of recentHistory) {
+      messages.push({
+        role: 'user',
+        content: entry.userPrompt
+      });
+      messages.push({
+        role: 'assistant',
+        content: JSON.stringify({games: entry.aiResponse.games})
+      });
+    }
+    
+    // Nouvelle demande
+    const currentPrompt = this.buildPrompt(request, gameTypes, pdfText, existingGames, request.alreadyGeneratedInSession || []);
+    messages.push({
+      role: 'user',
+      content: currentPrompt
+    });
+    
+    return {messages, currentUserPrompt: currentPrompt};
   }
 
   /**
