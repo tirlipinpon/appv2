@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, catchError, throwError } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
-import { Game, GameCreate } from '../../types/game';
+import { GameCreate } from '../../types/game';
 import { GameType } from '../../types/game-type';
 import type {
   AIGameGenerationRequest,
@@ -30,13 +30,11 @@ export class AIGameGeneratorService {
   generateSingleGame(
     request: AIGameGenerationRequest,
     gameTypes: GameType[],
-    pdfText?: string,
-    existingGames: Game[] = [], // Jeux existants dans la base de données
-    conversationHistory: {userPrompt: string, aiResponse: AIRawResponse}[] = [] // Historique conversationnel
+    pdfText?: string
   ): Observable<{game: GameCreate, rawResponse: AIRawResponse, userPrompt: string}> {
     // Modifier la requête pour générer 1 seul jeu
     const singleGameRequest = { ...request, numberOfGames: 1 };
-    const {messages, currentUserPrompt} = this.buildConversationMessages(singleGameRequest, gameTypes, pdfText, existingGames, conversationHistory);
+    const {messages, currentUserPrompt} = this.buildConversationMessages(singleGameRequest, gameTypes, pdfText);
 
     return from(this.callDeepSeekProxy(messages)).pipe(
       map((response) => {
@@ -164,222 +162,269 @@ export class AIGameGeneratorService {
   }
 
   /**
-   * Construit le prompt system avec toutes les règles, types de jeux et format JSON
-   * Ce prompt est envoyé une seule fois au début de la conversation
+   * Construit le prompt système simplifié avec règles générales et format JSON
    */
-  private buildSystemPrompt(gameTypes: GameType[]): string {
-    // Construire la liste des types de jeux disponibles avec leur structure
-    const gameTypesDescription = gameTypes
-      .map((gt) => {
-        let typeSpecificInstructions = '';
-        
-        // Instructions spécifiques pour le type "case vide"
-        if (gt.name.toLowerCase() === 'case vide') {
-          typeSpecificInstructions = `
-EXEMPLE CONCRET pour "case vide":
-- Texte: "Le matin, le petit [chat] boit son bol de [lait]. Ensuite, il joue avec une [balle] dans le jardin."
-- Les mots entre crochets [mot] indiquent les cases vides à remplir
-- cases_vides: [{index: 1, reponse_correcte: "chat"}, {index: 2, reponse_correcte: "lait"}, {index: 3, reponse_correcte: "balle"}]
-- banque_mots: ["chat", "lait", "balle", "chien", "eau", "voiture"] (mots corrects + leurres)
-- IMPORTANT: Le texte doit contenir les mots entre crochets [mot] directement dans la phrase
-`;
-        }
-        
-        // Instructions spécifiques pour le type "memory"
-        if (gt.name.toLowerCase() === 'memory') {
-          typeSpecificInstructions = `
-EXEMPLE CONCRET pour "memory":
-- paires: EXACTEMENT 4 paires (pas plus, pas moins)
-- Chaque paire doit avoir une question et une réponse
-- Exemple: [{"question": "Quelle est la capitale de la France ?", "reponse": "Paris"}, {"question": "Combien font 2+2 ?", "reponse": "4"}, {"question": "Quelle couleur fait le mélange de rouge et bleu ?", "reponse": "Violet"}, {"question": "Combien de côtés a un triangle ?", "reponse": "3"}]
-- IMPORTANT: Le tableau paires doit contenir EXACTEMENT 4 éléments, ni plus ni moins
-`;
-        }
-        
-        // Instructions spécifiques pour le type "vrai/faux"
-        if (gt.name.toLowerCase() === 'vrai/faux' || gt.name.toLowerCase() === 'vrai-faux') {
-          typeSpecificInstructions = `
-EXEMPLE CONCRET pour "vrai/faux":
-- enonces: tableau d'énoncés avec texte et reponse_correcte (boolean)
-- Exemple: [{"texte": "Paris est la capitale de la France", "reponse_correcte": true}, {"texte": "2+2=5", "reponse_correcte": false}, {"texte": "L'eau bout à 100°C", "reponse_correcte": true}]
-- IMPORTANT: Chaque énoncé doit avoir "texte" (string) et "reponse_correcte" (boolean: true pour Vrai, false pour Faux)
-- Le champ "reponse_correcte" doit être un boolean, pas une string
-`;
-        }
-        
-        return `
-**${gt.name}**:
-${gt.description || 'Pas de description'}
-Structure metadata: ${this.getMetadataStructureDescription(gt.name)}
-${typeSpecificInstructions}
-`;
-      })
-      .join('\n');
-
+  private buildSystemPrompt(): string {
     return `Tu es un expert en pédagogie française spécialisé dans la création de jeux éducatifs adaptés à chaque niveau scolaire.
 
-TYPES DE JEUX DISPONIBLES:
-${gameTypesDescription}
+IMPORTANT - FORMAT DE RÉPONSE: Tu DOIS répondre en JSON uniquement. Retourne un JSON valide conforme à la structure fournie.
 
-RÈGLES STRICTES:
-1. Respecte STRICTEMENT la structure JSON fournie ci-dessous
-2. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: EXACTEMENT 4 paires (pas plus, pas moins)
-3. Vocabulaire adapté à l'âge de l'élève
-4. INTERDICTION ABSOLUE - IMAGES: Ne JAMAIS mentionner d'images, de photos, de dessins, de schémas ou de visuels dans les instructions ou questions. Les jeux n'ont PAS d'images pour le moment. Ne pas utiliser de phrases comme "Regarde l'image", "Observe la photo", "D'après l'image", etc.
-5. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
-6. IMPORTANT MEMORY: 
-   - Le champ "paires" doit contenir EXACTEMENT 4 paires (pas plus, pas moins)
-   - Chaque paire doit avoir une "question" (string) et une "reponse" (string)
-   - Ne JAMAIS créer plus ou moins de 4 paires
-7. IMPORTANT CASE VIDE: 
-   - Le champ "texte" doit contenir une phrase COMPLÈTE avec les mots à trouver entre crochets [mot]
-   - Exemple: "Le matin, le petit [chat] boit son bol de [lait]."
-   - Chaque [mot] dans le texte correspond à une case vide à remplir
-   - Le champ "cases_vides" doit lister chaque case avec son index (1, 2, 3...) et la réponse correcte
-   - Le champ "banque_mots" doit contenir les mots corrects + 2-4 mots leurres (mots incorrects mais plausibles)
-   - Ne PAS utiliser l'ancien format (debut_phrase, fin_phrase) - utiliser TOUJOURS le nouveau format (texte, cases_vides, banque_mots)
-8. IMPORTANT VRAI/FAUX:
-   - Le champ "enonces" doit être un tableau d'objets avec "texte" (string) et "reponse_correcte" (boolean)
-   - Exemple: [{"texte": "Paris est la capitale de la France", "reponse_correcte": true}, {"texte": "2+2=5", "reponse_correcte": false}]
-   - "reponse_correcte" doit être un boolean (true ou false), PAS une string ("vrai" ou "faux")
-   - Chaque énoncé doit être clair et testable (vrai ou faux sans ambiguïté)
-
-FORMAT JSON (OBLIGATOIRE):
-{
-  "games": [
-    {
-      "type_name": "qcm",
-      "question": "Question",
-      "instructions": "Instructions",
-      "metadata": { 
-        "propositions": ["Proposition A", "Proposition B", "Proposition C"],
-        "reponses_valides": ["Proposition A"]
-      },
-      "aides": ["Aide 1", "Aide 2"]
-    },
-    {
-      "type_name": "case vide",
-      "question": "Complète les phrases en remplissant les cases vides",
-      "instructions": "Lis la phrase et choisis les bons mots dans la banque",
-      "metadata": {
-        "texte": "Le matin, le petit [chat] boit son bol de [lait].",
-        "cases_vides": [
-          {"index": 1, "reponse_correcte": "chat"},
-          {"index": 2, "reponse_correcte": "lait"}
-        ],
-        "banque_mots": ["chat", "lait", "chien", "eau"]
-      },
-      "aides": ["Aide 1", "Aide 2"]
-    }
-  ]
-}
-
-IMPORTANT: 
-- JSON valide uniquement, aucun texte avant/après
-- Pour QCM: propositions doit contenir des réponses DIFFÉRENTES (ex: ["100", "200", "300"] pas ["345", "345", "345"])
-- reponses_valides doit contenir UNIQUEMENT les propositions qui sont correctes (tableau de strings)
-- Pour Memory: paires doit contenir EXACTEMENT 4 paires (pas plus, pas moins), chaque paire avec question et reponse (strings)`;
+RÈGLES GÉNÉRALES:
+1. Vocabulaire adapté à l'âge de l'élève
+2. INTERDICTION ABSOLUE - IMAGES: Ne JAMAIS mentionner d'images, de photos, de dessins, de schémas ou de visuels dans les instructions ou questions
+3. Réponds UNIQUEMENT en JSON valide, aucun texte avant/après
+4. Format attendu: JSON object avec la clé "games" contenant un tableau avec UN jeu`;
   }
 
   /**
-   * Résume l'historique conversationnel en extrayant les jeux générés
-   * Filtre les jeux déjà présents dans alreadyGeneratedInSession pour éviter la duplication
-   * Retourne un résumé compact des jeux déjà générés
+   * Construit un prompt spécifique optimisé selon le type de jeu
    */
-  private summarizeGameHistory(
-    conversationHistory: {userPrompt: string, aiResponse: AIRawResponse}[],
-    alreadyGeneratedInSession: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[] = []
+  private buildTypeSpecificPrompt(
+    request: AIGameGenerationRequest,
+    gameType: GameType,
+    pdfText?: string
   ): string {
-    if (conversationHistory.length === 0) {
-      return '';
+    const ageRange = getAgeFromSchoolYear(request.schoolYearLabel);
+    const typeName = gameType.name.toLowerCase();
+
+    // Contexte de base
+    let prompt = `CONTEXTE:
+- Matière: ${request.subjectName}
+- Thème: ${request.subject}
+- Niveau: ${request.schoolYearLabel} (${ageRange})
+- Difficulté: ${request.difficulty}/5
+${pdfText ? `- Contenu PDF: ${pdfText.substring(0, 800)}...\n` : ''}
+
+TYPE DE JEU: ${gameType.name}
+${gameType.description ? `Description: ${gameType.description}\n` : ''}
+`;
+
+    // Instructions spécifiques par type
+    switch (typeName) {
+      case 'qcm':
+        prompt += `INSTRUCTIONS SPÉCIFIQUES - QCM:
+- Crée une question à choix multiples avec 3 à 5 propositions
+- Chaque proposition doit être UNIQUE et DISTINCTE (ne jamais répéter la même réponse)
+- Une ou plusieurs propositions peuvent être correctes (indiquées dans reponses_valides)
+- Adapte le vocabulaire au niveau ${ageRange}
+${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides" expliquant comment utiliser ce QCM` : `- Ajoute une aide progressive dans le champ "aides"`}
+
+FORMAT JSON ATTENDU:
+{
+  "games": [{
+    "type_name": "qcm",
+    "question": "Question claire et adaptée au niveau",
+    "instructions": "Instructions pour répondre au QCM",
+    "metadata": {
+      "propositions": ["Proposition A", "Proposition B", "Proposition C", "Proposition D"],
+      "reponses_valides": ["Proposition A"]
+    },
+    "aides": ["Aide pédagogique"]
+  }]
+}
+`;
+        break;
+
+      case 'case vide':
+        prompt += `INSTRUCTIONS SPÉCIFIQUES - CASE VIDE:
+- Crée une phrase COMPLÈTE avec 2 à 4 mots à trouver placés entre crochets [mot]
+- Chaque [mot] dans le texte correspond à une case vide à remplir
+- Crée une banque de mots avec les mots corrects + 2 à 4 mots leurres (plausibles mais incorrects)
+- Les mots doivent être adaptés au niveau ${ageRange}
+${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` : `- Ajoute une aide progressive dans le champ "aides"`}
+
+FORMAT JSON ATTENDU:
+{
+  "games": [{
+    "type_name": "case vide",
+    "question": "Complète les phrases en remplissant les cases vides",
+    "instructions": "Lis la phrase et choisis les bons mots dans la banque",
+    "metadata": {
+      "texte": "Le matin, le petit [chat] boit son bol de [lait].",
+      "cases_vides": [
+        {"index": 1, "reponse_correcte": "chat"},
+        {"index": 2, "reponse_correcte": "lait"}
+      ],
+      "banque_mots": ["chat", "lait", "chien", "eau", "lapin", "jus"]
+    },
+    "aides": ["Aide pédagogique"]
+  }]
+}
+`;
+        break;
+
+      case 'memory':
+        prompt += `INSTRUCTIONS SPÉCIFIQUES - MEMORY:
+- Crée EXACTEMENT 4 paires question/réponse (pas plus, pas moins)
+- Chaque paire doit être claire et adaptée au niveau ${ageRange}
+- Les questions et réponses doivent être liées au thème "${request.subject}"
+${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` : `- Ajoute une aide progressive dans le champ "aides"`}
+
+FORMAT JSON ATTENDU:
+{
+  "games": [{
+    "type_name": "memory",
+    "question": "Associe chaque question à sa réponse",
+    "instructions": "Trouve les 4 paires question/réponse correspondantes",
+    "metadata": {
+      "paires": [
+        {"question": "Question 1", "reponse": "Réponse 1"},
+        {"question": "Question 2", "reponse": "Réponse 2"},
+        {"question": "Question 3", "reponse": "Réponse 3"},
+        {"question": "Question 4", "reponse": "Réponse 4"}
+      ]
+    },
+    "aides": ["Aide pédagogique"]
+  }]
+}
+`;
+        break;
+
+      case 'vrai/faux':
+      case 'vrai-faux':
+        prompt += `INSTRUCTIONS SPÉCIFIQUES - VRAI/FAUX:
+- Crée 3 à 6 énoncés clairs et testables (vrai ou faux sans ambiguïté)
+- Chaque énoncé doit être adapté au niveau ${ageRange}
+- Le champ "reponse_correcte" doit être un boolean (true pour Vrai, false pour Faux)
+${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` : `- Ajoute une aide progressive dans le champ "aides"`}
+
+FORMAT JSON ATTENDU:
+{
+  "games": [{
+    "type_name": "vrai/faux",
+    "question": "Indique si chaque énoncé est vrai ou faux",
+    "instructions": "Lis chaque énoncé et indique s'il est vrai ou faux",
+    "metadata": {
+      "enonces": [
+        {"texte": "Énoncé 1", "reponse_correcte": true},
+        {"texte": "Énoncé 2", "reponse_correcte": false},
+        {"texte": "Énoncé 3", "reponse_correcte": true}
+      ]
+    },
+    "aides": ["Aide pédagogique"]
+  }]
+}
+`;
+        break;
+
+      case 'chronologie':
+        prompt += `INSTRUCTIONS SPÉCIFIQUES - CHRONOLOGIE:
+- Crée 3 à 8 éléments à ordonner dans le temps ou dans un ordre logique
+- Les éléments doivent être adaptés au niveau ${ageRange}
+- L'ordre correct doit être clairement défini
+${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` : `- Ajoute une aide progressive dans le champ "aides"`}
+
+FORMAT JSON ATTENDU:
+{
+  "games": [{
+    "type_name": "chronologie",
+    "question": "Classe les éléments dans le bon ordre",
+    "instructions": "Réorganise les éléments dans l'ordre chronologique/logique correct",
+    "metadata": {
+      "mots": ["Élément 1", "Élément 2", "Élément 3", "Élément 4"],
+      "ordre_correct": ["Élément 1", "Élément 2", "Élément 3", "Élément 4"]
+    },
+    "aides": ["Aide pédagogique"]
+  }]
+}
+`;
+        break;
+
+      case 'liens':
+        prompt += `INSTRUCTIONS SPÉCIFIQUES - LIENS:
+- Crée 3 à 6 paires de mots/concepts à associer
+- Les associations doivent être logiques et adaptées au niveau ${ageRange}
+- Chaque mot doit avoir une réponse correspondante unique
+${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` : `- Ajoute une aide progressive dans le champ "aides"`}
+
+FORMAT JSON ATTENDU:
+{
+  "games": [{
+    "type_name": "liens",
+    "question": "Associe chaque mot à sa réponse correspondante",
+    "instructions": "Relie chaque mot de la colonne de gauche à sa réponse dans la colonne de droite",
+    "metadata": {
+      "mots": ["Mot 1", "Mot 2", "Mot 3"],
+      "reponses": ["Réponse 1", "Réponse 2", "Réponse 3"],
+      "liens": [
+        {"mot": "Mot 1", "reponse": "Réponse 1"},
+        {"mot": "Mot 2", "reponse": "Réponse 2"},
+        {"mot": "Mot 3", "reponse": "Réponse 3"}
+      ]
+    },
+    "aides": ["Aide pédagogique"]
+  }]
+}
+`;
+        break;
+
+      case 'reponse libre':
+        prompt += `INSTRUCTIONS SPÉCIFIQUES - RÉPONSE LIBRE:
+- Crée une question ouverte nécessitant une réponse textuelle
+- La réponse attendue doit être claire et adaptée au niveau ${ageRange}
+- Accepte différentes formulations de la même réponse correcte
+${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` : `- Ajoute une aide progressive dans le champ "aides"`}
+
+FORMAT JSON ATTENDU:
+{
+  "games": [{
+    "type_name": "reponse libre",
+    "question": "Question ouverte nécessitant une réponse écrite",
+    "instructions": "Réponds à la question en utilisant tes propres mots",
+    "metadata": {
+      "reponse_valide": "Réponse attendue (acceptera les variantes)"
+    },
+    "aides": ["Aide pédagogique"]
+  }]
+}
+`;
+        break;
+
+      default:
+        prompt += `INSTRUCTIONS:
+- Crée un jeu adapté au niveau ${ageRange}
+- Respecte la structure metadata pour le type "${gameType.name}"
+${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` : `- Ajoute une aide progressive dans le champ "aides"`}
+`;
     }
 
-    // Extraire tous les jeux générés de l'historique
-    const allGeneratedGames: {type: string, question: string | null}[] = [];
-    conversationHistory.forEach(entry => {
-      if (entry.aiResponse.games) {
-        entry.aiResponse.games.forEach(game => {
-          allGeneratedGames.push({
-            type: game.type_name,
-            question: game.question
-          });
-        });
-      }
-    });
+    prompt += `\nRéponds en JSON valide selon le format indiqué ci-dessus.`;
 
-    if (allGeneratedGames.length === 0) {
-      return '';
-    }
-
-    // Filtrer les jeux déjà présents dans alreadyGeneratedInSession pour éviter la duplication
-    const filteredGames = allGeneratedGames.filter(historyGame => {
-      // Vérifier si ce jeu est déjà dans alreadyGeneratedInSession
-      return !alreadyGeneratedInSession.some(sessionGame => {
-        // Comparer par question et type (on ne peut pas comparer par metadata car la structure peut varier)
-        return sessionGame.question === historyGame.question;
-      });
-    });
-
-    if (filteredGames.length === 0) {
-      return ''; // Tous les jeux sont déjà dans alreadyGeneratedInSession
-    }
-
-    // Créer un résumé compact : [Type] Angle pédagogique
-    const summary = filteredGames
-      .slice(-5) // Garder les 5 derniers
-      .map((game, index) => {
-        const questionPreview = game.question 
-          ? (game.question.length > 40 ? game.question.substring(0, 40) + '...' : game.question)
-          : 'Sans question';
-        return `${index + 1}. [${game.type}] ${questionPreview}`;
-      })
-      .join('\n');
-
-    return `Jeux déjà générés dans cette session (${filteredGames.length} total après filtrage, 5 derniers):
-${summary}`;
+    return prompt;
   }
 
   /**
-   * Construit les messages conversationnels avec historique
+   * Construit les messages conversationnels avec prompt spécifique par type de jeu
    * Retourne les messages et le prompt utilisateur actuel
    */
   private buildConversationMessages(
     request: AIGameGenerationRequest,
     gameTypes: GameType[],
-    pdfText?: string,
-    existingGames: Game[] = [],
-    conversationHistory: {userPrompt: string, aiResponse: AIRawResponse}[] = []
+    pdfText?: string
   ): {messages: {role: string, content: string}[], currentUserPrompt: string} {
     const messages: {role: string, content: string}[] = [];
-    const isFirstMessage = conversationHistory.length === 0;
     
-    // Message system (uniquement au premier message)
-    if (isFirstMessage) {
-      messages.push({
-        role: 'system',
-        content: this.buildSystemPrompt(gameTypes)
-      });
+    // Message system toujours présent
+    messages.push({
+      role: 'system',
+      content: this.buildSystemPrompt()
+    });
+    
+    // Déterminer le type de jeu à utiliser
+    const typesToUse = request.remainingGameTypeIds ?? request.selectedGameTypeIds;
+    let selectedGameType: GameType | undefined;
+    
+    if (typesToUse && typesToUse.length > 0) {
+      selectedGameType = gameTypes.find(gt => typesToUse.includes(gt.id));
     }
     
-    // Résumer l'historique au lieu de tout inclure
-    // Filtrer les jeux déjà dans alreadyGeneratedInSession pour éviter la duplication
-    const historySummary = this.summarizeGameHistory(conversationHistory, request.alreadyGeneratedInSession || []);
-    
-    // Garder seulement les 3-5 derniers échanges complets pour le contexte immédiat
-    const recentHistory = conversationHistory.slice(-3); // Garder 3 derniers échanges
-    for (const entry of recentHistory) {
-      messages.push({
-        role: 'user',
-        content: entry.userPrompt
-      });
-      messages.push({
-        role: 'assistant',
-        content: JSON.stringify({games: entry.aiResponse.games})
-      });
+    // Si aucun type sélectionné, prendre le premier disponible
+    if (!selectedGameType) {
+      selectedGameType = gameTypes[0];
     }
     
-    // Nouvelle demande avec résumé d'historique si disponible
-    const currentPrompt = this.buildPrompt(request, gameTypes, pdfText, existingGames, request.alreadyGeneratedInSession || [], historySummary);
+    // Construire le prompt spécifique au type de jeu
+    const currentPrompt = this.buildTypeSpecificPrompt(request, selectedGameType, pdfText);
     messages.push({
       role: 'user',
       content: currentPrompt
@@ -389,126 +434,28 @@ ${summary}`;
   }
 
   /**
-   * Construit le prompt utilisateur allégé (contexte spécifique uniquement)
-   * Les règles générales et types de jeux sont dans le system prompt
+   * @deprecated Cette méthode n'est plus utilisée - remplacée par buildTypeSpecificPrompt
+   * Conservée pour compatibilité avec generateGames() si nécessaire
    */
   private buildPrompt(
     request: AIGameGenerationRequest,
     gameTypes: GameType[],
-    pdfText?: string,
-    existingGames: Game[] = [],
-    alreadyGeneratedInSession: { question: string | null; game_type_id: string; metadata: Record<string, unknown> | null }[] = [],
-    historySummary = ''
+    pdfText?: string
   ): string {
-    const ageRange = getAgeFromSchoolYear(request.schoolYearLabel);
-
-    // Filtrer les types de jeux selon la sélection de l'utilisateur
-    let typeSelectionInstructions = '';
-    
-    // Utiliser remainingGameTypeIds si disponible (priorité), sinon selectedGameTypeIds
+    // Déterminer le type de jeu à utiliser
     const typesToUse = request.remainingGameTypeIds ?? request.selectedGameTypeIds;
+    let selectedGameType: GameType | undefined;
     
     if (typesToUse && typesToUse.length > 0) {
-      const availableGameTypes = gameTypes.filter(gt => typesToUse.includes(gt.id));
-      const selectedTypeNames = availableGameTypes.map(gt => gt.name);
-      const numberOfRemainingTypes = typesToUse.length;
-
-      if (numberOfRemainingTypes === 1) {
-        // Un seul type restant : forcer ce type
-        typeSelectionInstructions = `
-TYPE OBLIGATOIRE:
-- Tu DOIS créer ce jeu du type "${selectedTypeNames[0]}" uniquement.
-- Ne PAS utiliser d'autres types de jeux.
-`;
-      } else if (numberOfRemainingTypes > 1) {
-        // Plusieurs types restants : choisir parmi eux
-        typeSelectionInstructions = `
-TYPES AUTORISÉS (choisir UN parmi ceux-ci):
-- Tu DOIS choisir UN type parmi: ${selectedTypeNames.join(', ')}.
-- IMPORTANT: Utilise un type qui n'a PAS encore été utilisé dans les jeux précédents.
-- Si tous les types ont déjà été utilisés, choisis celui qui a été le moins utilisé.
-`;
-      }
+      selectedGameType = gameTypes.find(gt => typesToUse.includes(gt.id));
     }
-
-    // Construire la liste des jeux existants pour éviter les doublons
-    // Distinguer les jeux de la DB des jeux de la session
-    const dbGames = existingGames;
-    const sessionGames = alreadyGeneratedInSession.map(g => ({
-      question: g.question,
-      game_type_id: g.game_type_id,
-      metadata: g.metadata,
-      instructions: null
-    } as Game));
     
-    const allExistingGames = [...dbGames, ...sessionGames];
-    
-    let existingGamesSection = '';
-    if (allExistingGames.length > 0) {
-      const MAX_GAMES_TO_SHOW = 5; // Réduire à 5 pour alléger
-      const totalGames = allExistingGames.length;
-      const dbGamesCount = dbGames.length;
-      const sessionGamesCount = sessionGames.length;
-      
-      // Prendre les jeux les plus récents
-      const recentGames = allExistingGames.slice(-MAX_GAMES_TO_SHOW).reverse();
-      
-      // Créer un résumé statistique des types de jeux
-      const gameTypeStats = this.getGameTypeStatistics(allExistingGames, gameTypes);
-      
-      // Format ultra-compact pour chaque jeu (une seule ligne)
-      const existingGamesList = recentGames
-        .map((game, index) => {
-          const gameTypeName = gameTypes.find(gt => gt.id === game.game_type_id)?.name || 'Inconnu';
-          // Limiter la question à 50 caractères max
-          const questionPreview = game.question 
-            ? (game.question.length > 50 ? game.question.substring(0, 50) + '...' : game.question)
-            : 'Sans question';
-          // Distinguer les jeux de la session avec un préfixe
-          const isSessionGame = sessionGames.some(sg => sg.question === game.question && sg.game_type_id === game.game_type_id);
-          const prefix = isSessionGame ? '[SESSION]' : '[DB]';
-          return `${index + 1}. ${prefix} [${gameTypeName}] ${questionPreview}`;
-        })
-        .join('\n');
-
-      existingGamesSection = `
-JEUX EXISTANTS (${totalGames} total: ${dbGamesCount} en base, ${sessionGamesCount} dans cette session):
-Distribution: ${gameTypeStats}
-Derniers exemples (${recentGames.length}):
-${existingGamesList}
-
-IMPORTANT - ÉVITER LES DOUBLONS:
-- Ne PAS créer de jeux similaires aux ${totalGames} jeux existants
-- Varier les types (distribution actuelle: ${gameTypeStats})
-- Proposer des angles NOUVEAUX et des approches différentes
-- Créer des jeux ORIGINAUX qui complètent l'existant
-`;
+    // Si aucun type sélectionné, prendre le premier disponible
+    if (!selectedGameType) {
+      selectedGameType = gameTypes[0];
     }
-
-    // Construire le prompt allégé
-    const prompt = `CONTEXTE:
-- Matière: ${request.subjectName}
-- Thème: ${request.subject}
-- Niveau: ${request.schoolYearLabel} (${ageRange})
-- Difficulté: ${request.difficulty}/5
-${pdfText ? `- PDF: ${pdfText.substring(0, 1000)}...` : ''}
-
-${existingGamesSection}
-
-${historySummary ? `${historySummary}\n` : ''}
-
-${typeSelectionInstructions}
-
-CONSIGNES SPÉCIFIQUES:
-1. Génère ${request.numberOfGames} jeu${request.numberOfGames > 1 ? 'x' : ''} varié${request.numberOfGames > 1 ? 's' : ''} pour ${request.schoolYearLabel}
-2. ${allExistingGames.length > 0 ? 'ÉVITE les doublons avec les jeux existants. ' : ''}Adapte au niveau ${ageRange}
-3. ${request.selectedGameTypeIds && request.selectedGameTypeIds.length > 0 
-    ? 'Respecte STRICTEMENT les types autorisés ci-dessus.' 
-    : `Répartis les types intelligemment${allExistingGames.length > 0 ? ' (privilégie les types peu utilisés)' : ''}`}
-${request.requestHelp ? `4. IMPORTANT - AIDE PÉDAGOGIQUE: Pour chaque jeu, ajoute une aide pédagogique détaillée dans le champ "aides". Cette aide doit expliquer comment utiliser le jeu, donner des conseils pédagogiques, et suggérer des variantes ou extensions possibles. L'aide doit être adaptée au niveau ${ageRange} et au thème ${request.subject}.` : '4. 1 aide progressive par jeu'}
-${allExistingGames.length > 0 ? '5. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}`;
-
-    return prompt;
+    
+    return this.buildTypeSpecificPrompt(request, selectedGameType, pdfText);
   }
 
   /**
@@ -675,73 +622,6 @@ ${allExistingGames.length > 0 ? '5. CRÉATIVITÉ: Angles NOUVEAUX, approches var
       structures[typeName.toLowerCase()] ||
       '{ structure spécifique au type }'
     );
-  }
-
-  /**
-   * Calcule les statistiques de distribution des types de jeux
-   */
-  private getGameTypeStatistics(games: Game[], gameTypes: GameType[]): string {
-    const stats = new Map<string, number>();
-    
-    games.forEach(game => {
-      const gameTypeName = gameTypes.find(gt => gt.id === game.game_type_id)?.name || 'Inconnu';
-      stats.set(gameTypeName, (stats.get(gameTypeName) || 0) + 1);
-    });
-    
-    const statsArray = Array.from(stats.entries())
-      .map(([type, count]) => `${type}:${count}`)
-      .join(' ');
-    
-    return statsArray || 'Aucune';
-  }
-
-  /**
-   * Formate les métadonnées d'un jeu pour l'affichage dans le prompt
-   */
-  private formatMetadataForPrompt(metadata: Record<string, unknown>, gameTypeName: string): string {
-    const typeName = gameTypeName.toLowerCase();
-    
-    try {
-      if (typeName === 'qcm') {
-        const qcm = metadata as unknown as { propositions?: string[]; reponses_valides?: string[] };
-        const propositions = qcm.propositions?.slice(0, 3).join(', ') || '';
-        return `${qcm.propositions?.length || 0} propositions${propositions ? ` (ex: ${propositions}...)` : ''}`;
-      }
-      
-      if (typeName === 'case vide') {
-        const caseVide = metadata as unknown as { debut_phrase?: string; fin_phrase?: string };
-        const phrase = `${caseVide.debut_phrase || ''} ___ ${caseVide.fin_phrase || ''}`;
-        return phrase.length > 80 ? `"${phrase.substring(0, 80)}..."` : `"${phrase}"`;
-      }
-      
-      if (typeName === 'reponse libre') {
-        const reponseLibre = metadata as unknown as { reponse_valide?: string };
-        const reponse = reponseLibre.reponse_valide || 'N/A';
-        return reponse.length > 60 ? `Réponse: "${reponse.substring(0, 60)}..."` : `Réponse: "${reponse}"`;
-      }
-      
-      if (typeName === 'liens') {
-        const liens = metadata as unknown as { mots?: string[] };
-        const mots = liens.mots?.slice(0, 3).join(', ') || '';
-        return `${liens.mots?.length || 0} mots à relier${mots ? ` (ex: ${mots}...)` : ''}`;
-      }
-      
-      if (typeName === 'chronologie') {
-        const chronologie = metadata as unknown as { mots?: string[] };
-        const mots = chronologie.mots?.slice(0, 3).join(', ') || '';
-        return `${chronologie.mots?.length || 0} éléments à ordonner${mots ? ` (ex: ${mots}...)` : ''}`;
-      }
-      
-      if (typeName === 'memory') {
-        const memory = metadata as unknown as { paires?: { question?: string; reponse?: string }[] };
-        const paires = memory.paires?.slice(0, 2).map(p => `${p.question}/${p.reponse}`).join(', ') || '';
-        return `${memory.paires?.length || 0} paire(s)${paires ? ` (ex: ${paires}...)` : ''}`;
-      }
-      
-      return JSON.stringify(metadata).substring(0, 100);
-    } catch {
-      return JSON.stringify(metadata).substring(0, 100);
-    }
   }
 
   /**

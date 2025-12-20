@@ -131,14 +131,10 @@ export class Infrastructure {
 
   // ===== Génération IA =====
   generateSingleGameWithAI(
-    request: AIGameGenerationRequest,
-    conversationHistory: Array<{userPrompt: string, aiResponse: AIRawResponse}> = []
+    request: AIGameGenerationRequest
   ): Observable<{ game?: GameCreate; rawResponse?: AIRawResponse; userPrompt?: string; error?: PostgrestError | null }> {
-    return forkJoin({
-      gameTypes: this.getGameTypes(),
-      existingGames: this.getGamesBySubject(request.subjectId) // Récupérer les jeux existants
-    }).pipe(
-      switchMap(({ gameTypes, existingGames }) => {
+    return this.getGameTypes().pipe(
+      switchMap((gameTypes) => {
         if (gameTypes.error) {
           return of({ error: gameTypes.error });
         }
@@ -153,9 +149,7 @@ export class Infrastructure {
             return this.aiGameGeneratorService.generateSingleGame(
               request,
               gameTypes.gameTypes,
-              pdfText,
-              existingGames.games || [], // Passer les jeux existants
-              conversationHistory // Passer l'historique conversationnel
+              pdfText
             );
           }),
           map((result) => ({ game: result.game, rawResponse: result.rawResponse, userPrompt: result.userPrompt })),

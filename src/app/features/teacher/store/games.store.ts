@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
 import { withDevtools } from "@angular-architects/ngrx-toolkit";
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap, catchError, of, forkJoin, concat, range } from 'rxjs';
+import { pipe, switchMap, tap, catchError, of, forkJoin, range } from 'rxjs';
 import { toArray, concatMap } from 'rxjs/operators';
 import { GameType } from '../types/game-type';
 import { Game, GameCreate, GameUpdate } from '../types/game';
@@ -19,7 +19,7 @@ export interface GamesState {
   isGenerating: boolean;
   generationProgress: number;
   // Historique des réponses de l'IA pour conversation
-  aiResponseHistory: Array<{userPrompt: string, aiResponse: AIRawResponse}>;
+  aiResponseHistory: {userPrompt: string, aiResponse: AIRawResponse}[];
 }
 
 const initialState: GamesState = {
@@ -189,7 +189,7 @@ export const GamesStore = signalStore(
     // Méthodes pour la génération IA (séquentielle - jeu par jeu)
     generateGamesWithAI: rxMethod<AIGameGenerationRequest>(
       pipe(
-        tap((request) => {
+        tap(() => {
           patchState(store, { isGenerating: true, generationProgress: 0, error: [], generatedGames: [] });
         }),
         switchMap((request) => {
@@ -243,14 +243,8 @@ export const GamesStore = signalStore(
               
               return infrastructure.generateSingleGameWithAI({
                 ...request,
-                remainingGameTypeIds: remainingGameTypeIds, // Passer les types restants
-                // Passer les jeux déjà générés dans cette session pour éviter les doublons
-                alreadyGeneratedInSession: store.generatedGames().map(g => ({
-                  question: g.question ?? null,
-                  game_type_id: g.game_type_id,
-                  metadata: g.metadata ?? null
-                }))
-              }, currentHistory).pipe(
+                remainingGameTypeIds: remainingGameTypeIds // Passer les types restants
+              }).pipe(
                 tap((result) => {
                   if (result.error) {
                     throw new Error(result.error.message || 'Erreur génération jeu');
@@ -319,8 +313,10 @@ export const GamesStore = signalStore(
 
           // Créer tous les jeux en parallèle
           const createObservables = gamesToSave.map(game => {
+            // On retire uniquement les propriétés spécifiques à l'UI avant l'envoi à l'API
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { _tempId, _isEditing, ...gameData } = game;
-            return infrastructure.createGame(gameData);
+            return infrastructure.createGame(gameData as GameCreate);
           });
 
           return forkJoin(createObservables).pipe(
