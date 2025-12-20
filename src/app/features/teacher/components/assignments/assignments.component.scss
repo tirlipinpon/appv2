@@ -7,7 +7,7 @@
 .form-group input:disabled,.form-group textarea:disabled,.form-group select:disabled{background:#e9ecef;cursor:not-allowed}
 .form-actions{display:flex;gap:1rem;margin-top:2rem}
 .assignments-list{display:grid;gap:1rem;margin-top:1.5rem}
-.assignment-card{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #ddd;border-radius:8px;padding:1rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.assignment-card{display:grid;flex-wrap:wrap;justify-content:space-between;align-items:center;background:#fff;border:1px solid #ddd;border-radius:8px;padding:1rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .assignment-card .assignment-info{flex:1}
 .assignment-card .assignment-info h4{margin:0 0 .5rem 0;font-size:1.1rem}
 .assignment-card .assignment-info p{margin:.25rem 0;color:#666;font-size:.9rem}

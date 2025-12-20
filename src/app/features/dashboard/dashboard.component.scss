@@ -224,9 +224,39 @@
       padding-top: 2rem;
       border-top: 1px solid #eee;
 
-      h3 {
+      .assignments-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 1rem;
-        color: #333;
+        flex-wrap: wrap;
+        gap: 1rem;
+
+        h3 {
+          margin: 0;
+          color: #333;
+        }
+
+        .school-filter {
+          padding: 0.5rem 1rem;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          font-size: 0.95rem;
+          background: white;
+          color: #333;
+          cursor: pointer;
+          min-width: 200px;
+
+          &:hover {
+            border-color: #667eea;
+          }
+
+          &:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+          }
+        }
       }
 
       .assignments-list {
@@ -237,12 +267,11 @@
 
         .assignment-card {
           @include card-base;
-          display: flex;
-          flex-direction: column;
+          display: grid;
+          flex-wrap: wrap;
           gap: $spacing-md;
 
           @include respond-to(md) {
-            flex-direction: row;
             justify-content: space-between;
             align-items: center;
           }

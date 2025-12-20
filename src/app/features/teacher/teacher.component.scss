@@ -227,7 +227,8 @@
 }
 
 .assignment-card {
-  display: flex;
+  display: grid;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   background: white;

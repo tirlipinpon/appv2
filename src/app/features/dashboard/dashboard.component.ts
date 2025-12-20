@@ -46,6 +46,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly teacherButtonText = computed(() => this.hasTeacher() ? 'Éditer mon profil' : 'Créer mon profil');
   readonly teacherAssignments = computed(() => this.teacherAssignmentStore.assignments());
   readonly hasAssignments = computed(() => this.teacherAssignmentStore.hasAssignments());
+  
+  // Filtre par école
+  readonly selectedSchoolId = signal<string | null>(null); // null = toutes les écoles
+  
+  // Liste des écoles uniques depuis les affectations
+  readonly uniqueSchools = computed(() => {
+    const assignments = this.teacherAssignments();
+    const schools = this.teacherAssignmentStore.schools();
+    const schoolIds = new Set(assignments.map(a => a.school_id).filter(Boolean));
+    
+    return schools
+      .filter(school => schoolIds.has(school.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+  
+  // Affectations filtrées par école
+  readonly filteredAssignments = computed(() => {
+    const assignments = this.teacherAssignments();
+    const selectedId = this.selectedSchoolId();
+    
+    if (!selectedId) {
+      return assignments;
+    }
+    
+    return assignments.filter(a => a.school_id === selectedId);
+  });
+  
+  // Vérifier si les affectations filtrées sont vides
+  readonly hasFilteredAssignments = computed(() => this.filteredAssignments().length > 0);
 
   // Computed signals pour les enfants
   readonly children = computed(() => this.childStore.children());

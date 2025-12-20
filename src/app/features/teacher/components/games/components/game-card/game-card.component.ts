@@ -52,9 +52,12 @@ export class GameCardComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    // Réinitialiser le mode édition si le jeu change
-    if (changes['game'] && !changes['game'].firstChange) {
-      this.initializeEditMode();
+    // S'assurer que les jeux restent fermés par défaut même si le jeu change
+    if (changes['game']) {
+      // Réinitialiser à l'état fermé
+      this.isEditing.set(false);
+      this.isExpanded.set(false);
+      // Ne pas initialiser le mode édition automatiquement
     }
   }
   readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);

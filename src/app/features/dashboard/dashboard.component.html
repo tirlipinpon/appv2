@@ -20,10 +20,22 @@
 
       <!-- Section Affectations pour les professeurs -->
       <div *ngIf="activeRole === 'prof' && hasTeacher()" class="assignments-section">
-        <h3>Mes Affectations</h3>
+        <div class="assignments-header">
+          <h3>Mes Affectations</h3>
+          <select 
+            *ngIf="uniqueSchools().length > 1" 
+            class="school-filter"
+            [value]="selectedSchoolId() || ''"
+            (change)="selectedSchoolId.set($any($event.target).value || null)">
+            <option value="">Toutes les écoles</option>
+            <option *ngFor="let school of uniqueSchools()" [value]="school.id">
+              {{ school.name }}
+            </option>
+          </select>
+        </div>
         
-        <div *ngIf="hasAssignments()" class="assignments-list">
-          <div *ngFor="let assignment of teacherAssignments()" class="assignment-card">
+        <div *ngIf="hasFilteredAssignments()" class="assignments-list">
+          <div *ngFor="let assignment of filteredAssignments()" class="assignment-card">
             <div class="assignment-info">
               <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
               <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
@@ -49,6 +61,9 @@
           </div>
         </div>
 
+        <div *ngIf="hasAssignments() && !hasFilteredAssignments()" class="no-assignments">
+          <p>Aucune affectation pour l'école sélectionnée.</p>
+        </div>
         <div *ngIf="!hasAssignments()" class="no-assignments">
           <p>Vous n'avez pas encore d'affectation.</p>
           <a 

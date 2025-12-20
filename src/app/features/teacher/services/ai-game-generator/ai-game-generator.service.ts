@@ -309,19 +309,20 @@ CONSIGNES:
 5. Respecte STRICTEMENT la structure JSON
 6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: EXACTEMENT 4 paires (pas plus, pas moins)
 7. Vocabulaire adapté à l'âge
-8. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
-9. IMPORTANT MEMORY: 
+8. INTERDICTION ABSOLUE - IMAGES: Ne JAMAIS mentionner d'images, de photos, de dessins, de schémas ou de visuels dans les instructions ou questions. Les jeux n'ont PAS d'images pour le moment. Ne pas utiliser de phrases comme "Regarde l'image", "Observe la photo", "D'après l'image", etc.
+9. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
+10. IMPORTANT MEMORY: 
    - Le champ "paires" doit contenir EXACTEMENT 4 paires (pas plus, pas moins)
    - Chaque paire doit avoir une "question" (string) et une "reponse" (string)
    - Ne JAMAIS créer plus ou moins de 4 paires
-10. IMPORTANT CASE VIDE: 
+11. IMPORTANT CASE VIDE: 
    - Le champ "texte" doit contenir une phrase COMPLÈTE avec les mots à trouver entre crochets [mot]
    - Exemple: "Le matin, le petit [chat] boit son bol de [lait]."
    - Chaque [mot] dans le texte correspond à une case vide à remplir
    - Le champ "cases_vides" doit lister chaque case avec son index (1, 2, 3...) et la réponse correcte
    - Le champ "banque_mots" doit contenir les mots corrects + 2-4 mots leurres (mots incorrects mais plausibles)
    - Ne PAS utiliser l'ancien format (debut_phrase, fin_phrase) - utiliser TOUJOURS le nouveau format (texte, cases_vides, banque_mots)
-${allExistingGames.length > 0 ? '11. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
+${allExistingGames.length > 0 ? '12. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
 
 FORMAT JSON (OBLIGATOIRE):
 {
