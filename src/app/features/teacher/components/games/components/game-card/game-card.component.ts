@@ -44,11 +44,11 @@ export class GameCardComponent implements OnInit, OnChanges {
   @Output() delete = new EventEmitter<string>();
   @Output() update = new EventEmitter<{ gameId: string; updates: GameUpdate }>();
 
-  readonly isEditing = signal<boolean>(true); // Mode édition par défaut
+  readonly isEditing = signal<boolean>(false); // Mode lecture par défaut
+  readonly isExpanded = signal<boolean>(false); // État du toggle (fermé par défaut)
 
   ngOnInit(): void {
-    // Initialiser le mode édition au démarrage
-    this.initializeEditMode();
+    // Ne pas initialiser le mode édition au démarrage, laisser en mode lecture
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -72,10 +72,22 @@ export class GameCardComponent implements OnInit, OnChanges {
     return this.gameTypeName;
   });
 
+  toggleExpanded(): void {
+    // Si on est en mode édition, sortir du mode édition et refermer
+    if (this.isEditing()) {
+      this.isEditing.set(false);
+      this.isExpanded.set(false);
+    } else {
+      // Sinon, simplement toggle l'état expanded
+      this.isExpanded.set(!this.isExpanded());
+    }
+  }
+
   toggleEdit(): void {
     if (!this.isEditing()) {
       // Entrer en mode édition
       this.initializeEditMode();
+      this.isExpanded.set(true); // Ouvrir le toggle lors de l'édition
     } else {
       // Sortir du mode édition
       this.isEditing.set(false);

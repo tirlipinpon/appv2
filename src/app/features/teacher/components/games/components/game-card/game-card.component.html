@@ -1,20 +1,39 @@
-<li class="game-item" [class.editing]="isEditing()">
-  <div class="game-header">
-    <h4>{{ game.name }}</h4>
-    <span class="game-type-badge">{{ currentGameTypeName() }}</span>
+<li class="game-item" [class.editing]="isEditing()" [class.expanded]="isExpanded()">
+  <!-- Header cliquable pour toggle -->
+  <div class="game-header-toggle" (click)="toggleExpanded()">
+    <div class="game-header-info">
+      <h4>{{ game.name }}</h4>
+      <span class="game-type-badge">{{ currentGameTypeName() }}</span>
+    </div>
+    <button type="button" class="toggle-btn" [attr.aria-expanded]="isExpanded()">
+      {{ isExpanded() ? '−' : '+' }}
+    </button>
   </div>
 
-  <!-- Mode lecture -->
-  @if (!isEditing()) {
+  <!-- Contenu visible même quand fermé (titre, instructions, question) -->
+  <div class="game-preview-summary">
+    @if (game.instructions) {
+      <p class="game-instructions">{{ game.instructions }}</p>
+    }
+    @if (game.question) {
+      <h5 class="game-question">{{ game.question }}</h5>
+    }
+    @if (!isEditing()) {
+      <div class="game-actions-summary">
+        <button class="btn btn-secondary btn-small" (click)="toggleEdit(); $event.stopPropagation()">
+          ✏️ Modifier
+        </button>
+        <button class="btn btn-danger btn-small" (click)="onDeleteClick(); $event.stopPropagation()">
+          🗑️ Supprimer
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Mode lecture - Contenu détaillé (affiché seulement si expanded) -->
+  @if (!isEditing() && isExpanded()) {
     <div class="game-preview">
       <div class="game-content">
-        @if (game.question) {
-          <h4 class="game-question">{{ game.question }}</h4>
-        }
-        @if (game.instructions) {
-          <p class="game-instructions">{{ game.instructions }}</p>
-        }
-        
         <div class="game-metadata">
           <strong>Contenu:</strong> {{ formatMetadataForDisplay() }}
         </div>
@@ -32,17 +51,17 @@
       </div>
 
       <div class="game-actions">
-        <button class="btn btn-secondary" (click)="toggleEdit()">
+        <button class="btn btn-secondary" (click)="toggleEdit(); $event.stopPropagation()">
           ✏️ Modifier
         </button>
-        <button class="btn btn-danger" (click)="onDeleteClick()">
+        <button class="btn btn-danger" (click)="onDeleteClick(); $event.stopPropagation()">
           🗑️ Supprimer
         </button>
       </div>
     </div>
   }
 
-  <!-- Mode édition -->
+  <!-- Mode édition - Toujours affiché -->
   @if (isEditing()) {
     <div class="game-edit">
       <div class="edit-notice">

@@ -10,8 +10,52 @@
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
   }
 
+  &.expanded {
+    border-color: #ccc;
+  }
+
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.game-header-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f5f5f5;
+  }
+
+  .game-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+
+  h4 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .toggle-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    font-weight: bold;
+    color: #667eea;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    min-width: 32px;
+    text-align: center;
   }
 }
 
@@ -25,6 +69,38 @@
 .game-header h4 {
   margin: 0;
   font-size: 18px;
+}
+
+.game-preview-summary {
+  padding: 8px 0;
+  margin-bottom: 8px;
+
+  .game-instructions {
+    margin: 4px 0;
+    padding: 6px;
+    background: #f5f5f5;
+    border-left: 3px solid #1976d2;
+    font-size: 13px;
+    color: #555;
+  }
+
+  .game-question {
+    margin: 4px 0;
+    padding: 6px;
+    background: #e3f2fd;
+    border-left: 3px solid #1976d2;
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
+  }
+
+  .game-actions-summary {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #e0e0e0;
+  }
 }
 
 .game-type-badge {
@@ -133,6 +209,11 @@
   background: #e53935;
   border-color: #e53935;
   color: #fff;
+}
+
+.btn.btn-small {
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .game-preview {
