@@ -10,7 +10,6 @@ import type {
   AIRawGameResponse,
 } from '../../types/ai-game-generation';
 import { getAgeFromSchoolYear } from '../../utils/school-levels.util';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData } from '../../types/game-data';
 
 @Injectable({
   providedIn: 'root',
@@ -248,7 +247,7 @@ CONSIGNES:
 3. Répartis les types intelligemment${allExistingGames.length > 0 ? ' (privilégie les types peu utilisés)' : ''}
 4. 1-3 aides progressives par jeu
 5. Respecte STRICTEMENT la structure JSON
-6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments
+6. QCM: 3-5 propositions DIFFÉRENTES et VARIÉES | Liens: 3-6 paires | Chronologie: 3-8 éléments | Memory: 4-20 paires
 7. Vocabulaire adapté à l'âge
 8. IMPORTANT QCM: Chaque proposition doit être UNIQUE et DISTINCTE. Ne JAMAIS répéter la même réponse dans plusieurs propositions.
 ${allExistingGames.length > 0 ? '9. CRÉATIVITÉ: Angles NOUVEAUX, approches variées' : ''}
@@ -272,7 +271,8 @@ FORMAT JSON (OBLIGATOIRE):
 IMPORTANT: 
 - JSON valide uniquement, aucun texte avant/après
 - Pour QCM: propositions doit contenir des réponses DIFFÉRENTES (ex: ["100", "200", "300"] pas ["345", "345", "345"])
-- reponses_valides doit contenir UNIQUEMENT les propositions qui sont correctes (tableau de strings)`;
+- reponses_valides doit contenir UNIQUEMENT les propositions qui sont correctes (tableau de strings)
+- Pour Memory: paires doit contenir entre 4 et 20 paires, chaque paire avec question et reponse (strings)`;
   }
 
   /**
@@ -379,6 +379,7 @@ IMPORTANT:
       liens: '{ mots: string[], reponses: string[], liens: {mot: string, reponse: string}[] }',
       chronologie: '{ mots: string[], ordre_correct: string[] }',
       qcm: '{ propositions: string[], reponses_valides: string[] }',
+      memory: '{ paires: {question: string, reponse: string}[] }',
     };
 
     return (
@@ -440,6 +441,12 @@ IMPORTANT:
         const chronologie = metadata as unknown as { mots?: string[] };
         const mots = chronologie.mots?.slice(0, 3).join(', ') || '';
         return `${chronologie.mots?.length || 0} éléments à ordonner${mots ? ` (ex: ${mots}...)` : ''}`;
+      }
+      
+      if (typeName === 'memory') {
+        const memory = metadata as unknown as { paires?: { question?: string; reponse?: string }[] };
+        const paires = memory.paires?.slice(0, 2).map(p => `${p.question}/${p.reponse}`).join(', ') || '';
+        return `${memory.paires?.length || 0} paire(s)${paires ? ` (ex: ${paires}...)` : ''}`;
       }
       
       return JSON.stringify(metadata).substring(0, 100);

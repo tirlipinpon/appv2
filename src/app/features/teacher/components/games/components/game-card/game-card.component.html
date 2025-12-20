@@ -107,6 +107,14 @@
         </app-vrai-faux-form>
       }
 
+      @if (currentGameTypeName().toLowerCase() === 'memory') {
+        <app-memory-form 
+          [initialData]="getInitialDataForMemory()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-memory-form>
+      }
+
       <div class="edit-actions">
         <button class="btn btn-primary" (click)="saveEdit()" [disabled]="!gameSpecificValid()">
           ✅ Enregistrer

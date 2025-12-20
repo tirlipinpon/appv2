@@ -1,0 +1,164 @@
+@use '../../../../../../../styles/variables' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+.memory-form {
+  .form-group {
+    margin-bottom: $spacing-lg;
+
+    label {
+      display: block;
+      margin-bottom: $spacing-sm;
+      font-weight: $font-weight-semibold;
+      color: $color-text-primary;
+    }
+
+    .hint {
+      margin-bottom: $spacing-md;
+      color: $color-text-secondary;
+      font-size: $font-size-sm;
+    }
+  }
+
+  .paires-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  .paire-row {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $color-gray-50;
+    border: 1px solid $color-border-light;
+    border-radius: $border-radius-sm;
+    transition: all $transition-base;
+
+    &:hover {
+      background: $color-gray-100;
+      border-color: $color-primary;
+    }
+
+    .paire-content {
+      flex: 1;
+      display: flex;
+      gap: $spacing-md;
+      flex-wrap: wrap;
+
+      .input-group {
+        flex: 1;
+        min-width: 200px;
+
+        label {
+          display: block;
+          margin-bottom: $spacing-xs;
+          font-size: $font-size-sm;
+          font-weight: $font-weight-medium;
+          color: $color-text-secondary;
+        }
+
+        input {
+          width: 100%;
+          padding: $spacing-sm $spacing-md;
+          border: 2px solid $color-border-light;
+          border-radius: $border-radius-sm;
+          font-size: $font-size-base;
+          transition: all $transition-base;
+
+          &:focus {
+            outline: none;
+            border-color: $color-primary;
+          }
+
+          &.ng-invalid.ng-touched {
+            border-color: $color-danger;
+          }
+        }
+
+        .error-message {
+          display: block;
+          margin-top: $spacing-xs;
+          color: $color-danger;
+          font-size: $font-size-sm;
+        }
+      }
+    }
+
+    .btn {
+      @include button-base;
+      padding: $spacing-xs $spacing-sm;
+      min-width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+  }
+
+  .error-message {
+    display: block;
+    margin-top: $spacing-sm;
+    margin-bottom: $spacing-sm;
+    color: $color-danger;
+    font-size: $font-size-sm;
+  }
+
+  .btn {
+    @include button-base;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+
+    &.btn-secondary {
+      background-color: $color-gray-200;
+      color: $color-text-primary;
+
+      &:hover:not(:disabled) {
+        background-color: $color-gray-300;
+      }
+    }
+
+    &.btn-danger {
+      background-color: $color-danger;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background-color: $color-danger-dark;
+      }
+    }
+
+    &.btn-small {
+      padding: $spacing-xs $spacing-sm;
+      font-size: $font-size-sm;
+    }
+  }
+
+  .preview-info {
+    margin-top: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: $color-info-lighter;
+    border-left: 3px solid $color-info;
+    border-radius: $border-radius-sm;
+    color: $color-text-secondary;
+    font-size: $font-size-sm;
+  }
+
+  @media (max-width: 768px) {
+    .paire-row {
+      flex-direction: column;
+
+      .paire-content {
+        flex-direction: column;
+        width: 100%;
+
+        .input-group {
+          min-width: 100%;
+        }
+      }
+
+      .btn {
+        align-self: flex-end;
+      }
+    }
+  }
+}
+

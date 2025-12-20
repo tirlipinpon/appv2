@@ -47,6 +47,11 @@ export interface VraiFauxData {
   enonces: { texte: string; reponse_correcte: boolean }[];
 }
 
+// Memory : paires de cartes question/réponse à retourner
+export interface MemoryData {
+  paires: { question: string; reponse: string }[];
+}
+
 // Union type pour toutes les structures de données de jeu
-export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData;
+export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData;
 

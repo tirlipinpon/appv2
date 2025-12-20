@@ -1,23 +1,24 @@
 import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData } from '../../../../types/game-data';
+import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { QcmGameComponent } from '../qcm-game/qcm-game.component';
 import { ChronologieGameComponent } from '../chronologie-game/chronologie-game.component';
+import { MemoryGameComponent } from '../memory-game/memory-game.component';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent],
+  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
 export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
   @Input() isOpen = false;
-  @Input() gameTypeName: string = '';
+  @Input() gameTypeName = '';
   @Input() globalFields: GameGlobalFieldsData | null = null;
-  @Input() gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | null = null;
+  @Input() gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null = null;
   
   @Output() closed = new EventEmitter<void>();
 
@@ -43,13 +44,13 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   usedWords = signal<Set<string>>(new Set());
 
   // Texte parsé avec cases (computed pour réactivité)
-  parsedTexteParts = signal<Array<{ type: 'text' | 'case'; content: string; index?: number }>>([]);
+  parsedTexteParts = signal<{ type: 'text' | 'case'; content: string; index?: number }[]>([]);
 
   // Pour Liens - associations faites par l'utilisateur (mot -> reponse)
   userLinks = signal<Map<string, string>>(new Map());
 
   // Lignes SVG pour les liens
-  linkPaths = signal<Array<{ mot: string; reponse: string; path: string }>>([]);
+  linkPaths = signal<{ mot: string; reponse: string; path: string }[]>([]);
 
   // Ordre mélangé pour l'affichage (mots et réponses dans un ordre aléatoire)
   shuffledMots = signal<string[]>([]);
@@ -59,7 +60,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   userVraiFauxAnswers = signal<Map<string, boolean>>(new Map());
   
   // Ordre mélangé pour les énoncés Vrai/Faux
-  shuffledEnonces = signal<Array<{ texte: string; reponse_correcte: boolean }>>([]);
+  shuffledEnonces = signal<{ texte: string; reponse_correcte: boolean }[]>([]);
 
 
   // État de validation (pour montrer si c'est correct ou non)
@@ -156,6 +157,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     if (this.caseVideData && this.caseVideData.banque_mots) {
       this.shuffleBanqueMots();
     }
+    // Memory se réinitialise automatiquement via son propre reset()
   }
 
   onBackdropClick(event: MouseEvent): void {
@@ -287,6 +289,12 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     this.isCorrect.set(isValid);
   }
 
+  // Méthodes pour Memory
+  onMemoryValidated(isValid: boolean): void {
+    this.isSubmitted.set(true);
+    this.isCorrect.set(isValid);
+  }
+
   // Getters pour éviter les castings dans le template
   get qcmData(): QcmData | null {
     return this.gameTypeName.toLowerCase() === 'qcm' && this.gameData ? this.gameData as QcmData : null;
@@ -310,6 +318,10 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   get vraiFauxData(): VraiFauxData | null {
     return this.gameTypeName.toLowerCase() === 'vrai/faux' && this.gameData ? this.gameData as VraiFauxData : null;
+  }
+
+  get memoryData(): MemoryData | null {
+    return this.gameTypeName.toLowerCase() === 'memory' && this.gameData ? this.gameData as MemoryData : null;
   }
 
   // Méthodes helper pour les liens
@@ -446,7 +458,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
       svgElement.style.width = `${gridRect.width}px`;
       svgElement.style.height = `${gridRect.height}px`;
 
-      const paths: Array<{ mot: string; reponse: string; path: string }> = [];
+      const paths: { mot: string; reponse: string; path: string }[] = [];
       const userLinksMap = this.userLinks();
 
       for (const [mot, reponse] of userLinksMap.entries()) {
@@ -507,7 +519,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     return str.replace(/[!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]/g, '\\$&');
   }
 
-  getLinkPaths(): Array<{ mot: string; reponse: string; path: string }> {
+  getLinkPaths(): { mot: string; reponse: string; path: string }[] {
     return this.linkPaths();
   }
 
@@ -542,7 +554,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     this.isCorrect.set(isValid);
   }
 
-  getVraiFauxEnonces(): Array<{ texte: string; reponse_correcte: boolean }> {
+  getVraiFauxEnonces(): { texte: string; reponse_correcte: boolean }[] {
     // Retourner les énoncés mélangés si disponibles, sinon les énoncés originaux
     const shuffled = this.shuffledEnonces();
     return shuffled.length > 0 ? shuffled : (this.vraiFauxData?.enonces || []);
@@ -608,16 +620,16 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     this.availableWords.set(available);
   }
 
-  parseTexteWithCases(): Array<{ type: 'text' | 'case'; content: string; index?: number }> {
+  parseTexteWithCases(): { type: 'text' | 'case'; content: string; index?: number }[] {
     return this.parsedTexteParts();
   }
 
-  private parseTexteWithCasesInternal(texte: string): Array<{ type: 'text' | 'case'; content: string; index?: number }> {
+  private parseTexteWithCasesInternal(texte: string): { type: 'text' | 'case'; content: string; index?: number }[] {
     if (!texte) {
       return [];
     }
 
-    const parts: Array<{ type: 'text' | 'case'; content: string; index?: number }> = [];
+    const parts: { type: 'text' | 'case'; content: string; index?: number }[] = [];
     const placeholderRegex = /\[(\d+)\]/g;
     let lastIndex = 0;
     let match;

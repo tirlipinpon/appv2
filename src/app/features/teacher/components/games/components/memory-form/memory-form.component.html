@@ -1,0 +1,60 @@
+<div [formGroup]="form" class="memory-form">
+  <div class="form-group">
+    <label>Paires question/réponse *</label>
+    <p class="hint">Ajoutez entre 4 et 20 paires de cartes. Chaque paire contient une question et sa réponse.</p>
+    
+    <div formArrayName="paires" class="paires-list">
+      @for (paireGroup of pairesArray.controls; track $index) {
+        <div [formGroup]="paireGroup" class="paire-row">
+          <div class="paire-content">
+            <div class="input-group">
+              <label [for]="'question-' + $index">Question</label>
+              <input 
+                type="text" 
+                [id]="'question-' + $index"
+                formControlName="question" 
+                [placeholder]="'Question ' + ($index + 1)"
+                class="question-input">
+              @if (paireGroup.get('question')?.hasError('required') && paireGroup.get('question')?.touched) {
+                <span class="error-message">La question est requise.</span>
+              }
+            </div>
+            <div class="input-group">
+              <label [for]="'reponse-' + $index">Réponse</label>
+              <input 
+                type="text" 
+                [id]="'reponse-' + $index"
+                formControlName="reponse" 
+                [placeholder]="'Réponse ' + ($index + 1)"
+                class="reponse-input">
+              @if (paireGroup.get('reponse')?.hasError('required') && paireGroup.get('reponse')?.touched) {
+                <span class="error-message">La réponse est requise.</span>
+              }
+            </div>
+          </div>
+          <button type="button" class="btn btn-danger btn-small" (click)="removePaire($index)">×</button>
+        </div>
+      }
+    </div>
+
+    @if (pairesArray.length < 4) {
+      <span class="error-message">
+        Minimum 4 paires requises (actuellement {{ pairesArray.length }}).
+      </span>
+    }
+    @if (pairesArray.length > 20) {
+      <span class="error-message">
+        Maximum 20 paires autorisées (actuellement {{ pairesArray.length }}).
+      </span>
+    }
+
+    <button type="button" class="btn btn-secondary btn-small" (click)="addPaire()">+ Ajouter une paire</button>
+  </div>
+
+  @if (pairesArray.length > 0) {
+    <div class="preview-info">
+      <strong>Nombre de paires :</strong> {{ pairesArray.length }}
+    </div>
+  }
+</div>
+

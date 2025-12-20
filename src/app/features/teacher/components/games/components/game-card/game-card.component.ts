@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import type { Game, GameUpdate } from '../../../../types/game';
 import type { GameType } from '../../../../types/game-type';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
@@ -11,6 +11,7 @@ import { LiensFormComponent } from '../liens-form/liens-form.component';
 import { ChronologieFormComponent } from '../chronologie-form/chronologie-form.component';
 import { QcmFormComponent } from '../qcm-form/qcm-form.component';
 import { VraiFauxFormComponent } from '../vrai-faux-form/vrai-faux-form.component';
+import { MemoryFormComponent } from '../memory-form/memory-form.component';
 import { GameGlobalFieldsComponent } from '../game-global-fields/game-global-fields.component';
 import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
@@ -27,6 +28,7 @@ import { normalizeGameData } from '../../../../utils/game-data-mapper';
     ChronologieFormComponent,
     QcmFormComponent,
     VraiFauxFormComponent,
+    MemoryFormComponent,
     GameGlobalFieldsComponent,
     GamePreviewComponent,
   ],
@@ -55,9 +57,9 @@ export class GameCardComponent implements OnInit, OnChanges {
       this.initializeEditMode();
     }
   }
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly currentGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly previewIsOpen = signal<boolean>(false);
@@ -98,7 +100,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         this.currentGameTypeName(),
         this.game.metadata as Record<string, unknown>
       );
-      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData;
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData;
       this.initialGameData.set(gameData);
       this.gameSpecificData.set(gameData); // Initialiser aussi gameSpecificData
       this.gameSpecificValid.set(true); // Considérer comme valide si les données existent
@@ -113,7 +115,7 @@ export class GameCardComponent implements OnInit, OnChanges {
     // La validité est toujours vraie pour les champs globaux (optionnels)
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData): void {
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData): void {
     this.gameSpecificData.set(data);
   }
 
@@ -232,6 +234,15 @@ export class GameCardComponent implements OnInit, OnChanges {
     return null;
   }
 
+  getInitialDataForMemory(): MemoryData | null {
+    const data = this.initialGameData();
+    const currentType = this.currentGameTypeName();
+    if (currentType.toLowerCase() === 'memory' && data && 'paires' in data) {
+      return data as MemoryData;
+    }
+    return null;
+  }
+
   formatMetadataForDisplay(): string {
     const typeName = this.currentGameTypeName().toLowerCase();
     const metadata = this.game.metadata;
@@ -240,34 +251,45 @@ export class GameCardComponent implements OnInit, OnChanges {
 
     try {
       switch (typeName) {
-        case 'qcm':
+        case 'qcm': {
           const qcm = metadata as unknown as QcmData;
           return `${qcm.propositions?.length || 0} propositions, ${qcm.reponses_valides?.length || 0} bonne(s) réponse(s)`;
+        }
         
-        case 'case vide':
+        case 'case vide': {
           const caseVide = metadata as unknown as CaseVideData;
           return `"${caseVide.debut_phrase || ''} ___ ${caseVide.fin_phrase || ''}"`;
+        }
         
-        case 'reponse libre':
+        case 'reponse libre': {
           const reponseLibre = metadata as unknown as ReponseLibreData;
           return `Réponse attendue: "${reponseLibre.reponse_valide || 'N/A'}"`;
+        }
         
-        case 'liens':
+        case 'liens': {
           const liens = metadata as unknown as LiensData;
           return `${liens.mots?.length || 0} mots à relier`;
+        }
         
-        case 'chronologie':
+        case 'chronologie': {
           const chronologie = metadata as unknown as ChronologieData;
           return `${chronologie.mots?.length || 0} éléments à ordonner`;
+        }
         
-        case 'vrai/faux':
+        case 'vrai/faux': {
           const vraiFaux = metadata as unknown as VraiFauxData;
           return `${vraiFaux.enonces?.length || 0} énoncé(s)`;
+        }
+        
+        case 'memory': {
+          const memory = metadata as unknown as MemoryData;
+          return `${memory.paires?.length || 0} paire(s) de cartes`;
+        }
         
         default:
           return JSON.stringify(metadata).substring(0, 100);
       }
-    } catch (error) {
+    } catch {
       return JSON.stringify(metadata).substring(0, 100);
     }
   }

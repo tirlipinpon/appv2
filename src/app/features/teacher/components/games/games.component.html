@@ -136,6 +136,15 @@
               (validityChange)="onGameValidityChange($event)">
             </app-vrai-faux-form>
           }
+
+          <!-- Memory -->
+          @if (selectedGameTypeName()?.toLowerCase() === 'memory') {
+            <app-memory-form
+              [initialData]="getInitialDataForMemory()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-memory-form>
+          }
         </div>
       }
 
