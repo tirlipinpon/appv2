@@ -11,7 +11,7 @@ import { filter, Subscription } from 'rxjs';
 import { ActionLinksComponent, ActionLink } from '../../shared/components/action-links/action-links.component';
 import { GamesStatsService } from '../../shared/services/games-stats/games-stats.service';
 import { GamesStatsDisplayComponent } from '../../shared/components/games-stats-display/games-stats-display.component';
-import { getSchoolLevelLabel } from '../teacher/utils/school-levels.util';
+import { getSchoolLevelLabel, SCHOOL_LEVELS } from '../teacher/utils/school-levels.util';
 
 @Component({
   selector: 'app-dashboard',
@@ -48,6 +48,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Filtre par école
   readonly selectedSchoolId = signal<string | null>(null); // null = toutes les écoles
   
+  // Filtre par niveau
+  readonly selectedLevel = signal<string | null>(null); // null = tous les niveaux
+  
   // Liste des écoles uniques depuis les affectations
   readonly uniqueSchools = computed(() => {
     const assignments = this.teacherAssignments();
@@ -59,16 +62,53 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .sort((a, b) => a.name.localeCompare(b.name));
   });
   
-  // Affectations filtrées par école
+  // Niveaux disponibles pour l'école sélectionnée
+  readonly availableLevels = computed(() => {
+    const schoolId = this.selectedSchoolId();
+    if (!schoolId) return [];
+    
+    const assignments = this.teacherAssignments();
+    const levels = new Set(
+      assignments
+        .filter(a => a.school_id === schoolId && a.school_level)
+        .map(a => a.school_level!)
+    );
+    
+    // Trier selon l'ordre de SCHOOL_LEVELS
+    const sortedLevels = Array.from(levels).sort((a, b) => {
+      const indexA = SCHOOL_LEVELS.findIndex(l => l.value === a);
+      const indexB = SCHOOL_LEVELS.findIndex(l => l.value === b);
+      // Si un niveau n'est pas trouvé dans SCHOOL_LEVELS, le mettre à la fin
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+    
+    return sortedLevels;
+  });
+  
+  // Affichage conditionnel du filtre niveau
+  readonly shouldShowLevelFilter = computed(() => {
+    return this.selectedSchoolId() !== null && this.availableLevels().length > 0;
+  });
+  
+  // Affectations filtrées par école et niveau
   readonly filteredAssignments = computed(() => {
     const assignments = this.teacherAssignments();
-    const selectedId = this.selectedSchoolId();
+    const schoolId = this.selectedSchoolId();
+    const level = this.selectedLevel();
     
-    if (!selectedId) {
-      return assignments;
+    let filtered = assignments;
+    
+    if (schoolId) {
+      filtered = filtered.filter(a => a.school_id === schoolId);
     }
     
-    return assignments.filter(a => a.school_id === selectedId);
+    if (level) {
+      filtered = filtered.filter(a => a.school_level === level);
+    }
+    
+    return filtered;
   });
   
   // Vérifier si les affectations filtrées sont vides
@@ -137,6 +177,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.gamesStatsService.loadStatsForSubjects(subjectIds);
       }
     }
+  });
+
+  // Effect pour réinitialiser le filtre niveau quand l'école change
+  private readonly resetLevelOnSchoolChange = effect(() => {
+    this.selectedSchoolId(); // Écouter les changements
+    this.selectedLevel.set(null); // Réinitialiser
   });
 
   async ngOnInit() {

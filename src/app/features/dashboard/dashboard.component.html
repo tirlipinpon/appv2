@@ -32,6 +32,16 @@
               {{ school.name }}
             </option>
           </select>
+          <select 
+            *ngIf="shouldShowLevelFilter()" 
+            class="level-filter"
+            [value]="selectedLevel() || ''"
+            (change)="selectedLevel.set($any($event.target).value || null)">
+            <option value="">Tous les niveaux</option>
+            <option *ngFor="let level of availableLevels()" [value]="level">
+              {{ getSchoolLevelLabel(level) }}
+            </option>
+          </select>
         </div>
         
         <div *ngIf="hasFilteredAssignments()" class="assignments-list">
