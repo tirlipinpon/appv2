@@ -96,6 +96,14 @@
               }
             </span>
           }
+          
+          @if (isValidating()) {
+            <span class="info-message">Vérification en cours...</span>
+          }
+          
+          @if (validationMessage() && !isValidating()) {
+            <span class="error-message">{{ validationMessage() }}</span>
+          }
         </div>
       </form>
     </div>
@@ -108,7 +116,7 @@
         type="button" 
         class="btn btn-primary" 
         (click)="onConfirm()"
-        [disabled]="!transferForm.valid">
+        [disabled]="!transferForm.valid || !canProceed() || isValidating()">
         Confirmer
       </button>
     </div>

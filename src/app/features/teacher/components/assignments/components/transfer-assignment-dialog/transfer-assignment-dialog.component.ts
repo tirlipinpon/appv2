@@ -1,9 +1,11 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs/operators';
+import { Subject as RxSubject } from 'rxjs';
 import type { TeacherAssignment } from '../../../../types/teacher-assignment';
 import type { Teacher } from '../../../../types/teacher';
-import type { Subject } from '../../../../types/subject';
+import type { Subject as SubjectType } from '../../../../types/subject';
 import type { School } from '../../../../types/school';
 import { Infrastructure } from '../../../infrastructure/infrastructure';
 import { getSchoolLevelLabel } from '../../../../utils/school-levels.util';
@@ -15,7 +17,7 @@ export interface TransferAssignmentData {
 
 // Type étendu pour inclure les jointures Supabase
 export interface TeacherAssignmentWithJoins extends TeacherAssignment {
-  subject?: Subject;
+  subject?: SubjectType;
   school?: School;
 }
 
@@ -26,7 +28,7 @@ export interface TeacherAssignmentWithJoins extends TeacherAssignment {
   templateUrl: './transfer-assignment-dialog.component.html',
   styleUrls: ['./transfer-assignment-dialog.component.scss']
 })
-export class TransferAssignmentDialogComponent implements OnInit {
+export class TransferAssignmentDialogComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly infrastructure = inject(Infrastructure);
 
@@ -39,6 +41,12 @@ export class TransferAssignmentDialogComponent implements OnInit {
   readonly teachers = signal<Teacher[]>([]);
   readonly searchQuery = signal<string>('');
   readonly isLoading = signal<boolean>(false);
+  readonly isValidating = signal<boolean>(false);
+  readonly validationMessage = signal<string | null>(null);
+  readonly canProceed = signal<boolean>(true);
+  
+  private readonly validationTrigger$ = new RxSubject<void>();
+  private readonly destroy$ = new RxSubject<void>();
 
   readonly filteredTeachers = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
@@ -66,6 +74,64 @@ export class TransferAssignmentDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadTeachers();
+    this.setupValidation();
+  }
+
+  private setupValidation(): void {
+    // Valider quand le mode ou le professeur change
+    this.validationTrigger$.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$),
+      switchMap(() => {
+        const formValue = this.transferForm.value;
+        const mode = formValue.mode;
+        const teacherId = formValue.teacherId;
+        
+        if (!teacherId || !this.assignment) {
+          this.canProceed.set(true);
+          this.validationMessage.set(null);
+          return [];
+        }
+
+        this.isValidating.set(true);
+        return this.infrastructure.validateShareOrTransfer(
+          this.assignment.id,
+          teacherId,
+          mode
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (validation) => {
+        this.isValidating.set(false);
+        if (validation && !validation.canProceed) {
+          this.canProceed.set(false);
+          this.validationMessage.set(validation.reason || 'Cette action n\'est pas possible.');
+        } else {
+          this.canProceed.set(true);
+          this.validationMessage.set(null);
+        }
+      },
+      error: () => {
+        this.isValidating.set(false);
+        this.canProceed.set(true);
+        this.validationMessage.set(null);
+      }
+    });
+
+    // Déclencher la validation quand le formulaire change
+    this.transferForm.valueChanges.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.validationTrigger$.next();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.validationTrigger$.complete();
   }
 
   private loadTeachers(): void {
@@ -103,7 +169,7 @@ export class TransferAssignmentDialogComponent implements OnInit {
   }
 
   onConfirm(): void {
-    if (this.transferForm.valid) {
+    if (this.transferForm.valid && this.canProceed()) {
       const formValue = this.transferForm.value;
       this.confirm.emit({
         mode: formValue.mode,

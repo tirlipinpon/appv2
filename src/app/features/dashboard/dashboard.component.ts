@@ -63,9 +63,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const schools = this.teacherAssignmentStore.schools();
     const schoolIds = new Set(assignments.map(a => a.school_id).filter(Boolean));
     
-    return schools
-      .filter(school => schoolIds.has(school.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    // Si les écoles sont chargées, les filtrer et trier
+    if (schools.length > 0) {
+      return schools
+        .filter(school => schoolIds.has(school.id))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    // Si les écoles ne sont pas encore chargées, créer des objets temporaires depuis les affectations
+    // Cela permet d'afficher les filtres même si les écoles ne sont pas chargées
+    const schoolMap = new Map<string, { id: string; name: string }>();
+    assignments.forEach(assignment => {
+      if (assignment.school_id) {
+        // Vérifier si l'objet school existe (via jointure)
+        const assignmentWithJoins = assignment as TeacherAssignmentWithJoins;
+        if (assignmentWithJoins.school) {
+          schoolMap.set(assignment.school_id, {
+            id: assignment.school_id,
+            name: assignmentWithJoins.school.name || `École ${assignment.school_id.substring(0, 8)}`
+          });
+        } else {
+          // Si on a l'ID mais pas l'objet school (jointure manquante)
+          // Utiliser getSchoolName si disponible, sinon un nom générique
+          const schoolName = this.getSchoolName(assignment.school_id);
+          schoolMap.set(assignment.school_id, {
+            id: assignment.school_id,
+            name: schoolName !== 'École inconnue' ? schoolName : `École ${assignment.school_id.substring(0, 8)}`
+          });
+        }
+      }
+    });
+    
+    return Array.from(schoolMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   });
   
   // Niveaux disponibles pour l'école sélectionnée
@@ -331,15 +360,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const assignment = this.selectedAssignmentForTransfer();
     if (!assignment) return;
 
+    const teacherId = this.getCurrentTeacherId();
+
     if (data.mode === 'transfer') {
       this.teacherAssignmentStore.transferAssignment({
         assignmentId: assignment.id,
         newTeacherId: data.newTeacherId
       });
     } else {
+      // Passer le teacherId pour recharger après le partage
       this.teacherAssignmentStore.shareAssignment({
         assignmentId: assignment.id,
-        newTeacherId: data.newTeacherId
+        newTeacherId: data.newTeacherId,
+        teacherId: teacherId || undefined
       });
     }
 

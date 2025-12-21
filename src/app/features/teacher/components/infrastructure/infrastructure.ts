@@ -104,6 +104,19 @@ export class Infrastructure {
     return this.teacherAssignmentService.deleteAssignment(id);
   }
 
+  validateShareOrTransfer(
+    assignmentId: string,
+    newTeacherId: string,
+    mode: 'transfer' | 'share'
+  ): Observable<{
+    canProceed: boolean;
+    reason?: string;
+    existingAssignment?: TeacherAssignment;
+    sourceAssignment?: TeacherAssignment;
+  }> {
+    return this.teacherAssignmentService.validateShareOrTransfer(assignmentId, newTeacherId, mode);
+  }
+
   transferAssignment(assignmentId: string, newTeacherId: string): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
     return this.teacherAssignmentService.transferAssignment(assignmentId, newTeacherId);
   }

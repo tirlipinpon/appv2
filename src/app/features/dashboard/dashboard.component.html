@@ -20,28 +20,41 @@
 
       <!-- Section Affectations pour les professeurs -->
       <div *ngIf="activeRole === 'prof' && hasTeacher()" class="assignments-section">
+        <!-- Affichage des erreurs -->
+        <div *ngIf="teacherAssignmentStore.hasError()" class="error-alert">
+          <div class="error-content">
+            <strong>⚠️ Erreur :</strong>
+            <ul class="error-list">
+              <li *ngFor="let error of teacherAssignmentStore.error()">{{ error }}</li>
+            </ul>
+            <button type="button" class="error-close" (click)="teacherAssignmentStore.clearError()" aria-label="Fermer">×</button>
+          </div>
+        </div>
+        
         <div class="assignments-header">
           <h3>Mes Affectations</h3>
-          <select 
-            *ngIf="uniqueSchools().length > 1" 
-            class="school-filter"
-            [value]="selectedSchoolId() || ''"
-            (change)="selectedSchoolId.set($any($event.target).value || null)">
-            <option value="">Toutes les écoles</option>
-            <option *ngFor="let school of uniqueSchools()" [value]="school.id">
-              {{ school.name }}
-            </option>
-          </select>
-          <select 
-            *ngIf="shouldShowLevelFilter()" 
-            class="level-filter"
-            [value]="selectedLevel() || ''"
-            (change)="selectedLevel.set($any($event.target).value || null)">
-            <option value="">Tous les niveaux</option>
-            <option *ngFor="let level of availableLevels()" [value]="level">
-              {{ getSchoolLevelLabel(level) }}
-            </option>
-          </select>
+          <div class="filters-container" *ngIf="hasAssignments()">
+            <select 
+              *ngIf="uniqueSchools().length > 0" 
+              class="school-filter"
+              [value]="selectedSchoolId() || ''"
+              (change)="selectedSchoolId.set($any($event.target).value || null)">
+              <option value="">Toutes les écoles</option>
+              <option *ngFor="let school of uniqueSchools()" [value]="school.id">
+                {{ school.name }}
+              </option>
+            </select>
+            <select 
+              *ngIf="shouldShowLevelFilter()" 
+              class="level-filter"
+              [value]="selectedLevel() || ''"
+              (change)="selectedLevel.set($any($event.target).value || null)">
+              <option value="">Tous les niveaux</option>
+              <option *ngFor="let level of availableLevels()" [value]="level">
+                {{ getSchoolLevelLabel(level) }}
+              </option>
+            </select>
+          </div>
         </div>
         
         <div *ngIf="hasFilteredAssignments()" class="assignments-list">

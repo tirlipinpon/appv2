@@ -9,6 +9,7 @@ export interface TeacherAssignment {
   roles: string[];
   start_date: string | null;
   end_date: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }

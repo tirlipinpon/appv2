@@ -302,19 +302,32 @@ export const TeacherAssignmentStore = signalStore(
           // Optimistic update: remove locally first (car l'affectation est transférée)
           patchState(store, {
             assignments: previous.filter(a => a.id !== assignmentId),
+            isLoading: true,
           });
           return infrastructure.transferAssignment(assignmentId, newTeacherId).pipe(
             tap((result) => {
               if (result.error) {
+                // Message d'erreur plus explicite
                 const errorMessage = result.error.message || 'Erreur lors du transfert de l\'affectation';
                 // rollback
-                patchState(store, { assignments: previous, error: [errorMessage] });
+                patchState(store, { 
+                  assignments: previous, 
+                  error: [errorMessage],
+                  isLoading: false 
+                });
+              } else {
+                // Transfert réussi
+                patchState(store, { error: [], isLoading: false });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du transfert de l\'affectation';
               // rollback
-              patchState(store, { assignments: previous, error: [errorMessage] });
+              patchState(store, { 
+                assignments: previous, 
+                error: [errorMessage],
+                isLoading: false 
+              });
               return of(null);
             })
           );
@@ -322,21 +335,51 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
-    shareAssignment: rxMethod<{ assignmentId: string; newTeacherId: string }>(
+    shareAssignment: rxMethod<{ assignmentId: string; newTeacherId: string; teacherId?: string }>(
       pipe(
-        switchMap(({ assignmentId, newTeacherId }) => {
+        switchMap(({ assignmentId, newTeacherId, teacherId }) => {
           return infrastructure.shareAssignment(assignmentId, newTeacherId).pipe(
-            tap((result) => {
+            switchMap((result) => {
               if (result.error) {
+                // Message d'erreur plus explicite
                 const errorMessage = result.error.message || 'Erreur lors du partage de l\'affectation';
-                patchState(store, { error: [errorMessage] });
+                patchState(store, { 
+                  error: [errorMessage],
+                  isLoading: false 
+                });
+                return of(null);
               }
-              // Note: Le partage ne modifie pas la liste des affectations du professeur actuel
-              // car une nouvelle affectation est créée pour un autre professeur
+              
+              // Partage réussi : recharger les affectations pour s'assurer de l'état réel
+              // Cela permet de récupérer l'affectation réactivée si elle existait déjà
+              if (teacherId) {
+                // Recharger les affectations via l'infrastructure
+                return infrastructure.getTeacherAssignments(teacherId).pipe(
+                  tap((reloadResult) => {
+                    if (reloadResult.error) {
+                      const errorMessage = reloadResult.error.message || 'Erreur lors du rechargement des affectations';
+                      patchState(store, { error: [errorMessage], isLoading: false });
+                    } else {
+                      patchState(store, { 
+                        assignments: reloadResult.assignments, 
+                        error: [], 
+                        isLoading: false 
+                      });
+                    }
+                  }),
+                  switchMap(() => of(null))
+                );
+              }
+              
+              patchState(store, { error: [], isLoading: false });
+              return of(null);
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du partage de l\'affectation';
-              patchState(store, { error: [errorMessage] });
+              patchState(store, { 
+                error: [errorMessage],
+                isLoading: false 
+              });
               return of(null);
             })
           );
