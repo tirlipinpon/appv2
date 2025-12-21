@@ -126,3 +126,39 @@ $z-index-modal: 1050;
 $z-index-popover: 1060;
 $z-index-tooltip: 1070;
 $z-index-toast: 1080;
+
+// Couleurs par type de jeu
+// QCM
+$game-type-qcm-color: #2196f3;
+$game-type-qcm-bg: #e3f2fd;
+$game-type-qcm-border: #1976d2;
+
+// Case vide
+$game-type-case-vide-color: #9c27b0;
+$game-type-case-vide-bg: #f3e5f5;
+$game-type-case-vide-border: #7b1fa2;
+
+// Réponse libre
+$game-type-reponse-libre-color: #4caf50;
+$game-type-reponse-libre-bg: #e8f5e9;
+$game-type-reponse-libre-border: #388e3c;
+
+// Liens
+$game-type-liens-color: #ff9800;
+$game-type-liens-bg: #fff3e0;
+$game-type-liens-border: #f57c00;
+
+// Chronologie
+$game-type-chronologie-color: #00bcd4;
+$game-type-chronologie-bg: #e0f7fa;
+$game-type-chronologie-border: #0097a7;
+
+// Vrai/Faux
+$game-type-vrai-faux-color: #f44336;
+$game-type-vrai-faux-bg: #ffebee;
+$game-type-vrai-faux-border: #c62828;
+
+// Memory
+$game-type-memory-color: #ff5722;
+$game-type-memory-bg: #fbe9e7;
+$game-type-memory-border: #d84315;

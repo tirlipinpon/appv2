@@ -50,7 +50,15 @@
   }
 
   <div class="game-form-section collapsible-section">
-    <div class="section-header" (click)="toggleManualCreation()">
+    <div class="section-header" 
+         (click)="toggleManualCreation()"
+         [class.game-type-qcm]="selectedGameTypeName()?.toLowerCase() === 'qcm'"
+         [class.game-type-case-vide]="selectedGameTypeName()?.toLowerCase() === 'case vide'"
+         [class.game-type-reponse-libre]="selectedGameTypeName()?.toLowerCase() === 'reponse libre'"
+         [class.game-type-liens]="selectedGameTypeName()?.toLowerCase() === 'liens'"
+         [class.game-type-chronologie]="selectedGameTypeName()?.toLowerCase() === 'chronologie'"
+         [class.game-type-vrai-faux]="selectedGameTypeName()?.toLowerCase() === 'vrai/faux'"
+         [class.game-type-memory]="selectedGameTypeName()?.toLowerCase() === 'memory'">
       <h3>{{ isEditing() ? '✏️ Modifier le jeu' : '➕ Créer un nouveau jeu' }}</h3>
       <button type="button" class="toggle-btn" [attr.aria-expanded]="isManualCreationExpanded()">
         {{ isManualCreationExpanded() ? '−' : '+' }}

@@ -1,3 +1,5 @@
+@use '../../../../../../../styles/variables' as *;
+
 .game-item {
   padding: 16px;
   background: #fff;
@@ -16,6 +18,105 @@
 
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  // Styles par type de jeu
+  &.game-type-qcm {
+    border-left: 4px solid $game-type-qcm-border;
+    
+    .game-type-badge {
+      background: $game-type-qcm-bg;
+      color: $game-type-qcm-color;
+    }
+
+    &.editing {
+      border-color: $game-type-qcm-border;
+      box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+    }
+  }
+
+  &.game-type-case-vide {
+    border-left: 4px solid $game-type-case-vide-border;
+    
+    .game-type-badge {
+      background: $game-type-case-vide-bg;
+      color: $game-type-case-vide-color;
+    }
+
+    &.editing {
+      border-color: $game-type-case-vide-border;
+      box-shadow: 0 4px 12px rgba(156, 39, 176, 0.15);
+    }
+  }
+
+  &.game-type-reponse-libre {
+    border-left: 4px solid $game-type-reponse-libre-border;
+    
+    .game-type-badge {
+      background: $game-type-reponse-libre-bg;
+      color: $game-type-reponse-libre-color;
+    }
+
+    &.editing {
+      border-color: $game-type-reponse-libre-border;
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.15);
+    }
+  }
+
+  &.game-type-liens {
+    border-left: 4px solid $game-type-liens-border;
+    
+    .game-type-badge {
+      background: $game-type-liens-bg;
+      color: $game-type-liens-color;
+    }
+
+    &.editing {
+      border-color: $game-type-liens-border;
+      box-shadow: 0 4px 12px rgba(255, 152, 0, 0.15);
+    }
+  }
+
+  &.game-type-chronologie {
+    border-left: 4px solid $game-type-chronologie-border;
+    
+    .game-type-badge {
+      background: $game-type-chronologie-bg;
+      color: $game-type-chronologie-color;
+    }
+
+    &.editing {
+      border-color: $game-type-chronologie-border;
+      box-shadow: 0 4px 12px rgba(0, 188, 212, 0.15);
+    }
+  }
+
+  &.game-type-vrai-faux {
+    border-left: 4px solid $game-type-vrai-faux-border;
+    
+    .game-type-badge {
+      background: $game-type-vrai-faux-bg;
+      color: $game-type-vrai-faux-color;
+    }
+
+    &.editing {
+      border-color: $game-type-vrai-faux-border;
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.15);
+    }
+  }
+
+  &.game-type-memory {
+    border-left: 4px solid $game-type-memory-border;
+    
+    .game-type-badge {
+      background: $game-type-memory-bg;
+      color: $game-type-memory-color;
+    }
+
+    &.editing {
+      border-color: $game-type-memory-border;
+      box-shadow: 0 4px 12px rgba(255, 87, 34, 0.15);
+    }
   }
 }
 
@@ -104,6 +205,7 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
+  transition: all 0.2s;
 }
 
 .game-details {

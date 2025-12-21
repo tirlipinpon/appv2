@@ -1,3 +1,5 @@
+@use '../../../../../styles/variables' as *;
+
 .ai-generation-section {
   margin-bottom: 3rem;
 }
@@ -16,9 +18,10 @@
     padding: 1rem 1.25rem;
     background: #fff;
     border-bottom: 1px solid #e0e0e0;
+    border-left: 4px solid transparent;
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
 
     &:hover {
       background: #f8f9fa;
@@ -56,6 +59,112 @@
 
       &:active {
         transform: scale(0.95);
+      }
+    }
+
+    // Styles par type de jeu
+    &.game-type-qcm {
+      border-left-color: $game-type-qcm-border;
+      background: $game-type-qcm-bg;
+
+      .toggle-btn {
+        border-color: $game-type-qcm-color;
+        color: $game-type-qcm-color;
+
+        &:hover {
+          background: $game-type-qcm-color;
+          color: #fff;
+        }
+      }
+    }
+
+    &.game-type-case-vide {
+      border-left-color: $game-type-case-vide-border;
+      background: $game-type-case-vide-bg;
+
+      .toggle-btn {
+        border-color: $game-type-case-vide-color;
+        color: $game-type-case-vide-color;
+
+        &:hover {
+          background: $game-type-case-vide-color;
+          color: #fff;
+        }
+      }
+    }
+
+    &.game-type-reponse-libre {
+      border-left-color: $game-type-reponse-libre-border;
+      background: $game-type-reponse-libre-bg;
+
+      .toggle-btn {
+        border-color: $game-type-reponse-libre-color;
+        color: $game-type-reponse-libre-color;
+
+        &:hover {
+          background: $game-type-reponse-libre-color;
+          color: #fff;
+        }
+      }
+    }
+
+    &.game-type-liens {
+      border-left-color: $game-type-liens-border;
+      background: $game-type-liens-bg;
+
+      .toggle-btn {
+        border-color: $game-type-liens-color;
+        color: $game-type-liens-color;
+
+        &:hover {
+          background: $game-type-liens-color;
+          color: #fff;
+        }
+      }
+    }
+
+    &.game-type-chronologie {
+      border-left-color: $game-type-chronologie-border;
+      background: $game-type-chronologie-bg;
+
+      .toggle-btn {
+        border-color: $game-type-chronologie-color;
+        color: $game-type-chronologie-color;
+
+        &:hover {
+          background: $game-type-chronologie-color;
+          color: #fff;
+        }
+      }
+    }
+
+    &.game-type-vrai-faux {
+      border-left-color: $game-type-vrai-faux-border;
+      background: $game-type-vrai-faux-bg;
+
+      .toggle-btn {
+        border-color: $game-type-vrai-faux-color;
+        color: $game-type-vrai-faux-color;
+
+        &:hover {
+          background: $game-type-vrai-faux-color;
+          color: #fff;
+        }
+      }
+    }
+
+    &.game-type-memory {
+      border-left-color: $game-type-memory-border;
+      background: $game-type-memory-bg;
+
+      .toggle-btn {
+        border-color: $game-type-memory-color;
+        color: $game-type-memory-color;
+
+        &:hover {
+          background: $game-type-memory-color;
+          color: #fff;
+        }
       }
     }
   }

@@ -61,6 +61,13 @@
             *ngFor="let gameType of gameTypes" 
             class="game-type-checkbox"
             [class.disabled]="isGenerating"
+            [class.game-type-qcm]="gameType.name.toLowerCase() === 'qcm'"
+            [class.game-type-case-vide]="gameType.name.toLowerCase() === 'case vide'"
+            [class.game-type-reponse-libre]="gameType.name.toLowerCase() === 'reponse libre'"
+            [class.game-type-liens]="gameType.name.toLowerCase() === 'liens'"
+            [class.game-type-chronologie]="gameType.name.toLowerCase() === 'chronologie'"
+            [class.game-type-vrai-faux]="gameType.name.toLowerCase() === 'vrai/faux'"
+            [class.game-type-memory]="gameType.name.toLowerCase() === 'memory'"
           >
             <input 
               type="checkbox" 

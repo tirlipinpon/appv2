@@ -1,3 +1,6 @@
+@use 'sass:color';
+@use '../../../../../../../styles/variables' as *;
+
 .ai-generator-form {
   background: #f8f9fa;
   border: 1px solid #dee2e6;
@@ -338,6 +341,175 @@
       
       .game-type-name {
         color: #667eea;
+      }
+    }
+
+    // Styles par type de jeu
+    &.game-type-qcm {
+      border-left: 4px solid $game-type-qcm-border;
+      background: $game-type-qcm-bg;
+
+      &:hover:not(.disabled) {
+        border-color: $game-type-qcm-border;
+        background: color.adjust($game-type-qcm-bg, $lightness: 2%);
+      }
+
+      .game-type-name {
+        color: $game-type-qcm-color;
+      }
+
+      &:has(input[type="checkbox"]:checked) {
+        border-color: $game-type-qcm-border;
+        background: $game-type-qcm-bg;
+        
+        .game-type-name {
+          color: $game-type-qcm-color;
+          font-weight: 700;
+        }
+      }
+    }
+
+    &.game-type-case-vide {
+      border-left: 4px solid $game-type-case-vide-border;
+      background: $game-type-case-vide-bg;
+
+      &:hover:not(.disabled) {
+        border-color: $game-type-case-vide-border;
+        background: color.adjust($game-type-case-vide-bg, $lightness: 2%);
+      }
+
+      .game-type-name {
+        color: $game-type-case-vide-color;
+      }
+
+      &:has(input[type="checkbox"]:checked) {
+        border-color: $game-type-case-vide-border;
+        background: $game-type-case-vide-bg;
+        
+        .game-type-name {
+          color: $game-type-case-vide-color;
+          font-weight: 700;
+        }
+      }
+    }
+
+    &.game-type-reponse-libre {
+      border-left: 4px solid $game-type-reponse-libre-border;
+      background: $game-type-reponse-libre-bg;
+
+      &:hover:not(.disabled) {
+        border-color: $game-type-reponse-libre-border;
+        background: color.adjust($game-type-reponse-libre-bg, $lightness: 2%);
+      }
+
+      .game-type-name {
+        color: $game-type-reponse-libre-color;
+      }
+
+      &:has(input[type="checkbox"]:checked) {
+        border-color: $game-type-reponse-libre-border;
+        background: $game-type-reponse-libre-bg;
+        
+        .game-type-name {
+          color: $game-type-reponse-libre-color;
+          font-weight: 700;
+        }
+      }
+    }
+
+    &.game-type-liens {
+      border-left: 4px solid $game-type-liens-border;
+      background: $game-type-liens-bg;
+
+      &:hover:not(.disabled) {
+        border-color: $game-type-liens-border;
+        background: color.adjust($game-type-liens-bg, $lightness: 2%);
+      }
+
+      .game-type-name {
+        color: $game-type-liens-color;
+      }
+
+      &:has(input[type="checkbox"]:checked) {
+        border-color: $game-type-liens-border;
+        background: $game-type-liens-bg;
+        
+        .game-type-name {
+          color: $game-type-liens-color;
+          font-weight: 700;
+        }
+      }
+    }
+
+    &.game-type-chronologie {
+      border-left: 4px solid $game-type-chronologie-border;
+      background: $game-type-chronologie-bg;
+
+      &:hover:not(.disabled) {
+        border-color: $game-type-chronologie-border;
+        background: color.adjust($game-type-chronologie-bg, $lightness: 2%);
+      }
+
+      .game-type-name {
+        color: $game-type-chronologie-color;
+      }
+
+      &:has(input[type="checkbox"]:checked) {
+        border-color: $game-type-chronologie-border;
+        background: $game-type-chronologie-bg;
+        
+        .game-type-name {
+          color: $game-type-chronologie-color;
+          font-weight: 700;
+        }
+      }
+    }
+
+    &.game-type-vrai-faux {
+      border-left: 4px solid $game-type-vrai-faux-border;
+      background: $game-type-vrai-faux-bg;
+
+      &:hover:not(.disabled) {
+        border-color: $game-type-vrai-faux-border;
+        background: color.adjust($game-type-vrai-faux-bg, $lightness: 2%);
+      }
+
+      .game-type-name {
+        color: $game-type-vrai-faux-color;
+      }
+
+      &:has(input[type="checkbox"]:checked) {
+        border-color: $game-type-vrai-faux-border;
+        background: $game-type-vrai-faux-bg;
+        
+        .game-type-name {
+          color: $game-type-vrai-faux-color;
+          font-weight: 700;
+        }
+      }
+    }
+
+    &.game-type-memory {
+      border-left: 4px solid $game-type-memory-border;
+      background: $game-type-memory-bg;
+
+      &:hover:not(.disabled) {
+        border-color: $game-type-memory-border;
+        background: color.adjust($game-type-memory-bg, $lightness: 2%);
+      }
+
+      .game-type-name {
+        color: $game-type-memory-color;
+      }
+
+      &:has(input[type="checkbox"]:checked) {
+        border-color: $game-type-memory-border;
+        background: $game-type-memory-bg;
+        
+        .game-type-name {
+          color: $game-type-memory-color;
+          font-weight: 700;
+        }
       }
     }
   }

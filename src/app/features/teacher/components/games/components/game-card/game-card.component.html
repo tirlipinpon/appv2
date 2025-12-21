@@ -1,4 +1,13 @@
-<li class="game-item" [class.editing]="isEditing()" [class.expanded]="isExpanded()">
+<li class="game-item" 
+    [class.editing]="isEditing()" 
+    [class.expanded]="isExpanded()"
+    [class.game-type-qcm]="currentGameTypeName().toLowerCase() === 'qcm'"
+    [class.game-type-case-vide]="currentGameTypeName().toLowerCase() === 'case vide'"
+    [class.game-type-reponse-libre]="currentGameTypeName().toLowerCase() === 'reponse libre'"
+    [class.game-type-liens]="currentGameTypeName().toLowerCase() === 'liens'"
+    [class.game-type-chronologie]="currentGameTypeName().toLowerCase() === 'chronologie'"
+    [class.game-type-vrai-faux]="currentGameTypeName().toLowerCase() === 'vrai/faux'"
+    [class.game-type-memory]="currentGameTypeName().toLowerCase() === 'memory'">
   <!-- Header cliquable pour toggle -->
   <div class="game-header-toggle" (click)="toggleExpanded()">
     <div class="game-header-info">
