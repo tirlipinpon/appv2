@@ -32,6 +32,7 @@
               <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
               <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
             </label>
+            <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
           </div>
           <div *ngIf="selectedSubjects().length === 0" class="empty-state">
             <p class="muted">Aucune matière activée.</p>
@@ -51,6 +52,7 @@
               <span class="checkmark"></span>
               <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
             </label>
+            <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
           </div>
           <div *ngIf="unselectedSubjects().length === 0" class="empty-state">
             <p class="muted">Aucune autre matière disponible.</p>

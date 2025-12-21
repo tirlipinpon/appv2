@@ -4,6 +4,8 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ParentSubjectService } from '../../services/subject/parent-subject.service';
 import { SchoolService } from '../../services/school/school.service';
+import { GamesStatsService } from '../../../../shared/services/games-stats/games-stats.service';
+import { GamesStatsDisplayComponent } from '../../../../shared/components/games-stats-display/games-stats-display.component';
 import type { Subject } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
 import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
@@ -11,7 +13,7 @@ import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
 @Component({
   selector: 'app-child-subjects',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, GamesStatsDisplayComponent],
   templateUrl: './child-subjects.component.html',
   styleUrls: ['./child-subjects.component.scss'],
 })
@@ -19,6 +21,7 @@ export class ChildSubjectsComponent implements OnInit {
   @Input() childId?: string;
   private readonly parentSvc = inject(ParentSubjectService);
   private readonly schoolService = inject(SchoolService);
+  private readonly gamesStatsService = inject(GamesStatsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -177,6 +180,18 @@ export class ChildSubjectsComponent implements OnInit {
     });
     
     return Array.from(byId.values());
+  });
+
+  // Effect pour charger les stats de jeux quand les matières changent
+  private readonly loadGamesStatsEffect = effect(() => {
+    const selectedSubjects = this.selectedSubjects();
+    const unselectedSubjects = this.unselectedSubjects();
+    // Charger les stats pour toutes les matières affichées (sélectionnées + disponibles)
+    const allSubjects = [...selectedSubjects, ...unselectedSubjects];
+    if (allSubjects.length > 0) {
+      const subjectIds = allSubjects.map(s => s.id).filter(Boolean) as string[];
+      this.gamesStatsService.loadStatsForSubjects(subjectIds);
+    }
   });
   readonly unselectedSubjects = computed(() => {
     const explicit = this.enrollments();

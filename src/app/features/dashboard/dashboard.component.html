@@ -41,9 +41,10 @@
               <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
               <p *ngIf="assignment.school_year_id">📅 Année: {{ assignment.school_year_id }}</p>
               <p *ngIf="assignment.school_level">🎓 Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
-              <p *ngIf="formatGamesStats(assignment.subject_id)" class="games-stats">
-                {{ formatGamesStats(assignment.subject_id) }}
-              </p>
+              <app-games-stats-display 
+                *ngIf="assignment.subject_id"
+                [subjectId]="assignment.subject_id">
+              </app-games-stats-display>
             </div>
             <div class="assignment-actions">
               <a 
