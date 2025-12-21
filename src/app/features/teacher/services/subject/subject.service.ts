@@ -167,5 +167,67 @@ export class SubjectService {
       }))
     );
   }
+
+  /**
+   * Compte le nombre d'enfants inscrits à une matière pour une école et un niveau donnés
+   * Note: Le school_level est stocké dans la table children, pas dans child_subject_enrollments
+   */
+  countStudentsBySubject(
+    subjectId: string,
+    schoolId: string | null,
+    schoolLevel: string | null
+  ): Observable<{ count: number; error: PostgrestError | null }> {
+    // Joindre avec la table children pour obtenir le school_level et filtrer
+    let query = this.supabaseService.client
+      .from('child_subject_enrollments')
+      .select('child_id, child:children(school_level, school_id, is_active)')
+      .eq('subject_id', subjectId)
+      .eq('selected', true);
+
+    if (schoolId) {
+      query = query.eq('school_id', schoolId);
+    }
+
+    // Récupérer les données et filtrer par school_level côté client
+    // car Supabase ne permet pas de filtrer directement sur les colonnes de la table jointe
+    return from(query).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          return { count: 0, error: error || null };
+        }
+
+        if (!data || data.length === 0) {
+          return { count: 0, error: null };
+        }
+
+        // Filtrer les résultats par school_level et is_active
+        // Note: Supabase retourne child comme un objet unique pour une relation one-to-one
+        const enrollments = (data as unknown) as Array<{
+          child_id: string;
+          child: { school_level: string | null; school_id: string | null; is_active: boolean } | null;
+        }>;
+
+        const filtered = enrollments.filter(e => {
+          const child = e.child;
+          
+          // Vérifier que l'enfant existe et est actif
+          if (!child || !child.is_active) return false;
+          
+          // Vérifier school_id si spécifié
+          if (schoolId && child.school_id !== schoolId) return false;
+          
+          // Vérifier school_level si spécifié
+          if (schoolLevel && child.school_level !== schoolLevel) return false;
+          
+          return true;
+        });
+
+        return {
+          count: filtered.length,
+          error: null,
+        };
+      })
+    );
+  }
 }
 

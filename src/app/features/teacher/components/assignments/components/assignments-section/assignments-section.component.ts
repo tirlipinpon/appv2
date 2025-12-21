@@ -7,6 +7,9 @@ import { GamesStatsDisplayComponent } from '../../../../../../shared/components/
 import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../transfer-assignment-dialog/transfer-assignment-dialog.component';
 import { getSchoolLevelLabel, SCHOOL_LEVELS } from '../../../../utils/school-levels.util';
 import type { TeacherAssignment } from '../../../../types/teacher-assignment';
+import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
+import { forkJoin } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-assignments-section',
@@ -23,6 +26,10 @@ import type { TeacherAssignment } from '../../../../types/teacher-assignment';
 export class AssignmentsSectionComponent {
   readonly teacherAssignmentStore = inject(TeacherAssignmentStore);
   readonly teacherStore = inject(TeacherStore);
+  private readonly infrastructure = inject(Infrastructure);
+
+  // Signal pour stocker le nombre d'enfants par affectation
+  readonly studentCounts = signal<Map<string, number>>(new Map());
 
   // Signals pour les affectations
   readonly teacherAssignments = computed(() => this.teacherAssignmentStore.assignments());
@@ -132,6 +139,46 @@ export class AssignmentsSectionComponent {
     this.selectedSchoolId(); // Écouter les changements
     this.selectedLevel.set(null); // Réinitialiser
   });
+
+  // Effect pour charger le nombre d'enfants pour chaque affectation
+  private readonly loadStudentCountsEffect = effect(() => {
+    const assignments = this.filteredAssignments();
+    if (assignments.length === 0) {
+      this.studentCounts.set(new Map());
+      return;
+    }
+
+    // Charger tous les comptes en parallèle
+    const countObservables = assignments
+      .filter(a => a.subject_id)
+      .map(assignment => 
+        this.infrastructure.countStudentsBySubject(
+          assignment.subject_id!,
+          assignment.school_id,
+          assignment.school_level
+        ).pipe(
+          map(({ count, error }) => ({
+            assignmentId: assignment.id,
+            count: error ? 0 : count
+          }))
+        )
+      );
+
+    if (countObservables.length === 0) return;
+
+    forkJoin(countObservables).subscribe(results => {
+      const counts = new Map<string, number>();
+      results.forEach(({ assignmentId, count }) => {
+        counts.set(assignmentId, count);
+      });
+      this.studentCounts.set(counts);
+    });
+  });
+
+  // Méthode pour obtenir le nombre d'enfants d'une affectation
+  getStudentCount(assignmentId: string): number {
+    return this.studentCounts().get(assignmentId) || 0;
+  }
 
   // Méthodes utilitaires
   getSchoolName(schoolId: string): string {

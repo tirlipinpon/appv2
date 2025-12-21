@@ -84,6 +84,14 @@ export class Infrastructure {
     return this.subjectService.deleteSubjectLink(linkId);
   }
 
+  countStudentsBySubject(
+    subjectId: string,
+    schoolId: string | null,
+    schoolLevel: string | null
+  ): Observable<{ count: number; error: PostgrestError | null }> {
+    return this.subjectService.countStudentsBySubject(subjectId, schoolId, schoolLevel);
+  }
+
   createSubject(subjectData: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): Observable<{ subject: Subject | null; error: PostgrestError | null }> {
     return this.subjectService.createSubject(subjectData);
   }
