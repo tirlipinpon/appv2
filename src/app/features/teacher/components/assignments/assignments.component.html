@@ -1,12 +1,4 @@
 <div class="assignment-section">
-  <button 
-    *ngIf="!showAssignmentForm()"
-    type="button" 
-    (click)="showAssignmentForm.set(true)" 
-    class="btn btn-primary btn-add">
-    ➕ Ajouter une affectation
-  </button>
-
   <div *ngIf="showAssignmentForm()" class="assignment-form-container">
     <h3>Nouvelle Affectation</h3>
     <form [formGroup]="assignmentForm" (ngSubmit)="onSubmitAssignment()">
@@ -154,9 +146,6 @@
           class="btn btn-secondary btn-sm">
           ✏️ Gérer
         </a>
-        <button type="button" (click)="onDeleteAssignment(assignment.id)" class="btn btn-danger btn-sm">
-          🗑️ Supprimer
-        </button>
       </div>
     </div>
   </div>

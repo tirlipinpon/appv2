@@ -15,13 +15,6 @@
         class="tab-link">
         👤 Mon profil
       </a>
-      <a 
-        [routerLink]="[]" 
-        [queryParams]="{ tab: 'assignments' }" 
-        [class.active]="activeTab() === 'assignments'"
-        class="tab-link">
-        📚 Mes affectations
-      </a>
     </nav>
 
     <div *ngIf="showSuccess()" class="success-message">
@@ -83,10 +76,6 @@
         </button>
       </div>
     </form>
-
-    <section *ngIf="activeTab() === 'assignments'">
-      <app-assignments />
-    </section>
 
     <div *ngIf="isLoading()" class="loading">
       <p>Chargement...</p>

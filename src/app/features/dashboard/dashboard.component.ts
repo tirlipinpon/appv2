@@ -110,11 +110,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
         variant: this.hasTeacher() ? 'edit' : 'add'
       },
       {
-        label: 'Mes affectations',
+        label: 'Ajouter une affectation',
         route: '/teacher-assignments',
-        queryParams: { tab: 'assignments' },
-        icon: '📚',
-        variant: 'secondary'
+        queryParams: { add: 'true' },
+        icon: '➕',
+        variant: 'add'
       }
     ];
   });
@@ -297,4 +297,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Utilise directement la fonction utils
   readonly getSchoolLevelLabel = getSchoolLevelLabel;
+
+  // Méthode pour supprimer une affectation
+  onDeleteAssignment(assignmentId: string): void {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette affectation ?')) return;
+    this.teacherAssignmentStore.deleteAssignment(assignmentId);
+  }
 }

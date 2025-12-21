@@ -2,7 +2,6 @@ import { Component, inject, signal, computed, OnInit, effect, ChangeDetectionStr
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { AssignmentsComponent } from './components/assignments/assignments.component';
 import { TeacherStore } from './store/index';
 import { Application } from './components/application/application';
 import { ErrorSnackbarService } from '../../shared/services/snackbar/error-snackbar.service';
@@ -11,7 +10,7 @@ import type { Teacher } from './types/teacher';
 @Component({
   selector: 'app-teacher',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, AssignmentsComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './teacher.component.html',
   styleUrl: './teacher.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,7 +36,7 @@ export class TeacherComponent implements OnInit {
   readonly hasError = computed(() => this.error().length > 0);
   readonly isCreating = computed(() => !this.teacher()); // Si pas de teacher, on crée
   readonly buttonText = computed(() => this.isCreating() ? 'Ajouter' : 'Modifier');
-  readonly activeTab = signal<'profile' | 'assignments'>('profile');
+  readonly activeTab = signal<'profile'>('profile');
 
   constructor() {
     // Écouter les changements du teacher dans le store pour remplir le formulaire
@@ -63,14 +62,7 @@ export class TeacherComponent implements OnInit {
   ngOnInit(): void {
     this.initializeForms();
     this.loadTeacherData();
-    const dataTab = this.route.snapshot.data?.['tab'];
-    if (dataTab === 'assignments') {
-      this.activeTab.set('assignments');
-    }
-    this.route.queryParamMap.subscribe(params => {
-      const tab = params.get('tab');
-      this.activeTab.set(tab === 'assignments' ? 'assignments' : 'profile');
-    });
+    this.activeTab.set('profile');
   }
 
   private initializeForms(): void {

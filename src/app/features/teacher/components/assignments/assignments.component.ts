@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import { Application } from '../../components/application/application';
 import { TeacherService } from '../../services/teacher/teacher.service';
@@ -20,6 +20,7 @@ import { getSchoolLevelLabel } from '../../utils/school-levels.util';
 })
 export class AssignmentsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
   private readonly application = inject(Application);
   private readonly infrastructure = inject(Infrastructure);
   private readonly teacherService = inject(TeacherService);
@@ -84,6 +85,12 @@ export class AssignmentsComponent implements OnInit {
     this.currentSchoolId.set(initSchoolId);
     // S'assurer que la liste des matières est vide au démarrage
     this.store.clearSubjects();
+    
+    // Vérifier si on doit ouvrir le formulaire automatiquement via query param
+    const addParam = this.route.snapshot.queryParamMap.get('add');
+    if (addParam === 'true') {
+      this.showAssignmentForm.set(true);
+    }
   }
 
   private loadTeacherId(): void {
@@ -270,11 +277,6 @@ export class AssignmentsComponent implements OnInit {
     this.assignmentForm.reset();
     this.showAssignmentForm.set(false);
     if (this.teacherId()) this.application.loadAssignments(this.teacherId()!);
-  }
-
-  onDeleteAssignment(assignmentId: string): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette affectation ?')) return;
-    this.application.deleteAssignment(assignmentId);
   }
 
   getSchoolName(schoolId: string, assignment?: TeacherAssignment | { school?: { name?: string } }): string {
