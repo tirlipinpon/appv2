@@ -295,6 +295,55 @@ export const TeacherAssignmentStore = signalStore(
       )
     ),
 
+    transferAssignment: rxMethod<{ assignmentId: string; newTeacherId: string }>(
+      pipe(
+        switchMap(({ assignmentId, newTeacherId }) => {
+          const previous = store.assignments();
+          // Optimistic update: remove locally first (car l'affectation est transférée)
+          patchState(store, {
+            assignments: previous.filter(a => a.id !== assignmentId),
+          });
+          return infrastructure.transferAssignment(assignmentId, newTeacherId).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du transfert de l\'affectation';
+                // rollback
+                patchState(store, { assignments: previous, error: [errorMessage] });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du transfert de l\'affectation';
+              // rollback
+              patchState(store, { assignments: previous, error: [errorMessage] });
+              return of(null);
+            })
+          );
+        })
+      )
+    ),
+
+    shareAssignment: rxMethod<{ assignmentId: string; newTeacherId: string }>(
+      pipe(
+        switchMap(({ assignmentId, newTeacherId }) => {
+          return infrastructure.shareAssignment(assignmentId, newTeacherId).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du partage de l\'affectation';
+                patchState(store, { error: [errorMessage] });
+              }
+              // Note: Le partage ne modifie pas la liste des affectations du professeur actuel
+              // car une nouvelle affectation est créée pour un autre professeur
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du partage de l\'affectation';
+              patchState(store, { error: [errorMessage] });
+              return of(null);
+            })
+          );
+        })
+      )
+    ),
+
     setError: (error: string) => {
       patchState(store, { error: [error], isLoading: false });
     },

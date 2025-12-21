@@ -26,6 +26,7 @@ export interface TeacherAssignmentCreate {
 }
 
 export interface TeacherAssignmentUpdate {
+  teacher_id?: string;
   school_id?: string | null;
   school_year_id?: string | null;
   school_level?: string | null;

@@ -1,0 +1,110 @@
+<div class="dialog-overlay" (click)="onCancel()" (keydown.escape)="onCancel()" tabindex="0" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+  <div class="dialog-content" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="-1">
+    <div class="dialog-header">
+      <h2 id="dialog-title">Transférer l'affectation</h2>
+      <button type="button" class="close-btn" (click)="onCancel()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="dialog-body">
+      <!-- Informations de l'affectation -->
+      <div class="assignment-info">
+        <h3>Affectation à transférer</h3>
+        <div class="info-item">
+          <span class="info-label">Matière:</span>
+          <span class="info-value">{{ assignment.subject?.name || 'Matière inconnue' }}</span>
+        </div>
+        <div class="info-item" *ngIf="assignment.school_id">
+          <span class="info-label">École:</span>
+          <span class="info-value">{{ assignment.school?.name || 'École inconnue' }}</span>
+        </div>
+        <div class="info-item" *ngIf="assignment.school_level">
+          <span class="info-label">Niveau:</span>
+          <span class="info-value">{{ getSchoolLevelLabel(assignment.school_level) }}</span>
+        </div>
+      </div>
+
+      <form [formGroup]="transferForm">
+        <!-- Sélection du mode -->
+        <div class="form-group">
+          <label class="form-label">Mode de transfert *</label>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input 
+                type="radio" 
+                formControlName="mode" 
+                value="transfer"
+                id="mode-transfer">
+              <span class="radio-label">
+                <strong>Déplacer</strong>
+                <span class="radio-description">L'affectation sera retirée au professeur actuel et donnée au nouveau professeur</span>
+              </span>
+            </label>
+            <label class="radio-option">
+              <input 
+                type="radio" 
+                formControlName="mode" 
+                value="share"
+                id="mode-share">
+              <span class="radio-label">
+                <strong>Partager</strong>
+                <span class="radio-description">Les deux professeurs auront accès à l'affectation</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Sélection du professeur -->
+        <div class="form-group">
+          <label for="teacherId" class="form-label">Nouveau professeur *</label>
+          
+          <!-- Champ de recherche -->
+          <input 
+            type="text" 
+            class="form-input search-input"
+            placeholder="Rechercher un professeur..."
+            [value]="searchQuery()"
+            (input)="onSearchInput($any($event.target).value)"
+            *ngIf="teachers().length > 5">
+          
+          <!-- Liste déroulante -->
+          <select 
+            id="teacherId" 
+            formControlName="teacherId" 
+            class="form-select"
+            [class.error]="transferForm.get('teacherId')?.invalid && transferForm.get('teacherId')?.touched">
+            <option value="">Sélectionner un professeur</option>
+            @for (teacher of filteredTeachers(); track teacher.id) {
+              <option [value]="teacher.id">{{ getTeacherDisplayName(teacher) }}</option>
+            }
+          </select>
+          
+          @if (transferForm.get('teacherId')?.hasError('required') && transferForm.get('teacherId')?.touched) {
+            <span class="error-message">Le professeur est requis</span>
+          }
+          
+          @if (isLoading()) {
+            <span class="loading-message">Chargement des professeurs...</span>
+          }
+          
+          @if (!isLoading() && teachers().length === 0) {
+            <span class="info-message">Aucun professeur disponible</span>
+          }
+        </div>
+      </form>
+    </div>
+
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        Annuler
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        (click)="onConfirm()"
+        [disabled]="!transferForm.valid">
+        Confirmer
+      </button>
+    </div>
+  </div>
+</div>
+

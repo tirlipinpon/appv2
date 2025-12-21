@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { TeacherRepository } from '../../repositories/teacher.repository';
+import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { Teacher, TeacherUpdate } from '../../types/teacher';
 import type { PostgrestError } from '@supabase/supabase-js';
 
@@ -15,6 +16,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 })
 export class TeacherService {
   private readonly repository = inject(TeacherRepository);
+  private readonly supabaseService = inject(SupabaseService);
 
   /**
    * Récupère le profil enseignant de l'utilisateur connecté avec cache
@@ -52,5 +54,27 @@ export class TeacherService {
    */
   clearTeacherCache(): void {
     this.repository.clearCache();
+  }
+
+  /**
+   * Récupère la liste de tous les professeurs
+   * @param excludeTeacherId ID du professeur à exclure de la liste (optionnel)
+   */
+  getAllTeachers(excludeTeacherId?: string): Observable<{ teachers: Teacher[]; error: PostgrestError | null }> {
+    let query = this.supabaseService.client
+      .from('teachers')
+      .select('id, fullname, profile_id')
+      .order('fullname', { ascending: true, nullsFirst: false });
+
+    if (excludeTeacherId) {
+      query = query.neq('id', excludeTeacherId);
+    }
+
+    return from(query).pipe(
+      map(({ data, error }) => ({
+        teachers: (data || []) as Teacher[],
+        error: error || null,
+      }))
+    );
   }
 }

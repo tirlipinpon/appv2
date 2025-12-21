@@ -43,6 +43,10 @@ export class Infrastructure {
     return this.teacherService.createTeacherProfile(profileData);
   }
 
+  getAllTeachers(excludeTeacherId?: string): Observable<{ teachers: Teacher[]; error: PostgrestError | null }> {
+    return this.teacherService.getAllTeachers(excludeTeacherId);
+  }
+
   // ===== Domaine Affectations (Teacher) =====
   getSchools(): Observable<{ schools: School[]; error: PostgrestError | null }> {
     return this.schoolService.getSchools();
@@ -98,6 +102,14 @@ export class Infrastructure {
 
   deleteAssignment(id: string): Observable<{ error: PostgrestError | null }> {
     return this.teacherAssignmentService.deleteAssignment(id);
+  }
+
+  transferAssignment(assignmentId: string, newTeacherId: string): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+    return this.teacherAssignmentService.transferAssignment(assignmentId, newTeacherId);
+  }
+
+  shareAssignment(assignmentId: string, newTeacherId: string): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+    return this.teacherAssignmentService.shareAssignment(assignmentId, newTeacherId);
   }
 
   // ===== Domaine Jeux =====

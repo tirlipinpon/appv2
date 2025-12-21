@@ -12,11 +12,13 @@ import { ActionLinksComponent, ActionLink } from '../../shared/components/action
 import { GamesStatsService } from '../../shared/services/games-stats/games-stats.service';
 import { GamesStatsDisplayComponent } from '../../shared/components/games-stats-display/games-stats-display.component';
 import { getSchoolLevelLabel, SCHOOL_LEVELS } from '../teacher/utils/school-levels.util';
+import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../teacher/components/assignments/components/transfer-assignment-dialog/transfer-assignment-dialog.component';
+import type { TeacherAssignment } from '../teacher/types/teacher-assignment';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, ActionLinksComponent, GamesStatsDisplayComponent],
+  imports: [CommonModule, RouterModule, ActionLinksComponent, GamesStatsDisplayComponent, TransferAssignmentDialogComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -44,6 +46,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly teacherButtonText = computed(() => this.hasTeacher() ? 'Éditer mon profil' : 'Créer mon profil');
   readonly teacherAssignments = computed(() => this.teacherAssignmentStore.assignments());
   readonly hasAssignments = computed(() => this.teacherAssignmentStore.hasAssignments());
+  
+  // Signal pour gérer l'affichage du dialog de transfert
+  readonly showTransferDialog = signal<boolean>(false);
+  readonly selectedAssignmentForTransfer = signal<TeacherAssignmentWithJoins | null>(null);
   
   // Filtre par école
   readonly selectedSchoolId = signal<string | null>(null); // null = toutes les écoles
@@ -307,5 +313,49 @@ export class DashboardComponent implements OnInit, OnDestroy {
   onDeleteAssignment(assignmentId: string): void {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette affectation ?')) return;
     this.teacherAssignmentStore.deleteAssignment(assignmentId);
+  }
+
+  // Méthode pour transférer une affectation
+  onTransferAssignment(assignmentId: string): void {
+    const assignment = this.teacherAssignments().find(a => a.id === assignmentId);
+    if (!assignment) {
+      console.error('Affectation non trouvée:', assignmentId);
+      return;
+    }
+    this.selectedAssignmentForTransfer.set(assignment);
+    this.showTransferDialog.set(true);
+  }
+
+  // Gérer la confirmation du transfert
+  onTransferConfirm(data: TransferAssignmentData): void {
+    const assignment = this.selectedAssignmentForTransfer();
+    if (!assignment) return;
+
+    if (data.mode === 'transfer') {
+      this.teacherAssignmentStore.transferAssignment({
+        assignmentId: assignment.id,
+        newTeacherId: data.newTeacherId
+      });
+    } else {
+      this.teacherAssignmentStore.shareAssignment({
+        assignmentId: assignment.id,
+        newTeacherId: data.newTeacherId
+      });
+    }
+
+    this.showTransferDialog.set(false);
+    this.selectedAssignmentForTransfer.set(null);
+  }
+
+  // Gérer l'annulation du transfert
+  onTransferCancel(): void {
+    this.showTransferDialog.set(false);
+    this.selectedAssignmentForTransfer.set(null);
+  }
+
+  // Obtenir l'ID du professeur actuel
+  getCurrentTeacherId(): string | null {
+    const teacher = this.teacherStore.teacher();
+    return teacher?.id || null;
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import { AuthService } from '../../../../shared/services/auth/auth.service';
 import type { TeacherAssignment, TeacherAssignmentCreate, TeacherAssignmentUpdate } from '../../types/teacher-assignment';
@@ -99,6 +99,74 @@ export class TeacherAssignmentService {
           ? ({ message: 'Aucune ligne mise à jour' } as PostgrestError)
           : null;
         return { error: (error || logicalError) as PostgrestError | null };
+      })
+    );
+  }
+
+  /**
+   * Transfère une affectation à un autre professeur (déplace)
+   * Change le teacher_id de l'affectation existante
+   */
+  transferAssignment(assignmentId: string, newTeacherId: string): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+    return from(
+      this.supabaseService.client
+        .from('teacher_assignments')
+        .update({ teacher_id: newTeacherId })
+        .eq('id', assignmentId)
+        .select()
+        .single()
+    ).pipe(
+      map(({ data, error }) => ({
+        assignment: data as TeacherAssignment | null,
+        error: error || null,
+      }))
+    );
+  }
+
+  /**
+   * Partage une affectation avec un autre professeur (crée une nouvelle affectation)
+   * Crée une nouvelle affectation avec les mêmes paramètres sauf teacher_id
+   */
+  shareAssignment(assignmentId: string, newTeacherId: string): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+    // D'abord récupérer l'affectation existante
+    return from(
+      this.supabaseService.client
+        .from('teacher_assignments')
+        .select('*')
+        .eq('id', assignmentId)
+        .single()
+    ).pipe(
+      switchMap(({ data: existingAssignment, error: fetchError }) => {
+        if (fetchError || !existingAssignment) {
+          return from(Promise.resolve({ assignment: null, error: fetchError || null }));
+        }
+
+        // Créer une nouvelle affectation avec les mêmes paramètres mais nouveau teacher_id
+        const newAssignment = {
+          teacher_id: newTeacherId,
+          school_id: existingAssignment.school_id,
+          school_year_id: existingAssignment.school_year_id,
+          school_level: existingAssignment.school_level || '',
+          class_id: existingAssignment.class_id,
+          subject_id: existingAssignment.subject_id,
+          roles: existingAssignment.roles || ['titulaire'],
+          start_date: existingAssignment.start_date,
+          end_date: existingAssignment.end_date,
+          deleted_at: null,
+        };
+
+        return from(
+          this.supabaseService.client
+            .from('teacher_assignments')
+            .upsert(newAssignment, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
+            .select()
+            .single()
+        ).pipe(
+          map(({ data, error }) => ({
+            assignment: data as TeacherAssignment | null,
+            error: error || null,
+          }))
+        );
       })
     );
   }
