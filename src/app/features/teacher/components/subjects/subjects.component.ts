@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, AsyncValidatorFn, ValidationErrors } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { Infrastructure } from '../infrastructure/infrastructure';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
@@ -78,7 +78,7 @@ export class SubjectsComponent implements OnInit {
   }, { allowSignalWrites: true });
 
   subjectForm = this.fb.group({
-    name: ['', Validators.required, [/* async */ this.nameUniqueValidator()]],
+    name: ['', Validators.required],
     description: [''],
     type: ['scolaire', Validators.required],
   });
@@ -190,14 +190,8 @@ export class SubjectsComponent implements OnInit {
     if (!this.subjectForm.valid) return;
     const v = this.subjectForm.value;
 
-    // Validation: nom unique insensible à la casse
     const newName = (v.name || '').trim();
     if (!newName) return;
-    const exists = this.subjects().some(s => (s.name || '').trim().toLowerCase() === newName.toLowerCase());
-    if (exists) {
-      this.errorSnackbar.showError('Cette matière existe déjà (même nom, insensible à la casse).');
-      return;
-    }
 
     this.infra.createSubject({
       name: newName,
@@ -235,29 +229,6 @@ export class SubjectsComponent implements OnInit {
     });
   }
 
-  private nameUniqueValidator(): AsyncValidatorFn {
-    return (control) => {
-      const raw = (control.value || '') as string;
-      const trimmed = raw.trim();
-      if (!trimmed) {
-        return Promise.resolve(null);
-      }
-      const currentId = this.subjectId();
-      return new Promise<ValidationErrors | null>((resolve) => {
-        this.infra.getSubjects().subscribe(({ subjects, error }) => {
-          if (error) {
-            resolve(null);
-            return;
-          }
-          const exists = (subjects || []).some(s =>
-            s.id !== currentId &&
-            (s.name || '').trim().toLowerCase() === trimmed.toLowerCase()
-          );
-          resolve(exists ? { nameTaken: true } : null);
-        });
-      });
-    };
-  }
 
   addLink(): void {
     if (!(this.linkForm.valid && this.subjectId())) return;

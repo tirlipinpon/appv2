@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ParentSubjectService } from '../../services/subject/parent-subject.service';
+import { SchoolService } from '../../services/school/school.service';
 import type { Subject } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
 import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
@@ -17,10 +18,12 @@ import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
 export class ChildSubjectsComponent implements OnInit {
   @Input() childId?: string;
   private readonly parentSvc = inject(ParentSubjectService);
+  private readonly schoolService = inject(SchoolService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   readonly child = signal<Child | null>(null);
+  readonly schoolName = signal<string | null>(null);
   readonly availableSubjects = signal<(Subject & { school_level?: string | null })[]>([]);
   readonly unofficialSubjects = signal<(Subject & { school_level?: string | null })[]>([]); // Matières hors programme
   readonly enrollments = signal<{ subject_id: string; selected: boolean }[]>([]);
@@ -123,7 +126,12 @@ export class ChildSubjectsComponent implements OnInit {
     this.parentSvc.getChild(this.childId).subscribe(({ child }) => {
       if (child) {
         this.child.set(child);
+        // Charger le nom de l'école si school_id existe
         if (child.school_id) {
+          this.schoolService.getSchoolById(child.school_id).subscribe(school => {
+            this.schoolName.set(school?.name || null);
+          });
+          
           this.parentSvc.getAvailableSubjectsForChild(child).subscribe(({ subjects, error }) => {
             if (error) {
               console.error('Error loading available subjects:', error);
@@ -141,6 +149,8 @@ export class ChildSubjectsComponent implements OnInit {
               selected: e.selected
             })));
           });
+        } else {
+          this.schoolName.set(null);
         }
       }
     });

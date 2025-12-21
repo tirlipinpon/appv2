@@ -10,7 +10,7 @@
     <div class="child-info-card">
       <div class="info-item">
         <span class="info-label">École:</span>
-        <span class="info-value">{{ c.school_id || 'Non renseignée' }}</span>
+        <span class="info-value">{{ schoolName() || c.school_id || 'Non renseignée' }}</span>
       </div>
       <div class="info-item" *ngIf="c.school_level">
         <span class="info-label">Niveau:</span>
