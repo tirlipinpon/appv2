@@ -1,0 +1,222 @@
+.letter-by-letter-input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  width: 100%;
+
+  &.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+// Input mobile - invisible mais fonctionnel pour déclencher le clavier
+.mobile-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  top: -100px;
+  left: -100px;
+  opacity: 0;
+  z-index: -1;
+  font-size: 16px; // Évite le zoom sur iOS
+  pointer-events: none; // Ne bloque rien
+  border: none;
+  background: transparent;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.word-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 60px;
+  padding: 10px;
+
+  &.disabled {
+    opacity: 0.6;
+  }
+
+  // Adaptation pour mots longs
+  &.word-7letters .letter-box {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1em;
+  }
+
+  &.word-8letters .letter-box {
+    width: 38px;
+    height: 38px;
+    font-size: 1em;
+  }
+
+  &.word-9plus .letter-box {
+    width: 34px;
+    height: 34px;
+    font-size: 0.95em;
+  }
+}
+
+.letter-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  margin: 0;
+  border: 3px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #4a5568;
+  background: white;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  user-select: none;
+
+  // État : Lettre correcte (vert)
+  &.letter-correct {
+    background: #48bb78;
+    color: white;
+    border-color: #38a169;
+    animation: bounce 0.6s ease;
+  }
+
+  // État : Lettre à la mauvaise place (jaune/bleu)
+  &.letter-wrong-place {
+    background: #3182ce;
+    color: white;
+    border-color: #2c5aa0;
+    animation: shake 0.6s ease;
+  }
+
+  // État : Lettre absente (rouge)
+  &.letter-wrong {
+    background: #f56565;
+    color: white;
+    border-color: #e53e3e;
+    animation: shake 0.6s ease;
+  }
+
+  // Curseur visuel
+  &.letter-cursor {
+    border-color: #667eea;
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
+    animation: pulse-cursor 1s ease infinite;
+  }
+}
+
+// Animations
+@keyframes bounce {
+  0%, 20%, 60%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  80% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes pulse-cursor {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(102, 126, 234, 0.8);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+// Responsive mobile
+@media (max-width: 600px) {
+  .word-display {
+    gap: 3px;
+  }
+
+  .letter-box {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1em;
+    border-width: 2px;
+  }
+
+  .word-display.word-7letters .letter-box {
+    width: 36px;
+    height: 36px;
+    font-size: 1em;
+  }
+
+  .word-display.word-8letters .letter-box {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95em;
+  }
+
+  .word-display.word-9plus .letter-box {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85em;
+  }
+}
+
+@media (max-width: 400px) {
+  .letter-box {
+    width: 35px;
+    height: 35px;
+    font-size: 1em;
+  }
+
+  .word-display.word-7letters .letter-box {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95em;
+  }
+
+  .word-display.word-8letters .letter-box {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85em;
+  }
+
+  .word-display.word-9plus .letter-box {
+    width: 25px;
+    height: 25px;
+    font-size: 0.8em;
+  }
+}
+

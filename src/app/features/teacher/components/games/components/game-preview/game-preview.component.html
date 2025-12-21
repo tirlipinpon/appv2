@@ -184,13 +184,13 @@
               </div>
             }
             <div class="reponse-libre-input">
-              <input 
-                type="text" 
-                [value]="userAnswer()"
-                (input)="userAnswer.set($any($event.target).value)"
+              <app-letter-by-letter-input
+                [targetWord]="getReponseLibreReponseValide()"
+                [allowHyphen]="true"
                 [disabled]="isSubmitted()"
-                placeholder="Votre réponse..."
-                class="text-input">
+                (wordChange)="userAnswer.set($event)"
+                (wordComplete)="submitReponseLibre()">
+              </app-letter-by-letter-input>
             </div>
             <button class="btn btn-primary" (click)="submitReponseLibre()" [disabled]="isSubmitted() || !userAnswer().trim()">
               Valider

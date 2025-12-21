@@ -6,11 +6,12 @@ import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fie
 import { QcmGameComponent } from '../qcm-game/qcm-game.component';
 import { ChronologieGameComponent } from '../chronologie-game/chronologie-game.component';
 import { MemoryGameComponent } from '../memory-game/memory-game.component';
+import { LetterByLetterInputComponent } from '../../../../../../shared/components/letter-by-letter-input/letter-by-letter-input.component';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent],
+  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, LetterByLetterInputComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })

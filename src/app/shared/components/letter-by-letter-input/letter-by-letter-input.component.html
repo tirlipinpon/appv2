@@ -1,0 +1,32 @@
+<div class="letter-by-letter-input-container" [class.disabled]="disabled">
+  <!-- Input caché pour déclencher le clavier mobile -->
+  <input
+    #mobileInput
+    type="text"
+    id="mobileInput"
+    class="mobile-input"
+    autocomplete="off"
+    autocorrect="off"
+    autocapitalize="off"
+    spellcheck="false"
+    maxlength="20"
+    placeholder="Tape ici..."
+    aria-label="Zone de saisie pour mobile"
+    (input)="onMobileInput($event)"
+    (focus)="onMobileFocus()"
+    (blur)="onMobileBlur()"
+  />
+
+  <!-- Container avec les boîtes de lettres -->
+  <div class="word-display" [class.disabled]="disabled">
+    @for (box of letterBoxes(); track $index) {
+      <div 
+        [class]="getLetterBoxClasses(box)"
+        [attr.aria-label]="box.letter === '?' ? 'Lettre à deviner' : 'Lettre ' + box.letter"
+      >
+        {{ box.letter }}
+      </div>
+    }
+  </div>
+</div>
+
