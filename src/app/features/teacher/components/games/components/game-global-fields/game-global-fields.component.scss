@@ -29,6 +29,9 @@
     textarea.form-control {
       resize: vertical;
       min-height: 60px;
+      pointer-events: auto !important;
+      user-select: text !important;
+      cursor: text !important;
     }
 
     .aide-item {

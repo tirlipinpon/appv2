@@ -52,7 +52,7 @@
 
   <!-- Mode édition - Toujours affiché -->
   @if (isEditing()) {
-    <div class="game-edit">
+    <div class="game-edit" (click)="$event.stopPropagation()">
       <div class="edit-notice">
         ⚠️ Mode édition - Utilisez le formulaire ci-dessous pour modifier le jeu
       </div>

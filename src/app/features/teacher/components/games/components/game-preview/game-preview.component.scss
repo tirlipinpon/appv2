@@ -239,21 +239,19 @@
     }
 
     .texte-with-cases {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 2px;
       line-height: 1.8;
       margin-bottom: $spacing-lg;
       padding: $spacing-md;
       background: $color-bg-primary;
       border-radius: $border-radius-sm;
       font-size: $font-size-base;
+      text-align: left;
     }
 
     .texte-part {
       color: $color-text-primary;
-      white-space: pre-wrap; // Préserver les espaces et les retours à la ligne
+      display: inline;
+      white-space: pre-wrap; // Préserver les espaces et retours à la ligne
     }
 
     .case-vide-drop {
@@ -268,7 +266,10 @@
       border-radius: $border-radius-sm;
       transition: all $transition-base;
       position: relative;
-      vertical-align: baseline; // Aligner avec le texte
+      vertical-align: middle; // Aligner au centre verticalement avec le texte
+      margin: 0 4px; // Espacement horizontal avec le texte
+      flex-shrink: 0; // Empêcher la réduction de taille
+      white-space: nowrap; // Empêcher le retour à la ligne dans la case
 
       &.cdk-drop-list-dragging {
         border-color: $color-primary;
@@ -298,7 +299,7 @@
     }
 
     .case-word {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: $spacing-xs;
       padding: $spacing-xs $spacing-sm;
@@ -306,6 +307,7 @@
       border-radius: $border-radius-sm;
       font-weight: $font-weight-medium;
       color: $color-text-primary;
+      white-space: nowrap;
     }
 
     .btn-remove-word {

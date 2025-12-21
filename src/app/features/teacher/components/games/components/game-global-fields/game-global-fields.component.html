@@ -1,4 +1,4 @@
-<div [formGroup]="form" class="game-global-fields">
+<div [formGroup]="form" class="game-global-fields" (click)="$event.stopPropagation()">
   <div class="form-group">
     <label for="instructions">Instructions</label>
     <textarea 
@@ -6,7 +6,12 @@
       class="form-control"
       rows="2"
       formControlName="instructions"
-      placeholder="Instructions pour l'élève"></textarea>
+      placeholder="Instructions pour l'élève"
+      [disabled]="form.get('instructions')?.disabled || false"
+      [readonly]="form.get('instructions')?.disabled || false"
+      (click)="$event.stopPropagation()"
+      (focus)="$event.stopPropagation()"
+      (input)="$event.stopPropagation()"></textarea>
   </div>
 
   <div class="form-group">

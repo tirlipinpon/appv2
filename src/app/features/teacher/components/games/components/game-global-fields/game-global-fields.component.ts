@@ -27,10 +27,14 @@ export class GameGlobalFieldsComponent implements OnChanges {
 
   constructor() {
     this.form = this.fb.group({
-      instructions: [''],
+      instructions: [''], // Toujours activé par défaut
       question: [''],
       aides: this.fb.array<FormControl<string>>([]),
     });
+
+    // S'assurer que les contrôles sont toujours activés
+    this.form.get('instructions')?.enable();
+    this.form.get('question')?.enable();
 
     // Émettre les changements
     this.form.valueChanges.subscribe(() => {

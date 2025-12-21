@@ -99,7 +99,7 @@
                   @if (part.type === 'text') {
                     <span class="texte-part">{{ part.content }}</span>
                   } @else if (part.type === 'case' && part.index) {
-                    <div 
+                    <span 
                       cdkDropList
                       [id]="'case-' + part.index"
                       class="case-vide-drop"
@@ -110,7 +110,7 @@
                       [class.correct]="isCaseCorrect(part.index) === true"
                       [class.incorrect]="isCaseCorrect(part.index) === false">
                       @if (getWordInCase(part.index)) {
-                        <div class="case-word" cdkDrag [cdkDragData]="getWordInCase(part.index)">
+                        <span class="case-word" cdkDrag [cdkDragData]="getWordInCase(part.index)">
                           {{ getWordInCase(part.index) }}
                           @if (!isSubmitted()) {
                             <button 
@@ -121,11 +121,11 @@
                               ×
                             </button>
                           }
-                        </div>
+                        </span>
                       } @else {
                         <span class="case-placeholder">{{ part.content }}</span>
                       }
-                    </div>
+                    </span>
                   }
                 }
               </div>
