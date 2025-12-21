@@ -31,7 +31,7 @@ export class TransferAssignmentDialogComponent implements OnInit {
   private readonly infrastructure = inject(Infrastructure);
 
   @Input({ required: true }) assignment!: TeacherAssignmentWithJoins;
-  @Input() currentTeacherId!: string;
+  @Input() currentTeacherId?: string;
   @Output() confirm = new EventEmitter<TransferAssignmentData>();
   @Output() cancel = new EventEmitter<void>();
 
@@ -70,18 +70,26 @@ export class TransferAssignmentDialogComponent implements OnInit {
 
   private loadTeachers(): void {
     this.isLoading.set(true);
-    this.infrastructure.getAllTeachers(this.currentTeacherId).subscribe({
+    
+    // Ne pas exclure si currentTeacherId est vide, null ou undefined
+    const excludeId = this.currentTeacherId && this.currentTeacherId.trim() !== '' 
+      ? this.currentTeacherId.trim() 
+      : undefined;
+    
+    this.infrastructure.getAllTeachers(excludeId).subscribe({
       next: ({ teachers, error }) => {
         this.isLoading.set(false);
         if (error) {
-          console.error('Erreur lors du chargement des professeurs:', error);
+          console.error('[TransferDialog] Erreur lors du chargement des professeurs:', error);
+          this.teachers.set([]);
           return;
         }
         this.teachers.set(teachers || []);
       },
       error: (error) => {
         this.isLoading.set(false);
-        console.error('Erreur lors du chargement des professeurs:', error);
+        console.error('[TransferDialog] Erreur lors du chargement des professeurs:', error);
+        this.teachers.set([]);
       }
     });
   }

@@ -87,7 +87,14 @@
           }
           
           @if (!isLoading() && teachers().length === 0) {
-            <span class="info-message">Aucun professeur disponible</span>
+            <span class="info-message">
+              Aucun autre professeur disponible. 
+              @if (currentTeacherId) {
+                Vous êtes le seul professeur dans le système.
+              } @else {
+                Aucun professeur trouvé dans la base de données.
+              }
+            </span>
           }
         </div>
       </form>

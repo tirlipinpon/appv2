@@ -66,8 +66,9 @@ export class TeacherService {
       .select('id, fullname, profile_id')
       .order('fullname', { ascending: true, nullsFirst: false });
 
-    if (excludeTeacherId) {
-      query = query.neq('id', excludeTeacherId);
+    // Exclure seulement si l'ID est fourni et non vide
+    if (excludeTeacherId && excludeTeacherId.trim() !== '') {
+      query = query.neq('id', excludeTeacherId.trim());
     }
 
     return from(query).pipe(

@@ -164,7 +164,7 @@
 <app-transfer-assignment-dialog
   *ngIf="showTransferDialog() && selectedAssignmentForTransfer()"
   [assignment]="selectedAssignmentForTransfer()!"
-  [currentTeacherId]="getCurrentTeacherId() || ''"
+  [currentTeacherId]="getCurrentTeacherId() ?? ''"
   (confirm)="onTransferConfirm($event)"
   (cancel)="onTransferCancel()">
 </app-transfer-assignment-dialog>
