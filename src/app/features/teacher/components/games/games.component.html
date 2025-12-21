@@ -190,7 +190,8 @@
                 [gameTypeName]="getGameTypeName(game.game_type_id)"
                 [gameTypes]="gameTypes()"
                 (update)="updateGameFromCard($event.gameId, $event.updates)"
-                (delete)="delete($event)">
+                (delete)="delete($event)"
+                (duplicate)="openDuplicateDialog($event)">
               </app-game-card>
             }
           </ul>
@@ -198,4 +199,19 @@
       </div>
     }
   </section>
+
+  <!-- Dialog de duplication -->
+  @if (duplicateDialogOpen() && gameToDuplicate()) {
+    <app-duplicate-game-dialog
+      [game]="gameToDuplicate()!"
+      [currentAssignment]="currentAssignment()"
+      [availableSchools]="availableSchoolsForTeacher()"
+      [availableAssignments]="subjectsStore.assignments()"
+      [availableSubjects]="subjects()"
+      [gameTypes]="gameTypes()"
+      [gameTypeName]="getGameTypeName(gameToDuplicate()!.game_type_id)"
+      (confirm)="onDuplicateGame($event)"
+      (cancel)="onCancelDuplicate()">
+    </app-duplicate-game-dialog>
+  }
 </div>

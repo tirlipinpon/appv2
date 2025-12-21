@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal, computed, effect, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, effect, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray, FormControl } from '@angular/forms';
-import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router, NavigationEnd } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { GamesApplication } from './application/application';
 import { GamesStore } from '../../store/games.store';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
@@ -18,10 +19,15 @@ import { AIGameGeneratorFormComponent } from './components/ai-game-generator-for
 import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './components/game-global-fields/game-global-fields.component';
 import { GameCardComponent } from './components/game-card/game-card.component';
+import { DuplicateGameDialogComponent } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../types/game-data';
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
+import type { TeacherAssignment } from '../../types/teacher-assignment';
+import type { Subject } from '../../types/subject';
 import { normalizeGameData } from '../../utils/game-data-mapper';
+import { SCHOOL_LEVELS } from '../../utils/school-levels.util';
+import type { DuplicateGameData } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 
 @Component({
   selector: 'app-games',
@@ -41,11 +47,12 @@ import { normalizeGameData } from '../../utils/game-data-mapper';
     AIGeneratedPreviewComponent,
     GameGlobalFieldsComponent,
     GameCardComponent,
+    DuplicateGameDialogComponent,
   ],
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
 })
-export class GamesComponent implements OnInit, AfterViewInit {
+export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -58,6 +65,11 @@ export class GamesComponent implements OnInit, AfterViewInit {
   readonly subjectId = signal<string | null>(null);
   readonly editingGameId = signal<string | null>(null);
   readonly selectedGameTypeName = signal<string | null>(null);
+  
+  // Signals pour la duplication
+  readonly duplicateDialogOpen = signal<boolean>(false);
+  readonly gameToDuplicate = signal<Game | null>(null);
+  readonly currentAssignment = signal<TeacherAssignment | null>(null);
 
   readonly games = computed(() => this.gamesStore.games());
   readonly gameTypes = computed(() => this.gamesStore.gameTypes());
@@ -74,6 +86,51 @@ export class GamesComponent implements OnInit, AfterViewInit {
     const subject = this.currentSubject();
     return subject?.name || '';
   });
+
+  // Computed pour les écoles disponibles depuis les assignments du professeur
+  readonly availableSchoolsForTeacher = computed(() => {
+    const assignments = this.subjectsStore.assignments();
+    const schools = this.subjectsStore.schools();
+    const schoolIds = new Set(assignments.map(a => a.school_id).filter(Boolean));
+    
+    return schools
+      .filter(school => schoolIds.has(school.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  // Fonction pour obtenir les niveaux disponibles selon l'école sélectionnée
+  getAvailableLevelsForSchool(schoolId: string | null): string[] {
+    if (!schoolId) return [];
+    
+    const assignments = this.subjectsStore.assignments();
+    const filtered = assignments.filter(a => a.school_id === schoolId && a.school_level);
+    const levels = new Set(filtered.map(a => a.school_level!));
+    
+    // Trier selon l'ordre de SCHOOL_LEVELS
+    return Array.from(levels).sort((a, b) => {
+      const indexA = SCHOOL_LEVELS.findIndex(l => l.value === a);
+      const indexB = SCHOOL_LEVELS.findIndex(l => l.value === b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }
+
+  // Fonction pour obtenir les matières disponibles selon l'école et le niveau
+  getAvailableSubjectsForSchoolAndLevel(schoolId: string | null, level: string | null): Subject[] {
+    if (!schoolId || !level) return [];
+    
+    const assignments = this.subjectsStore.assignments();
+    const subjects = this.subjectsStore.subjects();
+    const filtered = assignments.filter(
+      a => a.school_id === schoolId && a.school_level === level
+    );
+    const subjectIds = new Set(filtered.map(a => a.subject_id));
+    
+    return subjects
+      .filter(subject => subjectIds.has(subject.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
 
   // Récupération automatique du niveau scolaire depuis school_level
   readonly schoolYearLabel = computed(() => {
@@ -110,6 +167,7 @@ export class GamesComponent implements OnInit, AfterViewInit {
   
   // Track si on vient de sauvegarder pour réinitialiser le formulaire
   private previousGeneratedGamesLength = 0;
+  private routerSubscription?: Subscription;
 
   gameForm = this.fb.group({
     instructions: [''],
@@ -123,9 +181,6 @@ export class GamesComponent implements OnInit, AfterViewInit {
   }
 
   onGlobalFieldsChange(data: GameGlobalFieldsData): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.component.ts:112',message:'onGlobalFieldsChange called',data:{hasInstructions:!!data.instructions,hasQuestion:!!data.question,aidesCount:data.aides?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     this.gameForm.patchValue({
       instructions: data.instructions || '',
       question: data.question || '',
@@ -138,9 +193,6 @@ export class GamesComponent implements OnInit, AfterViewInit {
         this.aidesArray.push(new FormControl<string>(aide, { nonNullable: true }));
       });
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.component.ts:125',message:'onGlobalFieldsChange completed',data:{aidesArrayLength:this.aidesArray.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
   }
 
   constructor() {
@@ -188,6 +240,25 @@ export class GamesComponent implements OnInit, AfterViewInit {
         this.errorSnackbar.showError('Impossible de charger le profil enseignant');
       }
     });
+
+    // Écouter les navigations pour recharger les jeux quand on revient sur la page
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event: NavigationEnd) => {
+        // Si on revient sur la page des jeux, recharger les jeux
+        if (event.url.includes('/teacher-subjects/') && event.url.includes('/games')) {
+          const currentSubjectId = this.subjectId();
+          if (currentSubjectId) {
+            this.application.loadGamesBySubject(currentSubjectId);
+          }
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 
   ngAfterViewInit(): void {
@@ -231,16 +302,10 @@ export class GamesComponent implements OnInit, AfterViewInit {
   }
 
   onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.component.ts:191',message:'onGameDataChange called',data:{dataType:Object.keys(data)[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     this.gameSpecificData.set(data);
   }
 
   onGameValidityChange(valid: boolean): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games.component.ts:195',message:'onGameValidityChange called',data:{valid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     this.gameSpecificValid.set(valid);
   }
 
@@ -468,5 +533,68 @@ export class GamesComponent implements OnInit, AfterViewInit {
     if (confirm('Êtes-vous sûr de vouloir annuler la génération ? Tous les jeux générés seront perdus.')) {
       this.application.cancelGeneration();
     }
+  }
+
+  // Méthodes pour la duplication
+  openDuplicateDialog(game: Game): void {
+    // Trouver l'assignment correspondant au jeu parmi les assignments du professeur
+    const assignments = this.subjectsStore.assignments();
+    const assignment = assignments.find(a => a.subject_id === game.subject_id);
+    
+    this.gameToDuplicate.set(game);
+    this.currentAssignment.set(assignment || null);
+    this.duplicateDialogOpen.set(true);
+  }
+
+  onDuplicateGame(duplicateData: DuplicateGameData): void {
+    const game = this.gameToDuplicate();
+    if (!game) return;
+
+    // Vérifier que le subject_id sélectionné correspond bien à un assignment du professeur
+    const assignments = this.subjectsStore.assignments();
+    const assignmentExists = assignments.some(
+      a => a.subject_id === duplicateData.subjectId &&
+           a.school_id === duplicateData.schoolId &&
+           a.school_level === duplicateData.level
+    );
+
+    if (!assignmentExists) {
+      this.errorSnackbar.showError('La matière sélectionnée ne correspond pas à une affectation valide.');
+      return;
+    }
+
+    // Créer le nouveau jeu avec les données dupliquées
+    const gameTypeName = this.getGameTypeName(game.game_type_id);
+    const questionPreview = duplicateData.gameData.question?.trim() 
+      ? duplicateData.gameData.question.trim().substring(0, 30) 
+      : '';
+    const autoName = questionPreview 
+      ? `${gameTypeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}` 
+      : gameTypeName;
+
+    const aides = duplicateData.gameData.aides && duplicateData.gameData.aides.length > 0
+      ? duplicateData.gameData.aides.filter(a => a && a.trim())
+      : null;
+
+    this.application.createGame({
+      subject_id: duplicateData.subjectId,
+      game_type_id: game.game_type_id,
+      name: autoName,
+      instructions: duplicateData.gameData.instructions || null,
+      question: duplicateData.gameData.question?.trim() || null,
+      reponses: null,
+      aides: aides,
+      metadata: duplicateData.gameData.metadata || null,
+    });
+
+    this.duplicateDialogOpen.set(false);
+    this.gameToDuplicate.set(null);
+    this.currentAssignment.set(null);
+  }
+
+  onCancelDuplicate(): void {
+    this.duplicateDialogOpen.set(false);
+    this.gameToDuplicate.set(null);
+    this.currentAssignment.set(null);
   }
 }

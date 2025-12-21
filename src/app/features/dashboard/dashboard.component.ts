@@ -241,12 +241,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
       // Ne pas charger toutes les matières globales ici pour ne pas écraser la liste filtrée
     }
     
-    // Écouter les navigations pour recharger les enfants quand on revient au dashboard
+    // Écouter les navigations pour recharger les données quand on revient au dashboard
     this.routerSubscription = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: NavigationEnd) => {
-        if (event.url === '/dashboard' && this.activeRole === 'parent') {
-          this.childStore.loadChildren();
+        if (event.url === '/dashboard') {
+          if (this.activeRole === 'parent') {
+            this.childStore.loadChildren();
+          } else if (this.activeRole === 'prof') {
+            // Recharger les affectations pour avoir les dernières données
+            const teacher = this.teacherStore.teacher();
+            if (teacher) {
+              this.teacherAssignmentStore.loadAssignments(teacher.id);
+            }
+          }
         }
       });
   }

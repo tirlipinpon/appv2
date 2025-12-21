@@ -1,0 +1,142 @@
+<div class="dialog-overlay" (click)="onCancel()" (keydown.escape)="onCancel()" tabindex="0" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+  <div class="dialog-content" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="-1">
+    <div class="dialog-header">
+      <h2 id="dialog-title">Dupliquer le jeu</h2>
+      <button type="button" class="close-btn" (click)="onCancel()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="dialog-body">
+      <form [formGroup]="duplicateForm">
+        <!-- Sélection de l'école -->
+        <div class="form-group">
+          <label for="schoolId">École *</label>
+          <select id="schoolId" formControlName="schoolId" class="form-select">
+            <option value="">Sélectionner une école</option>
+            @for (school of availableSchools; track school.id) {
+              <option [value]="school.id">{{ school.name }}</option>
+            }
+          </select>
+          @if (duplicateForm.get('schoolId')?.hasError('required') && duplicateForm.get('schoolId')?.touched) {
+            <span class="error-message">L'école est requise</span>
+          }
+        </div>
+
+        <!-- Sélection du niveau (affiché seulement si école sélectionnée) -->
+        @if (duplicateForm.get('schoolId')?.value) {
+          <div class="form-group">
+            <label for="level">Niveau *</label>
+            <select id="level" formControlName="level" class="form-select">
+              <option value="">Sélectionner un niveau</option>
+              @for (level of availableLevels(); track level) {
+                <option [value]="level">{{ getSchoolLevelLabel(level) }}</option>
+              }
+            </select>
+            @if (duplicateForm.get('level')?.hasError('required') && duplicateForm.get('level')?.touched) {
+              <span class="error-message">Le niveau est requis</span>
+            }
+          </div>
+        }
+
+        <!-- Sélection de la matière (affiché seulement si école et niveau sélectionnés) -->
+        @if (duplicateForm.get('schoolId')?.value && duplicateForm.get('level')?.value) {
+          <div class="form-group">
+            <label for="subjectId">Matière *</label>
+            <select id="subjectId" formControlName="subjectId" class="form-select">
+              <option value="">Sélectionner une matière</option>
+              @for (subject of availableSubjectsForSelection(); track subject.id) {
+                <option [value]="subject.id">{{ subject.name }}</option>
+              }
+            </select>
+            @if (duplicateForm.get('subjectId')?.hasError('required') && duplicateForm.get('subjectId')?.touched) {
+              <span class="error-message">La matière est requise</span>
+            }
+          </div>
+        }
+
+        <!-- Section pour éditer les champs globaux -->
+        <div class="form-group">
+          <h3>Modifier les informations du jeu (optionnel)</h3>
+          <app-game-global-fields
+            [initialData]="globalFieldsData()"
+            (dataChange)="onGlobalFieldsChange($event)">
+          </app-game-global-fields>
+        </div>
+
+        <!-- Formulaires spécifiques selon le type de jeu -->
+        <div class="form-group">
+          <h3>Données spécifiques du jeu</h3>
+          
+          @if (currentGameTypeName().toLowerCase() === 'qcm') {
+            <app-qcm-form
+              [initialData]="getInitialDataForQcm()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-qcm-form>
+          }
+
+          @if (currentGameTypeName().toLowerCase() === 'case vide') {
+            <app-case-vide-form
+              [initialData]="getInitialDataForCaseVide()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-case-vide-form>
+          }
+
+          @if (currentGameTypeName().toLowerCase() === 'reponse libre') {
+            <app-reponse-libre-form
+              [initialData]="getInitialDataForReponseLibre()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-reponse-libre-form>
+          }
+
+          @if (currentGameTypeName().toLowerCase() === 'liens') {
+            <app-liens-form
+              [initialData]="getInitialDataForLiens()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-liens-form>
+          }
+
+          @if (currentGameTypeName().toLowerCase() === 'chronologie') {
+            <app-chronologie-form
+              [initialData]="getInitialDataForChronologie()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-chronologie-form>
+          }
+
+          @if (currentGameTypeName().toLowerCase() === 'vrai/faux') {
+            <app-vrai-faux-form
+              [initialData]="getInitialDataForVraiFaux()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-vrai-faux-form>
+          }
+
+          @if (currentGameTypeName().toLowerCase() === 'memory') {
+            <app-memory-form
+              [initialData]="getInitialDataForMemory()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-memory-form>
+          }
+        </div>
+      </form>
+    </div>
+
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        Annuler
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        (click)="onConfirm()"
+        [disabled]="!isFormValid()">
+        Dupliquer
+      </button>
+    </div>
+  </div>
+</div>
+

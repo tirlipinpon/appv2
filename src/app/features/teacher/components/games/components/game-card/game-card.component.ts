@@ -43,6 +43,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   @Output() edit = new EventEmitter<Game>();
   @Output() delete = new EventEmitter<string>();
   @Output() update = new EventEmitter<{ gameId: string; updates: GameUpdate }>();
+  @Output() duplicate = new EventEmitter<Game>();
 
   readonly isEditing = signal<boolean>(false); // Mode lecture par défaut
   readonly isExpanded = signal<boolean>(false); // État du toggle (fermé par défaut)
@@ -183,6 +184,10 @@ export class GameCardComponent implements OnInit, OnChanges {
 
   onDeleteClick(): void {
     this.delete.emit(this.game.id);
+  }
+
+  onDuplicateClick(): void {
+    this.duplicate.emit(this.game);
   }
 
   openPreview(): void {

@@ -39,6 +39,14 @@
           </div>
         }
       </div>
+      <div class="game-actions">
+        <button class="btn btn-warning" (click)="onDuplicateClick()">
+          📋 Dupliquer
+        </button>
+        <button class="btn btn-danger" (click)="onDeleteClick()">
+          🗑️ Supprimer
+        </button>
+      </div>
     </div>
   }
 
@@ -124,6 +132,9 @@
         </button>
         <button class="btn btn-secondary" (click)="cancelEdit()">
           ❌ Annuler
+        </button>
+        <button class="btn btn-warning" (click)="onDuplicateClick()">
+          📋 Dupliquer
         </button>
         <button class="btn btn-danger" (click)="onDeleteClick()">
           🗑️ Supprimer

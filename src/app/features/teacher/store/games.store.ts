@@ -14,6 +14,7 @@ export interface GamesState {
   gameTypes: GameType[];
   isLoading: boolean;
   error: string[];
+  currentSubjectId: string | null; // Track le subjectId courant pour filtrer les jeux
   // États pour la génération IA
   generatedGames: GeneratedGameWithState[];
   isGenerating: boolean;
@@ -27,6 +28,7 @@ const initialState: GamesState = {
   gameTypes: [],
   isLoading: false,
   error: [],
+  currentSubjectId: null,
   generatedGames: [],
   isGenerating: false,
   generationProgress: 0,
@@ -77,7 +79,11 @@ export const GamesStore = signalStore(
                 const errorMessage = result.error.message || 'Erreur lors du chargement des jeux';
                 patchState(store, { error: [errorMessage], isLoading: false });
               } else {
-                patchState(store, { games: result.games, isLoading: false });
+                patchState(store, { 
+                  games: result.games, 
+                  currentSubjectId: subjectId,
+                  isLoading: false 
+                });
               }
             }),
             catchError((error) => {
@@ -100,10 +106,17 @@ export const GamesStore = signalStore(
                 const errorMessage = result.error.message || 'Erreur lors de la création du jeu';
                 patchState(store, { error: [errorMessage], isLoading: false });
               } else if (result.game) {
-                patchState(store, {
-                  games: [result.game, ...store.games()],
-                  isLoading: false,
-                });
+                // Ne ajouter le jeu que s'il correspond au subjectId courant
+                const currentSubjectId = store.currentSubjectId();
+                if (result.game.subject_id === currentSubjectId) {
+                  patchState(store, {
+                    games: [result.game, ...store.games()],
+                    isLoading: false,
+                  });
+                } else {
+                  // Le jeu est créé mais ne correspond pas à la matière courante, ne pas l'ajouter à la liste
+                  patchState(store, { isLoading: false });
+                }
               } else {
                 patchState(store, { isLoading: false });
               }
