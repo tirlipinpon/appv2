@@ -348,7 +348,7 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
       items.push({
         label: 'Mes affectations',
         route: '/teacher-assignments',
-        queryParams: { tab: 'assignments' },
+        queryParams: { add: 'true' },
         icon: '📚',
         visible: () => this.isAuthenticated() && this.activeRole() === 'prof'
       });

@@ -36,7 +36,6 @@ export class TeacherComponent implements OnInit {
   readonly hasError = computed(() => this.error().length > 0);
   readonly isCreating = computed(() => !this.teacher()); // Si pas de teacher, on crée
   readonly buttonText = computed(() => this.isCreating() ? 'Ajouter' : 'Modifier');
-  readonly activeTab = signal<'profile'>('profile');
 
   constructor() {
     // Écouter les changements du teacher dans le store pour remplir le formulaire
@@ -62,7 +61,6 @@ export class TeacherComponent implements OnInit {
   ngOnInit(): void {
     this.initializeForms();
     this.loadTeacherData();
-    this.activeTab.set('profile');
   }
 
   private initializeForms(): void {

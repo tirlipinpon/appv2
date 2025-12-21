@@ -86,11 +86,21 @@ export class AssignmentsComponent implements OnInit {
     // S'assurer que la liste des matières est vide au démarrage
     this.store.clearSubjects();
     
-    // Vérifier si on doit ouvrir le formulaire automatiquement via query param
+    // Vérifier si on doit ouvrir le formulaire automatiquement via query param (snapshot pour l'initialisation)
     const addParam = this.route.snapshot.queryParamMap.get('add');
     if (addParam === 'true') {
       this.showAssignmentForm.set(true);
     }
+    
+    // Écouter les changements de query params pour réagir lors de la navigation
+    this.route.queryParamMap.subscribe(params => {
+      const addParam = params.get('add');
+      if (addParam === 'true') {
+        this.showAssignmentForm.set(true);
+      } else if (addParam === 'false') {
+        this.showAssignmentForm.set(false);
+      }
+    });
   }
 
   private loadTeacherId(): void {
