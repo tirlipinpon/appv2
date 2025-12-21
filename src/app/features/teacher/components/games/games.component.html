@@ -1,5 +1,5 @@
 <div class="games-container">
-  <a [routerLink]="['/teacher-subjects', subjectId()]" class="btn-back">← Retour à la matière</a>
+  <a (click)="navigateToSubject($event)" class="btn-back">← Retour à la matière</a>
   <h1>Gestion des jeux</h1>
   
   @if (currentSubjectName()) {

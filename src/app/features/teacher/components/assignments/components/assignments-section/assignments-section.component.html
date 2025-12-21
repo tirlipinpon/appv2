@@ -1,0 +1,101 @@
+<div class="assignments-section">
+  <!-- Affichage des erreurs -->
+  <div *ngIf="hasError()" class="error-alert">
+    <div class="error-content">
+      <strong>⚠️ Erreur :</strong>
+      <ul class="error-list">
+        <li *ngFor="let error of error()">{{ error }}</li>
+      </ul>
+      <button type="button" class="error-close" (click)="clearError()" aria-label="Fermer">×</button>
+    </div>
+  </div>
+
+  <div class="assignments-header">
+    <h3>Mes Affectations</h3>
+    <div class="filters-container" *ngIf="hasAssignments()">
+      <select
+        *ngIf="uniqueSchools().length > 0"
+        class="school-filter"
+        [value]="selectedSchoolId() || ''"
+        (change)="selectedSchoolId.set($any($event.target).value || null)">
+        <option value="">Toutes les écoles</option>
+        <option *ngFor="let school of uniqueSchools()" [value]="school.id">
+          {{ school.name }}
+        </option>
+      </select>
+      <select
+        *ngIf="shouldShowLevelFilter()"
+        class="level-filter"
+        [value]="selectedLevel() || ''"
+        (change)="selectedLevel.set($any($event.target).value || null)">
+        <option value="">Tous les niveaux</option>
+        <option *ngFor="let level of availableLevels()" [value]="level">
+          {{ getSchoolLevelLabel(level) }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <div *ngIf="hasFilteredAssignments()" class="assignments-list">
+    <div *ngFor="let assignment of filteredAssignments()" class="assignment-card">
+      <div class="assignment-info">
+        <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
+        <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
+        <p *ngIf="assignment.school_year_id">📅 Année: {{ assignment.school_year_id }}</p>
+        <p *ngIf="assignment.school_level">🎓 Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
+        <app-games-stats-display
+          *ngIf="assignment.subject_id"
+          [subjectId]="assignment.subject_id">
+        </app-games-stats-display>
+      </div>
+      <div class="assignment-actions">
+        <a
+          [routerLink]="['/teacher-subjects', assignment.subject_id]"
+          [queryParams]="{ school_id: assignment.school_id, school_level: assignment.school_level }"
+          class="btn btn-secondary btn-sm">
+          ✏️ Gérer
+        </a>
+        <a
+          [routerLink]="['/teacher-subjects', assignment.subject_id, 'games']"
+          class="btn btn-primary btn-sm">
+          🎮 Gérer les jeux
+        </a>
+        <button
+          type="button"
+          (click)="onTransferAssignment(assignment.id)"
+          class="btn btn-info btn-sm">
+          🔄 Transférer
+        </button>
+        <button
+          type="button"
+          (click)="onDeleteAssignment(assignment.id)"
+          class="btn btn-danger btn-sm">
+          🗑️ Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="hasAssignments() && !hasFilteredAssignments()" class="no-assignments">
+    <p>Aucune affectation pour l'école sélectionnée.</p>
+  </div>
+  <div *ngIf="!hasAssignments()" class="no-assignments">
+    <p>Vous n'avez pas encore d'affectation.</p>
+    <a
+      routerLink="/teacher-assignments"
+      [queryParams]="{ add: 'true' }"
+      class="btn btn-primary btn-add">
+      ➕ Ajouter une affectation
+    </a>
+  </div>
+</div>
+
+<!-- Dialog de transfert d'affectation -->
+<app-transfer-assignment-dialog
+  *ngIf="showTransferDialog() && selectedAssignmentForTransfer()"
+  [assignment]="selectedAssignmentForTransfer()!"
+  [currentTeacherId]="getCurrentTeacherId() ?? ''"
+  (confirm)="onTransferConfirm($event)"
+  (cancel)="onTransferCancel()">
+</app-transfer-assignment-dialog>
+

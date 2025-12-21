@@ -1,0 +1,163 @@
+@use '../../../../../../../styles/variables' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+.error-alert {
+  background-color: #fee;
+  border: 2px solid #fcc;
+  border-radius: $border-radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-lg;
+  color: #c33;
+
+  .error-content {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-sm;
+    position: relative;
+
+    strong {
+      font-weight: 600;
+    }
+
+    .error-list {
+      margin: 0;
+      padding-left: $spacing-lg;
+      flex: 1;
+
+      li {
+        margin-bottom: $spacing-xs;
+      }
+    }
+
+    .error-close {
+      background: none;
+      border: none;
+      color: #c33;
+      font-size: $font-size-xl;
+      cursor: pointer;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: $border-radius-sm;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: rgba(204, 51, 51, 0.1);
+      }
+    }
+  }
+}
+
+.assignments-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eee;
+
+  .assignments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    h3 {
+      margin: 0;
+      color: #333;
+    }
+
+    .filters-container {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .school-filter,
+    .level-filter {
+      padding: 0.5rem 1rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      background: white;
+      color: #333;
+      cursor: pointer;
+      min-width: 200px;
+
+      &:hover {
+        border-color: #667eea;
+      }
+
+      &:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+    }
+  }
+
+  .assignments-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+
+    .assignment-card {
+      @include card-base;
+      display: grid;
+      flex-wrap: wrap;
+      gap: $spacing-md;
+
+      @include respond-to(md) {
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .assignment-info {
+        flex: 1;
+
+        h4 {
+          margin: 0 0 0.5rem 0;
+          color: #333;
+          font-size: 1.1rem;
+        }
+
+        p {
+          margin: 0.25rem 0;
+          color: #666;
+          font-size: 0.9rem;
+        }
+
+        .games-stats {
+          color: #667eea;
+          font-weight: 500;
+          font-size: 0.85rem;
+          padding: 0.5rem;
+          background: #f8f9ff;
+          border-radius: 4px;
+          margin-top: 0.5rem;
+        }
+      }
+
+      .assignment-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+    }
+  }
+
+  .no-assignments {
+    text-align: center;
+    padding: 2rem;
+    color: #999;
+
+    p {
+      margin-bottom: 1rem;
+    }
+  }
+}
+

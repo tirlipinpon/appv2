@@ -8,13 +8,14 @@ import { TeacherService } from '../../services/teacher/teacher.service';
 import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error-snackbar.service';
 import { SchoolLevelSelectComponent } from '../../../../shared/components/school-level-select/school-level-select.component';
 import { Infrastructure } from '../infrastructure/infrastructure';
+import { AssignmentsSectionComponent } from './components/assignments-section/assignments-section.component';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
 import { getSchoolLevelLabel } from '../../utils/school-levels.util';
 
 @Component({
   selector: 'app-assignments',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent, AssignmentsSectionComponent],
   templateUrl: './assignments.component.html',
   styleUrl: './assignments.component.scss'
 })

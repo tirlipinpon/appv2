@@ -121,33 +121,17 @@
     </div>
   </div>
 
-  <div *ngIf="hasAssignments()" class="assignments-list">
-    <!-- Matières non affectées (pour l'école+niveau sélectionnés) -->
-    <div *ngIf="selectedSchoolId() && selectedSchoolLevel() && unassignedSubjectsForSelection().length > 0" class="unassigned-inline">
-      <h4>Matières non affectées pour {{ getSchoolName(selectedSchoolId()!) }} — {{ selectedSchoolLevel() }}</h4>
-      <ul>
-        <li *ngFor="let s of unassignedSubjectsForSelection()">
-          {{ s.name }} <span class="muted">(non affectée)</span>
-        </li>
-      </ul>
-    </div>
-
-    <div *ngFor="let assignment of assignments()" class="assignment-card">
-        <div class="assignment-info">
-          <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
-          <p *ngIf="assignment.school_id">École: {{ getSchoolName(assignment.school_id, assignment) }}</p>
-          <p *ngIf="assignment.school_level">Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
-        </div>
-      <div class="assignment-actions">
-        <a 
-          *ngIf="assignment.subject_id"
-          [routerLink]="['/teacher-subjects', assignment.subject_id]" 
-          [queryParams]="{ school_id: assignment.school_id, school_level: assignment.school_level }"
-          class="btn btn-secondary btn-sm">
-          ✏️ Gérer
-        </a>
-      </div>
-    </div>
+  <!-- Matières non affectées (pour l'école+niveau sélectionnés) -->
+  <div *ngIf="selectedSchoolId() && selectedSchoolLevel() && unassignedSubjectsForSelection().length > 0" class="unassigned-inline">
+    <h4>Matières non affectées pour {{ getSchoolName(selectedSchoolId()!) }} — {{ selectedSchoolLevel() }}</h4>
+    <ul>
+      <li *ngFor="let s of unassignedSubjectsForSelection()">
+        {{ s.name }} <span class="muted">(non affectée)</span>
+      </li>
+    </ul>
   </div>
+
+  <!-- Section des affectations avec le composant réutilisable -->
+  <app-assignments-section *ngIf="hasAssignments()"></app-assignments-section>
 </div>
 

@@ -213,6 +213,16 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  navigateToSubject(event: Event): void {
+    event.preventDefault();
+    const id = this.subjectId();
+    if (id) {
+      this.router.navigate(['/teacher-subjects', id]);
+    } else {
+      this.router.navigate(['/teacher-subjects']);
+    }
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
