@@ -8,6 +8,8 @@ import { GameType } from '../types/game-type';
 import { Game, GameCreate, GameUpdate } from '../types/game';
 import { Infrastructure } from '../components/infrastructure/infrastructure';
 import { GeneratedGameWithState, AIGameGenerationRequest, AIRawResponse } from '../types/ai-game-generation';
+import { ErrorSnackbarService } from '../../../shared/services/snackbar/error-snackbar.service';
+import { setStoreError } from '../../../shared/utils/store-error-helper';
 
 export interface GamesState {
   games: Game[];
@@ -45,7 +47,7 @@ export const GamesStore = signalStore(
     hasGameTypes: () => store.gameTypes().length > 0,
     hasGeneratedGames: () => store.generatedGames().length > 0,
   })),
-  withMethods((store, infrastructure = inject(Infrastructure)) => ({
+  withMethods((store, infrastructure = inject(Infrastructure), errorSnackbar = inject(ErrorSnackbarService)) => ({
     loadGameTypes: rxMethod<void>(
       pipe(
         tap(() => patchState(store, { isLoading: true, error: [] })),
@@ -54,14 +56,14 @@ export const GamesStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des types de jeux';
-                patchState(store, { error: [errorMessage], isLoading: false });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               } else {
                 patchState(store, { gameTypes: result.gameTypes, isLoading: false });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du chargement des types de jeux';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           )
@@ -77,7 +79,7 @@ export const GamesStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des jeux';
-                patchState(store, { error: [errorMessage], isLoading: false });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               } else {
                 patchState(store, { 
                   games: result.games, 
@@ -88,7 +90,7 @@ export const GamesStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du chargement des jeux';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           )
@@ -104,7 +106,7 @@ export const GamesStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la création du jeu';
-                patchState(store, { error: [errorMessage], isLoading: false });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               } else if (result.game) {
                 // Ne ajouter le jeu que s'il correspond au subjectId courant
                 const currentSubjectId = store.currentSubjectId();
@@ -123,7 +125,7 @@ export const GamesStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la création du jeu';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           )
@@ -139,7 +141,7 @@ export const GamesStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la mise à jour du jeu';
-                patchState(store, { error: [errorMessage], isLoading: false });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               } else if (result.game) {
                 const currentGames = store.games();
                 const updatedGames = currentGames.map((g) =>
@@ -152,7 +154,7 @@ export const GamesStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la mise à jour du jeu';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           )
@@ -175,13 +177,15 @@ export const GamesStore = signalStore(
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la suppression du jeu';
                 // rollback
-                patchState(store, { games: previous, error: [errorMessage], isLoading: false });
+                patchState(store, { games: previous });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la suppression du jeu';
               // rollback
-              patchState(store, { games: previous, error: [errorMessage], isLoading: false });
+              patchState(store, { games: previous });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           );
@@ -190,7 +194,7 @@ export const GamesStore = signalStore(
     ),
 
     setError: (error: string) => {
-      patchState(store, { error: [error], isLoading: false });
+      setStoreError(store, errorSnackbar, error, false);
     },
     clearError: () => {
       patchState(store, { error: [] });
@@ -302,10 +306,10 @@ export const GamesStore = signalStore(
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la génération des jeux';
               patchState(store, { 
-                error: [errorMessage], 
                 isGenerating: false,
                 generationProgress: 0
               });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           );
@@ -350,6 +354,8 @@ export const GamesStore = signalStore(
                   error: errors, 
                   isLoading: false 
                 });
+                // Afficher toutes les erreurs
+                errors.forEach(err => errorSnackbar.showError(err));
               } else {
                 patchState(store, {
                   games: [...createdGames, ...store.games()],
@@ -360,7 +366,7 @@ export const GamesStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la sauvegarde des jeux';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           );

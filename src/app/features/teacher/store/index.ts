@@ -5,6 +5,8 @@ import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap, catchError, of } from 'rxjs';
 import { Teacher, TeacherUpdate } from '../types/teacher';
 import { Infrastructure } from '../components/infrastructure/infrastructure';
+import { ErrorSnackbarService } from '../../../shared/services/snackbar/error-snackbar.service';
+import { setStoreError } from '../../../shared/utils/store-error-helper';
 
 export interface TeacherState {
   teacher: Teacher | null;
@@ -26,7 +28,7 @@ export const TeacherStore = signalStore(
     hasTeacher: () => store.teacher() !== null,
     hasError: () => store.error().length > 0,
   })),
-  withMethods((store, infrastructure = inject(Infrastructure)) => ({
+  withMethods((store, infrastructure = inject(Infrastructure), errorSnackbar = inject(ErrorSnackbarService)) => ({
     /**
      * Charge le profil professeur
      */
@@ -42,7 +44,7 @@ export const TeacherStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du chargement du profil professeur';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           )
@@ -63,7 +65,7 @@ export const TeacherStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la mise à jour du profil professeur';
-                patchState(store, { error: [errorMessage], isLoading: false });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               } else if (result.teacher) {
                 patchState(store, { teacher: result.teacher, isLoading: false });
               } else {
@@ -72,7 +74,7 @@ export const TeacherStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la mise à jour du profil professeur';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of({ teacher: null, error });
             })
           )
@@ -91,7 +93,7 @@ export const TeacherStore = signalStore(
      * Définit une erreur (méthode utilitaire pour mise à jour manuelle)
      */
     setError: (error: string) => {
-      patchState(store, { error: [error], isLoading: false });
+      setStoreError(store, errorSnackbar, error, false);
     },
 
     /**
@@ -114,7 +116,7 @@ export const TeacherStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la création du profil professeur';
-                patchState(store, { error: [errorMessage], isLoading: false });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               } else if (result.teacher) {
                 patchState(store, { teacher: result.teacher, isLoading: false });
               } else {
@@ -123,7 +125,7 @@ export const TeacherStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la création du profil professeur';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of({ teacher: null, error });
             })
           )

@@ -7,6 +7,8 @@ import { School, SchoolYear } from '../types/school';
 import { Subject } from '../types/subject';
 import { TeacherAssignment, TeacherAssignmentCreate } from '../types/teacher-assignment';
 import { Infrastructure } from '../components/infrastructure/infrastructure';
+import { ErrorSnackbarService } from '../../../shared/services/snackbar/error-snackbar.service';
+import { setStoreError } from '../../../shared/utils/store-error-helper';
 
 export interface TeacherAssignmentState {
   schools: School[];
@@ -36,7 +38,7 @@ export const TeacherAssignmentStore = signalStore(
     hasSchools: () => store.schools().length > 0,
     hasSubjects: () => store.subjects().length > 0,
   })),
-  withMethods((store, infrastructure = inject(Infrastructure)) => ({
+  withMethods((store, infrastructure = inject(Infrastructure), errorSnackbar = inject(ErrorSnackbarService)) => ({
     loadSchools: rxMethod<void>(
       pipe(
         switchMap(() =>
@@ -44,14 +46,14 @@ export const TeacherAssignmentStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des écoles';
-                patchState(store, { error: [errorMessage] });
+                setStoreError(store, errorSnackbar, errorMessage);
               } else {
                 patchState(store, { schools: result.schools });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du chargement des écoles';
-              patchState(store, { error: [errorMessage] });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           )
@@ -66,14 +68,14 @@ export const TeacherAssignmentStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la création de l\'école';
-                patchState(store, { error: [errorMessage] });
+                setStoreError(store, errorSnackbar, errorMessage);
               } else if (result.school) {
                 patchState(store, { schools: [...store.schools(), result.school] });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la création de l\'école';
-              patchState(store, { error: [errorMessage] });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           )
@@ -88,14 +90,14 @@ export const TeacherAssignmentStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des années scolaires';
-                patchState(store, { error: [errorMessage] });
+                setStoreError(store, errorSnackbar, errorMessage);
               } else {
                 patchState(store, { schoolYears: result.schoolYears });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du chargement des années scolaires';
-              patchState(store, { error: [errorMessage] });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           )
@@ -117,7 +119,7 @@ export const TeacherAssignmentStore = signalStore(
             switchMap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la création de l\'année scolaire';
-                patchState(store, { error: [errorMessage] });
+                setStoreError(store, errorSnackbar, errorMessage);
                 return of(null);
               } else if (result.schoolYear) {
                 const schoolId = result.schoolYear.school_id;
@@ -136,7 +138,7 @@ export const TeacherAssignmentStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la création de l\'année scolaire';
-              patchState(store, { error: [errorMessage] });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           );
@@ -151,14 +153,14 @@ export const TeacherAssignmentStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des matières';
-                patchState(store, { error: [errorMessage] });
+                setStoreError(store, errorSnackbar, errorMessage);
               } else {
                 patchState(store, { subjects: result.subjects });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du chargement des matières';
-              patchState(store, { error: [errorMessage] });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           )
@@ -179,14 +181,14 @@ export const TeacherAssignmentStore = signalStore(
               });
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des matières pour le niveau';
-                patchState(store, { error: [errorMessage] });
+                setStoreError(store, errorSnackbar, errorMessage);
               } else {
                 patchState(store, { subjects: result.subjects });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du chargement des matières pour le niveau';
-              patchState(store, { error: [errorMessage] });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           ))
@@ -201,14 +203,14 @@ export const TeacherAssignmentStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la création de la matière';
-                patchState(store, { error: [errorMessage] });
+                setStoreError(store, errorSnackbar, errorMessage);
               } else if (result.subject) {
                 patchState(store, { subjects: [...store.subjects(), result.subject] });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la création de la matière';
-              patchState(store, { error: [errorMessage] });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           )
@@ -223,14 +225,14 @@ export const TeacherAssignmentStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des affectations';
-                patchState(store, { error: [errorMessage] });
+                setStoreError(store, errorSnackbar, errorMessage);
               } else {
                 patchState(store, { assignments: result.assignments });
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du chargement des affectations';
-              patchState(store, { error: [errorMessage] });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           )
@@ -248,7 +250,7 @@ export const TeacherAssignmentStore = signalStore(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la création de l\'affectation';
-                patchState(store, { error: [errorMessage], isLoading: false });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               } else if (result.assignment) {
                 patchState(store, { 
                   assignments: [result.assignment, ...store.assignments()],
@@ -260,7 +262,7 @@ export const TeacherAssignmentStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la création de l\'affectation';
-              patchState(store, { error: [errorMessage], isLoading: false });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           )
@@ -281,13 +283,15 @@ export const TeacherAssignmentStore = signalStore(
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la suppression de l\'affectation';
                 // rollback
-                patchState(store, { assignments: previous, error: [errorMessage] });
+                patchState(store, { assignments: previous });
+                setStoreError(store, errorSnackbar, errorMessage);
               }
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors de la suppression de l\'affectation';
               // rollback
-              patchState(store, { assignments: previous, error: [errorMessage] });
+              patchState(store, { assignments: previous });
+              setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
           );
@@ -310,11 +314,8 @@ export const TeacherAssignmentStore = signalStore(
                 // Message d'erreur plus explicite
                 const errorMessage = result.error.message || 'Erreur lors du transfert de l\'affectation';
                 // rollback
-                patchState(store, { 
-                  assignments: previous, 
-                  error: [errorMessage],
-                  isLoading: false 
-                });
+                patchState(store, { assignments: previous });
+                setStoreError(store, errorSnackbar, errorMessage, false);
               } else {
                 // Transfert réussi
                 patchState(store, { error: [], isLoading: false });
@@ -323,11 +324,8 @@ export const TeacherAssignmentStore = signalStore(
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du transfert de l\'affectation';
               // rollback
-              patchState(store, { 
-                assignments: previous, 
-                error: [errorMessage],
-                isLoading: false 
-              });
+              patchState(store, { assignments: previous });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           );
@@ -343,10 +341,7 @@ export const TeacherAssignmentStore = signalStore(
               if (result.error) {
                 // Message d'erreur plus explicite
                 const errorMessage = result.error.message || 'Erreur lors du partage de l\'affectation';
-                patchState(store, { 
-                  error: [errorMessage],
-                  isLoading: false 
-                });
+                setStoreError(store, errorSnackbar, errorMessage, false);
                 return of(null);
               }
               
@@ -358,7 +353,7 @@ export const TeacherAssignmentStore = signalStore(
                   tap((reloadResult) => {
                     if (reloadResult.error) {
                       const errorMessage = reloadResult.error.message || 'Erreur lors du rechargement des affectations';
-                      patchState(store, { error: [errorMessage], isLoading: false });
+                      setStoreError(store, errorSnackbar, errorMessage, false);
                     } else {
                       patchState(store, { 
                         assignments: reloadResult.assignments, 
@@ -376,10 +371,7 @@ export const TeacherAssignmentStore = signalStore(
             }),
             catchError((error) => {
               const errorMessage = error?.message || 'Erreur lors du partage de l\'affectation';
-              patchState(store, { 
-                error: [errorMessage],
-                isLoading: false 
-              });
+              setStoreError(store, errorSnackbar, errorMessage, false);
               return of(null);
             })
           );
@@ -388,7 +380,7 @@ export const TeacherAssignmentStore = signalStore(
     ),
 
     setError: (error: string) => {
-      patchState(store, { error: [error], isLoading: false });
+      setStoreError(store, errorSnackbar, error, false);
     },
     clearError: () => {
       patchState(store, { error: [] });
