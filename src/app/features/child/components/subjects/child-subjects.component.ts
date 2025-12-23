@@ -49,6 +49,8 @@ export class ChildSubjectsComponent implements OnInit {
   
   // Effect pour charger les matières hors programme quand availableSubjects et enrollments sont chargés
   private loadUnofficialSubjectsTimeout: ReturnType<typeof setTimeout> | null = null;
+  private isLoadingUnofficialSubjects = false;
+  private lastLoadUnofficialSubjectsIds: string = '';
   
   private readonly loadUnofficialSubjectsEffect = effect(() => {
     this.availableSubjects();
@@ -57,6 +59,20 @@ export class ChildSubjectsComponent implements OnInit {
     
     // Ne charger que si l'enfant est chargé et qu'on a des enrollments
     if (child && enrollments.length > 0) {
+      // Calculer l'identifiant unique pour cette combinaison de données
+      const availableIds = this.availableSubjects().map(s => s.id).sort().join(',');
+      const selectedEnrollmentIds = enrollments
+        .filter(e => e.selected === true)
+        .map(e => e.subject_id)
+        .sort()
+        .join(',');
+      const currentIds = `${availableIds}|${selectedEnrollmentIds}`;
+      
+      // Si on est déjà en train de charger ou si c'est la même combinaison, ne pas recharger
+      if (this.isLoadingUnofficialSubjects || this.lastLoadUnofficialSubjectsIds === currentIds) {
+        return;
+      }
+      
       // Annuler le timeout précédent si existant
       if (this.loadUnofficialSubjectsTimeout) {
         clearTimeout(this.loadUnofficialSubjectsTimeout);
@@ -64,6 +80,7 @@ export class ChildSubjectsComponent implements OnInit {
       
       // Utiliser un petit délai pour éviter les appels multiples
       this.loadUnofficialSubjectsTimeout = setTimeout(() => {
+        this.lastLoadUnofficialSubjectsIds = currentIds;
         this.loadUnofficialSubjects();
         this.loadUnofficialSubjectsTimeout = null;
       }, 100);
@@ -71,6 +88,11 @@ export class ChildSubjectsComponent implements OnInit {
   });
   
   private loadUnofficialSubjects(): void {
+    // Éviter les appels multiples simultanés
+    if (this.isLoadingUnofficialSubjects) {
+      return;
+    }
+
     const availableIds = new Set(this.availableSubjects().map(s => s.id));
     const selectedEnrollments = this.enrollments().filter(e => e.selected === true);
     const unofficialSubjectIds = selectedEnrollments
@@ -78,6 +100,7 @@ export class ChildSubjectsComponent implements OnInit {
       .filter(id => !availableIds.has(id));
     
     if (unofficialSubjectIds.length > 0) {
+      this.isLoadingUnofficialSubjects = true;
       const c = this.child();
       const schoolId = c?.school_id || null;
       
@@ -85,6 +108,8 @@ export class ChildSubjectsComponent implements OnInit {
       const searchResultsMap = new Map(this.searchResults().map(s => [s.id, s]));
       
       this.parentSvc.getSubjectsByIds(unofficialSubjectIds, schoolId).subscribe(({ subjects, error: subjError }) => {
+        this.isLoadingUnofficialSubjects = false;
+        
         if (!subjError && subjects) {
           // Enrichir les matières avec le niveau depuis la recherche si disponible (priorité)
           const enrichedSubjects = subjects.map(s => {
@@ -135,16 +160,16 @@ export class ChildSubjectsComponent implements OnInit {
         this.child.set(child);
         // Charger le nom de l'école si school_id existe
         if (child.school_id) {
-          this.schoolService.getSchoolById(child.school_id).subscribe(school => {
-            this.schoolName.set(school?.name || null);
-          });
-          
-          // Charger toutes les données nécessaires en parallèle avant de charger les catégories
+          // Charger toutes les données nécessaires en parallèle (optimisation)
           forkJoin({
             availableSubjects: this.parentSvc.getAvailableSubjectsForChild(child),
             enrollments: this.parentSvc.getEnrollments(child.id),
-            categoryEnrollments: this.parentSvc.getCategoryEnrollments(child.id)
-          }).subscribe(({ availableSubjects, enrollments, categoryEnrollments }) => {
+            categoryEnrollments: this.parentSvc.getCategoryEnrollments(child.id),
+            school: this.schoolService.getSchoolById(child.school_id)
+          }).subscribe(({ availableSubjects, enrollments, categoryEnrollments, school }) => {
+            // Traiter le nom de l'école
+            this.schoolName.set(school?.name || null);
+            
             // Traiter les matières disponibles
             if (availableSubjects.error) {
               console.error('Error loading available subjects:', availableSubjects.error);
@@ -169,7 +194,7 @@ export class ChildSubjectsComponent implements OnInit {
             console.log('Category enrollments loaded:', categoryEnrollments.enrollments?.length, categoryEnrollments.enrollments);
             this.categoryEnrollments.set(categoryEnrollments.enrollments || []);
             
-            // Charger les catégories pour toutes les matières (sélectionnées et disponibles)
+            // Charger les catégories pour toutes les matières en BATCH (optimisation)
             // Utiliser directement les données chargées plutôt que les computed signals
             const selectedIds = new Set((enrollments.enrollments || [])
               .filter(e => e.selected === true)
@@ -177,12 +202,10 @@ export class ChildSubjectsComponent implements OnInit {
             const availableIds = (availableSubjects.subjects || []).map(s => s.id);
             const allSubjectIds = [...new Set([...Array.from(selectedIds), ...availableIds])];
             
-            allSubjectIds.forEach(subjectId => {
-              // Ne charger que si pas déjà chargé
-              if (!this.categoriesBySubject().has(subjectId)) {
-                this.loadCategoriesForSubject(subjectId, selectedIds.has(subjectId));
-              }
-            });
+            // Charger toutes les catégories en une seule requête
+            if (allSubjectIds.length > 0) {
+              this.loadCategoriesBatch(allSubjectIds, selectedIds, child.id);
+            }
           });
         } else {
           this.schoolName.set(null);
@@ -265,7 +288,104 @@ export class ChildSubjectsComponent implements OnInit {
       });
   }
 
+  /**
+   * Charge les catégories de plusieurs matières en batch (optimisation)
+   */
+  private loadCategoriesBatch(subjectIds: string[], selectedSubjectIds: Set<string>, childId: string): void {
+    if (subjectIds.length === 0) return;
+
+    this.parentSvc.getSubjectCategoriesBatch(subjectIds).subscribe(({ categoriesBySubject, error }) => {
+      if (error) {
+        console.error('Error loading categories batch:', error);
+        return;
+      }
+
+      // Mettre à jour le signal avec toutes les catégories
+      const currentCategoriesMap = this.categoriesBySubject();
+      categoriesBySubject.forEach((categories, subjectId) => {
+        currentCategoriesMap.set(subjectId, categories);
+      });
+      this.categoriesBySubject.set(new Map(currentCategoriesMap));
+
+      // Charger les stats de jeux pour toutes les catégories en parallèle
+      const allCategoryIds: string[] = [];
+      categoriesBySubject.forEach(categories => {
+        categories.forEach(category => {
+          allCategoryIds.push(category.id);
+        });
+      });
+      if (allCategoryIds.length > 0) {
+        this.gamesStatsService.loadStatsForCategories(allCategoryIds);
+      }
+
+      // Créer automatiquement les enrollments pour toutes les catégories des matières sélectionnées en batch
+      const existingEnrollments = this.categoryEnrollments();
+      const existingCategoryIds = new Set(existingEnrollments.map(e => e.subject_category_id));
+      
+      const enrollmentsToCreate: { child_id: string; subject_category_id: string; selected: boolean }[] = [];
+      categoriesBySubject.forEach((categories, subjectId) => {
+        if (selectedSubjectIds.has(subjectId)) {
+          categories.forEach(category => {
+            if (!existingCategoryIds.has(category.id)) {
+              enrollmentsToCreate.push({
+                child_id: childId,
+                subject_category_id: category.id,
+                selected: true
+              });
+            }
+          });
+        }
+      });
+
+      // Créer tous les enrollments en batch
+      if (enrollmentsToCreate.length > 0) {
+        this.parentSvc.upsertCategoryEnrollmentsBatch(enrollmentsToCreate).subscribe(({ enrollments, error: enrollError }) => {
+          if (!enrollError && enrollments && enrollments.length > 0) {
+            const currentEnrollments = this.categoryEnrollments();
+            // Éviter les doublons
+            const existingIds = new Set(currentEnrollments.map(e => e.id));
+            const newEnrollments = enrollments.filter(e => !existingIds.has(e.id));
+            this.categoryEnrollments.set([...currentEnrollments, ...newEnrollments]);
+          }
+        });
+      }
+    });
+  }
+
   private loadCategoriesForSubject(subjectId: string, isSelected: boolean = true): void {
+    // Vérifier si déjà chargé
+    if (this.categoriesBySubject().has(subjectId)) {
+      // Si la matière est sélectionnée, s'assurer que les enrollments sont créés
+      if (isSelected) {
+        const categories = this.getCategoriesForSubject(subjectId);
+        const c = this.child();
+        if (c && categories.length > 0) {
+          const existingEnrollments = this.categoryEnrollments();
+          const existingCategoryIds = new Set(existingEnrollments.map(e => e.subject_category_id));
+          
+          const enrollmentsToCreate = categories
+            .filter(category => !existingCategoryIds.has(category.id))
+            .map(category => ({
+              child_id: c.id,
+              subject_category_id: category.id,
+              selected: true
+            }));
+
+          if (enrollmentsToCreate.length > 0) {
+            this.parentSvc.upsertCategoryEnrollmentsBatch(enrollmentsToCreate).subscribe(({ enrollments, error: enrollError }) => {
+              if (!enrollError && enrollments && enrollments.length > 0) {
+                const currentEnrollments = this.categoryEnrollments();
+                const existingIds = new Set(currentEnrollments.map(e => e.id));
+                const newEnrollments = enrollments.filter(e => !existingIds.has(e.id));
+                this.categoryEnrollments.set([...currentEnrollments, ...newEnrollments]);
+              }
+            });
+          }
+        }
+      }
+      return;
+    }
+
     this.parentSvc.getSubjectCategories(subjectId).subscribe(({ categories, error }) => {
       if (error) {
         console.error('Error loading categories for subject:', subjectId, error);
@@ -290,20 +410,25 @@ export class ChildSubjectsComponent implements OnInit {
         const existingEnrollments = this.categoryEnrollments();
         const existingCategoryIds = new Set(existingEnrollments.map(e => e.subject_category_id));
         
-        (categories || []).forEach(category => {
-          if (!existingCategoryIds.has(category.id)) {
-            this.parentSvc.upsertCategoryEnrollment({
-              child_id: c.id,
-              subject_category_id: category.id,
-              selected: true
-            }).subscribe(({ enrollment, error: enrollError }) => {
-              if (!enrollError && enrollment) {
-                const currentEnrollments = this.categoryEnrollments();
-                this.categoryEnrollments.set([...currentEnrollments, enrollment]);
-              }
-            });
-          }
-        });
+        const enrollmentsToCreate = (categories || [])
+          .filter(category => !existingCategoryIds.has(category.id))
+          .map(category => ({
+            child_id: c.id,
+            subject_category_id: category.id,
+            selected: true
+          }));
+
+        // Utiliser le batch au lieu de créer un par un
+        if (enrollmentsToCreate.length > 0) {
+          this.parentSvc.upsertCategoryEnrollmentsBatch(enrollmentsToCreate).subscribe(({ enrollments, error: enrollError }) => {
+            if (!enrollError && enrollments && enrollments.length > 0) {
+              const currentEnrollments = this.categoryEnrollments();
+              const existingIds = new Set(currentEnrollments.map(e => e.id));
+              const newEnrollments = enrollments.filter(e => !existingIds.has(e.id));
+              this.categoryEnrollments.set([...currentEnrollments, ...newEnrollments]);
+            }
+          });
+        }
       }
     });
   }

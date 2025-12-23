@@ -9,7 +9,6 @@ import { TeacherAssignmentStore } from '../teacher/store/assignments.store';
 import { Child } from '../child/types/child';
 import { filter, Subscription } from 'rxjs';
 import { ActionLinksComponent, ActionLink } from '../../shared/components/action-links/action-links.component';
-import { GamesStatsService } from '../../shared/services/games-stats/games-stats.service';
 import { AssignmentsSectionComponent } from '../teacher/components/assignments/components/assignments-section/assignments-section.component';
 
 @Component({
@@ -22,7 +21,6 @@ import { AssignmentsSectionComponent } from '../teacher/components/assignments/c
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly gamesStatsService = inject(GamesStatsService);
   readonly parentStore = inject(ParentStore);
   readonly childStore = inject(ChildStore);
   readonly teacherStore = inject(TeacherStore);
@@ -96,16 +94,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   });
 
-  // Effect pour charger les stats de jeux quand les assignments changent
-  private readonly loadGamesStatsEffect = effect(() => {
-    if (this.activeRoleSig() === 'prof') {
-      const assignments = this.teacherAssignmentStore.assignments();
-      if (assignments.length > 0) {
-        const subjectIds = assignments.map(a => a.subject_id).filter(Boolean) as string[];
-        this.gamesStatsService.loadStatsForSubjects(subjectIds);
-      }
-    }
-  });
+  // NOTE: Le chargement des stats de jeux est géré par AssignmentsSectionComponent
+  // pour éviter les doublons de requêtes réseau
 
   async ngOnInit() {
     this.profile = await this.authService.getProfile();

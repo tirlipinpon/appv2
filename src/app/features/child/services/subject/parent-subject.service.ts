@@ -471,6 +471,48 @@ export class ParentSubjectService {
     );
   }
 
+  /**
+   * Charge les catégories de plusieurs matières en une seule requête (optimisation batch)
+   */
+  getSubjectCategoriesBatch(subjectIds: string[]): Observable<{ categoriesBySubject: Map<string, SubjectCategory[]>; error: PostgrestError | null }> {
+    if (subjectIds.length === 0) {
+      return from(Promise.resolve({ categoriesBySubject: new Map(), error: null }));
+    }
+
+    return from(
+      this.supabase.client
+        .from('subject_categories')
+        .select('*')
+        .in('subject_id', subjectIds)
+        .order('name', { ascending: true })
+    ).pipe(
+      map(({ data, error }) => {
+        const categoriesBySubject = new Map<string, SubjectCategory[]>();
+        
+        if (data) {
+          const categories = data as SubjectCategory[];
+          categories.forEach(category => {
+            const existing = categoriesBySubject.get(category.subject_id) || [];
+            existing.push(category);
+            categoriesBySubject.set(category.subject_id, existing);
+          });
+          
+          // S'assurer que toutes les matières ont au moins un tableau vide
+          subjectIds.forEach(subjectId => {
+            if (!categoriesBySubject.has(subjectId)) {
+              categoriesBySubject.set(subjectId, []);
+            }
+          });
+        }
+        
+        return {
+          categoriesBySubject,
+          error: error || null,
+        };
+      })
+    );
+  }
+
   getCategoryEnrollments(childId: string): Observable<{ enrollments: CategoryEnrollment[]; error: PostgrestError | null }> {
     return from(
       this.supabase.client
@@ -529,6 +571,111 @@ export class ParentSubjectService {
     ).pipe(
       map(({ data, error }) => ({
         enrollment: data as CategoryEnrollment | null,
+        error: error || null,
+      }))
+    );
+  }
+
+  /**
+   * Crée ou met à jour plusieurs enrollments de catégories en batch (optimisation)
+   */
+  upsertCategoryEnrollmentsBatch(
+    enrollments: { child_id: string; subject_category_id: string; selected: boolean }[]
+  ): Observable<{ enrollments: CategoryEnrollment[]; error: PostgrestError | null }> {
+    if (enrollments.length === 0) {
+      return from(Promise.resolve({ enrollments: [], error: null }));
+    }
+
+    return from(
+      (async () => {
+        const childId = enrollments[0].child_id;
+        const categoryIds = enrollments.map(e => e.subject_category_id);
+
+        // Récupérer tous les enrollments existants en une seule requête
+        const { data: existing, error: selectError } = await this.supabase.client
+          .from('child_subject_category_enrollments')
+          .select('*')
+          .eq('child_id', childId)
+          .in('subject_category_id', categoryIds);
+
+        if (selectError) {
+          return { data: null, error: selectError };
+        }
+
+        const existingMap = new Map<string, CategoryEnrollment>();
+        (existing || []).forEach((e: CategoryEnrollment) => {
+          existingMap.set(e.subject_category_id, e);
+        });
+
+        // Séparer les enrollments à créer et à mettre à jour
+        const toInsert: typeof enrollments = [];
+        const toUpdate: { id: string; selected: boolean; subject_category_id: string }[] = [];
+
+        enrollments.forEach(enr => {
+          const existingEnr = existingMap.get(enr.subject_category_id);
+          if (existingEnr) {
+            if (existingEnr.selected !== enr.selected) {
+              toUpdate.push({ id: existingEnr.id, selected: enr.selected, subject_category_id: enr.subject_category_id });
+            }
+          } else {
+            toInsert.push(enr);
+          }
+        });
+
+        const results: CategoryEnrollment[] = [];
+
+        // Mettre à jour les enrollments existants
+        if (toUpdate.length > 0) {
+          // Pour les mises à jour, on doit les faire une par une (Supabase ne supporte pas bien le batch update avec conditions différentes)
+          // Mais on peut au moins les faire en parallèle avec Promise.all
+          const updatePromises = toUpdate.map(update => 
+            this.supabase.client
+              .from('child_subject_category_enrollments')
+              .update({ selected: update.selected })
+              .eq('id', update.id)
+              .select('*')
+              .single()
+          );
+
+          const updateResults = await Promise.all(updatePromises);
+          updateResults.forEach(({ data, error }) => {
+            if (!error && data) {
+              results.push(data as CategoryEnrollment);
+            }
+          });
+        }
+
+        // Insérer les nouveaux enrollments en batch
+        if (toInsert.length > 0) {
+          const { data: inserted, error: insertError } = await this.supabase.client
+            .from('child_subject_category_enrollments')
+            .insert(toInsert)
+            .select('*');
+
+          if (insertError) {
+            return { data: null, error: insertError };
+          }
+
+          if (inserted) {
+            results.push(...(inserted as CategoryEnrollment[]));
+          }
+        }
+
+        // Ajouter les enrollments existants qui n'ont pas été modifiés
+        enrollments.forEach(enr => {
+          const existingEnr = existingMap.get(enr.subject_category_id);
+          if (existingEnr && existingEnr.selected === enr.selected) {
+            if (!results.find(r => r.id === existingEnr.id)) {
+              results.push(existingEnr);
+            }
+          }
+        });
+
+        return { data: results, error: null };
+      })()
+    ).pipe(
+      map(({ data, error }) => ({
+        enrollments: (data as CategoryEnrollment[] | null) || [],
         error: error || null,
       }))
     );

@@ -1,5 +1,4 @@
-import { Injectable, inject, signal, computed, effect } from '@angular/core';
-import { forkJoin, Observable } from 'rxjs';
+import { Injectable, inject, signal } from '@angular/core';
 import { Infrastructure } from '../../../features/teacher/components/infrastructure/infrastructure';
 
 export interface GamesStats {
@@ -23,9 +22,10 @@ export class GamesStatsService {
   private static readonly CATEGORY_CACHE_PREFIX = 'category:';
   
   /**
-   * Charge les stats de jeux pour plusieurs matières en parallèle
+   * Charge les stats de jeux pour plusieurs matières en batch (optimisation - une seule requête)
+   * @param skipAssignmentCheck - Si true, skip la vérification d'assignments (optimisation quand on sait qu'ils existent)
    */
-  loadStatsForSubjects(subjectIds: string[]): void {
+  loadStatsForSubjects(subjectIds: string[], skipAssignmentCheck = false): void {
     if (subjectIds.length === 0) {
       this.statsCache.set({});
       return;
@@ -40,37 +40,29 @@ export class GamesStatsService {
       return;
     }
 
-    // Créer un tableau d'observables pour charger les stats
-    const statsObservables = idsToLoad.map(subjectId =>
-      this.infrastructure.getGamesStatsBySubject(subjectId)
-    );
+    // Utiliser la méthode batch pour charger toutes les stats en une seule requête
+    this.infrastructure.getGamesStatsBySubjectsBatch(idsToLoad, skipAssignmentCheck).subscribe({
+      next: ({ statsBySubject, error }) => {
+        if (error) {
+          console.error('Erreur lors du chargement des stats de jeux en batch:', error);
+          return;
+        }
 
-    // Charger toutes les stats en parallèle
-    forkJoin(statsObservables).subscribe({
-      next: (results) => {
         const currentStats = this.statsCache();
         const newStats: Record<string, GamesStats> = { ...currentStats };
         
-        idsToLoad.forEach((subjectId, index) => {
-          const result = results[index];
-          if (!result.error && result.total > 0) {
-            newStats[subjectId] = {
-              stats: result.stats,
-              total: result.total
-            };
-          } else if (!result.error) {
-            // Mettre en cache même si total = 0 pour éviter de recharger
-            newStats[subjectId] = {
-              stats: {},
-              total: 0
-            };
-          }
+        // Mettre à jour le cache avec les stats de chaque matière
+        statsBySubject.forEach((statsData, subjectId) => {
+          newStats[subjectId] = {
+            stats: statsData.stats,
+            total: statsData.total
+          };
         });
 
         this.statsCache.set(newStats);
       },
       error: (error) => {
-        console.error('Erreur lors du chargement des stats de jeux:', error);
+        console.error('Erreur lors du chargement des stats de jeux en batch:', error);
       }
     });
   }
@@ -100,7 +92,7 @@ export class GamesStatsService {
   }
 
   /**
-   * Charge les stats de jeux pour plusieurs catégories en parallèle
+   * Charge les stats de jeux pour plusieurs catégories en batch (optimisation - une seule requête)
    */
   loadStatsForCategories(categoryIds: string[]): void {
     if (categoryIds.length === 0) {
@@ -119,40 +111,30 @@ export class GamesStatsService {
       return;
     }
 
-    // Créer un tableau d'observables pour charger les stats
-    // On utilise un subjectId vide car on charge uniquement par categoryId
-    const statsObservables = idsToLoad.map(categoryId =>
-      this.infrastructure.getGamesStatsBySubject('', categoryId)
-    );
+    // Utiliser la méthode batch pour charger toutes les stats en une seule requête
+    this.infrastructure.getGamesStatsByCategoriesBatch(idsToLoad).subscribe({
+      next: ({ statsByCategory, error }) => {
+        if (error) {
+          console.error('Erreur lors du chargement des stats de jeux par catégorie en batch:', error);
+          return;
+        }
 
-    // Charger toutes les stats en parallèle
-    forkJoin(statsObservables).subscribe({
-      next: (results) => {
         const currentStats = this.categoryStatsCache();
         const newStats: Record<string, GamesStats> = { ...currentStats };
         
-        idsToLoad.forEach((categoryId, index) => {
-          const result = results[index];
+        // Mettre à jour le cache avec les stats de chaque catégorie
+        statsByCategory.forEach((statsData, categoryId) => {
           const cacheKey = `${GamesStatsService.CATEGORY_CACHE_PREFIX}${categoryId}`;
-          
-          if (!result.error && result.total > 0) {
-            newStats[cacheKey] = {
-              stats: result.stats,
-              total: result.total
-            };
-          } else if (!result.error) {
-            // Mettre en cache même si total = 0 pour éviter de recharger
-            newStats[cacheKey] = {
-              stats: {},
-              total: 0
-            };
-          }
+          newStats[cacheKey] = {
+            stats: statsData.stats,
+            total: statsData.total
+          };
         });
 
         this.categoryStatsCache.set(newStats);
       },
       error: (error) => {
-        console.error('Erreur lors du chargement des stats de jeux par catégorie:', error);
+        console.error('Erreur lors du chargement des stats de jeux par catégorie en batch:', error);
       }
     });
   }

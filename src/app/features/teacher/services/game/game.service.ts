@@ -131,8 +131,9 @@ export class GameService {
    * 
    * @param subjectId - ID de la matière (peut être vide si subjectCategoryId est fourni)
    * @param subjectCategoryId - ID de la sous-catégorie (optionnel)
+   * @param skipAssignmentCheck - Si true, skip la vérification d'assignments (optimisation)
    */
-  getGamesStatsBySubject(subjectId: string, subjectCategoryId?: string): Observable<{ 
+  getGamesStatsBySubject(subjectId: string, subjectCategoryId?: string, skipAssignmentCheck = false): Observable<{ 
     stats: Record<string, number>; 
     total: number;
     error: PostgrestError | null 
@@ -166,7 +167,35 @@ export class GameService {
       );
     }
 
-    // Sinon, récupérer les stats de la matière (vérifier d'abord les affectations actives)
+    // Sinon, récupérer les stats de la matière (vérifier d'abord les affectations actives sauf si skip)
+    if (skipAssignmentCheck) {
+      // Skip la vérification d'assignments - on sait qu'ils existent
+      return from(
+        this.supabaseService.client
+          .from('games')
+          .select('id, game_type:game_types(name)')
+          .eq('subject_id', subjectId)
+      ).pipe(
+        map(({ data, error }) => {
+          if (error || !data) {
+            return { stats: {}, total: 0, error: error || null };
+          }
+
+          // Grouper et compter par type
+          const stats: Record<string, number> = {};
+          let total = 0;
+
+          data.forEach((game: any) => {
+            const typeName = game.game_type?.name || 'Inconnu';
+            stats[typeName] = (stats[typeName] || 0) + 1;
+            total++;
+          });
+
+          return { stats, total, error: null };
+        })
+      );
+    }
+
     return from(
       this.supabaseService.client
         .from('teacher_assignments')
@@ -207,6 +236,171 @@ export class GameService {
             return { stats, total, error: null };
           })
         );
+      })
+    );
+  }
+
+  /**
+   * Récupère les statistiques de jeux pour plusieurs matières en batch (optimisation)
+   * Retourne un Map<subjectId, { stats: Record<string, number>, total: number }>
+   */
+  getGamesStatsBySubjectsBatch(subjectIds: string[], skipAssignmentCheck = false): Observable<{ 
+    statsBySubject: Map<string, { stats: Record<string, number>, total: number }>;
+    error: PostgrestError | null 
+  }> {
+    if (subjectIds.length === 0) {
+      return from(Promise.resolve({ statsBySubject: new Map(), error: null }));
+    }
+
+    // Si on doit vérifier les assignments, récupérer d'abord les matières qui ont des assignments actifs
+    if (skipAssignmentCheck) {
+      // Récupérer tous les jeux pour ces matières en une seule requête
+      return from(
+        this.supabaseService.client
+          .from('games')
+          .select('id, subject_id, game_type:game_types(name)')
+          .in('subject_id', subjectIds)
+      ).pipe(
+        map(({ data, error }) => {
+          if (error || !data) {
+            return { statsBySubject: new Map(), error: error || null };
+          }
+
+          // Grouper par matière et compter par type
+          const statsBySubject = new Map<string, { stats: Record<string, number>, total: number }>();
+          
+          // Initialiser toutes les matières avec des stats vides
+          subjectIds.forEach(subjectId => {
+            statsBySubject.set(subjectId, { stats: {}, total: 0 });
+          });
+
+          // Grouper et compter
+          data.forEach((game: any) => {
+            const subjectId = game.subject_id;
+            const typeName = game.game_type?.name || 'Inconnu';
+            
+            const current = statsBySubject.get(subjectId);
+            if (current) {
+              current.stats[typeName] = (current.stats[typeName] || 0) + 1;
+              current.total++;
+            }
+          });
+
+          return { statsBySubject, error: null };
+        })
+      );
+    }
+
+    // Vérifier d'abord quelles matières ont des assignments actives
+    return from(
+      this.supabaseService.client
+        .from('teacher_assignments')
+        .select('subject_id')
+        .in('subject_id', subjectIds)
+        .is('deleted_at', null)
+    ).pipe(
+      switchMap(({ data: assignments, error: assignmentsError }) => {
+        if (assignmentsError) {
+          return from(Promise.resolve({ statsBySubject: new Map(), error: assignmentsError }));
+        }
+
+        // Extraire les subjectIds qui ont des assignments actives
+        const subjectIdsWithAssignments = new Set(
+          (assignments || []).map((a: any) => a.subject_id)
+        );
+
+        if (subjectIdsWithAssignments.size === 0) {
+          // Aucune matière n'a d'assignments actifs
+          const statsBySubject = new Map<string, { stats: Record<string, number>, total: number }>();
+          subjectIds.forEach(subjectId => {
+            statsBySubject.set(subjectId, { stats: {}, total: 0 });
+          });
+          return from(Promise.resolve({ statsBySubject, error: null }));
+        }
+
+        // Récupérer tous les jeux pour les matières qui ont des assignments en une seule requête
+        return from(
+          this.supabaseService.client
+            .from('games')
+            .select('id, subject_id, game_type:game_types(name)')
+            .in('subject_id', Array.from(subjectIdsWithAssignments))
+        ).pipe(
+          map(({ data, error }) => {
+            if (error || !data) {
+              return { statsBySubject: new Map(), error: error || null };
+            }
+
+            // Grouper par matière et compter par type
+            const statsBySubject = new Map<string, { stats: Record<string, number>, total: number }>();
+            
+            // Initialiser toutes les matières avec des stats vides
+            subjectIds.forEach(subjectId => {
+              statsBySubject.set(subjectId, { stats: {}, total: 0 });
+            });
+
+            // Grouper et compter
+            data.forEach((game: any) => {
+              const subjectId = game.subject_id;
+              const typeName = game.game_type?.name || 'Inconnu';
+              
+              const current = statsBySubject.get(subjectId);
+              if (current) {
+                current.stats[typeName] = (current.stats[typeName] || 0) + 1;
+                current.total++;
+              }
+            });
+
+            return { statsBySubject, error: null };
+          })
+        );
+      })
+    );
+  }
+
+  /**
+   * Récupère les statistiques de jeux pour plusieurs catégories en batch (optimisation)
+   */
+  getGamesStatsByCategoriesBatch(categoryIds: string[]): Observable<{ 
+    statsByCategory: Map<string, { stats: Record<string, number>, total: number }>;
+    error: PostgrestError | null 
+  }> {
+    if (categoryIds.length === 0) {
+      return from(Promise.resolve({ statsByCategory: new Map(), error: null }));
+    }
+
+    // Récupérer tous les jeux pour ces catégories en une seule requête
+    return from(
+      this.supabaseService.client
+        .from('games')
+        .select('id, subject_category_id, game_type:game_types(name)')
+        .in('subject_category_id', categoryIds)
+    ).pipe(
+      map(({ data, error }) => {
+        if (error || !data) {
+          return { statsByCategory: new Map(), error: error || null };
+        }
+
+        // Grouper par catégorie et compter par type
+        const statsByCategory = new Map<string, { stats: Record<string, number>, total: number }>();
+        
+        // Initialiser toutes les catégories avec des stats vides
+        categoryIds.forEach(categoryId => {
+          statsByCategory.set(categoryId, { stats: {}, total: 0 });
+        });
+
+        // Grouper et compter
+        data.forEach((game: any) => {
+          const categoryId = game.subject_category_id;
+          const typeName = game.game_type?.name || 'Inconnu';
+          
+          const current = statsByCategory.get(categoryId);
+          if (current) {
+            current.stats[typeName] = (current.stats[typeName] || 0) + 1;
+            current.total++;
+          }
+        });
+
+        return { statsByCategory, error: null };
       })
     );
   }

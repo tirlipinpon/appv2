@@ -13,6 +13,7 @@ import type { TeacherAssignment } from '../../../../types/teacher-assignment';
 import type { SubjectCategory } from '../../../../types/subject';
 import type { Game } from '../../../../types/game';
 import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
+import { CategoriesCacheService } from '../../../../../../shared/services/categories-cache/categories-cache.service';
 import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -35,6 +36,7 @@ export class AssignmentsSectionComponent {
   readonly teacherStore = inject(TeacherStore);
   private readonly infrastructure = inject(Infrastructure);
   private readonly gamesStatsService = inject(GamesStatsService);
+  private readonly categoriesCacheService = inject(CategoriesCacheService);
 
   // Signal pour stocker le nombre d'enfants par affectation
   readonly studentCounts = signal<Map<string, number>>(new Map());
@@ -196,6 +198,7 @@ export class AssignmentsSectionComponent {
   });
 
   // Effect pour charger les stats de jeux pour les matières des affectations
+  // On passe skipAssignmentCheck=true car on sait déjà que les assignments existent
   private readonly loadGamesStatsEffect = effect(() => {
     const assignments = this.filteredAssignments();
     if (assignments.length === 0) {
@@ -210,7 +213,8 @@ export class AssignmentsSectionComponent {
     )];
 
     if (subjectIds.length > 0) {
-      this.gamesStatsService.loadStatsForSubjects(subjectIds);
+      // On sait que les assignments existent (on vient de les charger), donc skip la vérification
+      this.gamesStatsService.loadStatsForSubjects(subjectIds, true);
     }
   });
 
@@ -246,6 +250,7 @@ export class AssignmentsSectionComponent {
   });
 
   // Effect pour vérifier quelles matières ont des catégories
+  // Utilise le cache pour éviter les appels redondants
   private readonly loadCategoriesExistenceEffect = effect(() => {
     const assignments = this.filteredAssignments();
     if (assignments.length === 0) {
@@ -262,25 +267,59 @@ export class AssignmentsSectionComponent {
 
     if (subjectIds.length === 0) return;
 
-    // Charger les catégories pour chaque matière pour vérifier leur existence
-    const categoryObservables = subjectIds.map(subjectId =>
-      this.infrastructure.getCategoriesBySubject(subjectId).pipe(
-        map(({ categories, error }) => ({
-          subjectId,
-          hasCategories: !error && categories && categories.length > 0
-        }))
-      )
-    );
+    // Vérifier d'abord ce qui est déjà en cache
+    const cachedIds = new Set<string>();
+    const uncachedIds: string[] = [];
+    
+    subjectIds.forEach(subjectId => {
+      const cached = this.categoriesCacheService.getCategories(subjectId);
+      if (cached !== null) {
+        cachedIds.add(subjectId);
+      } else {
+        // Vérifier si on sait qu'il n'y a pas de catégories
+        if (!this.categoriesCacheService.hasCategories(subjectId)) {
+          uncachedIds.push(subjectId);
+        }
+      }
+    });
 
-    forkJoin(categoryObservables).subscribe(results => {
+    // Charger les catégories non cachées via le service de cache
+    if (uncachedIds.length > 0) {
+      // Le service charge en parallèle et met en cache
+      this.categoriesCacheService.loadCategoriesForSubjects(uncachedIds);
+      
+      // Après chargement, mettre à jour (on vérifiera dans le prochain cycle)
+      // Pour l'instant, utiliser ce qui est en cache
       const subjectsWithCats = new Set<string>();
-      results.forEach(({ subjectId, hasCategories }) => {
-        if (hasCategories) {
+      cachedIds.forEach(subjectId => {
+        const categories = this.categoriesCacheService.getCategories(subjectId);
+        if (categories && categories.length > 0) {
           subjectsWithCats.add(subjectId);
         }
       });
       this.subjectsWithCategories.set(subjectsWithCats);
-    });
+      
+      // Programmer une mise à jour après chargement (via un petit délai)
+      // Dans un vrai cas, on pourrait utiliser un signal ou observer le cache
+      setTimeout(() => {
+        const updatedSubjectsWithCats = new Set<string>();
+        subjectIds.forEach(subjectId => {
+          if (this.categoriesCacheService.hasCategories(subjectId)) {
+            updatedSubjectsWithCats.add(subjectId);
+          }
+        });
+        this.subjectsWithCategories.set(updatedSubjectsWithCats);
+      }, 50);
+    } else {
+      // Tout est en cache, utiliser directement
+      const subjectsWithCats = new Set<string>();
+      subjectIds.forEach(subjectId => {
+        if (this.categoriesCacheService.hasCategories(subjectId)) {
+          subjectsWithCats.add(subjectId);
+        }
+      });
+      this.subjectsWithCategories.set(subjectsWithCats);
+    }
   });
 
   // Méthode pour obtenir le nombre d'enfants d'une affectation
@@ -426,6 +465,7 @@ export class AssignmentsSectionComponent {
   }
 
   // Charger les sous-catégories pour une affectation
+  // Utilise le cache pour éviter les appels redondants
   private loadCategoriesForAssignment(
     assignmentId: string,
     subjectId: string,
@@ -436,7 +476,8 @@ export class AssignmentsSectionComponent {
     loading.set(assignmentId, true);
     this.loadingCategories.set(loading);
 
-    this.infrastructure.getCategoriesBySubject(subjectId).subscribe(({ categories, error }) => {
+    // Utiliser le service de cache qui évite les appels redondants
+    this.categoriesCacheService.loadCategory(subjectId).subscribe(({ categories, error }: { categories: SubjectCategory[]; error: any }) => {
       const loadingMap = new Map(this.loadingCategories());
       loadingMap.set(assignmentId, false);
       this.loadingCategories.set(loadingMap);
@@ -453,7 +494,7 @@ export class AssignmentsSectionComponent {
 
       // Charger les jeux et comptes d'enfants pour chaque catégorie
       if (categories && categories.length > 0) {
-        const gameObservables = categories.map(category =>
+        const gameObservables = categories.map((category: SubjectCategory) =>
           this.infrastructure.getGamesBySubject(subjectId, category.id).pipe(
             map(({ games, error: gamesError }) => ({
               categoryId: category.id,
@@ -462,7 +503,7 @@ export class AssignmentsSectionComponent {
           )
         );
 
-        const countObservables = categories.map(category =>
+        const countObservables = categories.map((category: SubjectCategory) =>
           this.infrastructure.countChildrenByCategory(category.id, schoolId, schoolLevel).pipe(
             map(({ count, error: countError }) => ({
               categoryId: category.id,

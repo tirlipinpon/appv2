@@ -204,14 +204,28 @@ export class Infrastructure {
     return this.gameService.deleteGame(id);
   }
 
-  getGamesStatsBySubject(subjectId: string, subjectCategoryId?: string): Observable<{ 
+  getGamesStatsBySubject(subjectId: string, subjectCategoryId?: string, skipAssignmentCheck?: boolean): Observable<{ 
     stats: Record<string, number>; 
     total: number;
     error: PostgrestError | null 
   }> {
     // Si on a une catégorie mais pas de subjectId, on peut utiliser un subjectId vide
     // Le GameService gère ce cas
-    return this.gameService.getGamesStatsBySubject(subjectId || '', subjectCategoryId);
+    return this.gameService.getGamesStatsBySubject(subjectId || '', subjectCategoryId, skipAssignmentCheck || false);
+  }
+
+  getGamesStatsBySubjectsBatch(subjectIds: string[], skipAssignmentCheck?: boolean): Observable<{ 
+    statsBySubject: Map<string, { stats: Record<string, number>, total: number }>;
+    error: PostgrestError | null 
+  }> {
+    return this.gameService.getGamesStatsBySubjectsBatch(subjectIds, skipAssignmentCheck || false);
+  }
+
+  getGamesStatsByCategoriesBatch(categoryIds: string[]): Observable<{ 
+    statsByCategory: Map<string, { stats: Record<string, number>, total: number }>;
+    error: PostgrestError | null 
+  }> {
+    return this.gameService.getGamesStatsByCategoriesBatch(categoryIds);
   }
 
   // ===== Génération IA =====
