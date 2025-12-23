@@ -108,27 +108,35 @@
               <a
                 [routerLink]="['/teacher-subjects', subjectId(), 'games']"
                 [queryParams]="{ categoryId: category.id }"
-                class="btn btn-sm btn-primary">
-                🎮 Gérer les jeux
+                class="btn btn-sm btn-primary"
+                matTooltip="Gérer les jeux"
+                aria-label="Gérer les jeux">
+                🎮
               </a>
               <button
                 type="button"
                 class="btn btn-sm btn-secondary"
                 (click)="startEditCategory(category)"
-                [disabled]="editingCategoryId() === category.id">
-                ✏️ Modifier
+                [disabled]="editingCategoryId() === category.id"
+                matTooltip="Modifier"
+                aria-label="Modifier">
+                ✏️
               </button>
               <button
                 type="button"
                 class="btn btn-sm btn-info"
-                (click)="onTransferCategory(category.id)">
-                🔄 Transférer
+                (click)="onTransferCategory(category.id)"
+                matTooltip="Transférer"
+                aria-label="Transférer">
+                🔄
               </button>
               <button
                 type="button"
                 class="btn btn-sm btn-danger"
-                (click)="deleteCategory(category.id)">
-                🗑️ Supprimer
+                (click)="deleteCategory(category.id)"
+                matTooltip="Supprimer"
+                aria-label="Supprimer">
+                🗑️
               </button>
             </div>
           </li>

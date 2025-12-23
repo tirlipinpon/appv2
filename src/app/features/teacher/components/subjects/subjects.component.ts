@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal, computed, effect } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Infrastructure } from '../infrastructure/infrastructure';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import type { Subject } from '../../types/subject';
@@ -13,7 +14,7 @@ import { TransferCategoryDialogComponent, TransferCategoryData } from './compone
 @Component({
   selector: 'app-subjects',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, TransferCategoryDialogComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, MatTooltipModule, TransferCategoryDialogComponent],
   templateUrl: './subjects.component.html',
   styleUrls: ['./subjects.component.scss'],
 })
