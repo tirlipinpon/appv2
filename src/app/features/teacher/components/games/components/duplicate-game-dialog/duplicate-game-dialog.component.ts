@@ -6,7 +6,9 @@ import type { GameType } from '../../../../types/game-type';
 import type { TeacherAssignment } from '../../../../types/teacher-assignment';
 import type { School } from '../../../../types/school';
 import type { Subject } from '../../../../types/subject';
+import type { SubjectCategory } from '../../../../types/subject';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
+import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
@@ -22,6 +24,7 @@ export interface DuplicateGameData {
   schoolId: string | null;
   level: string | null;
   subjectId: string;
+  subjectCategoryId: string | null;
   gameData: {
     instructions: string | null;
     question: string | null;
@@ -50,6 +53,7 @@ export interface DuplicateGameData {
 })
 export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   private readonly fb = inject(FormBuilder);
+  private readonly infrastructure = inject(Infrastructure);
 
   @Input({ required: true }) game!: Game;
   @Input({ required: true }) currentAssignment!: TeacherAssignment | null;
@@ -66,6 +70,8 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   readonly globalFieldsData = signal<GameGlobalFieldsData | null>(null);
   readonly selectedSchoolId = signal<string | null>(null);
   readonly selectedLevel = signal<string | null>(null);
+  readonly selectedSubjectId = signal<string | null>(null);
+  readonly categories = signal<SubjectCategory[]>([]);
   readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
   readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
@@ -121,19 +127,46 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
       schoolId: ['', Validators.required],
       level: ['', Validators.required],
       subjectId: ['', Validators.required],
+      subjectCategoryId: [''], // Optionnel
     });
 
     // Réinitialiser le niveau quand l'école change
     this.duplicateForm.get('schoolId')?.valueChanges.subscribe((value) => {
       this.selectedSchoolId.set(value || null);
-      this.duplicateForm.patchValue({ level: '', subjectId: '' }, { emitEvent: false });
+      this.duplicateForm.patchValue({ level: '', subjectId: '', subjectCategoryId: '' }, { emitEvent: false });
       this.selectedLevel.set(null);
+      this.selectedSubjectId.set(null);
+      this.categories.set([]);
     });
 
     // Réinitialiser la matière quand le niveau change
     this.duplicateForm.get('level')?.valueChanges.subscribe((value) => {
       this.selectedLevel.set(value || null);
-      this.duplicateForm.patchValue({ subjectId: '' }, { emitEvent: false });
+      this.duplicateForm.patchValue({ subjectId: '', subjectCategoryId: '' }, { emitEvent: false });
+      this.selectedSubjectId.set(null);
+      this.categories.set([]);
+    });
+
+    // Charger les sous-catégories quand la matière change
+    this.duplicateForm.get('subjectId')?.valueChanges.subscribe((value) => {
+      this.selectedSubjectId.set(value || null);
+      this.duplicateForm.patchValue({ subjectCategoryId: '' }, { emitEvent: false });
+      if (value) {
+        this.loadCategories(value);
+      } else {
+        this.categories.set([]);
+      }
+    });
+  }
+
+  private loadCategories(subjectId: string): void {
+    this.infrastructure.getCategoriesBySubject(subjectId).subscribe(({ categories, error }) => {
+      if (error) {
+        console.error('[DuplicateGameDialog] Erreur lors du chargement des sous-catégories:', error);
+        this.categories.set([]);
+        return;
+      }
+      this.categories.set(categories || []);
     });
   }
 
@@ -164,11 +197,18 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
       schoolId: schoolId,
       level: level,
       subjectId: subjectId,
+      subjectCategoryId: this.game.subject_category_id || '',
     });
 
     // Initialiser les signals pour la réactivité
     this.selectedSchoolId.set(schoolId || null);
     this.selectedLevel.set(level || null);
+    this.selectedSubjectId.set(subjectId || null);
+    
+    // Charger les sous-catégories si une matière est sélectionnée
+    if (subjectId) {
+      this.loadCategories(subjectId);
+    }
 
     // Initialiser les champs globaux
     this.globalFieldsData.set({
@@ -217,6 +257,7 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
       schoolId: formValue.schoolId || null,
       level: formValue.level || null,
       subjectId: formValue.subjectId,
+      subjectCategoryId: formValue.subjectCategoryId || null,
       gameData: {
         instructions: globalFields?.instructions || null,
         question: globalFields?.question || null,

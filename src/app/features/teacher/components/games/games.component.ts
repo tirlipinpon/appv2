@@ -646,10 +646,12 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       ? duplicateData.gameData.aides.filter(a => a && a.trim())
       : null;
 
-    // Si on est en mode "gestion d'une sous-catégorie spécifique", utiliser le categoryId
-    const categoryId = this.isCategoryContext() 
-      ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
-      : null;
+    // Utiliser la sous-catégorie sélectionnée dans le dialog, ou celle du contexte si en mode "gestion d'une sous-catégorie spécifique"
+    const categoryId = duplicateData.subjectCategoryId 
+      ? duplicateData.subjectCategoryId
+      : (this.isCategoryContext() 
+        ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
+        : null);
 
     this.application.createGame({
       subject_id: categoryId ? null : duplicateData.subjectId,

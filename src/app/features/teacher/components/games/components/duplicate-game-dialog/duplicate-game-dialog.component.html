@@ -53,6 +53,27 @@
           </div>
         }
 
+        <!-- Sélection de la sous-catégorie (affiché seulement si matière sélectionnée) -->
+        @if (duplicateForm.get('subjectId')?.value) {
+          <div class="form-group">
+            <label for="subjectCategoryId">Sous-catégorie (optionnel)</label>
+            @if (categories().length > 0) {
+              <select id="subjectCategoryId" formControlName="subjectCategoryId" class="form-select">
+                <option value="">Aucune (jeu directement sur la matière)</option>
+                @for (category of categories(); track category.id) {
+                  <option [value]="category.id">{{ category.name }}</option>
+                }
+              </select>
+              <small class="form-hint">Si vous sélectionnez une sous-catégorie, le jeu sera lié à cette sous-catégorie plutôt qu'à la matière directement.</small>
+            } @else {
+              <select id="subjectCategoryId" formControlName="subjectCategoryId" class="form-select" [disabled]="true">
+                <option value="">Aucune sous-catégorie disponible</option>
+              </select>
+              <small class="form-hint">Cette matière n'a pas de sous-catégories. Le jeu sera créé directement pour la matière.</small>
+            }
+          </div>
+        }
+
         <!-- Section pour éditer les champs globaux -->
         <div class="form-group">
           <h3>Modifier les informations du jeu (optionnel)</h3>
