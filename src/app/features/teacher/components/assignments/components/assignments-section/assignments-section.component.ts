@@ -1,9 +1,11 @@
 import { Component, inject, computed, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TeacherAssignmentStore } from '../../../../store/assignments.store';
 import { TeacherStore } from '../../../../store/index';
 import { GamesStatsDisplayComponent } from '../../../../../../shared/components/games-stats-display/games-stats-display.component';
+import { GamesStatsService } from '../../../../../../shared/services/games-stats/games-stats.service';
 import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../transfer-assignment-dialog/transfer-assignment-dialog.component';
 import { getSchoolLevelLabel, SCHOOL_LEVELS } from '../../../../utils/school-levels.util';
 import type { TeacherAssignment } from '../../../../types/teacher-assignment';
@@ -19,6 +21,7 @@ import { map } from 'rxjs/operators';
   imports: [
     CommonModule,
     RouterModule,
+    MatTooltipModule,
     GamesStatsDisplayComponent,
     TransferAssignmentDialogComponent
   ],
@@ -29,6 +32,7 @@ export class AssignmentsSectionComponent {
   readonly teacherAssignmentStore = inject(TeacherAssignmentStore);
   readonly teacherStore = inject(TeacherStore);
   private readonly infrastructure = inject(Infrastructure);
+  private readonly gamesStatsService = inject(GamesStatsService);
 
   // Signal pour stocker le nombre d'enfants par affectation
   readonly studentCounts = signal<Map<string, number>>(new Map());
@@ -182,6 +186,25 @@ export class AssignmentsSectionComponent {
       });
       this.studentCounts.set(counts);
     });
+  });
+
+  // Effect pour charger les stats de jeux pour les matières des affectations
+  private readonly loadGamesStatsEffect = effect(() => {
+    const assignments = this.filteredAssignments();
+    if (assignments.length === 0) {
+      return;
+    }
+
+    // Extraire les subject_id uniques
+    const subjectIds = [...new Set(
+      assignments
+        .filter(a => a.subject_id)
+        .map(a => a.subject_id!)
+    )];
+
+    if (subjectIds.length > 0) {
+      this.gamesStatsService.loadStatsForSubjects(subjectIds);
+    }
   });
 
   // Méthode pour obtenir le nombre d'enfants d'une affectation

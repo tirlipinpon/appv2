@@ -1,4 +1,4 @@
-import { Component, Input, inject, computed, effect, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GamesStatsService } from '../../services/games-stats/games-stats.service';
 
@@ -21,12 +21,20 @@ import { GamesStatsService } from '../../services/games-stats/games-stats.servic
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GamesStatsDisplayComponent {
-  @Input({ required: true }) subjectId!: string;
+  @Input() subjectId?: string;
+  @Input() categoryId?: string;
   
   private readonly gamesStatsService = inject(GamesStatsService);
 
-  readonly formattedStats = computed(() => 
-    this.gamesStatsService.formatStats(this.subjectId)
-  );
+  readonly formattedStats = computed(() => {
+    // Priorité à la catégorie si fournie
+    if (this.categoryId) {
+      return this.gamesStatsService.formatCategoryStats(this.categoryId);
+    }
+    if (this.subjectId) {
+      return this.gamesStatsService.formatStats(this.subjectId);
+    }
+    return '';
+  });
 }
 

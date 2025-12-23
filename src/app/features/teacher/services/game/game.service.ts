@@ -128,6 +128,9 @@ export class GameService {
    * Récupère les statistiques de jeux pour une matière ou une sous-catégorie (count par type)
    * Retourne un objet { typeName: count } et le total
    * Filtre uniquement les jeux dont la matière a au moins une affectation active (deleted_at IS NULL)
+   * 
+   * @param subjectId - ID de la matière (peut être vide si subjectCategoryId est fourni)
+   * @param subjectCategoryId - ID de la sous-catégorie (optionnel)
    */
   getGamesStatsBySubject(subjectId: string, subjectCategoryId?: string): Observable<{ 
     stats: Record<string, number>; 
@@ -135,6 +138,7 @@ export class GameService {
     error: PostgrestError | null 
   }> {
     // Si on a une sous-catégorie, récupérer directement les stats de cette sous-catégorie
+    // (subjectId peut être vide dans ce cas)
     if (subjectCategoryId) {
       return from(
         this.supabaseService.client

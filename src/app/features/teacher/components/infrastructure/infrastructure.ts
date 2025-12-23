@@ -191,7 +191,9 @@ export class Infrastructure {
     total: number;
     error: PostgrestError | null 
   }> {
-    return this.gameService.getGamesStatsBySubject(subjectId, subjectCategoryId);
+    // Si on a une catégorie mais pas de subjectId, on peut utiliser un subjectId vide
+    // Le GameService gère ce cas
+    return this.gameService.getGamesStatsBySubject(subjectId || '', subjectCategoryId);
   }
 
   // ===== Génération IA =====

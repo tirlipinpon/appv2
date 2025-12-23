@@ -264,6 +264,12 @@ export class ChildSubjectsComponent implements OnInit {
       categoriesMap.set(subjectId, categories || []);
       this.categoriesBySubject.set(new Map(categoriesMap));
       
+      // Charger les stats de jeux pour les catégories en parallèle
+      if (categories && categories.length > 0) {
+        const categoryIds = categories.map(c => c.id);
+        this.gamesStatsService.loadStatsForCategories(categoryIds);
+      }
+      
       // Créer automatiquement les enrollments pour toutes les catégories (selected=true par défaut)
       const c = this.child();
       if (!c) return;
@@ -401,6 +407,9 @@ export class ChildSubjectsComponent implements OnInit {
           list.push({ subject_id: subjectId, selected: true });
         }
         this.enrollments.set([...list]);
+        
+        // Charger les catégories de la matière ajoutée
+        this.loadCategoriesForSubject(subjectId);
         
         // Charger la matière ajoutée si elle n'est pas dans availableSubjects (hors programme)
         const availableIds = new Set(this.availableSubjects().map(s => s.id));

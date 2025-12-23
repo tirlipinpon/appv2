@@ -45,7 +45,8 @@
             type="button"
             class="toggle-btn"
             (click)="toggleAssignment(assignment.id)"
-            [attr.aria-expanded]="isAssignmentExpanded(assignment.id)">
+            [attr.aria-expanded]="isAssignmentExpanded(assignment.id)"
+            matTooltip="Afficher sous-catégories">
             {{ isAssignmentExpanded(assignment.id) ? '▼' : '▶' }}
           </button>
         </div>

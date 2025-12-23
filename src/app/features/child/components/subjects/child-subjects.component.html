@@ -47,6 +47,7 @@
                     (change)="onToggleCategory(category.id, $any($event.target).checked)">
                   <span class="checkmark"></span>
                   <span class="category-name">{{ category.name }}</span>
+                  <app-games-stats-display [categoryId]="category.id"></app-games-stats-display>
                 </label>
               </div>
             </div>
