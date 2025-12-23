@@ -12,11 +12,27 @@ export class GameService {
   private readonly supabaseService = inject(SupabaseService);
 
   /**
-   * Récupère tous les jeux pour une matière donnée
+   * Récupère tous les jeux pour une matière donnée ou une sous-catégorie
    * Filtre uniquement les jeux dont la matière a au moins une affectation active (deleted_at IS NULL)
    */
-  getGamesBySubject(subjectId: string): Observable<{ games: Game[]; error: PostgrestError | null }> {
-    // D'abord vérifier s'il y a des affectations actives pour cette matière
+  getGamesBySubject(subjectId: string, subjectCategoryId?: string): Observable<{ games: Game[]; error: PostgrestError | null }> {
+    // Si on a une sous-catégorie, récupérer directement les jeux de cette sous-catégorie
+    if (subjectCategoryId) {
+      return from(
+        this.supabaseService.client
+          .from('games')
+          .select('*')
+          .eq('subject_category_id', subjectCategoryId)
+          .order('created_at', { ascending: false })
+      ).pipe(
+        map(({ data, error }) => ({
+          games: (data || []) as Game[],
+          error: error || null,
+        }))
+      );
+    }
+
+    // Sinon, récupérer les jeux de la matière (vérifier d'abord les affectations actives)
     return from(
       this.supabaseService.client
         .from('teacher_assignments')
@@ -32,6 +48,7 @@ export class GameService {
         }
 
         // Si au moins une affectation active existe, récupérer les jeux
+        // Récupérer les jeux directement liés à la matière (subject_id)
         return from(
           this.supabaseService.client
             .from('games')
@@ -108,16 +125,44 @@ export class GameService {
   }
 
   /**
-   * Récupère les statistiques de jeux pour une matière (count par type)
+   * Récupère les statistiques de jeux pour une matière ou une sous-catégorie (count par type)
    * Retourne un objet { typeName: count } et le total
    * Filtre uniquement les jeux dont la matière a au moins une affectation active (deleted_at IS NULL)
    */
-  getGamesStatsBySubject(subjectId: string): Observable<{ 
+  getGamesStatsBySubject(subjectId: string, subjectCategoryId?: string): Observable<{ 
     stats: Record<string, number>; 
     total: number;
     error: PostgrestError | null 
   }> {
-    // D'abord vérifier s'il y a des affectations actives pour cette matière
+    // Si on a une sous-catégorie, récupérer directement les stats de cette sous-catégorie
+    if (subjectCategoryId) {
+      return from(
+        this.supabaseService.client
+          .from('games')
+          .select('id, game_type:game_types(name)')
+          .eq('subject_category_id', subjectCategoryId)
+      ).pipe(
+        map(({ data, error }) => {
+          if (error || !data) {
+            return { stats: {}, total: 0, error: error || null };
+          }
+
+          // Grouper et compter par type
+          const stats: Record<string, number> = {};
+          let total = 0;
+
+          data.forEach((game: any) => {
+            const typeName = game.game_type?.name || 'Inconnu';
+            stats[typeName] = (stats[typeName] || 0) + 1;
+            total++;
+          });
+
+          return { stats, total, error: null };
+        })
+      );
+    }
+
+    // Sinon, récupérer les stats de la matière (vérifier d'abord les affectations actives)
     return from(
       this.supabaseService.client
         .from('teacher_assignments')
@@ -133,6 +178,7 @@ export class GameService {
         }
 
         // Si au moins une affectation active existe, récupérer les stats des jeux
+        // Récupérer les jeux directement liés à la matière
         return from(
           this.supabaseService.client
             .from('games')

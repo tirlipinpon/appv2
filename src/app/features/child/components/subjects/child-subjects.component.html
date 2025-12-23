@@ -33,6 +33,23 @@
               <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
             </label>
             <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
+            
+            <!-- Sous-catégories -->
+            <div *ngIf="getCategoriesForSubject(s.id).length > 0" class="categories-section">
+              <div class="categories-header">
+                <strong>Sous-catégories:</strong>
+              </div>
+              <div class="categories-list">
+                <label *ngFor="let category of getCategoriesForSubject(s.id)" class="category-checkbox">
+                  <input 
+                    type="checkbox" 
+                    [checked]="isCategorySelected(category.id)" 
+                    (change)="onToggleCategory(category.id, $any($event.target).checked)">
+                  <span class="checkmark"></span>
+                  <span class="category-name">{{ category.name }}</span>
+                </label>
+              </div>
+            </div>
           </div>
           <div *ngIf="selectedSubjects().length === 0" class="empty-state">
             <p class="muted">Aucune matière activée.</p>

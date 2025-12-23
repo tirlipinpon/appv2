@@ -1,0 +1,73 @@
+<div class="dialog-overlay" (click)="onCancel()" (keydown.escape)="onCancel()" tabindex="0" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+  <div class="dialog-content" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="-1">
+    <div class="dialog-header">
+      <h2 id="dialog-title">Transférer la sous-catégorie</h2>
+      <button type="button" class="close-btn" (click)="onCancel()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="dialog-body">
+      <!-- Informations de la sous-catégorie -->
+      <div class="category-info">
+        <h3>Sous-catégorie à transférer</h3>
+        <div class="info-item">
+          <span class="info-label">Nom:</span>
+          <span class="info-value">{{ category.name }}</span>
+        </div>
+        <div class="info-item" *ngIf="category.description">
+          <span class="info-label">Description:</span>
+          <span class="info-value">{{ category.description }}</span>
+        </div>
+        <div class="info-warning">
+          <strong>⚠️ Attention:</strong> Tous les jeux associés à cette sous-catégorie seront également transférés.
+        </div>
+      </div>
+
+      <form [formGroup]="transferForm">
+        <!-- Sélection de la matière de destination -->
+        <div class="form-group">
+          <label for="subjectId" class="form-label">Matière de destination *</label>
+          
+          <!-- Liste déroulante -->
+          <select 
+            id="subjectId" 
+            formControlName="subjectId" 
+            class="form-select"
+            [class.error]="transferForm.get('subjectId')?.invalid && transferForm.get('subjectId')?.touched">
+            <option value="">Sélectionner une matière</option>
+            @for (subject of subjects(); track subject.id) {
+              <option [value]="subject.id">{{ subject.name }} ({{ subject.type }})</option>
+            }
+          </select>
+          
+          @if (transferForm.get('subjectId')?.hasError('required') && transferForm.get('subjectId')?.touched) {
+            <span class="error-message">La matière de destination est requise</span>
+          }
+          
+          @if (isLoading()) {
+            <span class="loading-message">Chargement des matières...</span>
+          }
+          
+          @if (!isLoading() && subjects().length === 0) {
+            <span class="info-message">
+              Aucune autre matière disponible pour le transfert.
+            </span>
+          }
+        </div>
+      </form>
+    </div>
+
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        Annuler
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        (click)="onConfirm()"
+        [disabled]="!transferForm.valid || isLoading()">
+        Confirmer
+      </button>
+    </div>
+  </div>
+</div>
+

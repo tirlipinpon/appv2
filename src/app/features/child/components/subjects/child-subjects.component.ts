@@ -2,11 +2,11 @@ import { Component, Input, OnInit, inject, signal, computed, effect } from '@ang
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { ParentSubjectService } from '../../services/subject/parent-subject.service';
+import { ParentSubjectService, CategoryEnrollment } from '../../services/subject/parent-subject.service';
 import { SchoolService } from '../../services/school/school.service';
 import { GamesStatsService } from '../../../../shared/services/games-stats/games-stats.service';
 import { GamesStatsDisplayComponent } from '../../../../shared/components/games-stats-display/games-stats-display.component';
-import type { Subject } from '../../../teacher/types/subject';
+import type { Subject, SubjectCategory } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
 import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
 
@@ -32,6 +32,8 @@ export class ChildSubjectsComponent implements OnInit {
   readonly enrollments = signal<{ subject_id: string; selected: boolean }[]>([]);
   readonly searchQuery = signal<string>('');
   readonly searchResults = signal<(Subject & { school_level?: string | null })[]>([]);
+  readonly categoriesBySubject = signal<Map<string, SubjectCategory[]>>(new Map());
+  readonly categoryEnrollments = signal<CategoryEnrollment[]>([]);
   
   getSchoolLevelForSubject(subjectId: string): string | null {
     // Chercher d'abord dans availableSubjects
@@ -151,6 +153,17 @@ export class ChildSubjectsComponent implements OnInit {
               subject_id: e.subject_id, 
               selected: e.selected
             })));
+            
+            // Charger les catégories pour les matières sélectionnées
+            this.loadCategoriesForSelectedSubjects();
+          });
+          
+          // Charger les enrollments de catégories
+          this.parentSvc.getCategoryEnrollments(child.id).subscribe(({ enrollments, error }) => {
+            if (error) {
+              console.error('Error loading category enrollments:', error);
+            }
+            this.categoryEnrollments.set(enrollments || []);
           });
         } else {
           this.schoolName.set(null);
@@ -220,7 +233,98 @@ export class ChildSubjectsComponent implements OnInit {
           list.push({ subject_id: subjectId, selected });
         }
         this.enrollments.set([...list]);
+        
+        // Si on active une matière, charger ses catégories et créer les enrollments par défaut
+        if (selected) {
+          this.loadCategoriesForSubject(subjectId);
+        } else {
+          // Si on désactive une matière, retirer les catégories de la map
+          const categoriesMap = this.categoriesBySubject();
+          categoriesMap.delete(subjectId);
+          this.categoriesBySubject.set(new Map(categoriesMap));
+        }
       });
+  }
+
+  private loadCategoriesForSelectedSubjects(): void {
+    const selectedIds = this.selectedSubjects().map(s => s.id);
+    selectedIds.forEach(subjectId => {
+      this.loadCategoriesForSubject(subjectId);
+    });
+  }
+
+  private loadCategoriesForSubject(subjectId: string): void {
+    this.parentSvc.getSubjectCategories(subjectId).subscribe(({ categories, error }) => {
+      if (error) {
+        console.error('Error loading categories for subject:', subjectId, error);
+        return;
+      }
+      
+      const categoriesMap = this.categoriesBySubject();
+      categoriesMap.set(subjectId, categories || []);
+      this.categoriesBySubject.set(new Map(categoriesMap));
+      
+      // Créer automatiquement les enrollments pour toutes les catégories (selected=true par défaut)
+      const c = this.child();
+      if (!c) return;
+      
+      const existingEnrollments = this.categoryEnrollments();
+      const existingCategoryIds = new Set(existingEnrollments.map(e => e.subject_category_id));
+      
+      (categories || []).forEach(category => {
+        if (!existingCategoryIds.has(category.id)) {
+          this.parentSvc.upsertCategoryEnrollment({
+            child_id: c.id,
+            subject_category_id: category.id,
+            selected: true
+          }).subscribe(({ enrollment, error: enrollError }) => {
+            if (!enrollError && enrollment) {
+              const currentEnrollments = this.categoryEnrollments();
+              this.categoryEnrollments.set([...currentEnrollments, enrollment]);
+            }
+          });
+        }
+      });
+    });
+  }
+
+  getCategoriesForSubject(subjectId: string): SubjectCategory[] {
+    return this.categoriesBySubject().get(subjectId) || [];
+  }
+
+  isCategorySelected(categoryId: string): boolean {
+    const enrollment = this.categoryEnrollments().find(e => e.subject_category_id === categoryId);
+    return enrollment?.selected ?? false;
+  }
+
+  onToggleCategory(categoryId: string, selected: boolean): void {
+    const c = this.child();
+    if (!c) return;
+    
+    this.parentSvc.upsertCategoryEnrollment({
+      child_id: c.id,
+      subject_category_id: categoryId,
+      selected
+    }).subscribe(({ enrollment, error }) => {
+      if (error) {
+        console.error('Error toggling category enrollment:', error);
+        return;
+      }
+      
+      // Mettre à jour la liste locale
+      const list = this.categoryEnrollments();
+      const idx = list.findIndex(e => e.subject_category_id === categoryId);
+      if (idx >= 0) {
+        if (enrollment) {
+          list[idx] = enrollment;
+        } else {
+          list.splice(idx, 1);
+        }
+      } else if (enrollment) {
+        list.push(enrollment);
+      }
+      this.categoryEnrollments.set([...list]);
+    });
   }
 
   onSearchInput(q: string): void {

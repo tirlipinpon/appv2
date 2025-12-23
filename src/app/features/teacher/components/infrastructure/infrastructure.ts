@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from, switchMap, map, catchError, of, forkJoin } from 'rxjs';
+import { Observable, from, switchMap, map, catchError, of } from 'rxjs';
 import { TeacherService } from '../../services/teacher/teacher.service';
 import { SchoolService } from '../../services/school/school.service';
 import { SchoolYearService } from '../../services/school-year/school-year.service';
 import { SubjectService } from '../../services/subject/subject.service';
+import { SubjectCategoryService } from '../../services/subject-category/subject-category.service';
 import { TeacherAssignmentService } from '../../services/teacher-assignment/teacher-assignment.service';
 import { GameTypeService } from '../../services/game-type/game-type.service';
 import { GameService } from '../../services/game/game.service';
@@ -11,6 +12,7 @@ import { AIGameGeneratorService } from '../../services/ai-game-generator/ai-game
 import type { Teacher, TeacherUpdate } from '../../types/teacher';
 import type { School } from '../../types/school';
 import type { Subject } from '../../types/subject';
+import type { SubjectCategory, SubjectCategoryCreate, SubjectCategoryUpdate } from '../../types/subject';
 import type { TeacherAssignment, TeacherAssignmentCreate } from '../../types/teacher-assignment';
 import type { GameType } from '../../types/game-type';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
@@ -26,6 +28,7 @@ export class Infrastructure {
   private readonly schoolService = inject(SchoolService);
   private readonly schoolYearService = inject(SchoolYearService);
   private readonly subjectService = inject(SubjectService);
+  private readonly subjectCategoryService = inject(SubjectCategoryService);
   private readonly teacherAssignmentService = inject(TeacherAssignmentService);
   private readonly gameTypeService = inject(GameTypeService);
   private readonly gameService = inject(GameService);
@@ -100,6 +103,27 @@ export class Infrastructure {
     return this.subjectService.updateSubject(id, updates);
   }
 
+  // ===== Domaine Sous-catégories de matières =====
+  getCategoriesBySubject(subjectId: string): Observable<{ categories: SubjectCategory[]; error: PostgrestError | null }> {
+    return this.subjectCategoryService.getCategoriesBySubject(subjectId);
+  }
+
+  createCategory(categoryData: SubjectCategoryCreate): Observable<{ category: SubjectCategory | null; error: PostgrestError | null }> {
+    return this.subjectCategoryService.createCategory(categoryData);
+  }
+
+  updateCategory(id: string, updates: SubjectCategoryUpdate): Observable<{ category: SubjectCategory | null; error: PostgrestError | null }> {
+    return this.subjectCategoryService.updateCategory(id, updates);
+  }
+
+  deleteCategory(id: string): Observable<{ error: PostgrestError | null }> {
+    return this.subjectCategoryService.deleteCategory(id);
+  }
+
+  transferCategory(categoryId: string, newSubjectId: string): Observable<{ category: SubjectCategory | null; error: PostgrestError | null }> {
+    return this.subjectCategoryService.transferCategory(categoryId, newSubjectId);
+  }
+
   getTeacherAssignments(teacherId: string): Observable<{ assignments: TeacherAssignment[]; error: PostgrestError | null }> {
     return this.teacherAssignmentService.getTeacherAssignments(teacherId);
   }
@@ -138,8 +162,8 @@ export class Infrastructure {
     return this.gameTypeService.getGameTypes();
   }
 
-  getGamesBySubject(subjectId: string): Observable<{ games: Game[]; error: PostgrestError | null }> {
-    return this.gameService.getGamesBySubject(subjectId);
+  getGamesBySubject(subjectId: string, subjectCategoryId?: string): Observable<{ games: Game[]; error: PostgrestError | null }> {
+    return this.gameService.getGamesBySubject(subjectId, subjectCategoryId);
   }
 
   createGame(gameData: GameCreate): Observable<{ game: Game | null; error: PostgrestError | null }> {
@@ -154,12 +178,12 @@ export class Infrastructure {
     return this.gameService.deleteGame(id);
   }
 
-  getGamesStatsBySubject(subjectId: string): Observable<{ 
+  getGamesStatsBySubject(subjectId: string, subjectCategoryId?: string): Observable<{ 
     stats: Record<string, number>; 
     total: number;
     error: PostgrestError | null 
   }> {
-    return this.gameService.getGamesStatsBySubject(subjectId);
+    return this.gameService.getGamesStatsBySubject(subjectId, subjectCategoryId);
   }
 
   // ===== Génération IA =====

@@ -5,7 +5,8 @@ export interface GameReponses {
 
 export interface Game {
   id: string;
-  subject_id: string;
+  subject_id: string | null;
+  subject_category_id: string | null;
   game_type_id: string;
   name: string;
   description: string | null;
@@ -21,7 +22,8 @@ export interface Game {
 }
 
 export interface GameCreate {
-  subject_id: string;
+  subject_id?: string | null;
+  subject_category_id?: string | null;
   game_type_id: string;
   name: string;
   instructions?: string | null;
@@ -39,5 +41,7 @@ export interface GameUpdate {
   aides?: string[] | null;
   metadata?: Record<string, unknown> | null;
   game_type_id?: string;
+  subject_id?: string | null;
+  subject_category_id?: string | null;
 }
 

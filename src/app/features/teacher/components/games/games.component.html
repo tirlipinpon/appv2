@@ -82,6 +82,22 @@
         }
       </div>
 
+      @if (categories().length > 0) {
+        <div class="form-group">
+          <label for="category_id">Sous-catégorie (optionnel)</label>
+          <select 
+            id="category_id" 
+            [value]="selectedCategoryId() || ''"
+            (change)="onCategoryChange($any($event.target).value || null)">
+            <option value="">Aucune (jeu directement sur la matière)</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+          <small class="form-hint">Si vous sélectionnez une sous-catégorie, le jeu sera lié à cette sous-catégorie plutôt qu'à la matière directement.</small>
+        </div>
+      }
+
       <!-- Champs globaux (instructions, question, aides) -->
       <app-game-global-fields
         [initialData]="initialGlobalFields()"

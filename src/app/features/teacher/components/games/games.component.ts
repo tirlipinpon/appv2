@@ -25,6 +25,8 @@ import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmDat
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
 import type { Subject } from '../../types/subject';
+import type { SubjectCategory } from '../../types/subject';
+import { Infrastructure } from '../infrastructure/infrastructure';
 import { normalizeGameData } from '../../utils/game-data-mapper';
 import { SCHOOL_LEVELS } from '../../utils/school-levels.util';
 import type { DuplicateGameData } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
@@ -59,12 +61,15 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly application = inject(GamesApplication);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
   private readonly teacherService = inject(TeacherService);
+  private readonly infra = inject(Infrastructure);
   readonly gamesStore = inject(GamesStore);
   readonly subjectsStore = inject(TeacherAssignmentStore);
 
   readonly subjectId = signal<string | null>(null);
   readonly editingGameId = signal<string | null>(null);
   readonly selectedGameTypeName = signal<string | null>(null);
+  readonly categories = signal<SubjectCategory[]>([]);
+  readonly selectedCategoryId = signal<string | null>(null);
   
   // Signals pour la duplication
   readonly duplicateDialogOpen = signal<boolean>(false);
@@ -234,6 +239,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.application.loadGameTypes();
     this.application.loadGamesBySubject(id);
     this.subjectsStore.loadSubjects();
+    this.loadCategories(id);
     
     // Charger les assignments du professeur pour obtenir le school_level
     // IMPORTANT: Utiliser teacher.id et non user.id car teacher_assignments.teacher_id fait référence à teachers.id
@@ -351,8 +357,10 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
 
     // Stocker les données spécifiques dans metadata
+    const categoryId = this.selectedCategoryId();
     this.application.createGame({
-      subject_id: subjectId,
+      subject_id: categoryId ? null : subjectId,
+      subject_category_id: categoryId || null,
       game_type_id: v.game_type_id!,
       name: autoName,
       instructions: v.instructions || null,
@@ -405,6 +413,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.gameSpecificValid.set(false);
     this.initialGameData.set(null);
     this.initialGlobalFields.set(null);
+    this.selectedCategoryId.set(null);
   }
 
   update(): void {
@@ -606,5 +615,19 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.duplicateDialogOpen.set(false);
     this.gameToDuplicate.set(null);
     this.currentAssignment.set(null);
+  }
+
+  private loadCategories(subjectId: string): void {
+    this.infra.getCategoriesBySubject(subjectId).subscribe(({ categories, error }) => {
+      if (error) {
+        console.error('[GamesComponent] Erreur lors du chargement des sous-catégories:', error);
+        return;
+      }
+      this.categories.set(categories || []);
+    });
+  }
+
+  onCategoryChange(categoryId: string | null): void {
+    this.selectedCategoryId.set(categoryId);
   }
 }

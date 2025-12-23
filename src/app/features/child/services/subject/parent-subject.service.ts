@@ -3,7 +3,7 @@ import { from, Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
-import type { Subject } from '../../../teacher/types/subject';
+import type { Subject, SubjectCategory } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
 
 export interface Enrollment {
@@ -12,6 +12,15 @@ export interface Enrollment {
   school_id: string;
   school_year_id: string | null;
   subject_id: string;
+  selected: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryEnrollment {
+  id: string;
+  child_id: string;
+  subject_category_id: string;
   selected: boolean;
   created_at: string;
   updated_at: string;
@@ -443,6 +452,85 @@ export class ParentSubjectService {
         
         return { subjects: enrichedSubjects, error };
       })
+    );
+  }
+
+  // ===== Gestion des sous-catégories =====
+  getSubjectCategories(subjectId: string): Observable<{ categories: SubjectCategory[]; error: PostgrestError | null }> {
+    return from(
+      this.supabase.client
+        .from('subject_categories')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .order('name', { ascending: true })
+    ).pipe(
+      map(({ data, error }) => ({
+        categories: (data as SubjectCategory[] | null) || [],
+        error: error || null,
+      }))
+    );
+  }
+
+  getCategoryEnrollments(childId: string): Observable<{ enrollments: CategoryEnrollment[]; error: PostgrestError | null }> {
+    return from(
+      this.supabase.client
+        .from('child_subject_category_enrollments')
+        .select('*')
+        .eq('child_id', childId)
+    ).pipe(
+      map(({ data, error }) => ({
+        enrollments: (data as CategoryEnrollment[] | null) || [],
+        error: error || null,
+      }))
+    );
+  }
+
+  upsertCategoryEnrollment(enr: { child_id: string; subject_category_id: string; selected: boolean }): Observable<{ enrollment: CategoryEnrollment | null; error: PostgrestError | null }> {
+    return from(
+      (async () => {
+        // Vérifier si l'enrollment existe déjà
+        const { data: existing, error: selectError } = await this.supabase.client
+          .from('child_subject_category_enrollments')
+          .select('*')
+          .eq('child_id', enr.child_id)
+          .eq('subject_category_id', enr.subject_category_id)
+          .maybeSingle();
+
+        if (selectError) {
+          return { data: null, error: selectError };
+        }
+
+        if (existing) {
+          // Mise à jour de l'enrollment existant
+          const { data: updated, error: updateError } = await this.supabase.client
+            .from('child_subject_category_enrollments')
+            .update({ selected: enr.selected })
+            .eq('child_id', enr.child_id)
+            .eq('subject_category_id', enr.subject_category_id)
+            .select('*')
+            .single();
+
+          return { data: updated as CategoryEnrollment | null, error: updateError };
+        } else {
+          // Insertion d'un nouvel enrollment
+          const { data: inserted, error: insertError } = await this.supabase.client
+            .from('child_subject_category_enrollments')
+            .insert({
+              child_id: enr.child_id,
+              subject_category_id: enr.subject_category_id,
+              selected: enr.selected,
+            })
+            .select('*')
+            .single();
+
+          return { data: inserted as CategoryEnrollment | null, error: insertError };
+        }
+      })()
+    ).pipe(
+      map(({ data, error }) => ({
+        enrollment: data as CategoryEnrollment | null,
+        error: error || null,
+      }))
     );
   }
 }

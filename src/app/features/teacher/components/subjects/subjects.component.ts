@@ -5,13 +5,15 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { Infrastructure } from '../infrastructure/infrastructure';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import type { Subject } from '../../types/subject';
+import type { SubjectCategory } from '../../types/subject';
 import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error-snackbar.service';
 import { ToastService } from '../../../../shared/services/toast/toast.service';
+import { TransferCategoryDialogComponent, TransferCategoryData } from './components/transfer-category-dialog/transfer-category-dialog.component';
 
 @Component({
   selector: 'app-subjects',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, TransferCategoryDialogComponent],
   templateUrl: './subjects.component.html',
   styleUrls: ['./subjects.component.scss'],
 })
@@ -98,6 +100,16 @@ export class SubjectsComponent implements OnInit {
 
   readonly links = signal<{ id: string; school_id: string; school_level: string; required: boolean }[]>([]);
 
+  // Gestion des sous-catégories
+  readonly categories = signal<SubjectCategory[]>([]);
+  readonly editingCategoryId = signal<string | null>(null);
+  readonly showTransferDialog = signal<boolean>(false);
+  readonly selectedCategoryForTransfer = signal<SubjectCategory | null>(null);
+  categoryForm = this.fb.group({
+    name: ['', Validators.required],
+    description: [''],
+  });
+
   ngOnInit(): void {
     this.store.loadSchools();
     // Toujours charger tous les sujets pour s'assurer d'avoir la matière complète
@@ -132,6 +144,7 @@ export class SubjectsComponent implements OnInit {
 
     if (id) {
       this.loadLinks(id);
+      this.loadCategories(id);
       
       // Essayer de remplir depuis le store d'abord (si disponible)
       // Le formulaire est déjà initialisé à ce stade, pas besoin de setTimeout
@@ -354,6 +367,125 @@ export class SubjectsComponent implements OnInit {
       if (typeControl) typeControl.setValue(subject.type || 'scolaire', { emitEvent: false });
       this.subjectForm.updateValueAndValidity({ emitEvent: false });
     }
+  }
+
+  // ===== Gestion des sous-catégories =====
+  private loadCategories(subjectId: string): void {
+    this.infra.getCategoriesBySubject(subjectId).subscribe(({ categories, error }) => {
+      if (error) {
+        console.error('[SubjectsComponent] Erreur lors du chargement des sous-catégories:', error);
+        this.errorSnackbar.showError(error.message || 'Erreur lors du chargement des sous-catégories');
+        return;
+      }
+      this.categories.set(categories || []);
+    });
+  }
+
+  createCategory(): void {
+    const id = this.subjectId();
+    if (!id || !this.categoryForm.valid) return;
+    const v = this.categoryForm.value;
+    const newName = (v.name || '').trim();
+    if (!newName) return;
+
+    this.infra.createCategory({
+      subject_id: id,
+      name: newName,
+      description: v.description || null,
+    }).subscribe(({ error }) => {
+      if (error) {
+        this.errorSnackbar.showError(error.message || 'Erreur lors de la création de la sous-catégorie');
+        return;
+      }
+      this.toastService.success('Sous-catégorie créée.');
+      this.categoryForm.reset();
+      this.loadCategories(id);
+    });
+  }
+
+  startEditCategory(category: SubjectCategory): void {
+    this.editingCategoryId.set(category.id);
+    this.categoryForm.patchValue({
+      name: category.name,
+      description: category.description || '',
+    });
+  }
+
+  cancelEditCategory(): void {
+    this.editingCategoryId.set(null);
+    this.categoryForm.reset();
+  }
+
+  updateCategory(): void {
+    const categoryId = this.editingCategoryId();
+    const id = this.subjectId();
+    if (!categoryId || !id || !this.categoryForm.valid) return;
+    const v = this.categoryForm.value;
+    const newName = (v.name || '').trim();
+    if (!newName) return;
+
+    this.infra.updateCategory(categoryId, {
+      name: newName,
+      description: v.description || null,
+    }).subscribe(({ error }) => {
+      if (error) {
+        this.errorSnackbar.showError(error.message || 'Erreur lors de la mise à jour de la sous-catégorie');
+        return;
+      }
+      this.toastService.success('Sous-catégorie mise à jour.');
+      this.editingCategoryId.set(null);
+      this.categoryForm.reset();
+      this.loadCategories(id);
+    });
+  }
+
+  deleteCategory(categoryId: string): void {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette sous-catégorie ? Les jeux associés seront également supprimés.')) {
+      return;
+    }
+    const id = this.subjectId();
+    if (!id) return;
+
+    this.infra.deleteCategory(categoryId).subscribe(({ error }) => {
+      if (error) {
+        this.errorSnackbar.showError(error.message || 'Erreur lors de la suppression de la sous-catégorie');
+        return;
+      }
+      this.toastService.success('Sous-catégorie supprimée.');
+      this.loadCategories(id);
+    });
+  }
+
+  onTransferCategory(categoryId: string): void {
+    const category = this.categories().find(c => c.id === categoryId);
+    if (category) {
+      this.selectedCategoryForTransfer.set(category);
+      this.showTransferDialog.set(true);
+    }
+  }
+
+  onTransferConfirm(data: TransferCategoryData): void {
+    const category = this.selectedCategoryForTransfer();
+    if (!category) return;
+
+    this.infra.transferCategory(category.id, data.newSubjectId).subscribe(({ error }) => {
+      if (error) {
+        this.errorSnackbar.showError(error.message || 'Erreur lors du transfert de la sous-catégorie');
+        return;
+      }
+      this.toastService.success('Sous-catégorie transférée avec succès.');
+      this.showTransferDialog.set(false);
+      this.selectedCategoryForTransfer.set(null);
+      const id = this.subjectId();
+      if (id) {
+        this.loadCategories(id);
+      }
+    });
+  }
+
+  onTransferCancel(): void {
+    this.showTransferDialog.set(false);
+    this.selectedCategoryForTransfer.set(null);
   }
 }
 
