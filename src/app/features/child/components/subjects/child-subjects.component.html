@@ -27,19 +27,38 @@
         <div class="subjects-list">
           <div *ngFor="let s of selectedSubjects()" class="subject-card active">
             <div class="subject-header">
-              <label class="subject-checkbox">
-                <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false)">
-                <span class="checkmark"></span>
-                <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
-                <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
-              </label>
+              <div class="subject-header-top">
+                <label class="subject-checkbox">
+                  <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false)">
+                  <span class="checkmark"></span>
+                  <span class="subject-name">
+                    {{ s.name }} 
+                    <span class="subject-type-badge">({{ s.type }})</span>
+                    <span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span>
+                    <span *ngIf="getCategoriesCount(s.id) > 0" class="categories-count">📁 {{ getCategoriesCount(s.id) }} sous-catégorie{{ getCategoriesCount(s.id) > 1 ? 's' : '' }}</span>
+                    <span *ngIf="getTotalGamesCount(s.id) > 0" class="games-count">🎮 {{ getTotalGamesCount(s.id) }} jeu{{ getTotalGamesCount(s.id) > 1 ? 'x' : '' }}</span>
+                  </span>
+                  <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
+                </label>
+                <div class="subject-header-actions">
+                  <button 
+                    *ngIf="getCategoriesForSubject(s.id).length > 0"
+                    type="button"
+                    class="toggle-categories-btn"
+                    (click)="toggleCategories(s.id)"
+                    [attr.aria-expanded]="isCategoriesExpanded(s.id)"
+                    [attr.aria-label]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'">
+                    <span class="toggle-icon" [class.expanded]="isCategoriesExpanded(s.id)">▼</span>
+                  </button>
+                </div>
+              </div>
               <div class="subject-games-stats">
                 <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
               </div>
             </div>
             
             <!-- Sous-catégories -->
-            <div *ngIf="getCategoriesForSubject(s.id).length > 0" class="categories-section">
+            <div *ngIf="getCategoriesForSubject(s.id).length > 0 && isCategoriesExpanded(s.id)" class="categories-section">
               <div class="categories-header">
                 <strong>Sous-catégories:</strong>
               </div>
@@ -74,18 +93,37 @@
         <div class="subjects-list">
           <div *ngFor="let s of unselectedSubjects()" class="subject-card">
             <div class="subject-header">
-              <label class="subject-checkbox">
-                <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true)">
-                <span class="checkmark"></span>
-                <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
-              </label>
+              <div class="subject-header-top">
+                <label class="subject-checkbox">
+                  <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true)">
+                  <span class="checkmark"></span>
+                  <span class="subject-name">
+                    {{ s.name }} 
+                    <span class="subject-type-badge">({{ s.type }})</span>
+                    <span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span>
+                    <span *ngIf="getCategoriesCount(s.id) > 0" class="categories-count">📁 {{ getCategoriesCount(s.id) }} sous-catégorie{{ getCategoriesCount(s.id) > 1 ? 's' : '' }}</span>
+                    <span *ngIf="getTotalGamesCount(s.id) > 0" class="games-count">🎮 {{ getTotalGamesCount(s.id) }} jeu{{ getTotalGamesCount(s.id) > 1 ? 'x' : '' }}</span>
+                  </span>
+                </label>
+                <div class="subject-header-actions">
+                  <button 
+                    *ngIf="getCategoriesForSubject(s.id).length > 0"
+                    type="button"
+                    class="toggle-categories-btn"
+                    (click)="toggleCategories(s.id)"
+                    [attr.aria-expanded]="isCategoriesExpanded(s.id)"
+                    [attr.aria-label]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'">
+                    <span class="toggle-icon" [class.expanded]="isCategoriesExpanded(s.id)">▼</span>
+                  </button>
+                </div>
+              </div>
               <div class="subject-games-stats">
                 <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
               </div>
             </div>
             
             <!-- Sous-catégories -->
-            <div *ngIf="getCategoriesForSubject(s.id).length > 0" class="categories-section">
+            <div *ngIf="getCategoriesForSubject(s.id).length > 0 && isCategoriesExpanded(s.id)" class="categories-section">
               <div class="categories-header">
                 <strong>📁 Sous-catégories:</strong>
               </div>

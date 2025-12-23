@@ -150,12 +150,21 @@
     padding-bottom: $spacing-md;
     border-bottom: $border-width-thin solid $color-border-light;
 
+    .subject-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: $spacing-md;
+      margin-bottom: $spacing-xs;
+    }
+
     .subject-checkbox {
       display: flex;
       align-items: center;
       gap: $spacing-md;
       cursor: pointer;
-      margin: 0 0 $spacing-xs 0;
+      margin: 0;
+      flex: 1;
 
       input[type="checkbox"] {
         width: 20px;
@@ -174,12 +183,96 @@
         font-size: $font-size-base;
         color: $color-text-primary;
         font-weight: $font-weight-medium;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: $spacing-xs;
+
+        .categories-count,
+        .games-count {
+          font-size: $font-size-xs;
+          color: $color-text-secondary;
+          font-weight: $font-weight-normal;
+          margin-left: $spacing-xs;
+        }
+
+        .categories-count {
+          &::before {
+            content: '';
+            margin-right: 2px;
+          }
+        }
+
+        .games-count {
+          &::before {
+            content: '';
+            margin-right: 2px;
+          }
+        }
       }
 
       .unofficial-badge {
         @include badge-base;
         @include badge-variant($color-warning-lighter, color.adjust($color-warning, $lightness: -20%));
         font-size: $font-size-xs;
+      }
+    }
+
+    .subject-header-actions {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      flex-shrink: 0;
+    }
+
+    .total-games-badge {
+      @include badge-base;
+      @include badge-variant($color-primary-lighter, $color-primary);
+      padding: $spacing-xs $spacing-sm;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-semibold;
+      white-space: nowrap;
+    }
+
+    .toggle-categories-btn {
+      background: $color-gray-100;
+      border: $border-width-thin solid $color-border-light;
+      cursor: pointer;
+      padding: $spacing-xs $spacing-sm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: $border-radius-sm;
+      transition: all $transition-base;
+      color: $color-text-secondary;
+      min-width: 32px;
+      height: 28px;
+
+      &:hover {
+        background: $color-primary-lighter;
+        border-color: $color-primary;
+        color: $color-primary;
+      }
+
+      &:focus {
+        outline: none;
+        @include focus-ring($color-primary);
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+
+      .toggle-icon {
+        display: inline-block;
+        transition: transform $transition-base;
+        font-size: $font-size-xs;
+        line-height: 1;
+        font-weight: $font-weight-semibold;
+
+        &.expanded {
+          transform: rotate(180deg);
+        }
       }
     }
 

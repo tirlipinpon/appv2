@@ -35,6 +35,7 @@ export class ChildSubjectsComponent implements OnInit {
   readonly searchResults = signal<(Subject & { school_level?: string | null })[]>([]);
   readonly categoriesBySubject = signal<Map<string, SubjectCategory[]>>(new Map());
   readonly categoryEnrollments = signal<CategoryEnrollment[]>([]);
+  readonly expandedSubjects = signal<Set<string>>(new Set()); // Matières avec sous-catégories visibles
   
   getSchoolLevelForSubject(subjectId: string): string | null {
     // Chercher d'abord dans availableSubjects
@@ -476,6 +477,44 @@ export class ChildSubjectsComponent implements OnInit {
 
   // Utilise directement la fonction utils
   readonly getSchoolLevelLabel = getSchoolLevelLabel;
+
+  // Toggle l'expansion des sous-catégories
+  toggleCategories(subjectId: string): void {
+    const expanded = this.expandedSubjects();
+    if (expanded.has(subjectId)) {
+      expanded.delete(subjectId);
+    } else {
+      expanded.add(subjectId);
+    }
+    this.expandedSubjects.set(new Set(expanded));
+  }
+
+  // Vérifie si les sous-catégories sont visibles
+  isCategoriesExpanded(subjectId: string): boolean {
+    return this.expandedSubjects().has(subjectId);
+  }
+
+  // Récupère le nombre total de jeux pour une matière (incluant les jeux des catégories)
+  getTotalGamesCount(subjectId: string): number {
+    const subjectStats = this.gamesStatsService.getStats(subjectId);
+    let total = subjectStats?.total || 0;
+    
+    // Ajouter les jeux de toutes les catégories
+    const categories = this.getCategoriesForSubject(subjectId);
+    categories.forEach(category => {
+      const categoryStats = this.gamesStatsService.getCategoryStats(category.id);
+      if (categoryStats) {
+        total += categoryStats.total;
+      }
+    });
+    
+    return total;
+  }
+
+  // Récupère le nombre de sous-catégories pour une matière
+  getCategoriesCount(subjectId: string): number {
+    return this.getCategoriesForSubject(subjectId).length;
+  }
 }
 
 
