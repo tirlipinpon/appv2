@@ -7,7 +7,8 @@
     [class.game-type-liens]="currentGameTypeName().toLowerCase() === 'liens'"
     [class.game-type-chronologie]="currentGameTypeName().toLowerCase() === 'chronologie'"
     [class.game-type-vrai-faux]="currentGameTypeName().toLowerCase() === 'vrai/faux'"
-    [class.game-type-memory]="currentGameTypeName().toLowerCase() === 'memory'">
+    [class.game-type-memory]="currentGameTypeName().toLowerCase() === 'memory'"
+    [class.game-type-simon]="currentGameTypeName().toLowerCase() === 'simon'">
   <!-- Header cliquable pour toggle -->
   <div class="game-header-toggle">
     <div class="game-header-info">
@@ -139,6 +140,14 @@
           (dataChange)="onGameDataChange($event)"
           (validityChange)="onGameValidityChange($event)">
         </app-memory-form>
+      }
+
+      @if (currentGameTypeName().toLowerCase() === 'simon') {
+        <app-simon-form 
+          [initialData]="getInitialDataForSimon()"
+          (dataChange)="onGameDataChange($event)"
+          (validityChange)="onGameValidityChange($event)">
+        </app-simon-form>
       }
 
       <div class="edit-actions">

@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { QcmGameComponent } from '../qcm-game/qcm-game.component';
 import { ChronologieGameComponent } from '../chronologie-game/chronologie-game.component';
@@ -20,7 +20,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   isOpen = input<boolean>(false);
   @Input() gameTypeName = '';
   @Input() globalFields: GameGlobalFieldsData | null = null;
-  @Input() gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null = null;
+  @Input() gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null = null;
   
   @Output() closed = new EventEmitter<void>();
 
@@ -332,6 +332,10 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   get memoryData(): MemoryData | null {
     return this.gameTypeName.toLowerCase() === 'memory' && this.gameData ? this.gameData as MemoryData : null;
+  }
+
+  get simonData(): SimonData | null {
+    return this.gameTypeName.toLowerCase() === 'simon' && this.gameData ? this.gameData as SimonData : null;
   }
 
   // Méthodes helper pour les liens

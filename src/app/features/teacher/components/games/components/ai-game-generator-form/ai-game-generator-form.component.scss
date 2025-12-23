@@ -512,6 +512,30 @@
         }
       }
     }
+
+    &.game-type-simon {
+      border-left: 4px solid $game-type-simon-border;
+      background: $game-type-simon-bg;
+
+      &:hover:not(.disabled) {
+        border-color: $game-type-simon-border;
+        background: color.adjust($game-type-simon-bg, $lightness: 2%);
+      }
+
+      .game-type-name {
+        color: $game-type-simon-color;
+      }
+
+      &:has(input[type="checkbox"]:checked) {
+        border-color: $game-type-simon-border;
+        background: $game-type-simon-bg;
+        
+        .game-type-name {
+          color: $game-type-simon-color;
+          font-weight: 700;
+        }
+      }
+    }
   }
 }
 

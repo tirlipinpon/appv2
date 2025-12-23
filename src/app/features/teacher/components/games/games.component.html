@@ -65,7 +65,8 @@
          [class.game-type-liens]="selectedGameTypeName()?.toLowerCase() === 'liens'"
          [class.game-type-chronologie]="selectedGameTypeName()?.toLowerCase() === 'chronologie'"
          [class.game-type-vrai-faux]="selectedGameTypeName()?.toLowerCase() === 'vrai/faux'"
-         [class.game-type-memory]="selectedGameTypeName()?.toLowerCase() === 'memory'">
+         [class.game-type-memory]="selectedGameTypeName()?.toLowerCase() === 'memory'"
+         [class.game-type-simon]="selectedGameTypeName()?.toLowerCase() === 'simon'">
       <h3>{{ isEditing() ? '✏️ Modifier le jeu' : '➕ Créer un nouveau jeu' }}</h3>
       <button type="button" class="toggle-btn" [attr.aria-expanded]="isManualCreationExpanded()">
         {{ isManualCreationExpanded() ? '−' : '+' }}
@@ -207,6 +208,15 @@
               (dataChange)="onGameDataChange($event)"
               (validityChange)="onGameValidityChange($event)">
             </app-memory-form>
+          }
+
+          <!-- Simon -->
+          @if (selectedGameTypeName()?.toLowerCase() === 'simon') {
+            <app-simon-form
+              [initialData]="getInitialDataForSimon()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-simon-form>
           }
         </div>
       }

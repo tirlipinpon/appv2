@@ -7,7 +7,7 @@ import type { TeacherAssignment } from '../../../../types/teacher-assignment';
 import type { School } from '../../../../types/school';
 import type { Subject } from '../../../../types/subject';
 import type { SubjectCategory } from '../../../../types/subject';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData } from '../../../../types/game-data';
 import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
@@ -17,6 +17,7 @@ import { ChronologieFormComponent } from '../chronologie-form/chronologie-form.c
 import { QcmFormComponent } from '../qcm-form/qcm-form.component';
 import { VraiFauxFormComponent } from '../vrai-faux-form/vrai-faux-form.component';
 import { MemoryFormComponent } from '../memory-form/memory-form.component';
+import { SimonFormComponent } from '../simon-form/simon-form.component';
 import { SCHOOL_LEVELS, getSchoolLevelLabel } from '../../../../utils/school-levels.util';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
 
@@ -47,6 +48,7 @@ export interface DuplicateGameData {
     QcmFormComponent,
     VraiFauxFormComponent,
     MemoryFormComponent,
+    SimonFormComponent,
   ],
   templateUrl: './duplicate-game-dialog.component.html',
   styleUrls: ['./duplicate-game-dialog.component.scss'],
@@ -72,9 +74,9 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   readonly selectedLevel = signal<string | null>(null);
   readonly selectedSubjectId = signal<string | null>(null);
   readonly categories = signal<SubjectCategory[]>([]);
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
 
   readonly currentGameTypeName = computed(() => {
     if (this.gameTypes.length > 0) {
@@ -223,7 +225,7 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
         this.currentGameTypeName(),
         this.game.metadata as Record<string, unknown>
       );
-      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData;
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData;
       this.initialGameData.set(gameData);
       this.gameSpecificData.set(gameData);
       this.gameSpecificValid.set(true);
@@ -238,7 +240,7 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
     this.globalFieldsData.set(data);
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData): void {
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData): void {
     this.gameSpecificData.set(data);
   }
 
@@ -329,6 +331,15 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
     const currentType = this.currentGameTypeName();
     if (currentType.toLowerCase() === 'memory' && data && 'paires' in data) {
       return data as MemoryData;
+    }
+    return null;
+  }
+
+  getInitialDataForSimon(): SimonData | null {
+    const data = this.initialGameData();
+    const currentType = this.currentGameTypeName();
+    if (currentType.toLowerCase() === 'simon' && data && 'nombre_elements' in data && 'type_elements' in data) {
+      return data as SimonData;
     }
     return null;
   }

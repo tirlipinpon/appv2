@@ -118,6 +118,20 @@
       box-shadow: 0 4px 12px rgba(255, 87, 34, 0.15);
     }
   }
+
+  &.game-type-simon {
+    border-left: 4px solid $game-type-simon-border;
+    
+    .game-type-badge {
+      background: $game-type-simon-bg;
+      color: $game-type-simon-color;
+    }
+
+    &.editing {
+      border-color: $game-type-simon-border;
+      box-shadow: 0 4px 12px rgba(97, 97, 97, 0.15);
+    }
+  }
 }
 
 .game-header-toggle {

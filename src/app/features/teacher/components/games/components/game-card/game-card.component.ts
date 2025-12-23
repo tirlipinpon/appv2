@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import type { Game, GameUpdate } from '../../../../types/game';
 import type { GameType } from '../../../../types/game-type';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
@@ -12,6 +12,7 @@ import { ChronologieFormComponent } from '../chronologie-form/chronologie-form.c
 import { QcmFormComponent } from '../qcm-form/qcm-form.component';
 import { VraiFauxFormComponent } from '../vrai-faux-form/vrai-faux-form.component';
 import { MemoryFormComponent } from '../memory-form/memory-form.component';
+import { SimonFormComponent } from '../simon-form/simon-form.component';
 import { GameGlobalFieldsComponent } from '../game-global-fields/game-global-fields.component';
 import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
@@ -29,6 +30,7 @@ import { normalizeGameData } from '../../../../utils/game-data-mapper';
     QcmFormComponent,
     VraiFauxFormComponent,
     MemoryFormComponent,
+    SimonFormComponent,
     GameGlobalFieldsComponent,
     GamePreviewComponent,
   ],
@@ -61,9 +63,9 @@ export class GameCardComponent implements OnInit, OnChanges {
       // Ne pas initialiser le mode édition automatiquement
     }
   }
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly currentGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly previewIsOpen = signal<boolean>(false);
@@ -167,7 +169,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         this.currentGameTypeName(),
         this.game.metadata as Record<string, unknown>
       );
-      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData;
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData;
       this.initialGameData.set(gameData);
       this.gameSpecificData.set(gameData); // Initialiser aussi gameSpecificData
       this.gameSpecificValid.set(true); // Considérer comme valide si les données existent
@@ -182,7 +184,7 @@ export class GameCardComponent implements OnInit, OnChanges {
     // La validité est toujours vraie pour les champs globaux (optionnels)
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData): void {
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData): void {
     this.gameSpecificData.set(data);
   }
 
@@ -331,6 +333,18 @@ export class GameCardComponent implements OnInit, OnChanges {
     const currentType = this.currentGameTypeName();
     if (currentType.toLowerCase() === 'memory' && data && 'paires' in data) {
       return data as MemoryData;
+    }
+    return null;
+  }
+
+  getInitialDataForSimon(): SimonData | null {
+    const data = this.initialGameData();
+    const currentType = this.currentGameTypeName();
+    if (currentType.toLowerCase() === 'simon' && data) {
+      // Vérifier que les propriétés requises existent
+      if ('nombre_elements' in data && 'type_elements' in data) {
+        return data as SimonData;
+      }
     }
     return null;
   }

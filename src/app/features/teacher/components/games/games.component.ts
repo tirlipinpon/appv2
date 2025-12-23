@@ -15,13 +15,14 @@ import { ChronologieFormComponent } from './components/chronologie-form/chronolo
 import { QcmFormComponent } from './components/qcm-form/qcm-form.component';
 import { VraiFauxFormComponent } from './components/vrai-faux-form/vrai-faux-form.component';
 import { MemoryFormComponent } from './components/memory-form/memory-form.component';
+import { SimonFormComponent } from './components/simon-form/simon-form.component';
 import { AIGameGeneratorFormComponent } from './components/ai-game-generator-form/ai-game-generator-form.component';
 import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './components/game-global-fields/game-global-fields.component';
 import { GameCardComponent } from './components/game-card/game-card.component';
 import { DuplicateGameDialogComponent } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData } from '../../types/game-data';
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
 import type { Subject } from '../../types/subject';
@@ -45,6 +46,7 @@ import type { DuplicateGameData } from './components/duplicate-game-dialog/dupli
     QcmFormComponent,
     VraiFauxFormComponent,
     MemoryFormComponent,
+    SimonFormComponent,
     AIGameGeneratorFormComponent,
     AIGeneratedPreviewComponent,
     GameGlobalFieldsComponent,
@@ -159,11 +161,11 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly generationProgress = computed(() => this.gamesStore.generationProgress());
 
   // Données des composants spécifiques
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
 
   // Données initiales pour l'édition
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
 
   // États des toggles pour les sections
@@ -343,7 +345,11 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       if (gameId) {
         const game = this.games().find(g => g.id === gameId);
         if (game && game.metadata && game.game_type_id === gameTypeId) {
-          this.initialGameData.set(game.metadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData);
+          const normalizedMetadata = normalizeGameData(
+            this.getGameTypeName(game.game_type_id),
+            game.metadata as Record<string, unknown>
+          );
+          this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData);
         } else {
           this.initialGameData.set(null);
         }
@@ -351,7 +357,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData): void {
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData): void {
     this.gameSpecificData.set(data);
   }
 
@@ -429,7 +435,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         this.getGameTypeName(game.game_type_id),
         game.metadata as Record<string, unknown>
       );
-      this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData);
+      this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData);
     }
 
     const gameType = this.gameTypes().find(gt => gt.id === game.game_type_id);
@@ -562,6 +568,18 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     const currentType = this.selectedGameTypeName();
     if (currentType?.toLowerCase() === 'memory' && data && 'paires' in data) {
       return data as MemoryData;
+    }
+    return null;
+  }
+
+  getInitialDataForSimon(): SimonData | null {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    if (currentType?.toLowerCase() === 'simon' && data) {
+      // Vérifier que les propriétés requises existent
+      if ('nombre_elements' in data && 'type_elements' in data) {
+        return data as SimonData;
+      }
     }
     return null;
   }

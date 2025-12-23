@@ -1,0 +1,179 @@
+@use '../../../../../../../styles/variables' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+.simon-form {
+  .form-group {
+    margin-bottom: $spacing-lg;
+
+    label {
+      display: block;
+      margin-bottom: $spacing-sm;
+      font-weight: $font-weight-semibold;
+      color: $color-text-primary;
+    }
+
+    .hint {
+      margin-bottom: $spacing-md;
+      color: $color-text-secondary;
+      font-size: $font-size-sm;
+    }
+
+    .number-input,
+    .select-input {
+      width: 100%;
+      padding: $spacing-sm $spacing-md;
+      border: 2px solid $color-border-light;
+      border-radius: $border-radius-sm;
+      font-size: $font-size-base;
+      transition: all $transition-base;
+      background-color: white;
+
+      &:focus {
+        outline: none;
+        border-color: $color-primary;
+      }
+
+      &.ng-invalid.ng-touched {
+        border-color: $color-danger;
+      }
+    }
+
+    .select-input {
+      cursor: pointer;
+    }
+
+    .error-message {
+      display: block;
+      margin-top: $spacing-xs;
+      color: $color-danger;
+      font-size: $font-size-sm;
+    }
+  }
+
+  .elements-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+  }
+
+  .element-badge {
+    display: inline-block;
+    padding: $spacing-xs $spacing-sm;
+    background: $color-gray-100;
+    border: 1px solid $color-border-light;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $color-text-primary;
+  }
+
+  .elements-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  .element-row {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $color-gray-50;
+    border: 1px solid $color-border-light;
+    border-radius: $border-radius-sm;
+    transition: all $transition-base;
+
+    &:hover {
+      background: $color-gray-100;
+      border-color: $color-primary;
+    }
+
+    .element-input {
+      flex: 1;
+      padding: $spacing-sm $spacing-md;
+      border: 2px solid $color-border-light;
+      border-radius: $border-radius-sm;
+      font-size: $font-size-base;
+      transition: all $transition-base;
+      background-color: white;
+
+      &:focus {
+        outline: none;
+        border-color: $color-primary;
+      }
+
+      &.ng-invalid.ng-touched {
+        border-color: $color-danger;
+      }
+    }
+
+    .btn {
+      @include button-base;
+      padding: $spacing-xs $spacing-sm;
+      min-width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+
+      &.btn-danger {
+        background-color: $color-danger;
+        color: white;
+
+        &:hover:not(:disabled) {
+          background-color: $color-danger-dark;
+        }
+      }
+
+      &.btn-small {
+        padding: $spacing-xs $spacing-sm;
+        font-size: $font-size-sm;
+      }
+    }
+  }
+
+  .btn {
+    @include button-base;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+
+    &.btn-secondary {
+      background-color: $color-gray-200;
+      color: $color-text-primary;
+
+      &:hover:not(:disabled) {
+        background-color: $color-gray-300;
+      }
+    }
+
+    &.btn-small {
+      padding: $spacing-xs $spacing-sm;
+      font-size: $font-size-sm;
+    }
+  }
+
+  .preview-info {
+    margin-top: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: $color-info-lighter;
+    border-left: 3px solid $color-info;
+    border-radius: $border-radius-sm;
+    color: $color-text-secondary;
+    font-size: $font-size-sm;
+  }
+
+  @media (max-width: 768px) {
+    .element-row {
+      flex-direction: column;
+
+      .element-input {
+        width: 100%;
+      }
+
+      .btn {
+        align-self: flex-end;
+      }
+    }
+  }
+}
+

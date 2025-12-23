@@ -142,6 +142,14 @@
               (validityChange)="onGameValidityChange($event)">
             </app-memory-form>
           }
+
+          @if (currentGameTypeName().toLowerCase() === 'simon') {
+            <app-simon-form
+              [initialData]="getInitialDataForSimon()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-simon-form>
+          }
         </div>
       </form>
     </div>

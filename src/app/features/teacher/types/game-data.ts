@@ -52,6 +52,13 @@ export interface MemoryData {
   paires: { question: string; reponse: string }[];
 }
 
+// Simon : jeu de mémoire de séquence (type Simon)
+export interface SimonData {
+  nombre_elements: number; // Nombre d'éléments (3 à 10)
+  type_elements: 'couleurs' | 'chiffres' | 'lettres' | 'symboles' | 'personnalise'; // Type d'éléments
+  elements?: string[]; // Liste personnalisée d'éléments (si type_elements === 'personnalise')
+}
+
 // Union type pour toutes les structures de données de jeu
-export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData;
+export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData;
 

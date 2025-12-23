@@ -1,0 +1,84 @@
+<div [formGroup]="form" class="simon-form">
+  <div class="form-group">
+    <label for="nombre_elements">Nombre d'éléments *</label>
+    <p class="hint">Choisissez le nombre d'éléments disponibles dans le jeu (entre 3 et 10).</p>
+    <input 
+      type="number" 
+      id="nombre_elements"
+      formControlName="nombre_elements" 
+      min="3" 
+      max="10"
+      class="number-input">
+    @if (form.get('nombre_elements')?.hasError('required') && form.get('nombre_elements')?.touched) {
+      <span class="error-message">Le nombre d'éléments est requis.</span>
+    }
+    @if (form.get('nombre_elements')?.hasError('min') && form.get('nombre_elements')?.touched) {
+      <span class="error-message">Le nombre minimum est 3.</span>
+    }
+    @if (form.get('nombre_elements')?.hasError('max') && form.get('nombre_elements')?.touched) {
+      <span class="error-message">Le nombre maximum est 10.</span>
+    }
+  </div>
+
+  <div class="form-group">
+    <label for="type_elements">Type d'éléments *</label>
+    <p class="hint">Sélectionnez le type d'éléments à utiliser dans la séquence.</p>
+    <select id="type_elements" formControlName="type_elements" class="select-input">
+      @for (option of typeElementsOptions; track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
+    @if (form.get('type_elements')?.hasError('required') && form.get('type_elements')?.touched) {
+      <span class="error-message">Le type d'éléments est requis.</span>
+    }
+  </div>
+
+  <!-- Affichage des éléments selon le type -->
+  @if (!isPersonnalise) {
+    <div class="form-group">
+      <label>Éléments disponibles</label>
+      <p class="hint">Éléments qui seront utilisés dans le jeu (selon le type choisi) :</p>
+      <div class="elements-preview">
+        @for (element of elementsArray.value; track $index) {
+          <span class="element-badge">{{ element }}</span>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Formulaire pour éléments personnalisés -->
+  @if (isPersonnalise) {
+    <div class="form-group">
+      <label>Éléments personnalisés *</label>
+      <p class="hint">Définissez les éléments qui seront utilisés dans le jeu. Vous devez avoir au moins {{ form.get('nombre_elements')?.value }} éléments.</p>
+      <div formArrayName="elements" class="elements-list">
+        @for (elementControl of elementsArray.controls; track $index) {
+          <div class="element-row">
+            <input 
+              type="text" 
+              [formControlName]="$index" 
+              [placeholder]="'Élément ' + ($index + 1)"
+              class="element-input">
+            <button type="button" class="btn btn-danger btn-small" (click)="removeElement($index)">×</button>
+          </div>
+        }
+      </div>
+      @if (elementsArray.length < (form.get('nombre_elements')?.value || 3)) {
+        <span class="error-message">
+          Vous devez avoir au moins {{ form.get('nombre_elements')?.value }} éléments (actuellement {{ elementsArray.length }}).
+        </span>
+      }
+      <button type="button" class="btn btn-secondary btn-small" (click)="addElement()">+ Ajouter un élément</button>
+    </div>
+  }
+
+  @if (form.valid) {
+    <div class="preview-info">
+      <strong>Configuration :</strong> {{ form.get('nombre_elements')?.value }} éléments de type "{{ getTypeLabel() }}"
+      @if (isPersonnalise && elementsArray.length > 0) {
+        <br>
+        <strong>Éléments :</strong> {{ elementsArray.value.join(', ') }}
+      }
+    </div>
+  }
+</div>

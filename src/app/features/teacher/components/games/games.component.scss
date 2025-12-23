@@ -167,6 +167,21 @@
         }
       }
     }
+
+    &.game-type-simon {
+      border-left-color: $game-type-simon-border;
+      background: $game-type-simon-bg;
+
+      .toggle-btn {
+        border-color: $game-type-simon-color;
+        color: $game-type-simon-color;
+
+        &:hover {
+          background: $game-type-simon-color;
+          color: #fff;
+        }
+      }
+    }
   }
 
   .section-content {
