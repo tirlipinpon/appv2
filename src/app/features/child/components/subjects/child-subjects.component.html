@@ -26,13 +26,17 @@
         </div>
         <div class="subjects-list">
           <div *ngFor="let s of selectedSubjects()" class="subject-card active">
-            <label class="subject-checkbox">
-              <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false)">
-              <span class="checkmark"></span>
-              <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
-              <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
-            </label>
-            <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
+            <div class="subject-header">
+              <label class="subject-checkbox">
+                <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false)">
+                <span class="checkmark"></span>
+                <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
+                <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
+              </label>
+              <div class="subject-games-stats">
+                <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
+              </div>
+            </div>
             
             <!-- Sous-catégories -->
             <div *ngIf="getCategoriesForSubject(s.id).length > 0" class="categories-section">
@@ -40,15 +44,19 @@
                 <strong>Sous-catégories:</strong>
               </div>
               <div class="categories-list">
-                <label *ngFor="let category of getCategoriesForSubject(s.id)" class="category-checkbox">
-                  <input 
-                    type="checkbox" 
-                    [checked]="isCategorySelected(category.id)" 
-                    (change)="onToggleCategory(category.id, $any($event.target).checked)">
-                  <span class="checkmark"></span>
-                  <span class="category-name">{{ category.name }}</span>
-                  <app-games-stats-display [categoryId]="category.id"></app-games-stats-display>
-                </label>
+                <div *ngFor="let category of getCategoriesForSubject(s.id)" class="category-item">
+                  <label class="category-checkbox">
+                    <input 
+                      type="checkbox" 
+                      [checked]="isCategorySelected(category.id)" 
+                      (change)="onToggleCategory(category.id, $any($event.target).checked)">
+                    <span class="checkmark"></span>
+                    <span class="category-name">{{ category.name }}</span>
+                  </label>
+                  <div class="category-games-stats">
+                    <app-games-stats-display [categoryId]="category.id"></app-games-stats-display>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -65,12 +73,31 @@
         </div>
         <div class="subjects-list">
           <div *ngFor="let s of unselectedSubjects()" class="subject-card">
-            <label class="subject-checkbox">
-              <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true)">
-              <span class="checkmark"></span>
-              <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
-            </label>
-            <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
+            <div class="subject-header">
+              <label class="subject-checkbox">
+                <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true)">
+                <span class="checkmark"></span>
+                <span class="subject-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span></span>
+              </label>
+              <div class="subject-games-stats">
+                <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
+              </div>
+            </div>
+            
+            <!-- Sous-catégories -->
+            <div *ngIf="getCategoriesForSubject(s.id).length > 0" class="categories-section">
+              <div class="categories-header">
+                <strong>Sous-catégories:</strong>
+              </div>
+              <div class="categories-list">
+                <div *ngFor="let category of getCategoriesForSubject(s.id)" class="category-item">
+                  <span class="category-name">{{ category.name }}</span>
+                  <div class="category-games-stats">
+                    <app-games-stats-display [categoryId]="category.id"></app-games-stats-display>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div *ngIf="unselectedSubjects().length === 0" class="empty-state">
             <p class="muted">Aucune autre matière disponible.</p>

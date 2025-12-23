@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from } from 'rxjs';
+import { Observable, from, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { SubjectCategory, SubjectCategoryCreate, SubjectCategoryUpdate } from '../../types/subject';
@@ -115,26 +115,29 @@ export class SubjectCategoryService {
 
         const childIds = enrollments.map(e => e.child_id);
 
-        // Si schoolId et schoolLevel sont fournis, filtrer par école et niveau
-        if (schoolId && schoolLevel) {
-          return from(
-            this.supabaseService.client
-              .from('child_subject_enrollments')
-              .select('child_id', { count: 'exact', head: true })
-              .in('child_id', childIds)
-              .eq('school_id', schoolId)
-              .eq('school_level', schoolLevel)
-              .eq('selected', true)
-          ).pipe(
-            map(({ count, error }) => ({
-              count: count || 0,
-              error: error || null,
-            }))
-          );
-        }
+        // Pour les sous-catégories, on compte tous les enfants inscrits (actifs)
+        // sans filtrer par école/niveau car une catégorie peut être partagée
+        // entre plusieurs écoles/niveaux
+        return from(
+          this.supabaseService.client
+            .from('children')
+            .select('id, is_active')
+            .in('id', childIds)
+        ).pipe(
+          map(({ data: children, error: childrenError }) => {
+            if (childrenError || !children) {
+              return { count: 0, error: childrenError || null };
+            }
 
-        // Sinon, retourner le nombre total d'enfants inscrits à la sous-catégorie
-        return from(Promise.resolve({ count: childIds.length, error: null }));
+            // Filtrer uniquement par is_active (pas par école/niveau)
+            const activeChildren = children.filter(child => child.is_active);
+
+            return {
+              count: activeChildren.length,
+              error: null,
+            };
+          })
+        );
       })
     );
   }

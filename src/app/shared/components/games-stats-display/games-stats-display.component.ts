@@ -7,15 +7,27 @@ import { GamesStatsService } from '../../services/games-stats/games-stats.servic
   standalone: true,
   imports: [CommonModule],
   template: `
-    <p *ngIf="formattedStats()" class="games-stats">
-      {{ formattedStats() }}
-    </p>
+    <div *ngIf="formattedStats()" class="games-stats">
+      <span class="games-icon">🎮</span>
+      <span class="games-text">{{ formattedStats() }}</span>
+    </div>
   `,
   styles: [`
     .games-stats {
-      margin: 8px 0 0 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
       font-size: 0.875rem;
-      color: #666;
+      color: #555;
+      font-weight: 500;
+    }
+    .games-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .games-text {
+      flex: 1;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

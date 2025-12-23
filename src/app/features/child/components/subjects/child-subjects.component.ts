@@ -2,6 +2,7 @@ import { Component, Input, OnInit, inject, signal, computed, effect } from '@ang
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { ParentSubjectService, CategoryEnrollment } from '../../services/subject/parent-subject.service';
 import { SchoolService } from '../../services/school/school.service';
 import { GamesStatsService } from '../../../../shared/services/games-stats/games-stats.service';
@@ -137,33 +138,50 @@ export class ChildSubjectsComponent implements OnInit {
             this.schoolName.set(school?.name || null);
           });
           
-          this.parentSvc.getAvailableSubjectsForChild(child).subscribe(({ subjects, error }) => {
-            if (error) {
-              console.error('Error loading available subjects:', error);
+          // Charger toutes les données nécessaires en parallèle avant de charger les catégories
+          forkJoin({
+            availableSubjects: this.parentSvc.getAvailableSubjectsForChild(child),
+            enrollments: this.parentSvc.getEnrollments(child.id),
+            categoryEnrollments: this.parentSvc.getCategoryEnrollments(child.id)
+          }).subscribe(({ availableSubjects, enrollments, categoryEnrollments }) => {
+            // Traiter les matières disponibles
+            if (availableSubjects.error) {
+              console.error('Error loading available subjects:', availableSubjects.error);
             }
-            console.log('Available subjects loaded:', subjects?.length, subjects);
-            this.availableSubjects.set(subjects || []);
-          });
-          this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
-            if (error) {
-              console.error('Error loading enrollments:', error);
+            console.log('Available subjects loaded:', availableSubjects.subjects?.length, availableSubjects.subjects);
+            this.availableSubjects.set(availableSubjects.subjects || []);
+            
+            // Traiter les enrollments
+            if (enrollments.error) {
+              console.error('Error loading enrollments:', enrollments.error);
             }
-            console.log('Enrollments loaded:', enrollments?.length, enrollments);
-            this.enrollments.set((enrollments || []).map(e => ({ 
+            console.log('Enrollments loaded:', enrollments.enrollments?.length, enrollments.enrollments);
+            this.enrollments.set((enrollments.enrollments || []).map(e => ({ 
               subject_id: e.subject_id, 
               selected: e.selected
             })));
             
-            // Charger les catégories pour les matières sélectionnées
-            this.loadCategoriesForSelectedSubjects();
-          });
-          
-          // Charger les enrollments de catégories
-          this.parentSvc.getCategoryEnrollments(child.id).subscribe(({ enrollments, error }) => {
-            if (error) {
-              console.error('Error loading category enrollments:', error);
+            // Traiter les category enrollments
+            if (categoryEnrollments.error) {
+              console.error('Error loading category enrollments:', categoryEnrollments.error);
             }
-            this.categoryEnrollments.set(enrollments || []);
+            console.log('Category enrollments loaded:', categoryEnrollments.enrollments?.length, categoryEnrollments.enrollments);
+            this.categoryEnrollments.set(categoryEnrollments.enrollments || []);
+            
+            // Charger les catégories pour toutes les matières (sélectionnées et disponibles)
+            // Utiliser directement les données chargées plutôt que les computed signals
+            const selectedIds = new Set((enrollments.enrollments || [])
+              .filter(e => e.selected === true)
+              .map(e => e.subject_id));
+            const availableIds = (availableSubjects.subjects || []).map(s => s.id);
+            const allSubjectIds = [...new Set([...Array.from(selectedIds), ...availableIds])];
+            
+            allSubjectIds.forEach(subjectId => {
+              // Ne charger que si pas déjà chargé
+              if (!this.categoriesBySubject().has(subjectId)) {
+                this.loadCategoriesForSubject(subjectId, selectedIds.has(subjectId));
+              }
+            });
           });
         } else {
           this.schoolName.set(null);
@@ -236,7 +254,7 @@ export class ChildSubjectsComponent implements OnInit {
         
         // Si on active une matière, charger ses catégories et créer les enrollments par défaut
         if (selected) {
-          this.loadCategoriesForSubject(subjectId);
+          this.loadCategoriesForSubject(subjectId, true);
         } else {
           // Si on désactive une matière, retirer les catégories de la map
           const categoriesMap = this.categoriesBySubject();
@@ -246,14 +264,7 @@ export class ChildSubjectsComponent implements OnInit {
       });
   }
 
-  private loadCategoriesForSelectedSubjects(): void {
-    const selectedIds = this.selectedSubjects().map(s => s.id);
-    selectedIds.forEach(subjectId => {
-      this.loadCategoriesForSubject(subjectId);
-    });
-  }
-
-  private loadCategoriesForSubject(subjectId: string): void {
+  private loadCategoriesForSubject(subjectId: string, isSelected: boolean = true): void {
     this.parentSvc.getSubjectCategories(subjectId).subscribe(({ categories, error }) => {
       if (error) {
         console.error('Error loading categories for subject:', subjectId, error);
@@ -270,27 +281,29 @@ export class ChildSubjectsComponent implements OnInit {
         this.gamesStatsService.loadStatsForCategories(categoryIds);
       }
       
-      // Créer automatiquement les enrollments pour toutes les catégories (selected=true par défaut)
-      const c = this.child();
-      if (!c) return;
-      
-      const existingEnrollments = this.categoryEnrollments();
-      const existingCategoryIds = new Set(existingEnrollments.map(e => e.subject_category_id));
-      
-      (categories || []).forEach(category => {
-        if (!existingCategoryIds.has(category.id)) {
-          this.parentSvc.upsertCategoryEnrollment({
-            child_id: c.id,
-            subject_category_id: category.id,
-            selected: true
-          }).subscribe(({ enrollment, error: enrollError }) => {
-            if (!enrollError && enrollment) {
-              const currentEnrollments = this.categoryEnrollments();
-              this.categoryEnrollments.set([...currentEnrollments, enrollment]);
-            }
-          });
-        }
-      });
+      // Créer automatiquement les enrollments pour toutes les catégories seulement si la matière est sélectionnée
+      if (isSelected) {
+        const c = this.child();
+        if (!c) return;
+        
+        const existingEnrollments = this.categoryEnrollments();
+        const existingCategoryIds = new Set(existingEnrollments.map(e => e.subject_category_id));
+        
+        (categories || []).forEach(category => {
+          if (!existingCategoryIds.has(category.id)) {
+            this.parentSvc.upsertCategoryEnrollment({
+              child_id: c.id,
+              subject_category_id: category.id,
+              selected: true
+            }).subscribe(({ enrollment, error: enrollError }) => {
+              if (!enrollError && enrollment) {
+                const currentEnrollments = this.categoryEnrollments();
+                this.categoryEnrollments.set([...currentEnrollments, enrollment]);
+              }
+            });
+          }
+        });
+      }
     });
   }
 
@@ -409,7 +422,7 @@ export class ChildSubjectsComponent implements OnInit {
         this.enrollments.set([...list]);
         
         // Charger les catégories de la matière ajoutée
-        this.loadCategoriesForSubject(subjectId);
+        this.loadCategoriesForSubject(subjectId, true);
         
         // Charger la matière ajoutée si elle n'est pas dans availableSubjects (hors programme)
         const availableIds = new Set(this.availableSubjects().map(s => s.id));

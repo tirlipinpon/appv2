@@ -161,36 +161,118 @@
     }
   }
 
-  .subject-checkbox {
-    display: flex;
-    align-items: center;
-    gap: $spacing-md;
-    cursor: pointer;
-    margin: 0;
+  .subject-header {
+    margin-bottom: $spacing-md;
+    padding-bottom: $spacing-md;
+    border-bottom: $border-width-thin solid $color-border-light;
 
-    input[type="checkbox"] {
-      width: 20px;
-      height: 20px;
+    .subject-checkbox {
+      display: flex;
+      align-items: center;
+      gap: $spacing-md;
       cursor: pointer;
-      accent-color: $color-primary;
-      flex-shrink: 0;
+      margin: 0 0 $spacing-xs 0;
+
+      input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: $color-primary;
+        flex-shrink: 0;
+      }
+
+      .checkmark {
+        display: none;
+      }
+
+      .subject-name {
+        flex: 1;
+        font-size: $font-size-base;
+        color: $color-text-primary;
+        font-weight: $font-weight-medium;
+      }
+
+      .unofficial-badge {
+        @include badge-base;
+        @include badge-variant($color-warning-lighter, color.adjust($color-warning, $lightness: -20%));
+        font-size: $font-size-xs;
+      }
     }
 
-    .checkmark {
-      display: none;
+    .subject-games-stats {
+      margin-left: 36px; // Align with checkbox + gap
+      padding-top: $spacing-xs;
     }
+  }
 
-    .subject-name {
-      flex: 1;
-      font-size: $font-size-base;
+  .categories-section {
+    margin-top: $spacing-md;
+    padding-top: $spacing-md;
+    border-top: $border-width-medium solid $color-border-light;
+    background: color.adjust($color-bg-primary, $lightness: -2%);
+    border-radius: $border-radius-sm;
+    padding: $spacing-md;
+
+    .categories-header {
+      margin-bottom: $spacing-sm;
+      padding-bottom: $spacing-xs;
+      border-bottom: $border-width-thin solid $color-border-light;
       color: $color-text-primary;
-      font-weight: $font-weight-medium;
+      font-size: $font-size-sm;
     }
 
-    .unofficial-badge {
-      @include badge-base;
-      @include badge-variant($color-warning-lighter, color.adjust($color-warning, $lightness: -20%));
-      font-size: $font-size-xs;
+    .categories-list {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-sm;
+
+      .category-item {
+        padding: $spacing-xs 0;
+        border-bottom: $border-width-thin solid color.adjust($color-border-light, $alpha: -0.5);
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .category-checkbox {
+          display: flex;
+          align-items: center;
+          gap: $spacing-md;
+          cursor: pointer;
+          margin: 0;
+
+          input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: $color-primary;
+            flex-shrink: 0;
+          }
+
+          .checkmark {
+            display: none;
+          }
+
+          .category-name {
+            flex: 1;
+            font-size: $font-size-sm;
+            color: $color-text-primary;
+            font-weight: $font-weight-medium;
+          }
+        }
+
+        .category-name {
+          font-size: $font-size-sm;
+          color: $color-text-primary;
+          font-weight: $font-weight-medium;
+          margin-bottom: $spacing-xs;
+        }
+
+        .category-games-stats {
+          margin-left: 34px; // Align with checkbox + gap for categories
+          padding-top: $spacing-xs;
+        }
+      }
     }
   }
 }
