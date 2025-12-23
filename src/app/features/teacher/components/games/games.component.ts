@@ -593,9 +593,23 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Méthodes pour la duplication
   openDuplicateDialog(game: Game): void {
+    // Si le jeu est lié à une sous-catégorie, récupérer le subject_id depuis la sous-catégorie
+    let subjectId = game.subject_id;
+    
+    if (!subjectId && game.subject_category_id) {
+      // Récupérer le subject_id depuis la sous-catégorie
+      const categories = this.categories();
+      const category = categories.find(c => c.id === game.subject_category_id);
+      if (category) {
+        subjectId = category.subject_id;
+      }
+    }
+    
     // Trouver l'assignment correspondant au jeu parmi les assignments du professeur
     const assignments = this.subjectsStore.assignments();
-    const assignment = assignments.find(a => a.subject_id === game.subject_id);
+    const assignment = subjectId 
+      ? assignments.find(a => a.subject_id === subjectId)
+      : null;
     
     this.gameToDuplicate.set(game);
     this.currentAssignment.set(assignment || null);
@@ -632,8 +646,14 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       ? duplicateData.gameData.aides.filter(a => a && a.trim())
       : null;
 
+    // Si on est en mode "gestion d'une sous-catégorie spécifique", utiliser le categoryId
+    const categoryId = this.isCategoryContext() 
+      ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
+      : null;
+
     this.application.createGame({
-      subject_id: duplicateData.subjectId,
+      subject_id: categoryId ? null : duplicateData.subjectId,
+      subject_category_id: categoryId || null,
       game_type_id: game.game_type_id,
       name: autoName,
       instructions: duplicateData.gameData.instructions || null,

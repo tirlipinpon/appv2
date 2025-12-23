@@ -5,6 +5,9 @@ import { SupabaseService } from '../../../../shared/services/supabase/supabase.s
 import type { SubjectCategory, SubjectCategoryCreate, SubjectCategoryUpdate } from '../../types/subject';
 import type { PostgrestError } from '@supabase/supabase-js';
 
+// Note: Pour compter les enfants par sous-catégorie avec filtres école/niveau,
+// on utilise une approche différente car on doit joindre avec child_subject_enrollments
+
 @Injectable({
   providedIn: 'root',
 })
@@ -86,6 +89,53 @@ export class SubjectCategoryService {
       map(({ error }) => ({
         error: error || null,
       }))
+    );
+  }
+
+  /**
+   * Compte le nombre d'enfants inscrits à une sous-catégorie
+   */
+  countChildrenByCategory(
+    categoryId: string,
+    schoolId: string | null = null,
+    schoolLevel: string | null = null
+  ): Observable<{ count: number; error: PostgrestError | null }> {
+    // D'abord, récupérer les enfants inscrits à la sous-catégorie
+    return from(
+      this.supabaseService.client
+        .from('child_subject_category_enrollments')
+        .select('child_id')
+        .eq('subject_category_id', categoryId)
+        .eq('selected', true)
+    ).pipe(
+      switchMap(({ data: enrollments, error: enrollmentsError }) => {
+        if (enrollmentsError || !enrollments || enrollments.length === 0) {
+          return from(Promise.resolve({ count: 0, error: enrollmentsError || null }));
+        }
+
+        const childIds = enrollments.map(e => e.child_id);
+
+        // Si schoolId et schoolLevel sont fournis, filtrer par école et niveau
+        if (schoolId && schoolLevel) {
+          return from(
+            this.supabaseService.client
+              .from('child_subject_enrollments')
+              .select('child_id', { count: 'exact', head: true })
+              .in('child_id', childIds)
+              .eq('school_id', schoolId)
+              .eq('school_level', schoolLevel)
+              .eq('selected', true)
+          ).pipe(
+            map(({ count, error }) => ({
+              count: count || 0,
+              error: error || null,
+            }))
+          );
+        }
+
+        // Sinon, retourner le nombre total d'enfants inscrits à la sous-catégorie
+        return from(Promise.resolve({ count: childIds.length, error: null }));
+      })
     );
   }
 

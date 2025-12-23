@@ -118,10 +118,32 @@
       .assignment-info {
         flex: 1;
 
-        h4 {
-          margin: 0 0 0.5rem 0;
-          color: #333;
-          font-size: 1.1rem;
+        .assignment-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+
+          h4 {
+            margin: 0;
+            color: #333;
+            font-size: 1.1rem;
+          }
+
+          .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            color: #667eea;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+
+            &:hover {
+              background-color: rgba(102, 126, 234, 0.1);
+            }
+          }
         }
 
         p {
@@ -138,6 +160,85 @@
           background: #f8f9ff;
           border-radius: 4px;
           margin-top: 0.5rem;
+        }
+
+        .categories-toggle {
+          margin-top: 1rem;
+          padding-top: 1rem;
+          border-top: 1px solid #eee;
+
+          .loading-categories {
+            padding: 1rem;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+          }
+
+          .no-categories {
+            padding: 1rem;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+          }
+
+          .category-item {
+            background: #f8f9ff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+
+            .category-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 0.5rem;
+
+              strong {
+                color: #333;
+                font-size: 0.95rem;
+              }
+
+              .children-count {
+                color: #667eea;
+                font-size: 0.85rem;
+                font-weight: 500;
+              }
+            }
+
+            .category-description {
+              color: #666;
+              font-size: 0.85rem;
+              margin-bottom: 0.5rem;
+              font-style: italic;
+            }
+
+            .category-games {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+
+              .games-count {
+                color: #667eea;
+                font-size: 0.85rem;
+                font-weight: 500;
+              }
+
+              .btn-link {
+                background: none;
+                border: none;
+                color: #667eea;
+                text-decoration: underline;
+                cursor: pointer;
+                font-size: 0.85rem;
+                padding: 0;
+
+                &:hover {
+                  color: #5568d3;
+                }
+              }
+            }
+          }
         }
       }
 

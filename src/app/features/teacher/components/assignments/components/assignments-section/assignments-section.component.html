@@ -39,7 +39,16 @@
   <div *ngIf="hasFilteredAssignments()" class="assignments-list">
     <div *ngFor="let assignment of filteredAssignments()" class="assignment-card">
       <div class="assignment-info">
-        <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
+        <div class="assignment-header">
+          <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
+          <button
+            type="button"
+            class="toggle-btn"
+            (click)="toggleAssignment(assignment.id)"
+            [attr.aria-expanded]="isAssignmentExpanded(assignment.id)">
+            {{ isAssignmentExpanded(assignment.id) ? '▼' : '▶' }}
+          </button>
+        </div>
         <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
         <p *ngIf="assignment.school_year_id">📅 Année: {{ assignment.school_year_id }}</p>
         <p *ngIf="assignment.school_level">🎓 Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
@@ -48,6 +57,37 @@
           *ngIf="assignment.subject_id"
           [subjectId]="assignment.subject_id">
         </app-games-stats-display>
+
+        <!-- Toggle pour afficher les sous-catégories -->
+        <div *ngIf="isAssignmentExpanded(assignment.id)" class="categories-toggle">
+          <div *ngIf="isLoadingCategories(assignment.id)" class="loading-categories">
+            Chargement des sous-catégories...
+          </div>
+          <div *ngIf="!isLoadingCategories(assignment.id)">
+            <div *ngIf="getCategoriesForAssignment(assignment.id).length === 0" class="no-categories">
+              <p>Aucune sous-catégorie pour cette matière.</p>
+            </div>
+            <div *ngFor="let category of getCategoriesForAssignment(assignment.id)" class="category-item">
+              <div class="category-header">
+                <strong>{{ category.name }}</strong>
+                <span class="children-count">👥 {{ getChildrenCountForCategory(category.id) }} enfant(s)</span>
+              </div>
+              <div *ngIf="category.description" class="category-description">
+                {{ category.description }}
+              </div>
+              <div class="category-games">
+                <span class="games-count">🎮 {{ getGamesForCategory(category.id).length }} jeu(x)</span>
+                <a
+                  *ngIf="assignment.subject_id"
+                  [routerLink]="['/teacher-subjects', assignment.subject_id, 'games']"
+                  [queryParams]="{ categoryId: category.id }"
+                  class="btn btn-sm btn-link">
+                  Voir les jeux
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="assignment-actions">
         <a

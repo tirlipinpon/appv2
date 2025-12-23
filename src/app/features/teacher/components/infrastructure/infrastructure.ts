@@ -124,6 +124,14 @@ export class Infrastructure {
     return this.subjectCategoryService.transferCategory(categoryId, newSubjectId);
   }
 
+  countChildrenByCategory(
+    categoryId: string,
+    schoolId: string | null = null,
+    schoolLevel: string | null = null
+  ): Observable<{ count: number; error: PostgrestError | null }> {
+    return this.subjectCategoryService.countChildrenByCategory(categoryId, schoolId, schoolLevel);
+  }
+
   getTeacherAssignments(teacherId: string): Observable<{ assignments: TeacherAssignment[]; error: PostgrestError | null }> {
     return this.teacherAssignmentService.getTeacherAssignments(teacherId);
   }

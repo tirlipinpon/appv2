@@ -148,16 +148,22 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   }
 
   private initializeForm(): void {
-    if (!this.game || !this.currentAssignment) return;
+    if (!this.game) return;
 
-    const schoolId = this.currentAssignment.school_id || '';
-    const level = this.currentAssignment.school_level || '';
+    // Si currentAssignment est disponible, l'utiliser pour pré-remplir
+    // Sinon, laisser les champs vides pour que l'utilisateur les remplisse
+    const schoolId = this.currentAssignment?.school_id || '';
+    const level = this.currentAssignment?.school_level || '';
 
-    // Pré-remplir avec les valeurs courantes
+    // Si le jeu est lié à une sous-catégorie, utiliser le subject_id de l'assignment
+    // Sinon, utiliser le subject_id du jeu
+    const subjectId = this.game.subject_id || this.currentAssignment?.subject_id || '';
+
+    // Pré-remplir avec les valeurs courantes si disponibles
     this.duplicateForm.patchValue({
       schoolId: schoolId,
       level: level,
-      subjectId: this.game.subject_id,
+      subjectId: subjectId,
     });
 
     // Initialiser les signals pour la réactivité

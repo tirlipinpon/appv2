@@ -7,6 +7,8 @@ import { GamesStatsDisplayComponent } from '../../../../../../shared/components/
 import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../transfer-assignment-dialog/transfer-assignment-dialog.component';
 import { getSchoolLevelLabel, SCHOOL_LEVELS } from '../../../../utils/school-levels.util';
 import type { TeacherAssignment } from '../../../../types/teacher-assignment';
+import type { SubjectCategory } from '../../../../types/subject';
+import type { Game } from '../../../../types/game';
 import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
 import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -30,6 +32,13 @@ export class AssignmentsSectionComponent {
 
   // Signal pour stocker le nombre d'enfants par affectation
   readonly studentCounts = signal<Map<string, number>>(new Map());
+
+  // Signals pour les sous-catégories, jeux et comptes d'enfants par affectation
+  readonly expandedAssignments = signal<Set<string>>(new Set());
+  readonly categoriesByAssignment = signal<Map<string, SubjectCategory[]>>(new Map());
+  readonly gamesByCategory = signal<Map<string, Game[]>>(new Map());
+  readonly childrenCountByCategory = signal<Map<string, number>>(new Map());
+  readonly loadingCategories = signal<Map<string, boolean>>(new Map());
 
   // Signals pour les affectations
   readonly teacherAssignments = computed(() => this.teacherAssignmentStore.assignments());
@@ -257,6 +266,115 @@ export class AssignmentsSectionComponent {
   // Méthode pour effacer les erreurs
   clearError(): void {
     this.teacherAssignmentStore.clearError();
+  }
+
+  // Toggle l'expansion d'une affectation
+  toggleAssignment(assignmentId: string): void {
+    const expanded = this.expandedAssignments();
+    const newExpanded = new Set(expanded);
+    
+    if (newExpanded.has(assignmentId)) {
+      newExpanded.delete(assignmentId);
+    } else {
+      newExpanded.add(assignmentId);
+      // Charger les données si pas encore chargées
+      const assignment = this.filteredAssignments().find(a => a.id === assignmentId);
+      if (assignment?.subject_id && !this.categoriesByAssignment().has(assignmentId)) {
+        this.loadCategoriesForAssignment(assignmentId, assignment.subject_id!, assignment.school_id, assignment.school_level);
+      }
+    }
+    
+    this.expandedAssignments.set(newExpanded);
+  }
+
+  // Vérifier si une affectation est expandée
+  isAssignmentExpanded(assignmentId: string): boolean {
+    return this.expandedAssignments().has(assignmentId);
+  }
+
+  // Charger les sous-catégories pour une affectation
+  private loadCategoriesForAssignment(
+    assignmentId: string,
+    subjectId: string,
+    schoolId: string | null,
+    schoolLevel: string | null
+  ): void {
+    const loading = new Map(this.loadingCategories());
+    loading.set(assignmentId, true);
+    this.loadingCategories.set(loading);
+
+    this.infrastructure.getCategoriesBySubject(subjectId).subscribe(({ categories, error }) => {
+      const loadingMap = new Map(this.loadingCategories());
+      loadingMap.set(assignmentId, false);
+      this.loadingCategories.set(loadingMap);
+
+      if (error) {
+        console.error('[AssignmentsSection] Erreur lors du chargement des sous-catégories:', error);
+        return;
+      }
+
+      // Stocker les catégories
+      const categoriesMap = new Map(this.categoriesByAssignment());
+      categoriesMap.set(assignmentId, categories || []);
+      this.categoriesByAssignment.set(categoriesMap);
+
+      // Charger les jeux et comptes d'enfants pour chaque catégorie
+      if (categories && categories.length > 0) {
+        const gameObservables = categories.map(category =>
+          this.infrastructure.getGamesBySubject(subjectId, category.id).pipe(
+            map(({ games, error: gamesError }) => ({
+              categoryId: category.id,
+              games: gamesError ? [] : (games || []),
+            }))
+          )
+        );
+
+        const countObservables = categories.map(category =>
+          this.infrastructure.countChildrenByCategory(category.id, schoolId, schoolLevel).pipe(
+            map(({ count, error: countError }) => ({
+              categoryId: category.id,
+              count: countError ? 0 : count,
+            }))
+          )
+        );
+
+        forkJoin([...gameObservables, ...countObservables]).subscribe(results => {
+          const gamesMap = new Map(this.gamesByCategory());
+          const countsMap = new Map(this.childrenCountByCategory());
+
+          results.forEach(result => {
+            if ('games' in result) {
+              gamesMap.set(result.categoryId, result.games);
+            } else {
+              countsMap.set(result.categoryId, result.count);
+            }
+          });
+
+          this.gamesByCategory.set(gamesMap);
+          this.childrenCountByCategory.set(countsMap);
+        });
+      }
+    });
+  }
+
+  // Obtenir les catégories d'une affectation
+  getCategoriesForAssignment(assignmentId: string): SubjectCategory[] {
+    return this.categoriesByAssignment().get(assignmentId) || [];
+  }
+
+  // Obtenir les jeux d'une catégorie
+  getGamesForCategory(categoryId: string): Game[] {
+    return this.gamesByCategory().get(categoryId) || [];
+  }
+
+  // Obtenir le nombre d'enfants d'une catégorie
+  getChildrenCountForCategory(categoryId: string): number {
+    return this.childrenCountByCategory().get(categoryId) || 0;
+  }
+
+  // Vérifier si les catégories sont en cours de chargement
+  isLoadingCategories(assignmentId: string): boolean {
+    return this.loadingCategories().get(assignmentId) || false;
   }
 }
 
