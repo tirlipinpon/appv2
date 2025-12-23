@@ -87,11 +87,14 @@
             <!-- Sous-catégories -->
             <div *ngIf="getCategoriesForSubject(s.id).length > 0" class="categories-section">
               <div class="categories-header">
-                <strong>Sous-catégories:</strong>
+                <strong>📁 Sous-catégories:</strong>
               </div>
               <div class="categories-list">
-                <div *ngFor="let category of getCategoriesForSubject(s.id)" class="category-item">
-                  <span class="category-name">{{ category.name }}</span>
+                <div *ngFor="let category of getCategoriesForSubject(s.id)" class="category-item available-category">
+                  <div class="category-info">
+                    <span class="category-name">{{ category.name }}</span>
+                    <span *ngIf="category.description" class="category-description">{{ category.description }}</span>
+                  </div>
                   <div class="category-games-stats">
                     <app-games-stats-display [categoryId]="category.id"></app-games-stats-display>
                   </div>

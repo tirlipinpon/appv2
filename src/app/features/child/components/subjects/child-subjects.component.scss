@@ -273,6 +273,43 @@
           padding-top: $spacing-xs;
         }
       }
+
+      // Style spécifique pour les catégories dans "Matières disponibles"
+      .available-category {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-xs;
+        padding: $spacing-sm;
+        background: color.adjust($color-bg-primary, $lightness: 1%);
+        border-left: 3px solid $color-primary;
+        border-radius: $border-radius-xs;
+        margin-bottom: $spacing-xs;
+
+        .category-info {
+          display: flex;
+          flex-direction: column;
+          gap: $spacing-xs;
+
+          .category-name {
+            font-size: $font-size-sm;
+            color: $color-primary;
+            font-weight: $font-weight-semibold;
+            margin: 0;
+          }
+
+          .category-description {
+            font-size: $font-size-xs;
+            color: $color-text-secondary;
+            font-style: italic;
+            margin: 0;
+          }
+        }
+
+        .category-games-stats {
+          margin-left: 0;
+          padding-top: $spacing-xs;
+        }
+      }
     }
   }
 }

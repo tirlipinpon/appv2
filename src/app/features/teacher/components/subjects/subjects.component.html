@@ -36,37 +36,44 @@
   </div>
 
   <div *ngIf="subjectId()">
-    <h2>Configurer la matière<span *ngIf="subjectForm?.get('name')?.value"> — {{ subjectForm.get('name')?.value }}</span></h2>
-    <p *ngIf="!subjectForm?.get('name')?.value && currentSubjectName()" class="muted">Nom: {{ currentSubjectName() }}</p>
-    <form [formGroup]="subjectForm" (ngSubmit)="update()">
-      <div class="form-group">
-        <label for="name2">Nom *</label>
-        <input id="name2" type="text" formControlName="name">
-        <span class="error-message" *ngIf="subjectForm.get('name')?.hasError('nameTaken') && subjectForm.get('name')?.touched">
-          Ce nom est déjà utilisé.
-        </span>
+    <!-- Section Matière -->
+    <div class="subject-section">
+      <div class="section-header">
+        <h2>📚 Configurer la matière<span *ngIf="subjectForm?.get('name')?.value"> — {{ subjectForm.get('name')?.value }}</span></h2>
+        <p *ngIf="!subjectForm?.get('name')?.value && currentSubjectName()" class="muted">Nom: {{ currentSubjectName() }}</p>
       </div>
-      <div class="form-group">
-        <label for="description2">Description</label>
-        <textarea id="description2" rows="3" formControlName="description"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="type2">Type *</label>
-        <select id="type2" formControlName="type">
-          <option value="scolaire">Scolaire</option>
-          <option value="extra">Extra-scolaire</option>
-          <option value="optionnelle">Optionnelle</option>
-        </select>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="subjectForm.invalid">Enregistrer</button>
-      </div>
-    </form>
+      <form [formGroup]="subjectForm" (ngSubmit)="update()" class="subject-form">
+        <div class="form-group">
+          <label for="name2">Nom *</label>
+          <input id="name2" type="text" formControlName="name">
+          <span class="error-message" *ngIf="subjectForm.get('name')?.hasError('nameTaken') && subjectForm.get('name')?.touched">
+            Ce nom est déjà utilisé.
+          </span>
+        </div>
+        <div class="form-group">
+          <label for="description2">Description</label>
+          <textarea id="description2" rows="3" formControlName="description"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="type2">Type *</label>
+          <select id="type2" formControlName="type">
+            <option value="scolaire">Scolaire</option>
+            <option value="extra">Extra-scolaire</option>
+            <option value="optionnelle">Optionnelle</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="subjectForm.invalid">Enregistrer</button>
+        </div>
+      </form>
+    </div>
 
     <!-- Section Sous-catégories -->
     <div class="categories-section">
-      <h3>Sous-catégories</h3>
-      <p class="section-description">Organisez votre matière en sous-catégories (ex: Vocabulaire, Grammaire pour le Français)</p>
+      <div class="section-header">
+        <h3>📁 Sous-catégories</h3>
+        <p class="section-description">Organisez votre matière en sous-catégories (ex: Vocabulaire, Grammaire pour le Français)</p>
+      </div>
 
       <!-- Formulaire de création/édition -->
       <form [formGroup]="categoryForm" (ngSubmit)="editingCategoryId() ? updateCategory() : createCategory()" class="category-form">
