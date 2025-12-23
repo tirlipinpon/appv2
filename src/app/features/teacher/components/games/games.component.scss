@@ -205,26 +205,6 @@
   }
 }
 
-.section-divider {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin: 2rem 0;
-  
-  &::before,
-  &::after {
-    content: '';
-    flex: 1;
-    border-bottom: 2px solid #dee2e6;
-  }
-  
-  span {
-    padding: 0 1rem;
-    color: #6c757d;
-    font-weight: 600;
-    font-size: 1.1rem;
-  }
-}
 
 .games-container {
   max-width: 840px;

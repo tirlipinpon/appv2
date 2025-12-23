@@ -25,12 +25,14 @@
           <span class="count-badge">{{ selectedSubjects().length }}</span>
         </div>
         <div class="subjects-list">
-          <div *ngFor="let s of selectedSubjects()" class="subject-card active">
+          <div *ngFor="let s of selectedSubjects()" class="subject-card active" (click)="$event.stopPropagation()">
             <div class="subject-header">
               <div class="subject-header-top">
-                <label class="subject-checkbox">
-                  <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false)">
-                  <span class="checkmark"></span>
+                <div class="subject-info">
+                  <label class="subject-checkbox" (click)="$event.stopPropagation()">
+                    <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false); $event.stopPropagation()">
+                    <span class="checkmark"></span>
+                  </label>
                   <span class="subject-name">
                     {{ s.name }} 
                     <span class="subject-type-badge">({{ s.type }})</span>
@@ -39,14 +41,15 @@
                     <span *ngIf="getTotalGamesCount(s.id) > 0" class="games-count">🎮 {{ getTotalGamesCount(s.id) }} jeu{{ getTotalGamesCount(s.id) > 1 ? 'x' : '' }}</span>
                   </span>
                   <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
-                </label>
+                </div>
                 <div class="subject-header-actions">
                   <button 
                     *ngIf="getCategoriesForSubject(s.id).length > 0"
                     type="button"
                     class="toggle-categories-btn"
-                    (click)="toggleCategories(s.id)"
+                    (click)="toggleCategories(s.id); $event.stopPropagation()"
                     [attr.aria-expanded]="isCategoriesExpanded(s.id)"
+                    [title]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'"
                     [attr.aria-label]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'">
                     <span class="toggle-icon" [class.expanded]="isCategoriesExpanded(s.id)">▼</span>
                   </button>
@@ -91,12 +94,14 @@
           <span class="count-badge">{{ unselectedSubjects().length }}</span>
         </div>
         <div class="subjects-list">
-          <div *ngFor="let s of unselectedSubjects()" class="subject-card">
+          <div *ngFor="let s of unselectedSubjects()" class="subject-card" (click)="$event.stopPropagation()">
             <div class="subject-header">
               <div class="subject-header-top">
-                <label class="subject-checkbox">
-                  <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true)">
-                  <span class="checkmark"></span>
+                <div class="subject-info">
+                  <label class="subject-checkbox" (click)="$event.stopPropagation()">
+                    <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true); $event.stopPropagation()">
+                    <span class="checkmark"></span>
+                  </label>
                   <span class="subject-name">
                     {{ s.name }} 
                     <span class="subject-type-badge">({{ s.type }})</span>
@@ -104,14 +109,15 @@
                     <span *ngIf="getCategoriesCount(s.id) > 0" class="categories-count">📁 {{ getCategoriesCount(s.id) }} sous-catégorie{{ getCategoriesCount(s.id) > 1 ? 's' : '' }}</span>
                     <span *ngIf="getTotalGamesCount(s.id) > 0" class="games-count">🎮 {{ getTotalGamesCount(s.id) }} jeu{{ getTotalGamesCount(s.id) > 1 ? 'x' : '' }}</span>
                   </span>
-                </label>
+                </div>
                 <div class="subject-header-actions">
                   <button 
                     *ngIf="getCategoriesForSubject(s.id).length > 0"
                     type="button"
                     class="toggle-categories-btn"
-                    (click)="toggleCategories(s.id)"
+                    (click)="toggleCategories(s.id); $event.stopPropagation()"
                     [attr.aria-expanded]="isCategoriesExpanded(s.id)"
+                    [title]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'"
                     [attr.aria-label]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'">
                     <span class="toggle-icon" [class.expanded]="isCategoriesExpanded(s.id)">▼</span>
                   </button>

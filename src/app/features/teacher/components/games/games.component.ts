@@ -171,7 +171,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   // États des toggles pour les sections
   readonly isAIGenerationExpanded = signal<boolean>(false);
   readonly isManualCreationExpanded = signal<boolean>(false);
-  readonly isGamesListExpanded = signal<boolean>(true); // Ouvert par défaut
+  readonly isGamesListExpanded = signal<boolean>(false); // Fermé par défaut
 
   // Référence au composant formulaire de génération IA
   @ViewChild(AIGameGeneratorFormComponent) aiGeneratorForm?: AIGameGeneratorFormComponent;

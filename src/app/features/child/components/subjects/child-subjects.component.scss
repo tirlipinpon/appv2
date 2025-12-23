@@ -129,11 +129,10 @@
   border-radius: $border-radius-sm;
   border: $border-width-medium solid $color-border-light;
   transition: all $transition-base;
+  cursor: default;
 
   &:hover {
-    border-color: $color-primary;
-    background: $color-primary-lighter;
-    transform: translateX(5px);
+    border-color: $color-border-medium;
   }
 
   &.active {
@@ -141,7 +140,7 @@
     background: $color-success-lighter;
 
     &:hover {
-      background: color.adjust($color-success-lighter, $lightness: 2%);
+      background: $color-success-lighter;
     }
   }
 
@@ -158,13 +157,19 @@
       margin-bottom: $spacing-xs;
     }
 
-    .subject-checkbox {
+    .subject-info {
       display: flex;
       align-items: center;
       gap: $spacing-md;
+      flex: 1;
+    }
+
+    .subject-checkbox {
+      display: flex;
+      align-items: center;
       cursor: pointer;
       margin: 0;
-      flex: 1;
+      flex-shrink: 0;
 
       input[type="checkbox"] {
         width: 20px;
@@ -177,45 +182,47 @@
       .checkmark {
         display: none;
       }
+    }
 
-      .subject-name {
-        flex: 1;
-        font-size: $font-size-base;
-        color: $color-text-primary;
-        font-weight: $font-weight-medium;
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: $spacing-xs;
+    .subject-name {
+      flex: 1;
+      font-size: $font-size-base;
+      color: $color-text-primary;
+      font-weight: $font-weight-medium;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: $spacing-xs;
+      cursor: default;
+      pointer-events: none;
 
-        .categories-count,
-        .games-count {
-          font-size: $font-size-xs;
-          color: $color-text-secondary;
-          font-weight: $font-weight-normal;
-          margin-left: $spacing-xs;
-        }
-
-        .categories-count {
-          &::before {
-            content: '';
-            margin-right: 2px;
-          }
-        }
-
-        .games-count {
-          &::before {
-            content: '';
-            margin-right: 2px;
-          }
-        }
-      }
-
-      .unofficial-badge {
-        @include badge-base;
-        @include badge-variant($color-warning-lighter, color.adjust($color-warning, $lightness: -20%));
+      .categories-count,
+      .games-count {
         font-size: $font-size-xs;
+        color: $color-text-secondary;
+        font-weight: $font-weight-normal;
+        margin-left: $spacing-xs;
       }
+
+      .categories-count {
+        &::before {
+          content: '';
+          margin-right: 2px;
+        }
+      }
+
+      .games-count {
+        &::before {
+          content: '';
+          margin-right: 2px;
+        }
+      }
+    }
+
+    .unofficial-badge {
+      @include badge-base;
+      @include badge-variant($color-warning-lighter, color.adjust($color-warning, $lightness: -20%));
+      font-size: $font-size-xs;
     }
 
     .subject-header-actions {
@@ -247,6 +254,7 @@
       color: $color-text-secondary;
       min-width: 32px;
       height: 28px;
+      position: relative;
 
       &:hover {
         background: $color-primary-lighter;
@@ -261,6 +269,31 @@
 
       &:active {
         transform: scale(0.95);
+      }
+
+      // Tooltip
+      &::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-5px);
+        background: $color-gray-900;
+        color: $color-white;
+        padding: $spacing-xs $spacing-sm;
+        border-radius: $border-radius-sm;
+        font-size: $font-size-xs;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity $transition-base, transform $transition-base;
+        z-index: 1000;
+        margin-bottom: $spacing-xs;
+      }
+
+      &:hover::after {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
       }
 
       .toggle-icon {
