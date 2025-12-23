@@ -229,8 +229,30 @@
           .category-description {
             color: #666;
             font-size: 0.9rem;
-            margin: 0;
+            margin: 0 0 8px 0;
             line-height: 1.4;
+          }
+
+          .category-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 8px;
+
+            .games-stats,
+            .children-count {
+              font-size: 0.875rem;
+              color: #555;
+              font-weight: 500;
+            }
+
+            .games-stats {
+              color: #1976d2;
+            }
+
+            .children-count {
+              color: #666;
+            }
           }
         }
 

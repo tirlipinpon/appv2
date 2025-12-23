@@ -10,6 +10,9 @@ import type { SubjectCategory } from '../../types/subject';
 import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error-snackbar.service';
 import { ToastService } from '../../../../shared/services/toast/toast.service';
 import { TransferCategoryDialogComponent, TransferCategoryData } from './components/transfer-category-dialog/transfer-category-dialog.component';
+import { GamesStatsService } from '../../../../shared/services/games-stats/games-stats.service';
+import { forkJoin } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-subjects',
@@ -25,6 +28,7 @@ export class SubjectsComponent implements OnInit {
   private readonly infra = inject(Infrastructure);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
   private readonly toastService = inject(ToastService);
+  private readonly gamesStatsService = inject(GamesStatsService);
   readonly store = inject(TeacherAssignmentStore);
 
   readonly subjectId = signal<string | null>(null);
@@ -106,6 +110,9 @@ export class SubjectsComponent implements OnInit {
   readonly editingCategoryId = signal<string | null>(null);
   readonly showTransferDialog = signal<boolean>(false);
   readonly selectedCategoryForTransfer = signal<SubjectCategory | null>(null);
+  
+  // Stats de jeux et nombre d'enfants par catégorie
+  readonly childrenCountByCategory = signal<Map<string, number>>(new Map());
   categoryForm = this.fb.group({
     name: ['', Validators.required],
     description: [''],
@@ -379,6 +386,34 @@ export class SubjectsComponent implements OnInit {
         return;
       }
       this.categories.set(categories || []);
+      
+      // Charger les stats de jeux et le nombre d'enfants pour chaque catégorie
+      if (categories && categories.length > 0) {
+        const categoryIds = categories.map(c => c.id);
+        
+        // Charger les stats de jeux en batch
+        this.gamesStatsService.loadStatsForCategories(categoryIds);
+        
+        // Charger le nombre d'enfants pour chaque catégorie
+        const countObservables = categoryIds.map(categoryId =>
+          this.infra.countChildrenByCategory(categoryId, null, null).pipe(
+            map(({ count, error: countError }) => ({
+              categoryId,
+              count: countError ? 0 : count
+            }))
+          )
+        );
+
+        forkJoin(countObservables).subscribe(results => {
+          const counts = new Map<string, number>();
+          results.forEach(({ categoryId, count }) => {
+            counts.set(categoryId, count);
+          });
+          this.childrenCountByCategory.set(counts);
+        });
+      } else {
+        this.childrenCountByCategory.set(new Map());
+      }
     });
   }
 
@@ -487,6 +522,32 @@ export class SubjectsComponent implements OnInit {
   onTransferCancel(): void {
     this.showTransferDialog.set(false);
     this.selectedCategoryForTransfer.set(null);
+  }
+
+  // Obtenir les stats de jeux pour une catégorie
+  getCategoryGamesStats(categoryId: string): { total: number; stats: Record<string, number> } | null {
+    const stats = this.gamesStatsService.getCategoryStats(categoryId);
+    if (!stats) return null;
+    return { total: stats.total, stats: stats.stats };
+  }
+
+  // Obtenir le nombre d'enfants inscrits à une catégorie
+  getChildrenCountForCategory(categoryId: string): number {
+    return this.childrenCountByCategory().get(categoryId) || 0;
+  }
+
+  // Formater les stats de jeux pour l'affichage
+  formatCategoryGamesStats(categoryId: string): string {
+    const statsData = this.getCategoryGamesStats(categoryId);
+    if (!statsData || statsData.total === 0) {
+      return '';
+    }
+
+    const formattedTypes = Object.entries(statsData.stats)
+      .map(([type, count]) => `${type.toLowerCase()} (${count})`)
+      .join(' • ');
+
+    return `🎮 ${statsData.total} jeu${statsData.total > 1 ? 'x' : ''} : ${formattedTypes}`;
   }
 }
 

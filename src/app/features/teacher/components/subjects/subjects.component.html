@@ -103,6 +103,14 @@
             <div class="category-info">
               <strong>{{ category.name }}</strong>
               <p *ngIf="category.description" class="category-description">{{ category.description }}</p>
+              <div class="category-stats" *ngIf="formatCategoryGamesStats(category.id) || getChildrenCountForCategory(category.id) > 0">
+                <span *ngIf="formatCategoryGamesStats(category.id)" class="games-stats">
+                  {{ formatCategoryGamesStats(category.id) }}
+                </span>
+                <span *ngIf="getChildrenCountForCategory(category.id) > 0" class="children-count">
+                  👥 {{ getChildrenCountForCategory(category.id) }} enfant{{ getChildrenCountForCategory(category.id) > 1 ? 's' : '' }}
+                </span>
+              </div>
             </div>
             <div class="category-actions">
               <a
