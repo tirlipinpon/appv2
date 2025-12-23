@@ -187,16 +187,27 @@ export class AssignmentsComponent implements OnInit {
     if (!this.schoolForm.valid) return;
     this.creatingSchool.set(true);
     const formValue = this.schoolForm.value;
-    this.application.createSchool({
+    this.infrastructure.createSchool({
       name: formValue.name,
       address: formValue.address || null,
       city: formValue.city || null,
       country: formValue.country || null,
       metadata: null,
+    }).subscribe(({ school, error }) => {
+      this.creatingSchool.set(false);
+      if (error) {
+        this.errorSnackbarService.showError(error.message || 'Erreur lors de la création de l\'école');
+        return;
+      }
+      if (school) {
+        // Remplir automatiquement le champ école dans le formulaire principal
+        this.assignmentForm.patchValue({ school_id: school.id });
+        // Recharger la liste des écoles pour inclure la nouvelle
+        this.application.loadSchools();
+      }
+      this.showCreateSchool.set(false);
+      this.schoolForm.reset();
     });
-    this.creatingSchool.set(false);
-    this.showCreateSchool.set(false);
-    this.schoolForm.reset();
   }
 
   onCreateSubject(): void {
@@ -232,6 +243,10 @@ export class AssignmentsComponent implements OnInit {
           // Le lien est créé, on peut directement recharger la liste
           // Pas besoin de setTimeout, l'opération est déjà terminée dans le callback
           this.tryLoadSubjectsForSelection();
+          // Remplir automatiquement le champ matière dans le formulaire principal
+          if (subject) {
+            this.assignmentForm.patchValue({ subject_id: subject.id });
+          }
           this.creatingSubject.set(false);
           this.showCreateSubject.set(false);
           this.subjectForm.reset();
@@ -243,6 +258,11 @@ export class AssignmentsComponent implements OnInit {
           // Recharger la liste filtrée pour les inclure
           // Pas besoin de setTimeout, la matière est déjà créée dans le callback
           this.tryLoadSubjectsForSelection();
+          // Remplir automatiquement le champ matière dans le formulaire principal
+          this.assignmentForm.patchValue({ subject_id: subject.id });
+        } else if (subject) {
+          // Même si pas d'école/niveau, remplir le champ matière
+          this.assignmentForm.patchValue({ subject_id: subject.id });
         }
         this.creatingSubject.set(false);
         this.showCreateSubject.set(false);
