@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
-import { map, switchMap, catchError } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import { AuthService } from '../../../../shared/services/auth/auth.service';
@@ -52,7 +52,11 @@ export class TeacherAssignmentService {
       this.supabaseService.client
         .from('teacher_assignments')
         .upsert(normalized, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
-        .select()
+        .select(`
+          *,
+          school:schools(*),
+          subject:subjects(*)
+        `)
         .single()
     ).pipe(
       map(({ data, error }) => ({
@@ -370,42 +374,151 @@ export class TeacherAssignmentService {
         const sourceAssignment = validation.sourceAssignment!;
         const schoolLevel = sourceAssignment.school_level || '';
 
-        // Si une affectation supprimée existe, la réactiver en utilisant upsert avec l'ID
+        // Si une affectation supprimée existe, essayer de la réactiver
         if (validation.existingAssignment && validation.existingAssignment.deleted_at) {
           console.log('[ShareAssignment] Réactivation d\'une affectation supprimée');
-          // Utiliser upsert avec l'ID existant pour réactiver l'affectation
-          // Cela évite les problèmes de RLS car on met à jour une ligne existante
-          const reactivatedAssignment = {
-            id: validation.existingAssignment.id, // Inclure l'ID pour mettre à jour la ligne existante
-            teacher_id: newTeacherId,
-            school_id: sourceAssignment.school_id,
-            school_year_id: sourceAssignment.school_year_id,
-            school_level: schoolLevel,
-            class_id: sourceAssignment.class_id,
-            subject_id: sourceAssignment.subject_id,
-            roles: sourceAssignment.roles || ['titulaire'],
-            start_date: sourceAssignment.start_date,
-            end_date: sourceAssignment.end_date,
-            deleted_at: null, // réactiver
-          };
-          return from(
-            this.supabaseService.client
-              .from('teacher_assignments')
-              .upsert(reactivatedAssignment, { onConflict: 'id' })
-              .select()
-              .single()
-          ).pipe(
-            map(({ data, error }) => {
-              return {
-                assignment: data as TeacherAssignment | null,
-                error: error || null,
-              };
-            })
-          );
+          // Vérifier si l'affectation supprimée appartient au même professeur
+          // Si oui, on peut la réactiver avec upsert
+          // Si non, RLS empêchera la mise à jour, donc on créera une nouvelle affectation
+          const existingTeacherId = validation.existingAssignment.teacher_id;
+          
+          if (existingTeacherId === newTeacherId) {
+            // Même professeur : essayer de réactiver avec update direct
+            // Si RLS bloque (ligne créée par un autre prof), créer une nouvelle affectation
+            return from(
+              this.supabaseService.client
+                .from('teacher_assignments')
+                .update({ deleted_at: null })
+                .eq('id', validation.existingAssignment.id)
+                .eq('teacher_id', newTeacherId) // S'assurer que RLS permet la mise à jour
+                .select(`
+                  *,
+                  school:schools(*),
+                  subject:subjects(*)
+                `)
+                .maybeSingle()
+            ).pipe(
+              switchMap(({ data }) => {
+                // Si update réussit, retourner le résultat
+                if (data) {
+                  return of({
+                    assignment: data as TeacherAssignment | null,
+                    error: null,
+                  });
+                }
+                // Si update échoue (RLS bloque ou ligne n'existe plus), créer une nouvelle affectation
+                console.log('[ShareAssignment] Update échoué (RLS bloque probablement), création d\'une nouvelle affectation');
+                const newAssignment = {
+                  teacher_id: newTeacherId,
+                  school_id: sourceAssignment.school_id,
+                  school_year_id: sourceAssignment.school_year_id,
+                  school_level: schoolLevel,
+                  class_id: sourceAssignment.class_id,
+                  subject_id: sourceAssignment.subject_id,
+                  roles: sourceAssignment.roles || ['titulaire'],
+                  start_date: sourceAssignment.start_date,
+                  end_date: sourceAssignment.end_date,
+                  deleted_at: null,
+                };
+                return from(
+                  this.supabaseService.client
+                    .from('teacher_assignments')
+                    .insert(newAssignment)
+                    .select(`
+                      *,
+                      school:schools(*),
+                      subject:subjects(*)
+                    `)
+                    .single()
+                ).pipe(
+                  switchMap(({ data: insertData, error: insertError }) => {
+                    // Si insert échoue à cause de contrainte unique, essayer upsert
+                    if (insertError && insertError.code === '23505') {
+                      // Si upsert échoue aussi, utiliser la fonction RPC qui contourne RLS
+                      return from(
+                        this.supabaseService.client
+                          .from('teacher_assignments')
+                          .upsert(newAssignment, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
+                          .select(`
+                            *,
+                            school:schools(*),
+                            subject:subjects(*)
+                          `)
+                          .single()
+                      ).pipe(
+                        switchMap(({ data: upsertData, error: upsertError }) => {
+                          // Si upsert échoue à cause de RLS, utiliser la fonction RPC
+                          if (upsertError && upsertError.code === '42501') {
+                            return from(
+                              this.supabaseService.client
+                                .rpc('share_teacher_assignment', {
+                                  p_source_assignment_id: assignmentId,
+                                  p_new_teacher_id: newTeacherId,
+                                })
+                            ).pipe(
+                              map(({ data: rpcData, error: rpcError }) => {
+                                if (rpcError) {
+                                  return {
+                                    assignment: null,
+                                    error: {
+                                      code: rpcError.code || '500',
+                                      message: rpcError.message || 'Erreur lors du partage via fonction RPC',
+                                      details: rpcError.details || '',
+                                      hint: rpcError.hint || '',
+                                      name: 'PostgrestError',
+                                    } as PostgrestError,
+                                  };
+                                }
+                                // La fonction RPC retourne un JSONB avec soit l'affectation soit une erreur
+                                const result = rpcData as TeacherAssignment | { error: string } | null;
+                                if (result && 'error' in result && result.error) {
+                                  return {
+                                    assignment: null,
+                                    error: {
+                                      code: '500',
+                                      message: result.error,
+                                      details: '',
+                                      hint: '',
+                                      name: 'PostgrestError',
+                                    } as PostgrestError,
+                                  };
+                                }
+                                // Le résultat est l'affectation directement
+                                return {
+                                  assignment: result as TeacherAssignment | null,
+                                  error: null,
+                                };
+                              })
+                            );
+                          }
+                          return of({
+                            assignment: upsertData as TeacherAssignment | null,
+                            error: upsertError || null,
+                          });
+                        })
+                      );
+                    }
+                    return of({
+                      assignment: insertData as TeacherAssignment | null,
+                      error: insertError || null,
+                    });
+                  })
+                );
+              })
+            );
+          } else {
+            // Affectation supprimée appartient à un autre professeur
+            // RLS empêchera la mise à jour, donc on va créer une nouvelle affectation
+            // L'upsert avec onConflict va échouer à cause de RLS, donc on utilise insert
+            // et on gère l'erreur de contrainte unique en supprimant définitivement l'ancienne
+            console.log('[ShareAssignment] Affectation supprimée appartient à un autre professeur, création d\'une nouvelle');
+            // Continuer avec la création d'une nouvelle affectation (voir code ci-dessous)
+          }
         }
 
-        // Sinon, créer une nouvelle affectation en utilisant upsert
-        // Cela permet de créer ou réactiver une affectation existante supprimée
+        // Créer une nouvelle affectation
+        // Si une affectation supprimée existe mais appartient à un autre professeur,
+        // on utilise insert et on gère l'erreur de contrainte unique
         const newAssignment = {
           teacher_id: newTeacherId,
           school_id: sourceAssignment.school_id,
@@ -416,21 +529,47 @@ export class TeacherAssignmentService {
           roles: sourceAssignment.roles || ['titulaire'],
           start_date: sourceAssignment.start_date,
           end_date: sourceAssignment.end_date,
-          deleted_at: null, // réactiver en cas d'upsert sur une ligne soft-supprimée
+          deleted_at: null,
         };
-
         return from(
           this.supabaseService.client
             .from('teacher_assignments')
-            .upsert(newAssignment, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
-            .select()
+            .insert(newAssignment)
+            .select(`
+              *,
+              school:schools(*),
+              subject:subjects(*)
+            `)
             .single()
         ).pipe(
-          map(({ data, error }) => {
-            return {
+          switchMap(({ data, error }) => {
+            // Si erreur de contrainte unique, cela signifie qu'une affectation supprimée existe
+            // On essaie alors avec upsert qui devrait fonctionner si l'affectation appartient au même professeur
+            if (error && error.code === '23505') {
+              console.log('[ShareAssignment] Contrainte unique détectée, tentative avec upsert');
+              return from(
+                this.supabaseService.client
+                  .from('teacher_assignments')
+                  .upsert(newAssignment, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
+                  .select(`
+                    *,
+                    school:schools(*),
+                    subject:subjects(*)
+                  `)
+                  .single()
+              ).pipe(
+                map(({ data: upsertData, error: upsertError }) => {
+                  return {
+                    assignment: upsertData as TeacherAssignment | null,
+                    error: upsertError || null,
+                  };
+                })
+              );
+            }
+            return of({
               assignment: data as TeacherAssignment | null,
               error: error || null,
-            };
+            });
           })
         );
       })
@@ -442,10 +581,10 @@ export class TeacherAssignmentService {
    * (même matière/école/niveau mais avec d'autres professeurs)
    */
   getSharedAssignments(assignmentId: string): Observable<{ 
-    sharedAssignments: Array<{ 
+    sharedAssignments: { 
       assignment: TeacherAssignment; 
       teacher: { id: string; fullname: string | null } 
-    }>; 
+    }[]; 
     error: PostgrestError | null 
   }> {
     // Récupérer l'affectation source
@@ -490,12 +629,12 @@ export class TeacherAssignmentService {
             }
 
             // Récupérer les IDs des professeurs uniques
-            const teacherIds = [...new Set(assignments.map((a: any) => a.teacher_id).filter(Boolean))];
+            const teacherIds = [...new Set(assignments.map((a: TeacherAssignment) => a.teacher_id).filter(Boolean))];
 
             if (teacherIds.length === 0) {
               // Si pas de teacher_id, retourner les affectations sans noms
-              const shared = assignments.map((item: any) => ({
-                assignment: item as TeacherAssignment,
+              const shared = assignments.map((item: TeacherAssignment) => ({
+                assignment: item,
                 teacher: {
                   id: item.teacher_id || '',
                   fullname: null
@@ -518,17 +657,17 @@ export class TeacherAssignmentService {
 
                 // Créer une map pour accéder rapidement aux informations des professeurs
                 const teachersMap = new Map<string, { id: string; fullname: string | null }>();
-                (teachers || []).forEach((t: any) => {
+                (teachers || []).forEach((t: { id: string; fullname: string | null }) => {
                   teachersMap.set(t.id, { id: t.id, fullname: t.fullname || null });
                 });
 
                 // Combiner les affectations avec les informations des professeurs
-                const shared = assignments.map((item: any) => {
+                const shared = assignments.map((item: TeacherAssignment) => {
                   const teacherId = item.teacher_id || '';
                   const teacherInfo = teachersMap.get(teacherId) || { id: teacherId, fullname: null };
                   
                   return {
-                    assignment: item as TeacherAssignment,
+                    assignment: item,
                     teacher: teacherInfo
                   };
                 });
