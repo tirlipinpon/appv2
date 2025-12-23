@@ -1,26 +1,5 @@
 <div [formGroup]="form" class="simon-form">
   <div class="form-group">
-    <label for="nombre_elements">Nombre d'éléments *</label>
-    <p class="hint">Choisissez le nombre d'éléments disponibles dans le jeu (entre 3 et 10).</p>
-    <input 
-      type="number" 
-      id="nombre_elements"
-      formControlName="nombre_elements" 
-      min="3" 
-      max="10"
-      class="number-input">
-    @if (form.get('nombre_elements')?.hasError('required') && form.get('nombre_elements')?.touched) {
-      <span class="error-message">Le nombre d'éléments est requis.</span>
-    }
-    @if (form.get('nombre_elements')?.hasError('min') && form.get('nombre_elements')?.touched) {
-      <span class="error-message">Le nombre minimum est 3.</span>
-    }
-    @if (form.get('nombre_elements')?.hasError('max') && form.get('nombre_elements')?.touched) {
-      <span class="error-message">Le nombre maximum est 10.</span>
-    }
-  </div>
-
-  <div class="form-group">
     <label for="type_elements">Type d'éléments *</label>
     <p class="hint">Sélectionnez le type d'éléments à utiliser dans la séquence.</p>
     <select id="type_elements" formControlName="type_elements" class="select-input">
@@ -63,9 +42,9 @@
           </div>
         }
       </div>
-      @if (elementsArray.length < (form.get('nombre_elements')?.value || 3)) {
+      @if (elementsArray.length < 4) {
         <span class="error-message">
-          Vous devez avoir au moins {{ form.get('nombre_elements')?.value }} éléments (actuellement {{ elementsArray.length }}).
+          Vous devez avoir au moins 4 éléments (actuellement {{ elementsArray.length }}).
         </span>
       }
       <button type="button" class="btn btn-secondary btn-small" (click)="addElement()">+ Ajouter un élément</button>
@@ -74,7 +53,7 @@
 
   @if (form.valid) {
     <div class="preview-info">
-      <strong>Configuration :</strong> {{ form.get('nombre_elements')?.value }} éléments de type "{{ getTypeLabel() }}"
+      <strong>Configuration :</strong> 4 éléments de type "{{ getTypeLabel() }}"
       @if (isPersonnalise && elementsArray.length > 0) {
         <br>
         <strong>Éléments :</strong> {{ elementsArray.value.join(', ') }}

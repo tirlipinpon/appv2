@@ -6,12 +6,13 @@ import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fie
 import { QcmGameComponent } from '../qcm-game/qcm-game.component';
 import { ChronologieGameComponent } from '../chronologie-game/chronologie-game.component';
 import { MemoryGameComponent } from '../memory-game/memory-game.component';
+import { SimonGameComponent } from '../simon-game/simon-game.component';
 import { LetterByLetterInputComponent } from '../../../../../../shared/components/letter-by-letter-input/letter-by-letter-input.component';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, LetterByLetterInputComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
@@ -301,6 +302,12 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   // Méthodes pour Memory
   onMemoryValidated(isValid: boolean): void {
+    this.isSubmitted.set(true);
+    this.isCorrect.set(isValid);
+  }
+
+  // Méthodes pour Simon
+  onSimonValidated(isValid: boolean): void {
     this.isSubmitted.set(true);
     this.isCorrect.set(isValid);
   }

@@ -363,6 +363,18 @@
             }
           </div>
         }
+
+        <!-- Simon -->
+        @if (simonData) {
+          <div class="preview-content simon-preview">
+            <app-simon-game
+              [simonData]="simonData"
+              [showResult]="isSubmitted()"
+              [disabled]="false"
+              (validated)="onSimonValidated($event)">
+            </app-simon-game>
+          </div>
+        }
       </div>
 
       <div class="preview-footer">

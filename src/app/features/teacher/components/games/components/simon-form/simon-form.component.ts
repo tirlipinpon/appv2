@@ -37,7 +37,7 @@ export class SimonFormComponent implements OnChanges {
 
   constructor() {
     this.form = this.fb.group({
-      nombre_elements: [4, [Validators.required, Validators.min(3), Validators.max(10)]],
+      nombre_elements: [4], // Fixé à 4, pas de validation nécessaire
       type_elements: ['couleurs', [Validators.required]],
       elements: this.fb.array<FormControl<string>>([]),
     });
@@ -50,22 +50,8 @@ export class SimonFormComponent implements OnChanges {
       if (!this.isInitializing && type !== 'personnalise') {
         this.initializeDefaultElements(type);
       } else if (!this.isInitializing && type === 'personnalise') {
-        // En mode personnalisé, ajuster le nombre d'éléments selon nombre_elements
+        // En mode personnalisé, ajuster à 4 éléments
         this.adjustPersonnaliseElements();
-      }
-    });
-
-    // Écouter les changements de nombre_elements pour ajuster les éléments
-    this.form.get('nombre_elements')?.valueChanges.subscribe(() => {
-      if (!this.isInitializing) {
-        const type = this.form.get('type_elements')?.value;
-        if (type === 'personnalise') {
-          // En mode personnalisé, ajuster le nombre d'éléments
-          this.adjustPersonnaliseElements();
-        } else {
-          // En mode prédéfini, réinitialiser avec les éléments par défaut
-          this.initializeDefaultElements(type);
-        }
       }
     });
 
@@ -77,7 +63,7 @@ export class SimonFormComponent implements OnChanges {
       if (this.form.valid) {
         const typeElements = this.form.get('type_elements')?.value;
         const simonData: SimonData = {
-          nombre_elements: this.form.get('nombre_elements')?.value,
+          nombre_elements: 4, // Toujours 4
           type_elements: typeElements,
         };
 
@@ -111,8 +97,8 @@ export class SimonFormComponent implements OnChanges {
 
   initializeDefaultElements(type: string): void {
     const defaultEls = this.defaultElements[type] || [];
-    const nombreElements = this.form.get('nombre_elements')?.value || 4;
-    const elementsToShow = defaultEls.slice(0, nombreElements);
+    // Toujours 4 éléments
+    const elementsToShow = defaultEls.slice(0, 4);
 
     this.elementsArray.clear();
     elementsToShow.forEach(el => {
@@ -129,25 +115,20 @@ export class SimonFormComponent implements OnChanges {
   }
 
   adjustPersonnaliseElements(): void {
-    const nombreElements = this.form.get('nombre_elements')?.value || 3;
+    // Toujours 4 éléments
     const currentLength = this.elementsArray.length;
 
-    if (currentLength < nombreElements) {
+    if (currentLength < 4) {
       // Ajouter des éléments manquants
-      for (let i = currentLength; i < nombreElements; i++) {
+      for (let i = currentLength; i < 4; i++) {
         this.elementsArray.push(new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }));
       }
-    } else if (currentLength > nombreElements) {
+    } else if (currentLength > 4) {
       // Supprimer les éléments en trop (depuis la fin)
-      for (let i = currentLength - 1; i >= nombreElements; i--) {
+      for (let i = currentLength - 1; i >= 4; i--) {
         this.elementsArray.removeAt(i);
       }
     }
-  }
-
-  onNombreElementsChange(): void {
-    // Cette méthode est appelée depuis le template, mais la logique est maintenant dans valueChanges
-    // On peut la garder pour compatibilité mais elle n'est plus nécessaire
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -156,10 +137,9 @@ export class SimonFormComponent implements OnChanges {
 
       if (this.initialData) {
         const typeElements = this.initialData.type_elements || 'couleurs';
-        const nombreElements = this.initialData.nombre_elements || 4;
 
         this.form.patchValue({
-          nombre_elements: nombreElements,
+          nombre_elements: 4, // Toujours 4
           type_elements: typeElements,
         }, { emitEvent: false });
 
@@ -172,14 +152,14 @@ export class SimonFormComponent implements OnChanges {
             this.initialData.elements.forEach(el => {
               this.elementsArray.push(new FormControl<string>(el, { nonNullable: true, validators: [Validators.required] }));
             });
-            // Ajuster si nécessaire selon nombre_elements (après le setTimeout pour éviter les conflits)
+            // Ajuster à 4 éléments si nécessaire (après le setTimeout pour éviter les conflits)
             setTimeout(() => {
               if (!this.isInitializing) {
                 this.adjustPersonnaliseElements();
               }
             }, 0);
           } else {
-            // Pas d'éléments existants, créer selon nombre_elements
+            // Pas d'éléments existants, créer 4 éléments
             setTimeout(() => {
               if (!this.isInitializing) {
                 this.adjustPersonnaliseElements();
@@ -193,7 +173,7 @@ export class SimonFormComponent implements OnChanges {
       } else {
         // Réinitialiser avec les valeurs par défaut
         this.form.patchValue({
-          nombre_elements: 4,
+          nombre_elements: 4, // Toujours 4
           type_elements: 'couleurs',
         }, { emitEvent: false });
         this.initializeDefaultElements('couleurs');

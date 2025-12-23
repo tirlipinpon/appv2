@@ -1,0 +1,175 @@
+@use '../../../../../../../styles/variables' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+.simon-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-lg;
+  padding: $spacing-lg;
+  max-width: 800px;
+  margin: 0 auto;
+
+  .result-message {
+    padding: $spacing-md $spacing-lg;
+    border-radius: $border-radius-md;
+    font-weight: $font-weight-semibold;
+    text-align: center;
+    font-size: $font-size-lg;
+    width: 100%;
+    animation: slideIn 0.3s ease-out;
+
+    &.correct {
+      background-color: #d4edda;
+      color: #155724;
+      border: 2px solid #c3e6cb;
+    }
+
+    &.incorrect {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 2px solid #f5c6cb;
+    }
+  }
+
+  .game-info {
+    text-align: center;
+    width: 100%;
+
+    .level-info {
+      font-size: $font-size-xl;
+      font-weight: $font-weight-bold;
+      color: $color-primary;
+      margin-bottom: $spacing-sm;
+    }
+
+    .status-message {
+      font-size: $font-size-lg;
+      color: $color-text-secondary;
+      font-weight: $font-weight-medium;
+    }
+  }
+
+  .simon-grid {
+    display: grid;
+    gap: $spacing-md;
+    width: fit-content;
+    margin: $spacing-lg auto;
+    justify-content: center;
+
+    // Grille carrée : 2 colonnes pour regrouper les éléments
+    grid-template-columns: repeat(2, 1fr);
+
+    &.animating {
+      pointer-events: none;
+    }
+
+    &.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      gap: $spacing-sm;
+    }
+
+    @media (max-width: 480px) {
+      gap: $spacing-xs;
+    }
+  }
+
+  .simon-element {
+    aspect-ratio: 1;
+    border-radius: $border-radius-lg;
+    border: 4px solid;
+    background-color: $color-gray-200;
+    border-color: $color-gray-400;
+    color: white;
+    font-size: 4rem;
+    font-weight: $font-weight-bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: $shadow-md;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    width: 180px;
+    height: 180px;
+
+    // Pas d'effet au survol - complètement supprimé
+
+    &.highlighted {
+      // Bordure noire épaisse + agrandissement + ombre pour bien voir l'élément
+      border: 6px solid #000000;
+      transform: scale(1.1);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+    }
+
+    &.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    // Même effet au clic utilisateur
+    &:active:not(.disabled):not(.highlighted) {
+      border: 6px solid #000000;
+      transform: scale(1.1);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 0, 0, 0.4);
+    }
+
+    @media (max-width: 768px) {
+      width: 180px;
+      height: 180px;
+      font-size: 3.5rem;
+    }
+
+    @media (max-width: 480px) {
+      width: 160px;
+      height: 160px;
+      font-size: 3rem;
+    }
+
+    .element-content {
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .progress-info {
+    text-align: center;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    padding: $spacing-sm $spacing-md;
+    background: $color-gray-50;
+    border-radius: $border-radius-sm;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .btn {
+    @include button-base;
+    padding: $spacing-md $spacing-lg;
+    font-size: $font-size-base;
+    margin-top: $spacing-md;
+  }
+}
+
+// Pas d'animations complexes - effet simple d'éclaircissement comme le vrai Simon
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
