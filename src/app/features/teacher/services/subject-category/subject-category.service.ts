@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from, of } from 'rxjs';
+import { Observable, from } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { SubjectCategory, SubjectCategoryCreate, SubjectCategoryUpdate } from '../../types/subject';
@@ -89,6 +89,51 @@ export class SubjectCategoryService {
       map(({ error }) => ({
         error: error || null,
       }))
+    );
+  }
+
+  /**
+   * Récupère la liste des enfants inscrits à une sous-catégorie
+   */
+  getChildrenByCategory(
+    categoryId: string,
+    schoolId: string | null = null,
+    schoolLevel: string | null = null
+  ): Observable<{ children: any[]; error: PostgrestError | null }> {
+    return from(
+      this.supabaseService.client
+        .from('child_subject_category_enrollments')
+        .select('child_id')
+        .eq('subject_category_id', categoryId)
+        .eq('selected', true)
+    ).pipe(
+      switchMap(({ data: enrollments, error: enrollmentsError }) => {
+        if (enrollmentsError || !enrollments || enrollments.length === 0) {
+          return from(Promise.resolve({ children: [], error: enrollmentsError || null }));
+        }
+
+        const childIds = enrollments.map(e => e.child_id);
+
+        return from(
+          this.supabaseService.client
+            .from('children')
+            .select('*')
+            .in('id', childIds)
+            .eq('is_active', true)
+            .order('firstname', { ascending: true })
+        ).pipe(
+          map(({ data: children, error: childrenError }) => {
+            if (childrenError || !children) {
+              return { children: [], error: childrenError || null };
+            }
+
+            return {
+              children: children || [],
+              error: null,
+            };
+          })
+        );
+      })
     );
   }
 

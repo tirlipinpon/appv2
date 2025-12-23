@@ -72,7 +72,12 @@
             <div *ngFor="let category of getCategoriesForAssignment(assignment.id)" class="category-item">
               <div class="category-header">
                 <strong>{{ category.name }}</strong>
-                <span class="children-count">👥 {{ getChildrenCountForCategory(category.id) }} enfant(s)</span>
+                <span 
+                  class="children-count clickable" 
+                  (click)="openChildrenModal(category, assignment)"
+                  title="Voir la liste des enfants">
+                  👥 {{ getChildrenCountForCategory(category.id) }} enfant(s)
+                </span>
               </div>
               <div *ngIf="category.description" class="category-description">
                 {{ category.description }}
@@ -141,4 +146,14 @@
   (confirm)="onTransferConfirm($event)"
   (cancel)="onTransferCancel()">
 </app-transfer-assignment-dialog>
+
+<!-- Modal de liste des enfants -->
+<app-children-list-modal
+  *ngIf="showChildrenModal() && selectedCategoryForChildren()"
+  [categoryId]="selectedCategoryForChildren()!.id"
+  [categoryName]="selectedCategoryForChildren()!.name"
+  [schoolId]="selectedCategoryForChildren()!.schoolId"
+  [schoolLevel]="selectedCategoryForChildren()!.schoolLevel"
+  (close)="closeChildrenModal()">
+</app-children-list-modal>
 

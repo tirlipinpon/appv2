@@ -1,0 +1,65 @@
+<div 
+  class="modal-backdrop" 
+  (click)="onBackdropClick($event)"
+  (keydown.escape)="onClose()"
+  tabindex="0"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="modal-title">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modal-title">👥 Enfants inscrits à "{{ categoryName }}"</h3>
+      <button type="button" class="close-btn" (click)="onClose()" (keydown.enter)="onClose()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div *ngIf="loading()" class="loading">
+        <p>Chargement des enfants...</p>
+      </div>
+
+      <div *ngIf="error()" class="error-message">
+        <p>⚠️ {{ error() }}</p>
+      </div>
+
+      <div *ngIf="!loading() && !error() && children().length === 0" class="empty-state">
+        <p>Aucun enfant inscrit à cette sous-catégorie.</p>
+      </div>
+
+      <div *ngIf="!loading() && !error() && children().length > 0" class="children-list">
+        <div class="children-count-info">
+          <strong>{{ children().length }} enfant{{ children().length > 1 ? 's' : '' }} inscrit{{ children().length > 1 ? 's' : '' }}</strong>
+        </div>
+        
+        <div class="children-grid">
+          <div *ngFor="let child of children()" class="child-card">
+            <div class="child-avatar">
+              <span *ngIf="!child.avatar_url">{{ (child.firstname || '?')[0].toUpperCase() }}</span>
+              <img *ngIf="child.avatar_url" [src]="child.avatar_url" [alt]="child.firstname || 'Enfant'">
+            </div>
+            <div class="child-info">
+              <div class="child-name">
+                <strong>{{ child.firstname || 'Prénom non renseigné' }} {{ child.lastname || '' }}</strong>
+              </div>
+              <div class="child-details">
+                <span *ngIf="child.school_level" class="detail-item">
+                  🎓 {{ getSchoolLevelLabel(child.school_level) }}
+                </span>
+                <span *ngIf="child.birthdate" class="detail-item">
+                  🎂 {{ calculateAge(child.birthdate) }} ans
+                </span>
+                <span *ngIf="child.gender" class="detail-item">
+                  {{ child.gender === 'M' ? '👦' : child.gender === 'F' ? '👧' : '👤' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="onClose()">Fermer</button>
+    </div>
+  </div>
+</div>
+

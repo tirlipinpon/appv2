@@ -124,6 +124,14 @@ export class Infrastructure {
     return this.subjectCategoryService.transferCategory(categoryId, newSubjectId);
   }
 
+  getChildrenByCategory(
+    categoryId: string,
+    schoolId: string | null = null,
+    schoolLevel: string | null = null
+  ): Observable<{ children: any[]; error: PostgrestError | null }> {
+    return this.subjectCategoryService.getChildrenByCategory(categoryId, schoolId, schoolLevel);
+  }
+
   countChildrenByCategory(
     categoryId: string,
     schoolId: string | null = null,
@@ -166,10 +174,10 @@ export class Infrastructure {
   }
 
   getSharedAssignments(assignmentId: string): Observable<{ 
-    sharedAssignments: Array<{ 
+    sharedAssignments: { 
       assignment: TeacherAssignment; 
       teacher: { id: string; fullname: string | null } 
-    }>; 
+    }[]; 
     error: PostgrestError | null 
   }> {
     return this.teacherAssignmentService.getSharedAssignments(assignmentId);

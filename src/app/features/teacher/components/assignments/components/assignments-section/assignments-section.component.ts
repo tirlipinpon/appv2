@@ -7,6 +7,7 @@ import { TeacherStore } from '../../../../store/index';
 import { GamesStatsDisplayComponent } from '../../../../../../shared/components/games-stats-display/games-stats-display.component';
 import { GamesStatsService } from '../../../../../../shared/services/games-stats/games-stats.service';
 import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../transfer-assignment-dialog/transfer-assignment-dialog.component';
+import { ChildrenListModalComponent } from '../children-list-modal/children-list-modal.component';
 import { getSchoolLevelLabel, SCHOOL_LEVELS } from '../../../../utils/school-levels.util';
 import type { TeacherAssignment } from '../../../../types/teacher-assignment';
 import type { SubjectCategory } from '../../../../types/subject';
@@ -23,7 +24,8 @@ import { map } from 'rxjs/operators';
     RouterModule,
     MatTooltipModule,
     GamesStatsDisplayComponent,
-    TransferAssignmentDialogComponent
+    TransferAssignmentDialogComponent,
+    ChildrenListModalComponent
   ],
   templateUrl: './assignments-section.component.html',
   styleUrl: './assignments-section.component.scss'
@@ -54,6 +56,10 @@ export class AssignmentsSectionComponent {
   // Signal pour gérer l'affichage du dialog de transfert
   readonly showTransferDialog = signal<boolean>(false);
   readonly selectedAssignmentForTransfer = signal<TeacherAssignmentWithJoins | null>(null);
+
+  // Signal pour gérer l'affichage du modal des enfants
+  readonly showChildrenModal = signal<boolean>(false);
+  readonly selectedCategoryForChildren = signal<{ id: string; name: string; schoolId: string | null; schoolLevel: string | null } | null>(null);
 
   // Filtre par école
   readonly selectedSchoolId = signal<string | null>(null); // null = toutes les écoles
@@ -463,6 +469,23 @@ export class AssignmentsSectionComponent {
   hasCategories(assignment: { subject_id?: string | null }): boolean {
     if (!assignment.subject_id) return false;
     return this.subjectsWithCategories().has(assignment.subject_id);
+  }
+
+  // Ouvrir le modal des enfants pour une catégorie
+  openChildrenModal(category: SubjectCategory, assignment: TeacherAssignment): void {
+    this.selectedCategoryForChildren.set({
+      id: category.id,
+      name: category.name,
+      schoolId: assignment.school_id || null,
+      schoolLevel: assignment.school_level || null
+    });
+    this.showChildrenModal.set(true);
+  }
+
+  // Fermer le modal des enfants
+  closeChildrenModal(): void {
+    this.showChildrenModal.set(false);
+    this.selectedCategoryForChildren.set(null);
   }
 }
 
