@@ -141,11 +141,19 @@
     align-items: center;
     gap: 12px;
     flex: 1;
+    flex-wrap: wrap;
   }
 
   h4 {
     margin: 0;
     font-size: 18px;
+  }
+
+  .game-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
   }
 
   .toggle-btn {

@@ -52,9 +52,12 @@
           </button>
         </div>
         <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
-        <p *ngIf="assignment.school_year_id">📅 Année: {{ assignment.school_year_id }}</p>
+        <p *ngIf="assignment.school_year_id">📅 Année: {{ getSchoolYearLabel(assignment.school_year_id) }}</p>
         <p *ngIf="assignment.school_level">🎓 Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
         <p>👥 Enfants: {{ getStudentCount(assignment.id) }}</p>
+        <p *ngIf="assignment.subject_id && getTotalGamesCount(assignment.subject_id) > 0">
+          🎮 Jeux: {{ getTotalGamesCount(assignment.subject_id) }} jeu{{ getTotalGamesCount(assignment.subject_id) > 1 ? 'x' : '' }}
+        </p>
         <app-games-stats-display
           *ngIf="assignment.subject_id"
           [subjectId]="assignment.subject_id">
@@ -101,7 +104,7 @@
           [routerLink]="['/teacher-subjects', assignment.subject_id]"
           [queryParams]="{ school_id: assignment.school_id, school_level: assignment.school_level }"
           class="btn btn-secondary btn-sm">
-          ✏️ Gérer
+          ✏️ Éditer + sous-catégories
         </a>
         <a
           [routerLink]="['/teacher-subjects', assignment.subject_id, 'games']"

@@ -13,6 +13,14 @@
     <div class="game-header-info">
       <h4>{{ game.name }}</h4>
       <span class="game-type-badge">{{ currentGameTypeName() }}</span>
+      <div class="game-header-actions" (click)="$event.stopPropagation()">
+        <button class="btn btn-info btn-sm" (click)="openPreview()" [disabled]="isEditing() && !gameSpecificValid()">
+          👁️ Prévisualiser
+        </button>
+        <button class="btn btn-warning btn-sm" (click)="onDuplicateClick()">
+          📋 Dupliquer
+        </button>
+      </div>
     </div>
     <button type="button" class="toggle-btn" [attr.aria-expanded]="isExpanded()">
       {{ isExpanded() ? '−' : '+' }}
@@ -136,14 +144,8 @@
         <button class="btn btn-primary" (click)="saveEdit()" [disabled]="!gameSpecificValid()">
           ✅ Enregistrer
         </button>
-        <button class="btn btn-info" (click)="openPreview()" [disabled]="!gameSpecificValid()">
-          👁️ Prévisualiser
-        </button>
         <button class="btn btn-secondary" (click)="cancelEdit()">
           ❌ Annuler
-        </button>
-        <button class="btn btn-warning" (click)="onDuplicateClick()">
-          📋 Dupliquer
         </button>
         <button class="btn btn-danger" (click)="onDeleteClick()">
           🗑️ Supprimer

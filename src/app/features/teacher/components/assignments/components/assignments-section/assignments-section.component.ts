@@ -214,6 +214,37 @@ export class AssignmentsSectionComponent {
     }
   });
 
+  // Effect pour charger les années scolaires pour toutes les écoles des affectations
+  private readonly loadSchoolYearsEffect = effect(() => {
+    const assignments = this.filteredAssignments();
+    if (assignments.length === 0) {
+      return;
+    }
+
+    // Extraire les school_id uniques qui ont des school_year_id
+    const schoolIds = [...new Set(
+      assignments
+        .filter(a => a.school_id && a.school_year_id)
+        .map(a => a.school_id!)
+    )];
+
+    // Charger les années scolaires pour chaque école
+    const currentSchoolYears = this.teacherAssignmentStore.schoolYears();
+    const loadedSchoolIds = new Set(
+      currentSchoolYears.map(sy => {
+        // Trouver l'école de cette année scolaire depuis les affectations
+        const assignment = assignments.find(a => a.school_year_id === sy.id);
+        return assignment?.school_id;
+      }).filter(Boolean) as string[]
+    );
+
+    schoolIds.forEach(schoolId => {
+      if (!loadedSchoolIds.has(schoolId)) {
+        this.teacherAssignmentStore.loadSchoolYears(schoolId);
+      }
+    });
+  });
+
   // Effect pour vérifier quelles matières ont des catégories
   private readonly loadCategoriesExistenceEffect = effect(() => {
     const assignments = this.filteredAssignments();
@@ -282,6 +313,20 @@ export class AssignmentsSectionComponent {
     const schools = this.teacherAssignmentStore.schools();
     const school = schools.find(s => s.id === schoolId);
     return school ? school.name : 'École inconnue';
+  }
+
+  getSchoolYearLabel(schoolYearId: string | null): string {
+    if (!schoolYearId) return 'Non renseignée';
+    
+    const schoolYears = this.teacherAssignmentStore.schoolYears();
+    const schoolYear = schoolYears.find(sy => sy.id === schoolYearId);
+    return schoolYear ? schoolYear.label : 'Année inconnue';
+  }
+
+  getTotalGamesCount(subjectId: string | null | undefined): number {
+    if (!subjectId) return 0;
+    const stats = this.gamesStatsService.getStats(subjectId);
+    return stats?.total || 0;
   }
 
   getSubjectName(subjectId: string): string {
