@@ -486,36 +486,9 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   delete(gameId: string): void {
-    // Trouver le jeu à supprimer pour afficher ses informations
-    const game = this.games().find(g => g.id === gameId);
-    if (!game) return;
+    const message = `⚠️ ATTENTION : Cette action est IRRÉVERSIBLE !
 
-    const gameTypeName = this.getGameTypeName(game.game_type_id);
-    const subjectName = this.currentSubjectName();
-    const questionPreview = game.question ? (game.question.length > 50 ? game.question.substring(0, 50) + '...' : game.question) : 'Sans question';
-
-    const message = `SUPPRESSION DÉFINITIVE DU JEU
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-INFORMATIONS DU JEU :
-• Nom : ${game.name}
-• Type : ${gameTypeName}
-• Question : ${questionPreview}
-• Matière : ${subjectName}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚠️ ATTENTION : Cette action est IRRÉVERSIBLE !
-
-CONSÉQUENCES DE LA SUPPRESSION :
-• Le jeu sera définitivement supprimé
-• Toutes les données associées seront perdues
-• Si le jeu est utilisé dans des affectations, celles-ci pourront être affectées
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Êtes-vous absolument sûr de vouloir supprimer ce jeu ?`;
+Êtes-vous sûr de vouloir supprimer ce jeu ?`;
 
     if (confirm(message)) {
       this.application.deleteGame(gameId);

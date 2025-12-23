@@ -323,28 +323,10 @@ export class AssignmentsSectionComponent {
   });
 
   // Méthode pour obtenir le nombre d'enfants d'une affectation
-  // Inclut les enfants inscrits directement à la matière + ceux inscrits via les sous-catégories
+  // Utilise uniquement le compte direct (enfants inscrits directement à la matière)
+  // Les enfants des catégories sont affichés séparément dans les détails de chaque catégorie
   getStudentCount(assignmentId: string): number {
-    const directCount = this.studentCounts().get(assignmentId) || 0;
-    
-    // Si les catégories sont chargées, ajouter les enfants des sous-catégories
-    const categories = this.getCategoriesForAssignment(assignmentId);
-    if (categories.length > 0) {
-      // Récupérer tous les enfants uniques des sous-catégories
-      // Note: on utilise un Set pour éviter les doublons si un enfant est inscrit à plusieurs sous-catégories
-      const categoryChildrenCounts = categories.map(cat => 
-        this.getChildrenCountForCategory(cat.id)
-      );
-      const totalCategoryChildren = categoryChildrenCounts.reduce((sum, count) => sum + count, 0);
-      
-      // Retourner le maximum entre le nombre direct et le nombre via catégories
-      // car un enfant peut être inscrit directement ET via une catégorie
-      // Pour éviter les doublons, on prend le max (approximation)
-      // Une meilleure solution serait de récupérer les IDs uniques, mais cela nécessiterait plus de requêtes
-      return Math.max(directCount, totalCategoryChildren);
-    }
-    
-    return directCount;
+    return this.studentCounts().get(assignmentId) || 0;
   }
 
   // Méthodes utilitaires
