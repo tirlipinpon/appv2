@@ -9,21 +9,22 @@
     [class.game-type-vrai-faux]="currentGameTypeName().toLowerCase() === 'vrai/faux'"
     [class.game-type-memory]="currentGameTypeName().toLowerCase() === 'memory'">
   <!-- Header cliquable pour toggle -->
-  <div class="game-header-toggle" (click)="toggleExpanded()">
+  <div class="game-header-toggle">
     <div class="game-header-info">
       <h4>{{ game.name }}</h4>
       <span class="game-type-badge">{{ currentGameTypeName() }}</span>
       <div class="game-header-actions" (click)="$event.stopPropagation()">
-        <button class="btn btn-info btn-sm" (click)="openPreview()" [disabled]="isEditing() && !gameSpecificValid()">
+        <button class="btn btn-info btn-sm" (click)="openPreview(); $event.stopPropagation()" [disabled]="isEditing() && !gameSpecificValid()">
           👁️ Prévisualiser
         </button>
-        <button class="btn btn-warning btn-sm" (click)="onDuplicateClick()">
+        <button class="btn btn-warning btn-sm" (click)="onDuplicateClick(); $event.stopPropagation()">
           📋 Dupliquer
         </button>
       </div>
     </div>
-    <button type="button" class="toggle-btn" [attr.aria-expanded]="isExpanded()">
-      {{ isExpanded() ? '−' : '+' }}
+    <button type="button" class="toggle-btn" (click)="toggleExpanded()" [attr.aria-expanded]="isExpanded()" [attr.aria-label]="isExpanded() ? 'Réduire' : 'Développer'">
+      <span class="toggle-icon">{{ isExpanded() ? '−' : '+' }}</span>
+      <span class="toggle-text">{{ isExpanded() ? 'Réduire' : 'Développer' }}</span>
     </button>
   </div>
 
@@ -141,7 +142,7 @@
       }
 
       <div class="edit-actions">
-        <button class="btn btn-primary" (click)="saveEdit()" [disabled]="!gameSpecificValid()">
+        <button class="btn btn-primary" (click)="saveEdit()" [disabled]="!gameSpecificValid() || !hasChanges()">
           ✅ Enregistrer
         </button>
         <button class="btn btn-secondary" (click)="cancelEdit()">

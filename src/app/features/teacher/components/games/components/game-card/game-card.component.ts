@@ -76,6 +76,56 @@ export class GameCardComponent implements OnInit, OnChanges {
     return this.gameTypeName;
   });
 
+  readonly hasChanges = computed(() => {
+    // Si on n'est pas en mode édition, pas de changements
+    if (!this.isEditing()) return false;
+
+    // Comparer les champs globaux
+    const initialGlobal = this.initialGlobalFields();
+    const currentGlobal = this.currentGlobalFields();
+    
+    if (!initialGlobal && !currentGlobal) {
+      // Les deux sont null, continuer à vérifier les données spécifiques
+    } else if (!initialGlobal || !currentGlobal) {
+      // L'un est null et l'autre non, il y a des changements
+      return true;
+    } else {
+      // Les deux existent, comparer
+      if (this.normalizeString(initialGlobal.instructions) !== this.normalizeString(currentGlobal.instructions)) return true;
+      if (this.normalizeString(initialGlobal.question) !== this.normalizeString(currentGlobal.question)) return true;
+      
+      // Comparer les aides (arrays)
+      const initialAides = (initialGlobal.aides || []).map(a => this.normalizeString(a)).filter(a => a);
+      const currentAides = (currentGlobal.aides || []).map(a => this.normalizeString(a)).filter(a => a);
+      if (initialAides.length !== currentAides.length) return true;
+      if (initialAides.some((aide, idx) => aide !== currentAides[idx])) return true;
+    }
+
+    // Comparer les données spécifiques au jeu
+    const initialData = this.initialGameData();
+    const currentData = this.gameSpecificData();
+    
+    if (!initialData && !currentData) {
+      // Les deux sont null, aucun changement
+      return false;
+    } else if (!initialData || !currentData) {
+      // L'un est null et l'autre non, il y a des changements
+      return true;
+    } else {
+      // Comparaison en profondeur avec JSON.stringify pour simplifier
+      try {
+        return JSON.stringify(initialData) !== JSON.stringify(currentData);
+      } catch {
+        // Si la comparaison JSON échoue, considérer qu'il y a des changements
+        return true;
+      }
+    }
+  });
+
+  private normalizeString(value: string | null | undefined): string {
+    return (value || '').trim();
+  }
+
   toggleExpanded(): void {
     // Si on est en mode édition, sortir du mode édition et refermer
     if (this.isEditing()) {

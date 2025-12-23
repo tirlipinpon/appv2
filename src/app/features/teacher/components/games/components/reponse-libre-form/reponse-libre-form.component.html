@@ -4,6 +4,7 @@
     <input 
       id="reponse_valide" 
       type="text" 
+      class="form-control"
       formControlName="reponse_valide" 
       placeholder="Ex: Paris">
     <span class="error-message" *ngIf="form.get('reponse_valide')?.hasError('required') && form.get('reponse_valide')?.touched">

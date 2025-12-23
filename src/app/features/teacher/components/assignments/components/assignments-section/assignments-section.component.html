@@ -103,25 +103,33 @@
         <a
           [routerLink]="['/teacher-subjects', assignment.subject_id]"
           [queryParams]="{ school_id: assignment.school_id, school_level: assignment.school_level }"
-          class="btn btn-secondary btn-sm">
-          ✏️ Éditer + sous-catégories
+          class="btn btn-secondary btn-sm"
+          matTooltip="Éditer + sous-catégories"
+          aria-label="Éditer + sous-catégories">
+          ✏️
         </a>
         <a
           [routerLink]="['/teacher-subjects', assignment.subject_id, 'games']"
-          class="btn btn-primary btn-sm">
-          🎮 Gérer les jeux
+          class="btn btn-primary btn-sm"
+          matTooltip="Gérer les jeux"
+          aria-label="Gérer les jeux">
+          🎮
         </a>
         <button
           type="button"
           (click)="onTransferAssignment(assignment.id)"
-          class="btn btn-info btn-sm">
-          🔄 Transférer
+          class="btn btn-info btn-sm"
+          matTooltip="Transférer"
+          aria-label="Transférer">
+          🔄
         </button>
         <button
           type="button"
           (click)="onDeleteAssignment(assignment.id)"
-          class="btn btn-danger btn-sm">
-          🗑️ Supprimer
+          class="btn btn-danger btn-sm"
+          matTooltip="Supprimer"
+          aria-label="Supprimer">
+          🗑️
         </button>
       </div>
     </div>
