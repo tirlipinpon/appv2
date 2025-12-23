@@ -81,6 +81,8 @@
 .subjects-column {
   @include card-base;
   padding: $spacing-lg;
+  display: flex;
+  flex-direction: column;
 
   &.active-column {
     border-top: $border-width-medium solid $color-success;
@@ -97,6 +99,7 @@
     margin-bottom: $spacing-lg;
     padding-bottom: $spacing-md;
     border-bottom: $border-width-medium solid $color-gray-200;
+    flex-shrink: 0; // Empêche le header de rétrécir
 
     h2 {
       margin: 0;
@@ -115,27 +118,8 @@
   }
 
   .subjects-list {
-    max-height: 500px;
-    overflow-y: auto;
+    overflow: visible; // Pas de scroll, afficher tout le contenu
     padding-right: $spacing-md;
-
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: $color-gray-200;
-      border-radius: 10px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: $color-gray-500;
-      border-radius: 10px;
-
-      &:hover {
-        background: $color-gray-700;
-      }
-    }
   }
 }
 

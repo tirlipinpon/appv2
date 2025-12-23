@@ -222,14 +222,15 @@ export class TeacherAssignmentService {
           return of({ assignment: null, error: fetchError || null });
         }
 
-        // Vérifier si le professeur cible a déjà une affectation pour cette matière/école/niveau
+        // Vérifier si le professeur cible a déjà une affectation (active ou supprimée) pour cette matière/école/niveau
         // Construire la requête en gérant correctement les valeurs null
+        const schoolLevel = assignmentToTransfer.school_level || '';
         let checkQuery = this.supabaseService.client
           .from('teacher_assignments')
-          .select('id')
+          .select('id, deleted_at')
           .eq('teacher_id', newTeacherId)
           .eq('subject_id', assignmentToTransfer.subject_id)
-          .is('deleted_at', null);
+          .eq('school_level', schoolLevel);
 
         // Gérer school_id (peut être null)
         if (assignmentToTransfer.school_id) {
@@ -237,10 +238,6 @@ export class TeacherAssignmentService {
         } else {
           checkQuery = checkQuery.is('school_id', null);
         }
-
-        // Gérer school_level (normalisé en chaîne vide dans la DB si null)
-        const schoolLevel = assignmentToTransfer.school_level || '';
-        checkQuery = checkQuery.eq('school_level', schoolLevel);
 
         return from(checkQuery.maybeSingle()).pipe(
           switchMap(({ data: existingAssignment, error: checkError }) => {
@@ -250,14 +247,54 @@ export class TeacherAssignmentService {
               console.warn('[TransferAssignment] Erreur lors de la vérification, tentative de transfert:', checkError);
             }
 
-            // Si le professeur cible a déjà une affectation, supprimer celle qu'on transfère
-            if (existingAssignment && existingAssignment.id) {
-              console.log('[TransferAssignment] Le professeur cible a déjà cette affectation, suppression de l\'affectation source');
+            // Si le professeur cible a déjà une affectation active, supprimer celle qu'on transfère
+            if (existingAssignment && existingAssignment.id && !existingAssignment.deleted_at) {
+              console.log('[TransferAssignment] Le professeur cible a déjà cette affectation active, suppression de l\'affectation source');
               return this.deleteAssignment(assignmentId).pipe(
                 map(({ error }) => ({
                   assignment: null, // Pas de nouvelle affectation créée, juste suppression
                   error: error || null,
                 }))
+              );
+            }
+
+            // Si le professeur cible a une affectation supprimée, la réactiver et supprimer celle du source
+            if (existingAssignment && existingAssignment.id && existingAssignment.deleted_at) {
+              console.log('[TransferAssignment] Le professeur cible a une affectation supprimée, réactivation et suppression de l\'affectation source');
+              return from(
+                this.supabaseService.client
+                  .from('teacher_assignments')
+                  .update({ deleted_at: null })
+                  .eq('id', existingAssignment.id)
+                  .select()
+                  .single()
+              ).pipe(
+                switchMap(({ data: reactivatedAssignment, error: reactivateError }) => {
+                  if (reactivateError) {
+                    console.error('[TransferAssignment] Erreur lors de la réactivation:', reactivateError);
+                    // En cas d'erreur, essayer le transfert normal
+                    return from(
+                      this.supabaseService.client
+                        .from('teacher_assignments')
+                        .update({ teacher_id: newTeacherId })
+                        .eq('id', assignmentId)
+                        .select()
+                        .single()
+                    ).pipe(
+                      map(({ data, error }) => ({
+                        assignment: data as TeacherAssignment | null,
+                        error: error || null,
+                      }))
+                    );
+                  }
+                  // Réactivation réussie, supprimer l'affectation source
+                  return this.deleteAssignment(assignmentId).pipe(
+                    map(({ error }) => ({
+                      assignment: reactivatedAssignment as TeacherAssignment | null,
+                      error: error || null,
+                    }))
+                  );
+                })
               );
             }
 
@@ -333,25 +370,42 @@ export class TeacherAssignmentService {
         const sourceAssignment = validation.sourceAssignment!;
         const schoolLevel = sourceAssignment.school_level || '';
 
-        // Si une affectation supprimée existe, la réactiver
+        // Si une affectation supprimée existe, la réactiver en utilisant upsert avec l'ID
         if (validation.existingAssignment && validation.existingAssignment.deleted_at) {
           console.log('[ShareAssignment] Réactivation d\'une affectation supprimée');
+          // Utiliser upsert avec l'ID existant pour réactiver l'affectation
+          // Cela évite les problèmes de RLS car on met à jour une ligne existante
+          const reactivatedAssignment = {
+            id: validation.existingAssignment.id, // Inclure l'ID pour mettre à jour la ligne existante
+            teacher_id: newTeacherId,
+            school_id: sourceAssignment.school_id,
+            school_year_id: sourceAssignment.school_year_id,
+            school_level: schoolLevel,
+            class_id: sourceAssignment.class_id,
+            subject_id: sourceAssignment.subject_id,
+            roles: sourceAssignment.roles || ['titulaire'],
+            start_date: sourceAssignment.start_date,
+            end_date: sourceAssignment.end_date,
+            deleted_at: null, // réactiver
+          };
           return from(
             this.supabaseService.client
               .from('teacher_assignments')
-              .update({ deleted_at: null })
-              .eq('id', validation.existingAssignment!.id)
+              .upsert(reactivatedAssignment, { onConflict: 'id' })
               .select()
               .single()
           ).pipe(
-            map(({ data, error }) => ({
-              assignment: data as TeacherAssignment | null,
-              error: error || null,
-            }))
+            map(({ data, error }) => {
+              return {
+                assignment: data as TeacherAssignment | null,
+                error: error || null,
+              };
+            })
           );
         }
 
-        // Sinon, créer une nouvelle affectation
+        // Sinon, créer une nouvelle affectation en utilisant upsert
+        // Cela permet de créer ou réactiver une affectation existante supprimée
         const newAssignment = {
           teacher_id: newTeacherId,
           school_id: sourceAssignment.school_id,
@@ -362,20 +416,22 @@ export class TeacherAssignmentService {
           roles: sourceAssignment.roles || ['titulaire'],
           start_date: sourceAssignment.start_date,
           end_date: sourceAssignment.end_date,
-          deleted_at: null,
+          deleted_at: null, // réactiver en cas d'upsert sur une ligne soft-supprimée
         };
 
         return from(
           this.supabaseService.client
             .from('teacher_assignments')
-            .insert(newAssignment)
+            .upsert(newAssignment, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
             .select()
             .single()
         ).pipe(
-          map(({ data, error }) => ({
-            assignment: data as TeacherAssignment | null,
-            error: error || null,
-          }))
+          map(({ data, error }) => {
+            return {
+              assignment: data as TeacherAssignment | null,
+              error: error || null,
+            };
+          })
         );
       })
     );
