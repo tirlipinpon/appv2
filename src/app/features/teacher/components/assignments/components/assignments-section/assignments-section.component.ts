@@ -43,6 +43,7 @@ export class AssignmentsSectionComponent {
   readonly gamesByCategory = signal<Map<string, Game[]>>(new Map());
   readonly childrenCountByCategory = signal<Map<string, number>>(new Map());
   readonly loadingCategories = signal<Map<string, boolean>>(new Map());
+  readonly subjectsWithCategories = signal<Set<string>>(new Set()); // IDs des matières qui ont des catégories
 
   // Signals pour les affectations
   readonly teacherAssignments = computed(() => this.teacherAssignmentStore.assignments());
@@ -205,6 +206,44 @@ export class AssignmentsSectionComponent {
     if (subjectIds.length > 0) {
       this.gamesStatsService.loadStatsForSubjects(subjectIds);
     }
+  });
+
+  // Effect pour vérifier quelles matières ont des catégories
+  private readonly loadCategoriesExistenceEffect = effect(() => {
+    const assignments = this.filteredAssignments();
+    if (assignments.length === 0) {
+      this.subjectsWithCategories.set(new Set());
+      return;
+    }
+
+    // Extraire les subject_id uniques
+    const subjectIds = [...new Set(
+      assignments
+        .filter(a => a.subject_id)
+        .map(a => a.subject_id!)
+    )];
+
+    if (subjectIds.length === 0) return;
+
+    // Charger les catégories pour chaque matière pour vérifier leur existence
+    const categoryObservables = subjectIds.map(subjectId =>
+      this.infrastructure.getCategoriesBySubject(subjectId).pipe(
+        map(({ categories, error }) => ({
+          subjectId,
+          hasCategories: !error && categories && categories.length > 0
+        }))
+      )
+    );
+
+    forkJoin(categoryObservables).subscribe(results => {
+      const subjectsWithCats = new Set<string>();
+      results.forEach(({ subjectId, hasCategories }) => {
+        if (hasCategories) {
+          subjectsWithCats.add(subjectId);
+        }
+      });
+      this.subjectsWithCategories.set(subjectsWithCats);
+    });
   });
 
   // Méthode pour obtenir le nombre d'enfants d'une affectation
@@ -418,6 +457,12 @@ export class AssignmentsSectionComponent {
   // Vérifier si les catégories sont en cours de chargement
   isLoadingCategories(assignmentId: string): boolean {
     return this.loadingCategories().get(assignmentId) || false;
+  }
+
+  // Vérifier si une affectation a des catégories
+  hasCategories(assignment: { subject_id?: string | null }): boolean {
+    if (!assignment.subject_id) return false;
+    return this.subjectsWithCategories().has(assignment.subject_id);
   }
 }
 

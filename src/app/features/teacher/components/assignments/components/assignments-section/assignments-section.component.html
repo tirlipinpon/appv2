@@ -42,6 +42,7 @@
         <div class="assignment-header">
           <h4>{{ getAssignmentSubjectName(assignment) }}</h4>
           <button
+            *ngIf="hasCategories(assignment)"
             type="button"
             class="toggle-btn"
             (click)="toggleAssignment(assignment.id)"

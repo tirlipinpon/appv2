@@ -44,6 +44,11 @@ export class TransferAssignmentDialogComponent implements OnInit, OnDestroy {
   readonly isValidating = signal<boolean>(false);
   readonly validationMessage = signal<string | null>(null);
   readonly canProceed = signal<boolean>(true);
+  readonly sharedAssignments = signal<Array<{ 
+    assignment: TeacherAssignment; 
+    teacher: { id: string; fullname: string | null } 
+  }>>([]);
+  readonly isLoadingShared = signal<boolean>(false);
   
   private readonly validationTrigger$ = new RxSubject<void>();
   private readonly destroy$ = new RxSubject<void>();
@@ -75,6 +80,7 @@ export class TransferAssignmentDialogComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadTeachers();
     this.setupValidation();
+    this.loadSharedAssignments();
   }
 
   private setupValidation(): void {
@@ -166,6 +172,43 @@ export class TransferAssignmentDialogComponent implements OnInit, OnDestroy {
 
   getTeacherDisplayName(teacher: Teacher): string {
     return teacher.fullname || `Professeur ${teacher.id.substring(0, 8)}`;
+  }
+
+  private loadSharedAssignments(): void {
+    if (!this.assignment?.id) return;
+    
+    this.isLoadingShared.set(true);
+    this.infrastructure.getSharedAssignments(this.assignment.id).subscribe({
+      next: ({ sharedAssignments, error }) => {
+        this.isLoadingShared.set(false);
+        if (error) {
+          console.error('[TransferDialog] Erreur lors du chargement des affectations partagées:', error);
+          this.sharedAssignments.set([]);
+          return;
+        }
+        this.sharedAssignments.set(sharedAssignments || []);
+      },
+      error: (error) => {
+        this.isLoadingShared.set(false);
+        console.error('[TransferDialog] Erreur lors du chargement des affectations partagées:', error);
+        this.sharedAssignments.set([]);
+      }
+    });
+  }
+
+  getSharedTeachersNames(): string {
+    const shared = this.sharedAssignments();
+    if (shared.length === 0) return '';
+    
+    const names = shared
+      .map(s => s.teacher.fullname || `Professeur ${s.teacher.id.substring(0, 8)}`)
+      .join(', ');
+    
+    return names;
+  }
+
+  hasSharedAssignments(): boolean {
+    return this.sharedAssignments().length > 0;
   }
 
   onConfirm(): void {

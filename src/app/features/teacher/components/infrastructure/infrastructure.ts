@@ -165,6 +165,16 @@ export class Infrastructure {
     return this.teacherAssignmentService.shareAssignment(assignmentId, newTeacherId);
   }
 
+  getSharedAssignments(assignmentId: string): Observable<{ 
+    sharedAssignments: Array<{ 
+      assignment: TeacherAssignment; 
+      teacher: { id: string; fullname: string | null } 
+    }>; 
+    error: PostgrestError | null 
+  }> {
+    return this.teacherAssignmentService.getSharedAssignments(assignmentId);
+  }
+
   // ===== Domaine Jeux =====
   getGameTypes(): Observable<{ gameTypes: GameType[]; error: PostgrestError | null }> {
     return this.gameTypeService.getGameTypes();

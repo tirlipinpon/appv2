@@ -21,6 +21,18 @@
           <span class="info-label">Niveau:</span>
           <span class="info-value">{{ getSchoolLevelLabel(assignment.school_level) }}</span>
         </div>
+        
+        <!-- Informations de partage -->
+        <div class="shared-info" *ngIf="isLoadingShared()">
+          <span class="info-label">Chargement des informations de partage...</span>
+        </div>
+        <div class="shared-info" *ngIf="!isLoadingShared() && hasSharedAssignments()">
+          <span class="info-label">🔗 Partagé avec:</span>
+          <span class="info-value shared-teachers">{{ getSharedTeachersNames() }}</span>
+        </div>
+        <div class="shared-info" *ngIf="!isLoadingShared() && !hasSharedAssignments()">
+          <span class="info-label">ℹ️ Cette matière n'est pas partagée avec d'autres professeurs.</span>
+        </div>
       </div>
 
       <form [formGroup]="transferForm">

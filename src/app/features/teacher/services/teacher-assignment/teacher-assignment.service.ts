@@ -380,5 +380,110 @@ export class TeacherAssignmentService {
       })
     );
   }
+
+  /**
+   * Récupère les autres affectations partagées pour une affectation donnée
+   * (même matière/école/niveau mais avec d'autres professeurs)
+   */
+  getSharedAssignments(assignmentId: string): Observable<{ 
+    sharedAssignments: Array<{ 
+      assignment: TeacherAssignment; 
+      teacher: { id: string; fullname: string | null } 
+    }>; 
+    error: PostgrestError | null 
+  }> {
+    // Récupérer l'affectation source
+    return from(
+      this.supabaseService.client
+        .from('teacher_assignments')
+        .select('*')
+        .eq('id', assignmentId)
+        .single()
+    ).pipe(
+      switchMap(({ data: sourceAssignment, error: fetchError }) => {
+        if (fetchError || !sourceAssignment) {
+          return of({ sharedAssignments: [], error: fetchError || null });
+        }
+
+        const schoolLevel = sourceAssignment.school_level || '';
+        
+        // Construire la requête pour trouver les autres affectations
+        let query = this.supabaseService.client
+          .from('teacher_assignments')
+          .select('*')
+          .eq('subject_id', sourceAssignment.subject_id)
+          .eq('school_level', schoolLevel)
+          .is('deleted_at', null)
+          .neq('id', assignmentId); // Exclure l'affectation actuelle
+
+        // Gérer school_id (peut être null)
+        if (sourceAssignment.school_id) {
+          query = query.eq('school_id', sourceAssignment.school_id);
+        } else {
+          query = query.is('school_id', null);
+        }
+
+        return from(query).pipe(
+          switchMap(({ data: assignments, error }) => {
+            if (error) {
+              return of({ sharedAssignments: [], error });
+            }
+
+            if (!assignments || assignments.length === 0) {
+              return of({ sharedAssignments: [], error: null });
+            }
+
+            // Récupérer les IDs des professeurs uniques
+            const teacherIds = [...new Set(assignments.map((a: any) => a.teacher_id).filter(Boolean))];
+
+            if (teacherIds.length === 0) {
+              // Si pas de teacher_id, retourner les affectations sans noms
+              const shared = assignments.map((item: any) => ({
+                assignment: item as TeacherAssignment,
+                teacher: {
+                  id: item.teacher_id || '',
+                  fullname: null
+                }
+              }));
+              return of({ sharedAssignments: shared, error: null });
+            }
+
+            // Récupérer les informations des professeurs
+            return from(
+              this.supabaseService.client
+                .from('teachers')
+                .select('id, fullname')
+                .in('id', teacherIds)
+            ).pipe(
+              map(({ data: teachers, error: teachersError }) => {
+                if (teachersError) {
+                  console.warn('[getSharedAssignments] Erreur lors de la récupération des professeurs:', teachersError);
+                }
+
+                // Créer une map pour accéder rapidement aux informations des professeurs
+                const teachersMap = new Map<string, { id: string; fullname: string | null }>();
+                (teachers || []).forEach((t: any) => {
+                  teachersMap.set(t.id, { id: t.id, fullname: t.fullname || null });
+                });
+
+                // Combiner les affectations avec les informations des professeurs
+                const shared = assignments.map((item: any) => {
+                  const teacherId = item.teacher_id || '';
+                  const teacherInfo = teachersMap.get(teacherId) || { id: teacherId, fullname: null };
+                  
+                  return {
+                    assignment: item as TeacherAssignment,
+                    teacher: teacherInfo
+                  };
+                });
+
+                return { sharedAssignments: shared, error: null };
+              })
+            );
+          })
+        );
+      })
+    );
+  }
 }
 
