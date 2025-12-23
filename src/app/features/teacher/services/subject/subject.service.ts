@@ -178,15 +178,13 @@ export class SubjectService {
     schoolLevel: string | null
   ): Observable<{ count: number; error: PostgrestError | null }> {
     // Joindre avec la table children pour obtenir le school_level et filtrer
-    let query = this.supabaseService.client
+    // Ne pas filtrer par school_id dans child_subject_enrollments car cette colonne
+    // peut ne pas exister ou être null - on filtre côté client après le join
+    const query = this.supabaseService.client
       .from('child_subject_enrollments')
       .select('child_id, child:children(school_level, school_id, is_active)')
       .eq('subject_id', subjectId)
       .eq('selected', true);
-
-    if (schoolId) {
-      query = query.eq('school_id', schoolId);
-    }
 
     // Récupérer les données et filtrer par school_level côté client
     // car Supabase ne permet pas de filtrer directement sur les colonnes de la table jointe
@@ -207,23 +205,17 @@ export class SubjectService {
           child: { school_level: string | null; school_id: string | null; is_active: boolean } | null;
         }>;
 
-        const filtered = enrollments.filter(e => {
+        // Pour les matières, on compte tous les enfants inscrits (actifs)
+        // sans filtrer par école/niveau car une matière peut être enseignée
+        // dans plusieurs écoles/niveaux
+        const activeChildren = enrollments.filter(e => {
           const child = e.child;
-          
-          // Vérifier que l'enfant existe et est actif
-          if (!child || !child.is_active) return false;
-          
-          // Vérifier school_id si spécifié
-          if (schoolId && child.school_id !== schoolId) return false;
-          
-          // Vérifier school_level si spécifié
-          if (schoolLevel && child.school_level !== schoolLevel) return false;
-          
-          return true;
+          // Vérifier uniquement que l'enfant existe et est actif
+          return child && child.is_active;
         });
 
         return {
-          count: filtered.length,
+          count: activeChildren.length,
           error: null,
         };
       })
