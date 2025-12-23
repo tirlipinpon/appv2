@@ -89,40 +89,54 @@ export class SimonGameComponent implements OnInit, OnDestroy {
     const type = this.simonData.type_elements;
     const nombreElements = this.simonData.nombre_elements;
     
-    // Récupérer toutes les couleurs disponibles et les mélanger
-    const allColors = [
-      ...this.elementColors['couleurs'],
-      ...this.elementColors['chiffres'],
-      ...this.elementColors['lettres'],
-      ...this.elementColors['symboles'],
-    ];
-    const shuffledColors = this.shuffleArray(allColors);
-    
     if (type === 'personnalise' && this.simonData.elements && this.simonData.elements.length > 0) {
       // Mode personnalisé : utiliser les éléments fournis et mélanger
       const shuffledElements = this.shuffleArray([...this.simonData.elements]);
+      // Utiliser une seule couleur pour tous les éléments en mode personnalisé
+      const singleColor = this.elementColors['chiffres'][0]; // Utiliser la première couleur disponible
+      
       shuffledElements.slice(0, nombreElements).forEach((el, index) => {
         elements.push({
           id: index,
           value: el,
           displayValue: el,
-          color: shuffledColors[index % shuffledColors.length],
+          color: singleColor,
         });
       });
     } else {
       // Mode prédéfini
       let baseElements: { value: string; displayValue: string }[] = [];
+      let colorsToUse: string[] = [];
       
       switch (type) {
         case 'couleurs':
+          // Pour le mode couleurs, mapper directement les noms aux couleurs
           const colorNames = ['rouge', 'vert', 'bleu', 'jaune', 'violet', 'orange', 'rose', 'cyan', 'marron', 'gris'];
-          baseElements = colorNames.slice(0, nombreElements).map(name => ({
-            value: name,
-            displayValue: name,
-          }));
+          const colorMap: Record<string, string> = {
+            'rouge': '#ff4444',
+            'vert': '#44ff44',
+            'bleu': '#4444ff',
+            'jaune': '#ffff44',
+            'violet': '#8844ff',
+            'orange': '#ff8844',
+            'rose': '#ff4488',
+            'cyan': '#44ffff',
+            'marron': '#8b4513',
+            'gris': '#888888'
+          };
+          
+          colorNames.slice(0, nombreElements).forEach((name, index) => {
+            elements.push({
+              id: index,
+              value: name,
+              displayValue: name,
+              color: colorMap[name] || this.elementColors['couleurs'][index % this.elementColors['couleurs'].length],
+            });
+          });
           break;
           
         case 'chiffres':
+          colorsToUse = this.elementColors['chiffres'];
           baseElements = Array.from({ length: nombreElements }, (_, i) => ({
             value: String(i),
             displayValue: String(i),
@@ -130,6 +144,7 @@ export class SimonGameComponent implements OnInit, OnDestroy {
           break;
           
         case 'lettres':
+          colorsToUse = this.elementColors['lettres'];
           const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
           baseElements = letters.slice(0, nombreElements).map(letter => ({
             value: letter,
@@ -138,6 +153,7 @@ export class SimonGameComponent implements OnInit, OnDestroy {
           break;
           
         case 'symboles':
+          colorsToUse = this.elementColors['symboles'];
           const symbols = ['+', '-', '×', '÷', '=', '≠', '<', '>', '≤', '≥'];
           baseElements = symbols.slice(0, nombreElements).map(symbol => ({
             value: symbol,
@@ -146,27 +162,38 @@ export class SimonGameComponent implements OnInit, OnDestroy {
           break;
       }
       
-      // Mélanger les éléments et les couleurs
-      const shuffledBaseElements = this.shuffleArray(baseElements);
-      
-      shuffledBaseElements.forEach((el, index) => {
-        elements.push({
-          id: index,
-          value: el.value,
-          displayValue: el.displayValue,
-          color: shuffledColors[index % shuffledColors.length],
+      // Pour les modes autres que couleurs, mélanger les éléments et assigner les couleurs
+      if (type !== 'couleurs') {
+        const shuffledColors = this.shuffleArray([...colorsToUse]);
+        const shuffledBaseElements = this.shuffleArray(baseElements);
+        
+        shuffledBaseElements.forEach((el, index) => {
+          elements.push({
+            id: index,
+            value: el.value,
+            displayValue: el.displayValue,
+            color: shuffledColors[index % shuffledColors.length],
+          });
         });
-      });
+      }
     }
     
-    // Mélanger une dernière fois l'ordre final des éléments
-    const finalShuffled = this.shuffleArray(elements);
-    // Réassigner les IDs pour qu'ils soient séquentiels
-    finalShuffled.forEach((el, index) => {
-      el.id = index;
-    });
-    
-    this.availableElements.set(finalShuffled);
+    // Mélanger une dernière fois l'ordre final des éléments (sauf pour le mode couleurs qui est déjà correct)
+    if (type !== 'couleurs') {
+      const finalShuffled = this.shuffleArray(elements);
+      // Réassigner les IDs pour qu'ils soient séquentiels
+      finalShuffled.forEach((el, index) => {
+        el.id = index;
+      });
+      this.availableElements.set(finalShuffled);
+    } else {
+      // Pour le mode couleurs, juste mélanger l'ordre mais garder les couleurs correctes
+      const finalShuffled = this.shuffleArray(elements);
+      finalShuffled.forEach((el, index) => {
+        el.id = index;
+      });
+      this.availableElements.set(finalShuffled);
+    }
   }
 
   /**
@@ -345,6 +372,13 @@ export class SimonGameComponent implements OnInit, OnDestroy {
       style['border-color'] = element.color;
     }
     return style;
+  }
+
+  /**
+   * Vérifie si on est en mode couleurs (pour masquer le texte)
+   */
+  isColorMode(): boolean {
+    return this.simonData.type_elements === 'couleurs';
   }
 }
 

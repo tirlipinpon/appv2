@@ -36,7 +36,9 @@
         (click)="onElementClick(element.id)"
         [disabled]="isAnimating() || isGameOver() || !isPlaying()"
         [attr.aria-label]="'Élément ' + element.displayValue">
-        <span class="element-content">{{ element.displayValue }}</span>
+        @if (!isColorMode()) {
+          <span class="element-content">{{ element.displayValue }}</span>
+        }
       </button>
     }
   </div>

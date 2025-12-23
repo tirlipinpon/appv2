@@ -44,3 +44,20 @@ a {
   background-color: $color-danger !important;
   color: white !important;
 }
+
+// Styles globaux pour les inputs, selects et textareas
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  background-color: $color-white !important;
+  color: $color-text-primary !important;
+  
+  &::placeholder {
+    color: $color-text-tertiary !important;
+  }
+  
+  option {
+    background-color: $color-white !important;
+    color: $color-text-primary !important;
+  }
+}
