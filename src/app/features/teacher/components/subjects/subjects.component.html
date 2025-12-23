@@ -98,6 +98,12 @@
               <p *ngIf="category.description" class="category-description">{{ category.description }}</p>
             </div>
             <div class="category-actions">
+              <a
+                [routerLink]="['/teacher-subjects', subjectId(), 'games']"
+                [queryParams]="{ categoryId: category.id }"
+                class="btn btn-sm btn-primary">
+                🎮 Gérer les jeux
+              </a>
               <button
                 type="button"
                 class="btn btn-sm btn-secondary"

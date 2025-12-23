@@ -70,6 +70,10 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly selectedGameTypeName = signal<string | null>(null);
   readonly categories = signal<SubjectCategory[]>([]);
   readonly selectedCategoryId = signal<string | null>(null);
+  readonly isCategoryContext = computed(() => {
+    // Si on a un categoryId dans les query params, on est en mode "gestion d'une sous-catégorie spécifique"
+    return this.route.snapshot.queryParamMap.get('categoryId') !== null;
+  });
   
   // Signals pour la duplication
   readonly duplicateDialogOpen = signal<boolean>(false);
@@ -237,9 +241,19 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     
     this.subjectId.set(id);
     this.application.loadGameTypes();
-    this.application.loadGamesBySubject(id);
     this.subjectsStore.loadSubjects();
     this.loadCategories(id);
+    
+    // Lire le paramètre categoryId depuis les query params
+    const categoryId = this.route.snapshot.queryParamMap.get('categoryId');
+    if (categoryId) {
+      this.selectedCategoryId.set(categoryId);
+      // Charger les jeux de la sous-catégorie
+      this.application.loadGamesBySubject(id, categoryId);
+    } else {
+      // Charger les jeux de la matière
+      this.application.loadGamesBySubject(id);
+    }
     
     // Charger les assignments du professeur pour obtenir le school_level
     // IMPORTANT: Utiliser teacher.id et non user.id car teacher_assignments.teacher_id fait référence à teachers.id
@@ -257,6 +271,21 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
+    // Écouter les changements de query params pour recharger les jeux
+    this.route.queryParamMap.subscribe(params => {
+      const categoryId = params.get('categoryId');
+      const currentSubjectId = this.subjectId();
+      if (currentSubjectId) {
+        if (categoryId) {
+          this.selectedCategoryId.set(categoryId);
+          this.application.loadGamesBySubject(currentSubjectId, categoryId);
+        } else {
+          this.selectedCategoryId.set(null);
+          this.application.loadGamesBySubject(currentSubjectId);
+        }
+      }
+    });
+
     // Écouter les navigations pour recharger les jeux quand on revient sur la page
     this.routerSubscription = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
@@ -264,8 +293,13 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         // Si on revient sur la page des jeux, recharger les jeux
         if (event.url.includes('/teacher-subjects/') && event.url.includes('/games')) {
           const currentSubjectId = this.subjectId();
+          const categoryId = this.route.snapshot.queryParamMap.get('categoryId');
           if (currentSubjectId) {
-            this.application.loadGamesBySubject(currentSubjectId);
+            if (categoryId) {
+              this.application.loadGamesBySubject(currentSubjectId, categoryId);
+            } else {
+              this.application.loadGamesBySubject(currentSubjectId);
+            }
           }
         }
       });
@@ -357,7 +391,10 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
 
     // Stocker les données spécifiques dans metadata
-    const categoryId = this.selectedCategoryId();
+    // Si on est en mode "gestion d'une sous-catégorie spécifique", utiliser le categoryId des query params
+    const categoryId = this.isCategoryContext() 
+      ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
+      : this.selectedCategoryId();
     this.application.createGame({
       subject_id: categoryId ? null : subjectId,
       subject_category_id: categoryId || null,
@@ -624,6 +661,12 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
       this.categories.set(categories || []);
+      
+      // Si on a un categoryId dans les query params, pré-sélectionner la sous-catégorie
+      const categoryId = this.route.snapshot.queryParamMap.get('categoryId');
+      if (categoryId && (categories || []).some(c => c.id === categoryId)) {
+        this.selectedCategoryId.set(categoryId);
+      }
     });
   }
 

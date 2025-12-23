@@ -13,8 +13,8 @@ export class GamesApplication {
     this.store.loadGameTypes();
   }
 
-  loadGamesBySubject(subjectId: string): void {
-    this.store.loadGamesBySubject(subjectId);
+  loadGamesBySubject(subjectId: string, categoryId?: string): void {
+    this.store.loadGamesBySubject({ subjectId, categoryId });
   }
 
   createGame(gameData: GameCreate): void {

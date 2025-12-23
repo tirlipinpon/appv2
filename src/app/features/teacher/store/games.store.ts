@@ -17,6 +17,7 @@ export interface GamesState {
   isLoading: boolean;
   error: string[];
   currentSubjectId: string | null; // Track le subjectId courant pour filtrer les jeux
+  currentCategoryId: string | null; // Track le categoryId courant pour filtrer les jeux
   // États pour la génération IA
   generatedGames: GeneratedGameWithState[];
   isGenerating: boolean;
@@ -31,6 +32,7 @@ const initialState: GamesState = {
   isLoading: false,
   error: [],
   currentSubjectId: null,
+  currentCategoryId: null,
   generatedGames: [],
   isGenerating: false,
   generationProgress: 0,
@@ -71,11 +73,11 @@ export const GamesStore = signalStore(
       )
     ),
 
-    loadGamesBySubject: rxMethod<string>(
+    loadGamesBySubject: rxMethod<{ subjectId: string; categoryId?: string }>(
       pipe(
         tap(() => patchState(store, { isLoading: true, error: [] })),
-        switchMap((subjectId) =>
-          infrastructure.getGamesBySubject(subjectId).pipe(
+        switchMap(({ subjectId, categoryId }) =>
+          infrastructure.getGamesBySubject(subjectId, categoryId).pipe(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des jeux';
@@ -84,6 +86,7 @@ export const GamesStore = signalStore(
                 patchState(store, { 
                   games: result.games, 
                   currentSubjectId: subjectId,
+                  currentCategoryId: categoryId || null,
                   isLoading: false 
                 });
               }
@@ -108,15 +111,16 @@ export const GamesStore = signalStore(
                 const errorMessage = result.error.message || 'Erreur lors de la création du jeu';
                 setStoreError(store, errorSnackbar, errorMessage, false);
               } else if (result.game) {
-                // Ne ajouter le jeu que s'il correspond au subjectId courant
+                // Ajouter le jeu s'il correspond au subjectId ou categoryId courant
                 const currentSubjectId = store.currentSubjectId();
-                if (result.game.subject_id === currentSubjectId) {
+                const currentCategoryId = store.currentCategoryId();
+                if (result.game.subject_id === currentSubjectId || result.game.subject_category_id === currentCategoryId) {
                   patchState(store, {
                     games: [result.game, ...store.games()],
                     isLoading: false,
                   });
                 } else {
-                  // Le jeu est créé mais ne correspond pas à la matière courante, ne pas l'ajouter à la liste
+                  // Le jeu est créé mais ne correspond pas à la matière/sous-catégorie courante, ne pas l'ajouter à la liste
                   patchState(store, { isLoading: false });
                 }
               } else {

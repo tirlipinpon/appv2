@@ -5,6 +5,13 @@
   @if (currentSubjectName()) {
     <div class="subject-info">
       <h2>Matière : {{ currentSubjectName() }}</h2>
+      @if (selectedCategoryId() && categories().length > 0) {
+        @for (category of categories(); track category.id) {
+          @if (category.id === selectedCategoryId()) {
+            <p class="category-info">Sous-catégorie : <strong>{{ category.name }}</strong></p>
+          }
+        }
+      }
     </div>
   }
 
@@ -82,9 +89,29 @@
         }
       </div>
 
-      @if (categories().length > 0) {
-        <div class="form-group">
-          <label for="category_id">Sous-catégorie (optionnel)</label>
+      <div class="form-group">
+        <label for="category_id">Sous-catégorie (optionnel)</label>
+        @if (isCategoryContext()) {
+          <!-- Mode "gestion d'une sous-catégorie spécifique" : champ désactivé -->
+          <select 
+            id="category_id" 
+            [value]="selectedCategoryId() || ''"
+            disabled>
+            @if (selectedCategoryId() && categories().length > 0) {
+              @for (category of categories(); track category.id) {
+                @if (category.id === selectedCategoryId()) {
+                  <option [value]="category.id">{{ category.name }}</option>
+                }
+              }
+            } @else {
+              <option value="">Sous-catégorie sélectionnée</option>
+            }
+          </select>
+          <small class="form-hint">
+            <strong>Mode sous-catégorie :</strong> Les jeux créés seront automatiquement liés à cette sous-catégorie.
+          </small>
+        } @else if (categories().length > 0) {
+          <!-- Mode normal : on peut choisir la sous-catégorie -->
           <select 
             id="category_id" 
             [value]="selectedCategoryId() || ''"
@@ -94,9 +121,20 @@
               <option [value]="category.id">{{ category.name }}</option>
             }
           </select>
-          <small class="form-hint">Si vous sélectionnez une sous-catégorie, le jeu sera lié à cette sous-catégorie plutôt qu'à la matière directement.</small>
-        </div>
-      }
+          <small class="form-hint">Si vous sélectionnez une sous-catégorie, le jeu sera lié à cette sous-catégorie plutôt qu'à la matière directement. Sinon, le jeu sera lié directement à la matière.</small>
+        } @else {
+          <!-- Aucune sous-catégorie disponible -->
+          <select 
+            id="category_id" 
+            [value]="''"
+            disabled>
+            <option value="">Aucune sous-catégorie disponible</option>
+          </select>
+          <small class="form-hint">
+            <strong>Note :</strong> Le jeu sera créé directement pour la matière. Pour créer des sous-catégories, allez dans la page de gestion de la matière.
+          </small>
+        }
+      </div>
 
       <!-- Champs globaux (instructions, question, aides) -->
       <app-game-global-fields
