@@ -1,3 +1,4 @@
+@use "sass:color";
 @use '../../../../../../../styles/variables' as *;
 @use '../../../../../../../styles/mixins' as *;
 
@@ -102,13 +103,13 @@
 
   &.correct {
     background-color: $color-success-lighter;
-    color: darken($color-success, 10%);
+    color: color.adjust($color-success, $lightness: -10%);
     border: 1px solid $color-success;
   }
 
   &.incorrect {
     background-color: $color-danger-lighter;
-    color: darken($color-danger, 10%);
+    color: color.adjust($color-danger, $lightness: -10%);
     border: 1px solid $color-danger;
   }
 }
