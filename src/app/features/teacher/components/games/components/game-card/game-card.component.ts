@@ -1,9 +1,11 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
+import { Observable, of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import type { Game, GameUpdate } from '../../../../types/game';
 import type { GameType } from '../../../../types/game-type';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '../../../../types/game-data';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
@@ -13,9 +15,11 @@ import { QcmFormComponent } from '../qcm-form/qcm-form.component';
 import { VraiFauxFormComponent } from '../vrai-faux-form/vrai-faux-form.component';
 import { MemoryFormComponent } from '../memory-form/memory-form.component';
 import { SimonFormComponent } from '../simon-form/simon-form.component';
+import { ImageInteractiveFormComponent, type ImageInteractiveDataWithFile } from '../image-interactive-form/image-interactive-form.component';
 import { GameGlobalFieldsComponent } from '../game-global-fields/game-global-fields.component';
 import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
+import { ImageUploadService, type ImageUploadResult } from '../../services/image-upload/image-upload.service';
 
 @Component({
   selector: 'app-game-card',
@@ -31,6 +35,7 @@ import { normalizeGameData } from '../../../../utils/game-data-mapper';
     VraiFauxFormComponent,
     MemoryFormComponent,
     SimonFormComponent,
+    ImageInteractiveFormComponent,
     GameGlobalFieldsComponent,
     GamePreviewComponent,
   ],
@@ -38,6 +43,8 @@ import { normalizeGameData } from '../../../../utils/game-data-mapper';
   styleUrl: './game-card.component.scss',
 })
 export class GameCardComponent implements OnInit, OnChanges {
+  private readonly imageUploadService = inject(ImageUploadService);
+
   @Input({ required: true }) game!: Game;
   @Input({ required: true }) gameTypeName!: string;
   @Input() gameTypes: GameType[] = []; // Pour déterminer le type de jeu
@@ -63,9 +70,12 @@ export class GameCardComponent implements OnInit, OnChanges {
       // Ne pas initialiser le mode édition automatiquement
     }
   }
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
+  
+  // Données spécifiques pour le jeu image-interactive avec le fichier File (pour l'upload)
+  private imageInteractiveDataWithFile = signal<ImageInteractiveDataWithFile | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly currentGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly previewIsOpen = signal<boolean>(false);
@@ -169,7 +179,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         this.currentGameTypeName(),
         this.game.metadata as Record<string, unknown>
       );
-      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData;
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData;
       this.initialGameData.set(gameData);
       this.gameSpecificData.set(gameData); // Initialiser aussi gameSpecificData
       this.gameSpecificValid.set(true); // Considérer comme valide si les données existent
@@ -184,8 +194,17 @@ export class GameCardComponent implements OnInit, OnChanges {
     // La validité est toujours vraie pour les champs globaux (optionnels)
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData): void {
-    this.gameSpecificData.set(data);
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | ImageInteractiveDataWithFile): void {
+    // Si c'est ImageInteractiveDataWithFile, stocker séparément pour gérer l'upload
+    if ('imageFile' in data || 'oldImageUrl' in data) {
+      this.imageInteractiveDataWithFile.set(data as ImageInteractiveDataWithFile);
+      // Stocker aussi les données sans le fichier pour la compatibilité
+      const { imageFile, oldImageUrl, ...dataWithoutFile } = data as ImageInteractiveDataWithFile;
+      this.gameSpecificData.set(dataWithoutFile as ImageInteractiveData);
+    } else {
+      this.gameSpecificData.set(data);
+      this.imageInteractiveDataWithFile.set(null); // Réinitialiser si ce n'est pas ImageInteractive
+    }
   }
 
   onGameValidityChange(valid: boolean): void {
@@ -196,9 +215,60 @@ export class GameCardComponent implements OnInit, OnChanges {
     if (!this.gameSpecificValid()) return;
     
     const globalFields = this.currentGlobalFields() || this.initialGlobalFields();
-    const gameData = this.gameSpecificData();
+    let gameData = this.gameSpecificData();
     if (!globalFields || !gameData) return;
 
+    // Vérifier si on a un fichier image à uploader (pour ImageInteractive)
+    const imageDataWithFile = this.imageInteractiveDataWithFile();
+    const isImageInteractive = this.currentGameTypeName().toLowerCase() === 'click' || 
+                               this.currentGameTypeName().toLowerCase() === 'image interactive';
+
+    if (isImageInteractive && imageDataWithFile?.imageFile) {
+      // Uploader l'image avant de sauvegarder
+      const file = imageDataWithFile.imageFile;
+      const oldImageUrl = imageDataWithFile.oldImageUrl;
+
+      // Supprimer l'ancienne image si elle existe, puis uploader la nouvelle
+      const deleteOldImage$: Observable<{ success: boolean; error: string | null }> = oldImageUrl 
+        ? this.imageUploadService.deleteImage(oldImageUrl)
+        : of({ success: true, error: null });
+
+      deleteOldImage$.pipe(
+        switchMap(() => this.imageUploadService.uploadImage(file, this.game.id))
+      ).subscribe({
+        next: (result) => {
+          if (result.error) {
+            console.error('Erreur upload:', result.error);
+            alert(`Erreur lors de l'upload de l'image: ${result.error}`);
+            return;
+          }
+
+          // Mettre à jour les données avec la nouvelle URL
+          const updatedImageData: ImageInteractiveData = {
+            image_url: result.url,
+            image_width: result.width,
+            image_height: result.height,
+            zones: imageDataWithFile.zones,
+          };
+
+          // Sauvegarder le jeu avec la nouvelle URL
+          this.saveGameWithData(globalFields, updatedImageData);
+        },
+        error: (error) => {
+          console.error('Erreur upload:', error);
+          alert('Erreur lors de l\'upload de l\'image');
+        }
+      });
+    } else {
+      // Pas de nouveau fichier, sauvegarder directement
+      this.saveGameWithData(globalFields, gameData);
+    }
+  }
+
+  private saveGameWithData(
+    globalFields: GameGlobalFieldsData,
+    gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData
+  ): void {
     // Générer un nom automatique
     const gameTypeName = this.currentGameTypeName();
     const questionPreview = globalFields.question?.trim() ? globalFields.question.trim().substring(0, 30) : '';
@@ -224,6 +294,8 @@ export class GameCardComponent implements OnInit, OnChanges {
     });
 
     this.isEditing.set(false);
+    // Réinitialiser les données avec fichier après sauvegarde
+    this.imageInteractiveDataWithFile.set(null);
   }
 
   cancelEdit(): void {
@@ -253,7 +325,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         this.currentGameTypeName(),
         this.game.metadata as Record<string, unknown>
       );
-      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData;
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData;
       this.gameSpecificData.set(gameData);
     }
     if (!this.currentGlobalFields()) {
@@ -349,6 +421,27 @@ export class GameCardComponent implements OnInit, OnChanges {
     return null;
   }
 
+  getInitialDataForImageInteractive(): ImageInteractiveData | null {
+    const data = this.initialGameData();
+    const currentType = this.currentGameTypeName();
+    if (currentType && currentType.toLowerCase() === 'click' && data) {
+      // Vérifier que les propriétés requises existent
+      if (
+        'image_url' in data && 
+        'image_width' in data && 
+        'image_height' in data && 
+        'zones' in data &&
+        typeof data.image_url === 'string' &&
+        typeof data.image_width === 'number' &&
+        typeof data.image_height === 'number' &&
+        Array.isArray(data.zones)
+      ) {
+        return data as ImageInteractiveData;
+      }
+    }
+    return null;
+  }
+
   formatMetadataForDisplay(): string {
     const typeName = this.currentGameTypeName().toLowerCase();
     const metadata = this.game.metadata;
@@ -390,6 +483,16 @@ export class GameCardComponent implements OnInit, OnChanges {
         case 'memory': {
           const memory = metadata as unknown as MemoryData;
           return `${memory.paires?.length || 0} paire(s) de cartes`;
+        }
+        
+        case 'simon': {
+          const simon = metadata as unknown as SimonData;
+          return `${simon.nombre_elements || 0} élément(s), type: ${simon.type_elements || 'N/A'}`;
+        }
+        
+        case 'click': {
+          const click = metadata as unknown as ImageInteractiveData;
+          return `Image ${click.image_width || 0}×${click.image_height || 0}px, ${click.zones?.length || 0} zone(s) cliquable(s)`;
         }
         
         default:

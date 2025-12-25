@@ -1,0 +1,76 @@
+<div class="image-interactive-game">
+  <div
+    #imageContainer
+    class="image-container"
+    (click)="onImageClick($event)"
+    [class.disabled]="disabled || isSubmitted()"
+  >
+    <img
+      #imageElement
+      [src]="imageData.image_url"
+      [alt]="'Image interactive'"
+      class="game-image"
+      (load)="updateImageDimensions()"
+    />
+
+    <!-- Overlay des zones (invisible mais cliquable) -->
+    <div class="zones-overlay">
+      @for (zone of imageData.zones; track zone.id) {
+        @if (getAbsolutePosition(zone); as pos) {
+          <div
+            class="zone"
+            [class.clicked]="isZoneClicked(zone.id)"
+            [class.correct-zone]="isZoneCorrect(zone.id) && showResult && isSubmitted()"
+            [class.incorrect-zone]="!isZoneCorrect(zone.id) && showResult && isSubmitted()"
+            [style.left.px]="pos.x"
+            [style.top.px]="pos.y"
+            [style.width.px]="pos.width"
+            [style.height.px]="pos.height"
+          >
+            @if (isZoneClicked(zone.id) && showResult) {
+              <div class="zone-marker">
+                {{ isZoneCorrect(zone.id) ? '✓' : '✗' }}
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Message de résultat -->
+  @if (resultMessage(); as message) {
+    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+      {{ message }}
+    </div>
+  }
+
+  <!-- Actions -->
+  <div class="actions">
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="!canValidate() || disabled"
+      (click)="validate()"
+    >
+      Valider
+    </button>
+    @if (isSubmitted()) {
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="reset()"
+      >
+        Réessayer
+      </button>
+    }
+  </div>
+
+  <!-- Indicateur de zones cliquées -->
+  <div class="zones-indicator">
+    <p>
+      Zones cliquées : {{ clickedZoneIds().size }} / {{ getCorrectZonesCount() }} correctes
+    </p>
+  </div>
+</div>
+

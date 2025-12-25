@@ -16,13 +16,14 @@ import { QcmFormComponent } from './components/qcm-form/qcm-form.component';
 import { VraiFauxFormComponent } from './components/vrai-faux-form/vrai-faux-form.component';
 import { MemoryFormComponent } from './components/memory-form/memory-form.component';
 import { SimonFormComponent } from './components/simon-form/simon-form.component';
+import { ImageInteractiveFormComponent } from './components/image-interactive-form/image-interactive-form.component';
 import { AIGameGeneratorFormComponent } from './components/ai-game-generator-form/ai-game-generator-form.component';
 import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './components/game-global-fields/game-global-fields.component';
 import { GameCardComponent } from './components/game-card/game-card.component';
 import { DuplicateGameDialogComponent } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData } from '../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '../../types/game-data';
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
 import type { Subject } from '../../types/subject';
@@ -47,6 +48,7 @@ import type { DuplicateGameData } from './components/duplicate-game-dialog/dupli
     VraiFauxFormComponent,
     MemoryFormComponent,
     SimonFormComponent,
+    ImageInteractiveFormComponent,
     AIGameGeneratorFormComponent,
     AIGeneratedPreviewComponent,
     GameGlobalFieldsComponent,
@@ -161,11 +163,11 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly generationProgress = computed(() => this.gamesStore.generationProgress());
 
   // Données des composants spécifiques
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
 
   // Données initiales pour l'édition
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
 
   // États des toggles pour les sections
@@ -349,7 +351,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
             this.getGameTypeName(game.game_type_id),
             game.metadata as Record<string, unknown>
           );
-          this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData);
+          this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData);
         } else {
           this.initialGameData.set(null);
         }
@@ -357,7 +359,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData): void {
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData): void {
     this.gameSpecificData.set(data);
   }
 
@@ -418,6 +420,11 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
 
   startEdit(game: Game): void {
     this.editingGameId.set(game.id);
+    
+    // Définir le type de jeu AVANT de charger les données pour que selectedGameTypeName soit disponible
+    const gameType = this.gameTypes().find(gt => gt.id === game.game_type_id);
+    this.selectedGameTypeName.set(gameType?.name || null);
+    
     this.gameForm.patchValue({
       game_type_id: game.game_type_id || '',
     });
@@ -435,11 +442,8 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         this.getGameTypeName(game.game_type_id),
         game.metadata as Record<string, unknown>
       );
-      this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData);
+      this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData);
     }
-
-    const gameType = this.gameTypes().find(gt => gt.id === game.game_type_id);
-    this.selectedGameTypeName.set(gameType?.name || null);
   }
 
   cancelEdit(): void {
@@ -580,6 +584,36 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       if ('nombre_elements' in data && 'type_elements' in data) {
         return data as SimonData;
       }
+    }
+    return null;
+  }
+
+  getInitialDataForImageInteractive(): ImageInteractiveData | null {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    
+    console.log('[GamesComponent] getInitialDataForImageInteractive - Type:', currentType, 'Data:', data);
+    
+    // Vérifier que le type correspond (peut être "click" ou "Click")
+    if (currentType && currentType.toLowerCase() === 'click' && data) {
+      // Vérifier que les propriétés requises existent
+      if (
+        'image_url' in data && 
+        'image_width' in data && 
+        'image_height' in data && 
+        'zones' in data &&
+        typeof data.image_url === 'string' &&
+        typeof data.image_width === 'number' &&
+        typeof data.image_height === 'number' &&
+        Array.isArray(data.zones)
+      ) {
+        console.log('[GamesComponent] Données ImageInteractive valides, retour:', data);
+        return data as ImageInteractiveData;
+      } else {
+        console.warn('[GamesComponent] Données ImageInteractive invalides - propriétés manquantes ou types incorrects');
+      }
+    } else {
+      console.log('[GamesComponent] Type ne correspond pas ou pas de données - Type:', currentType, 'Has data:', !!data);
     }
     return null;
   }

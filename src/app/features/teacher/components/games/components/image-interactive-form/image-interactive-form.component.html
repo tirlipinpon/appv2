@@ -1,0 +1,143 @@
+<div class="image-interactive-form">
+  <form [formGroup]="form">
+    <!-- Upload d'image -->
+    <div class="upload-section">
+      <label for="imageFile" class="upload-label">
+        <span class="upload-icon">📷</span>
+        <span>Télécharger une image</span>
+      </label>
+      <input
+        type="file"
+        id="imageFile"
+        formControlName="imageFile"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        (change)="onFileSelected($event)"
+        class="file-input"
+      />
+      @if (imageUrl()) {
+        <p class="image-info">
+          Image chargée : {{ imageWidth() }} × {{ imageHeight() }}px
+        </p>
+      }
+    </div>
+
+    <!-- Conteneur de l'image avec zones -->
+    @if (imageUrl()) {
+      <div class="image-editor">
+        <div class="editor-controls">
+          <button
+            type="button"
+            class="btn-mode"
+            [class.active]="editMode() === 'draw'"
+            (click)="editMode.set('draw')"
+          >
+            ✏️ Dessiner une zone
+          </button>
+          <button
+            type="button"
+            class="btn-mode"
+            [class.active]="editMode() === 'select'"
+            (click)="editMode.set('select')"
+          >
+            👆 Sélectionner
+          </button>
+        </div>
+
+        <div
+          #imageContainer
+          class="image-container"
+          (mousedown)="onMouseDown($event)"
+          (mousemove)="onMouseMove($event)"
+          (mouseup)="onMouseUp($event)"
+          (mouseleave)="isDrawing.set(false)"
+        >
+          <img
+            #imageElement
+            [src]="imageUrl()!"
+            [alt]="'Image interactive'"
+            class="game-image"
+            (load)="updateImageDimensions()"
+          />
+
+          <!-- Overlay des zones -->
+          <div #zonesOverlay class="zones-overlay">
+            @for (zone of zones(); track zone.id) {
+              @if (getAbsolutePosition(zone); as pos) {
+                <div
+                  class="zone"
+                  [class.selected]="isZoneSelected(zone.id)"
+                  [class.correct]="zone.is_correct"
+                  [class.incorrect]="!zone.is_correct"
+                  [style.left.px]="pos.x"
+                  [style.top.px]="pos.y"
+                  [style.width.px]="pos.width"
+                  [style.height.px]="pos.height"
+                  (click)="selectZone(zone.id)"
+                >
+                  <div class="zone-label">
+                    {{ zone.name || 'Zone' }}
+                  </div>
+                  <div class="zone-actions">
+                    <button
+                      type="button"
+                      class="btn-zone-action"
+                      [title]="zone.is_correct ? 'Marquer comme incorrecte' : 'Marquer comme correcte'"
+                      (click)="toggleZoneCorrect(zone.id); $event.stopPropagation()"
+                    >
+                      {{ zone.is_correct ? '✓' : '✗' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-zone-action btn-delete"
+                      title="Supprimer la zone"
+                      (click)="deleteZone(zone.id); $event.stopPropagation()"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- Liste des zones -->
+        @if (zones().length > 0) {
+          <div class="zones-list">
+            <h4>Zones définies ({{ zones().length }})</h4>
+            <ul>
+              @for (zone of zones(); track zone.id) {
+                <li
+                  class="zone-item"
+                  [class.selected]="isZoneSelected(zone.id)"
+                  [class.correct]="zone.is_correct"
+                  (click)="selectZone(zone.id)"
+                >
+                  <span class="zone-name">{{ zone.name || 'Zone sans nom' }}</span>
+                  <span class="zone-status">
+                    {{ zone.is_correct ? '✓ Correcte' : '✗ Incorrecte' }}
+                  </span>
+                  <button
+                    type="button"
+                    class="btn-delete-small"
+                    (click)="deleteZone(zone.id); $event.stopPropagation()"
+                  >
+                    Supprimer
+                  </button>
+                </li>
+              }
+            </ul>
+            <p class="help-text">
+              💡 Astuce : Cliquez sur "Dessiner une zone" puis tracez un rectangle sur l'image pour créer une zone cliquable.
+            </p>
+          </div>
+        } @else {
+          <p class="help-text">
+            💡 Téléchargez une image puis dessinez des zones cliquables dessus.
+          </p>
+        }
+      </div>
+    }
+  </form>
+</div>
+

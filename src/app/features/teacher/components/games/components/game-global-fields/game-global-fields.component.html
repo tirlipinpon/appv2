@@ -7,8 +7,6 @@
       rows="2"
       formControlName="instructions"
       placeholder="Instructions pour l'élève"
-      [disabled]="form.get('instructions')?.disabled || false"
-      [readonly]="form.get('instructions')?.disabled || false"
       (click)="$event.stopPropagation()"
       (focus)="$event.stopPropagation()"
       (input)="$event.stopPropagation()"></textarea>

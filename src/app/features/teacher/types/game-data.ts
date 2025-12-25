@@ -59,6 +59,24 @@ export interface SimonData {
   elements?: string[]; // Liste personnalisée d'éléments (si type_elements === 'personnalise')
 }
 
+// Image interactive : image avec zones cliquables
+export interface ImageInteractiveZone {
+  id: string; // UUID pour identifier la zone
+  name?: string; // Nom optionnel de la zone
+  x: number; // Position X relative (0-1)
+  y: number; // Position Y relative (0-1)
+  width: number; // Largeur relative (0-1)
+  height: number; // Hauteur relative (0-1)
+  is_correct: boolean; // Si cette zone est une réponse correcte
+}
+
+export interface ImageInteractiveData {
+  image_url: string; // URL de l'image dans Supabase Storage
+  image_width: number; // Largeur originale de l'image
+  image_height: number; // Hauteur originale de l'image
+  zones: ImageInteractiveZone[];
+}
+
 // Union type pour toutes les structures de données de jeu
-export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData;
+export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData;
 

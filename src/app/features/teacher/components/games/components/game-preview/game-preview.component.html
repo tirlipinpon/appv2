@@ -375,6 +375,18 @@
             </app-simon-game>
           </div>
         }
+
+        <!-- Image Interactive (Click) -->
+        @if (imageInteractiveData) {
+          <div class="preview-content image-interactive-preview">
+            <app-image-interactive-game
+              [imageData]="imageInteractiveData"
+              [showResult]="isSubmitted()"
+              [disabled]="false"
+              (validated)="onImageInteractiveValidated($event)">
+            </app-image-interactive-game>
+          </div>
+        }
       </div>
 
       <div class="preview-footer">

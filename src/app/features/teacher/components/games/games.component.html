@@ -211,6 +211,15 @@
               (validityChange)="onGameValidityChange($event)">
             </app-simon-form>
           }
+
+          <!-- Image Interactive (Click) -->
+          @if (selectedGameTypeName()?.toLowerCase() === 'click') {
+            <app-image-interactive-form
+              [initialData]="getInitialDataForImageInteractive()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-image-interactive-form>
+          }
         </div>
       }
 

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, computed, signal, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, computed, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import type { Game } from '../../../../types/game';
@@ -157,6 +157,17 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
         this.loadCategories(value);
       } else {
         this.categories.set([]);
+      }
+    });
+
+    // Gérer l'état disabled du contrôle subjectCategoryId selon les catégories disponibles
+    effect(() => {
+      const cats = this.categories();
+      const control = this.duplicateForm.get('subjectCategoryId');
+      if (cats.length === 0) {
+        control?.disable();
+      } else {
+        control?.enable();
       }
     });
   }
