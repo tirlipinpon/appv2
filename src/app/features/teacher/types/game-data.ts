@@ -75,6 +75,7 @@ export interface ImageInteractiveData {
   image_width: number; // Largeur originale de l'image
   image_height: number; // Hauteur originale de l'image
   zones: ImageInteractiveZone[];
+  require_all_correct_zones?: boolean; // Si true, toutes les zones correctes doivent être cliquées. Si false, une seule zone correcte suffit. Par défaut: true (rétrocompatibilité)
 }
 
 // Union type pour toutes les structures de données de jeu

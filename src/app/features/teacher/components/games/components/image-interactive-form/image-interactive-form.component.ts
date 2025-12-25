@@ -58,6 +58,10 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   readonly selectedZoneId = signal<string | null>(null);
   readonly isDrawing = signal<boolean>(false);
   readonly drawingStart = signal<{ x: number; y: number } | null>(null);
+  readonly drawingCurrent = signal<{ x: number; y: number } | null>(null);
+
+  // Configuration de validation
+  readonly requireAllCorrectZones = signal<boolean>(true); // Par défaut, toutes les zones correctes sont requises
 
   // Mode édition
   readonly editMode = signal<'none' | 'draw' | 'select'>('draw');
@@ -143,6 +147,11 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     this.imageWidth.set(this.initialData.image_width);
     this.imageHeight.set(this.initialData.image_height);
     this.imageFile.set(null); // Pas de nouveau fichier
+    
+    // Charger la configuration de validation (défaut: true pour rétrocompatibilité)
+    const requireAll = this.initialData.require_all_correct_zones ?? true;
+    console.log('[ImageInteractiveForm] Chargement require_all_correct_zones:', requireAll, 'depuis initialData:', this.initialData.require_all_correct_zones);
+    this.requireAllCorrectZones.set(requireAll);
     
     // Convertir les zones depuis les coordonnées relatives
     const zones: ZoneInEdit[] = this.initialData.zones.map(zone => ({
@@ -292,22 +301,35 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
       return;
     }
 
+    // Limiter les coordonnées à l'intérieur de l'image
+    const clampedX = Math.max(0, Math.min(x, this.displayedImageWidth()));
+    const clampedY = Math.max(0, Math.min(y, this.displayedImageHeight()));
+
     this.isDrawing.set(true);
-    this.drawingStart.set({ x, y });
+    this.drawingStart.set({ x: clampedX, y: clampedY });
+    this.drawingCurrent.set({ x: clampedX, y: clampedY });
   }
 
   /**
    * Gère le mouvement de la souris pendant le dessin
    */
   onMouseMove(event: MouseEvent): void {
-    if (!this.isDrawing() || !this.drawingStart()) return;
+    if (!this.isDrawing() || !this.drawingStart()) {
+      // Réinitialiser la position actuelle si on ne dessine pas
+      this.drawingCurrent.set(null);
+      return;
+    }
 
     const rect = this.imageContainer.nativeElement.getBoundingClientRect();
     const currentX = event.clientX - rect.left - this.imageOffsetX();
     const currentY = event.clientY - rect.top - this.imageOffsetY();
 
-    // Mettre à jour la zone en cours de dessin (pour preview)
-    // Cette logique sera gérée dans le template avec une zone temporaire
+    // Limiter les coordonnées à l'intérieur de l'image
+    const clampedX = Math.max(0, Math.min(currentX, this.displayedImageWidth()));
+    const clampedY = Math.max(0, Math.min(currentY, this.displayedImageHeight()));
+
+    // Mettre à jour la position actuelle pour le preview
+    this.drawingCurrent.set({ x: clampedX, y: clampedY });
   }
 
   /**
@@ -320,18 +342,23 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     const endX = event.clientX - rect.left - this.imageOffsetX();
     const endY = event.clientY - rect.top - this.imageOffsetY();
 
+    // Limiter les coordonnées à l'intérieur de l'image
+    const clampedEndX = Math.max(0, Math.min(endX, this.displayedImageWidth()));
+    const clampedEndY = Math.max(0, Math.min(endY, this.displayedImageHeight()));
+
     const start = this.drawingStart()!;
     
     // Calculer les coordonnées du rectangle
-    const x = Math.min(start.x, endX);
-    const y = Math.min(start.y, endY);
-    const width = Math.abs(endX - start.x);
-    const height = Math.abs(endY - start.y);
+    const x = Math.min(start.x, clampedEndX);
+    const y = Math.min(start.y, clampedEndY);
+    const width = Math.abs(clampedEndX - start.x);
+    const height = Math.abs(clampedEndY - start.y);
 
     // Ignorer les zones trop petites
     if (width < 10 || height < 10) {
       this.isDrawing.set(false);
       this.drawingStart.set(null);
+      this.drawingCurrent.set(null);
       return;
     }
 
@@ -355,7 +382,35 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     this.zones.update(zones => [...zones, newZone]);
     this.isDrawing.set(false);
     this.drawingStart.set(null);
+    this.drawingCurrent.set(null);
     this.emitData();
+  }
+
+  /**
+   * Gère la sortie de la souris du conteneur pendant le dessin
+   */
+  onMouseLeave(): void {
+    if (this.isDrawing()) {
+      // Ne pas annuler le dessin, juste arrêter le preview
+      this.drawingCurrent.set(null);
+    }
+  }
+
+  /**
+   * Calcule la position et les dimensions de la zone en cours de dessin pour le preview
+   */
+  getDrawingPreview(): { x: number; y: number; width: number; height: number } | null {
+    const start = this.drawingStart();
+    const current = this.drawingCurrent();
+    
+    if (!start || !current) return null;
+
+    const x = Math.min(start.x, current.x);
+    const y = Math.min(start.y, current.y);
+    const width = Math.abs(current.x - start.x);
+    const height = Math.abs(current.y - start.y);
+
+    return { x, y, width, height };
   }
 
   /**
@@ -391,6 +446,15 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   }
 
   /**
+   * Gère le changement de la configuration de validation
+   */
+  onRequireAllCorrectZonesChange(value: boolean): void {
+    console.log('[ImageInteractiveForm] Changement require_all_correct_zones:', value);
+    this.requireAllCorrectZones.set(value);
+    this.emitData(); // Émettre les données mises à jour
+  }
+
+  /**
    * Émet les données du formulaire
    */
   private emitData(): void {
@@ -411,6 +475,9 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
       ? this.imageUrl()! // URL blob temporaire
       : (this.imageUrl() || ''); // URL existante ou vide
 
+    const requireAll = this.requireAllCorrectZones();
+    console.log('[ImageInteractiveForm] Émission données avec require_all_correct_zones:', requireAll);
+    
     const data: ImageInteractiveDataWithFile = {
       image_url: imageUrl,
       image_width: this.imageWidth(),
@@ -424,6 +491,7 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
         is_correct: z.is_correct,
         name: z.name,
       })),
+      require_all_correct_zones: requireAll,
       // Ajouter le fichier si un nouveau fichier a été sélectionné
       ...(file && { imageFile: file }),
       // Ajouter l'ancienne URL si on remplace une image existante

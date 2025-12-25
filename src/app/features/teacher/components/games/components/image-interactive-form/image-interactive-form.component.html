@@ -49,7 +49,7 @@
           (mousedown)="onMouseDown($event)"
           (mousemove)="onMouseMove($event)"
           (mouseup)="onMouseUp($event)"
-          (mouseleave)="isDrawing.set(false)"
+          (mouseleave)="onMouseLeave()"
         >
           <img
             #imageElement
@@ -61,6 +61,20 @@
 
           <!-- Overlay des zones -->
           <div #zonesOverlay class="zones-overlay">
+            <!-- Zone en cours de dessin (preview) -->
+            @if (isDrawing() && getDrawingPreview(); as preview) {
+              <div
+                class="zone zone-preview"
+                [style.left.px]="preview.x + imageOffsetX()"
+                [style.top.px]="preview.y + imageOffsetY()"
+                [style.width.px]="preview.width"
+                [style.height.px]="preview.height"
+              >
+                <div class="zone-label">Nouvelle zone</div>
+              </div>
+            }
+            
+            <!-- Zones existantes -->
             @for (zone of zones(); track zone.id) {
               @if (getAbsolutePosition(zone); as pos) {
                 <div
@@ -111,24 +125,56 @@
                   class="zone-item"
                   [class.selected]="isZoneSelected(zone.id)"
                   [class.correct]="zone.is_correct"
+                  [class.incorrect]="!zone.is_correct"
                   (click)="selectZone(zone.id)"
                 >
                   <span class="zone-name">{{ zone.name || 'Zone sans nom' }}</span>
                   <span class="zone-status">
                     {{ zone.is_correct ? '✓ Correcte' : '✗ Incorrecte' }}
                   </span>
-                  <button
-                    type="button"
-                    class="btn-delete-small"
-                    (click)="deleteZone(zone.id); $event.stopPropagation()"
-                  >
-                    Supprimer
-                  </button>
+                  <div class="zone-item-actions">
+                    <button
+                      type="button"
+                      class="btn-toggle-correct"
+                      [title]="zone.is_correct ? 'Marquer comme incorrecte' : 'Marquer comme correcte'"
+                      (click)="toggleZoneCorrect(zone.id); $event.stopPropagation()"
+                    >
+                      {{ zone.is_correct ? '✓' : '✗' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-delete-small"
+                      title="Supprimer la zone"
+                      (click)="deleteZone(zone.id); $event.stopPropagation()"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
                 </li>
               }
             </ul>
+            <div class="validation-config">
+              <label class="validation-config-label">
+                <input
+                  type="checkbox"
+                  [checked]="requireAllCorrectZones()"
+                  (change)="onRequireAllCorrectZonesChange($any($event.target).checked)"
+                  class="validation-config-checkbox"
+                />
+                <span class="validation-config-text">
+                  Toutes les zones correctes sont obligatoires
+                </span>
+              </label>
+              <p class="validation-config-help">
+                @if (requireAllCorrectZones()) {
+                  Le joueur devra cliquer sur toutes les zones correctes pour gagner.
+                } @else {
+                  Le joueur devra cliquer sur au moins une zone correcte pour gagner.
+                }
+              </p>
+            </div>
             <p class="help-text">
-              💡 Astuce : Cliquez sur "Dessiner une zone" puis tracez un rectangle sur l'image pour créer une zone cliquable.
+              💡 Astuce : Cliquez sur "Dessiner une zone" puis tracez un rectangle sur l'image pour créer une zone cliquable. Vous pouvez définir plusieurs zones correctes en cliquant sur le bouton ✓/✗ pour chaque zone.
             </p>
           </div>
         } @else {

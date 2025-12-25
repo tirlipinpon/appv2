@@ -18,9 +18,15 @@ export class ImageUploadService {
   private readonly bucketName = 'game-images';
   private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
   private readonly allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  
+  // Paramètres d'optimisation pour les images de jeux
+  private readonly maxWidth = 1920; // Largeur maximale en pixels
+  private readonly maxHeight = 1920; // Hauteur maximale en pixels
+  private readonly webpQuality = 0.85; // Qualité WebP (0.0 à 1.0)
 
   /**
    * Upload une image vers Supabase Storage
+   * Pour les jeux "click", l'image sera automatiquement convertie en WebP et optimisée
    * @param file Le fichier image à uploader
    * @param gameId Optionnel : ID du jeu pour organiser les fichiers
    * @returns Observable avec l'URL de l'image et ses dimensions
@@ -46,53 +52,140 @@ export class ImageUploadService {
       }]);
     }
 
-    // Générer un nom de fichier unique
-    const fileExt = file.name.split('.').pop();
-    const fileName = gameId 
-      ? `${gameId}/${Date.now()}.${fileExt}`
-      : `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    // Optimiser et convertir en WebP avant l'upload
+    return from(this.optimizeImageToWebP(file)).pipe(
+      switchMap((optimizedFile) => {
+        // Générer un nom de fichier unique en WebP
+        const fileName = gameId 
+          ? `${gameId}/${Date.now()}.webp`
+          : `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
 
-    // Upload vers Supabase Storage
-    return from(
-      this.supabaseService.client.storage
-        .from(this.bucketName)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
-    ).pipe(
-      switchMap((result) => {
-        if (result.error) {
-          return from([{
-            url: '',
-            width: 0,
-            height: 0,
-            error: result.error.message || 'Erreur lors de l\'upload de l\'image'
-          }]);
-        }
+        // Upload vers Supabase Storage
+        return from(
+          this.supabaseService.client.storage
+            .from(this.bucketName)
+            .upload(fileName, optimizedFile, {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: 'image/webp'
+            })
+        ).pipe(
+          switchMap((result) => {
+            if (result.error) {
+              return from([{
+                url: '',
+                width: 0,
+                height: 0,
+                error: result.error.message || 'Erreur lors de l\'upload de l\'image'
+              }]);
+            }
 
-        // Obtenir l'URL publique
-        const { data: urlData } = this.supabaseService.client.storage
-          .from(this.bucketName)
-          .getPublicUrl(fileName);
+            // Obtenir l'URL publique
+            const { data: urlData } = this.supabaseService.client.storage
+              .from(this.bucketName)
+              .getPublicUrl(fileName);
 
-        // Charger l'image pour obtenir ses dimensions
-        return from(this.getImageDimensions(urlData.publicUrl)).pipe(
-          map((dimensions) => ({
-            url: urlData.publicUrl,
-            width: dimensions.width,
-            height: dimensions.height,
-            error: null
-          })),
-          catchError((error) => of({
-            url: urlData.publicUrl,
-            width: 0,
-            height: 0,
-            error: error instanceof Error ? error.message : 'Erreur lors de la lecture des dimensions'
-          }))
+            // Charger l'image pour obtenir ses dimensions
+            return from(this.getImageDimensions(urlData.publicUrl)).pipe(
+              map((dimensions) => ({
+                url: urlData.publicUrl,
+                width: dimensions.width,
+                height: dimensions.height,
+                error: null
+              })),
+              catchError((error) => of({
+                url: urlData.publicUrl,
+                width: 0,
+                height: 0,
+                error: error instanceof Error ? error.message : 'Erreur lors de la lecture des dimensions'
+              }))
+            );
+          })
         );
-      })
+      }),
+      catchError((error) => of({
+        url: '',
+        width: 0,
+        height: 0,
+        error: error instanceof Error ? error.message : 'Erreur lors de l\'optimisation de l\'image'
+      }))
     );
+  }
+
+  /**
+   * Optimise une image et la convertit en WebP
+   * Redimensionne si nécessaire et compresse avec qualité optimale
+   */
+  private async optimizeImageToWebP(file: File): Promise<File> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        reject(new Error('Impossible de créer un contexte canvas'));
+        return;
+      }
+
+      img.onload = () => {
+        try {
+          // Calculer les nouvelles dimensions en conservant le ratio
+          let width = img.naturalWidth;
+          let height = img.naturalHeight;
+
+          if (width > this.maxWidth || height > this.maxHeight) {
+            const ratio = Math.min(this.maxWidth / width, this.maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          // Définir la taille du canvas
+          canvas.width = width;
+          canvas.height = height;
+
+          // Dessiner l'image redimensionnée sur le canvas
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convertir en WebP
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Erreur lors de la conversion en WebP'));
+                return;
+              }
+
+              // Créer un nouveau File depuis le Blob
+              const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), {
+                type: 'image/webp',
+                lastModified: Date.now()
+              });
+
+              resolve(webpFile);
+            },
+            'image/webp',
+            this.webpQuality
+          );
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      img.onerror = () => {
+        reject(new Error('Erreur lors du chargement de l\'image'));
+      };
+
+      // Charger l'image depuis le fichier
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          img.src = e.target.result as string;
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error('Erreur lors de la lecture du fichier'));
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   /**

@@ -17,22 +17,28 @@
     <div class="zones-overlay">
       @for (zone of imageData.zones; track zone.id) {
         @if (getAbsolutePosition(zone); as pos) {
-          <div
-            class="zone"
-            [class.clicked]="isZoneClicked(zone.id)"
-            [class.correct-zone]="isZoneCorrect(zone.id) && showResult && isSubmitted()"
-            [class.incorrect-zone]="!isZoneCorrect(zone.id) && showResult && isSubmitted()"
-            [style.left.px]="pos.x"
-            [style.top.px]="pos.y"
-            [style.width.px]="pos.width"
-            [style.height.px]="pos.height"
-          >
-            @if (isZoneClicked(zone.id) && showResult) {
-              <div class="zone-marker">
-                {{ isZoneCorrect(zone.id) ? '✓' : '✗' }}
-              </div>
-            }
-          </div>
+          <!-- 
+            - Avant validation : toutes les zones sont visibles
+            - Après validation correcte : seulement les zones correctes
+            - Après validation incorrecte : aucune zone (pas de révélation de la réponse)
+          -->
+          @if (!isSubmitted() || (isSubmitted() && isCorrect() && isZoneCorrect(zone.id))) {
+            <div
+              class="zone"
+              [class.clicked]="isZoneClicked(zone.id)"
+              [class.correct-zone]="isZoneCorrect(zone.id) && showResult && isSubmitted() && isCorrect()"
+              [style.left.px]="pos.x"
+              [style.top.px]="pos.y"
+              [style.width.px]="pos.width"
+              [style.height.px]="pos.height"
+            >
+              @if (isZoneClicked(zone.id) && showResult && isZoneCorrect(zone.id) && isCorrect()) {
+                <div class="zone-marker">
+                  ✓
+                </div>
+              }
+            </div>
+          }
         }
       }
     </div>

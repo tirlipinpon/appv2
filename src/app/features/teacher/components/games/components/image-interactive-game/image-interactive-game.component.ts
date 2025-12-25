@@ -166,15 +166,27 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
 
     const clicked = this.clickedZoneIds();
     const correctZones = this.imageData.zones.filter(z => z.is_correct);
+    const requireAll = this.imageData.require_all_correct_zones ?? true; // Par défaut: true (rétrocompatibilité)
 
-    // Vérifier que toutes les zones correctes ont été cliquées
-    const allCorrectClicked = correctZones.every(zone => clicked.has(zone.id));
-    
     // Vérifier qu'aucune zone incorrecte n'a été cliquée
     const incorrectZones = this.imageData.zones.filter(z => !z.is_correct);
     const noIncorrectClicked = incorrectZones.every(zone => !clicked.has(zone.id));
 
-    const isValid = allCorrectClicked && noIncorrectClicked && clicked.size === correctZones.length;
+    let isValid = false;
+
+    if (requireAll) {
+      // Mode "toutes les zones correctes sont obligatoires"
+      // Vérifier que toutes les zones correctes ont été cliquées
+      const allCorrectClicked = correctZones.every(zone => clicked.has(zone.id));
+      // Vérifier qu'exactement toutes les zones correctes (et seulement elles) ont été cliquées
+      isValid = allCorrectClicked && noIncorrectClicked && clicked.size === correctZones.length;
+    } else {
+      // Mode "une seule zone correcte suffit"
+      // Vérifier qu'au moins une zone correcte a été cliquée
+      const atLeastOneCorrectClicked = correctZones.some(zone => clicked.has(zone.id));
+      // Vérifier qu'aucune zone incorrecte n'a été cliquée
+      isValid = atLeastOneCorrectClicked && noIncorrectClicked;
+    }
 
     this.isSubmitted.set(true);
     this.isCorrect.set(isValid);
