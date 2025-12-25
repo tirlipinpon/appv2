@@ -60,6 +60,13 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   readonly drawingStart = signal<{ x: number; y: number } | null>(null);
   readonly drawingCurrent = signal<{ x: number; y: number } | null>(null);
 
+  // Déplacement et redimensionnement
+  readonly isMoving = signal<boolean>(false);
+  readonly moveStart = signal<{ x: number; y: number; zoneStartX: number; zoneStartY: number } | null>(null);
+  readonly isResizing = signal<boolean>(false);
+  readonly resizeHandle = signal<'nw' | 'ne' | 'sw' | 'se' | null>(null);
+  readonly resizeStart = signal<{ x: number; y: number; zoneX: number; zoneY: number; zoneWidth: number; zoneHeight: number } | null>(null);
+
   // Configuration de validation
   readonly requireAllCorrectZones = signal<boolean>(true); // Par défaut, toutes les zones correctes sont requises
 
@@ -290,7 +297,7 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
    * Gère le début du dessin d'une zone
    */
   onMouseDown(event: MouseEvent): void {
-    if (this.editMode() !== 'draw' || !this.imageUrl()) return;
+    if (!this.imageUrl()) return;
 
     const rect = this.imageContainer.nativeElement.getBoundingClientRect();
     const x = event.clientX - rect.left - this.imageOffsetX();
@@ -305,21 +312,44 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     const clampedX = Math.max(0, Math.min(x, this.displayedImageWidth()));
     const clampedY = Math.max(0, Math.min(y, this.displayedImageHeight()));
 
-    this.isDrawing.set(true);
-    this.drawingStart.set({ x: clampedX, y: clampedY });
-    this.drawingCurrent.set({ x: clampedX, y: clampedY });
-  }
-
-  /**
-   * Gère le mouvement de la souris pendant le dessin
-   */
-  onMouseMove(event: MouseEvent): void {
-    if (!this.isDrawing() || !this.drawingStart()) {
-      // Réinitialiser la position actuelle si on ne dessine pas
-      this.drawingCurrent.set(null);
+    // Mode dessin
+    if (this.editMode() === 'draw') {
+      this.isDrawing.set(true);
+      this.drawingStart.set({ x: clampedX, y: clampedY });
+      this.drawingCurrent.set({ x: clampedX, y: clampedY });
       return;
     }
 
+    // Mode sélection : gérer le déplacement
+    if (this.editMode() === 'select') {
+      const selectedId = this.selectedZoneId();
+      if (selectedId) {
+        const zone = this.zones().find(z => z.id === selectedId);
+        if (zone) {
+          const pos = this.getAbsolutePosition(zone);
+          // Vérifier si le clic est dans la zone sélectionnée
+          if (clampedX >= pos.x && clampedX <= pos.x + pos.width &&
+              clampedY >= pos.y && clampedY <= pos.y + pos.height) {
+            // Démarrer le déplacement
+            this.isMoving.set(true);
+            this.moveStart.set({
+              x: clampedX,
+              y: clampedY,
+              zoneStartX: zone.x,
+              zoneStartY: zone.y
+            });
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Gère le mouvement de la souris pendant le dessin, déplacement ou redimensionnement
+   */
+  onMouseMove(event: MouseEvent): void {
     const rect = this.imageContainer.nativeElement.getBoundingClientRect();
     const currentX = event.clientX - rect.left - this.imageOffsetX();
     const currentY = event.clientY - rect.top - this.imageOffsetY();
@@ -328,71 +358,165 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     const clampedX = Math.max(0, Math.min(currentX, this.displayedImageWidth()));
     const clampedY = Math.max(0, Math.min(currentY, this.displayedImageHeight()));
 
-    // Mettre à jour la position actuelle pour le preview
-    this.drawingCurrent.set({ x: clampedX, y: clampedY });
-  }
-
-  /**
-   * Gère la fin du dessin d'une zone
-   */
-  onMouseUp(event: MouseEvent): void {
-    if (!this.isDrawing() || !this.drawingStart()) return;
-
-    const rect = this.imageContainer.nativeElement.getBoundingClientRect();
-    const endX = event.clientX - rect.left - this.imageOffsetX();
-    const endY = event.clientY - rect.top - this.imageOffsetY();
-
-    // Limiter les coordonnées à l'intérieur de l'image
-    const clampedEndX = Math.max(0, Math.min(endX, this.displayedImageWidth()));
-    const clampedEndY = Math.max(0, Math.min(endY, this.displayedImageHeight()));
-
-    const start = this.drawingStart()!;
-    
-    // Calculer les coordonnées du rectangle
-    const x = Math.min(start.x, clampedEndX);
-    const y = Math.min(start.y, clampedEndY);
-    const width = Math.abs(clampedEndX - start.x);
-    const height = Math.abs(clampedEndY - start.y);
-
-    // Ignorer les zones trop petites
-    if (width < 10 || height < 10) {
-      this.isDrawing.set(false);
-      this.drawingStart.set(null);
-      this.drawingCurrent.set(null);
+    // Mode dessin
+    if (this.isDrawing() && this.drawingStart()) {
+      this.drawingCurrent.set({ x: clampedX, y: clampedY });
       return;
     }
 
-    // Convertir en coordonnées relatives
-    const relativeX = x / this.displayedImageWidth();
-    const relativeY = y / this.displayedImageHeight();
-    const relativeWidth = width / this.displayedImageWidth();
-    const relativeHeight = height / this.displayedImageHeight();
+    // Mode déplacement
+    if (this.isMoving() && this.moveStart()) {
+      const moveStart = this.moveStart()!;
+      const selectedId = this.selectedZoneId();
+      if (selectedId) {
+        const zone = this.zones().find(z => z.id === selectedId);
+        if (zone) {
+          const deltaX = (clampedX - moveStart.x) / this.displayedImageWidth();
+          const deltaY = (clampedY - moveStart.y) / this.displayedImageHeight();
+          
+          let newX = moveStart.zoneStartX + deltaX;
+          let newY = moveStart.zoneStartY + deltaY;
 
-    // Créer une nouvelle zone
-    const newZone: ZoneInEdit = {
-      id: `zone-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      x: relativeX,
-      y: relativeY,
-      width: relativeWidth,
-      height: relativeHeight,
-      is_correct: true, // Par défaut, la zone est correcte
-      name: `Zone ${this.zones().length + 1}`,
-    };
+          // Limiter pour que la zone reste dans l'image
+          newX = Math.max(0, Math.min(newX, 1 - zone.width));
+          newY = Math.max(0, Math.min(newY, 1 - zone.height));
 
-    this.zones.update(zones => [...zones, newZone]);
-    this.isDrawing.set(false);
-    this.drawingStart.set(null);
-    this.drawingCurrent.set(null);
-    this.emitData();
+          this.zones.update(zones =>
+            zones.map(z =>
+              z.id === selectedId ? { ...z, x: newX, y: newY } : z
+            )
+          );
+        }
+      }
+      return;
+    }
+
+    // Mode redimensionnement
+    if (this.isResizing() && this.resizeStart() && this.resizeHandle()) {
+      const resizeStart = this.resizeStart()!;
+      const handle = this.resizeHandle()!;
+      const selectedId = this.selectedZoneId();
+      
+      if (selectedId) {
+        const zone = this.zones().find(z => z.id === selectedId);
+        if (zone) {
+          const deltaX = (clampedX - resizeStart.x) / this.displayedImageWidth();
+          const deltaY = (clampedY - resizeStart.y) / this.displayedImageHeight();
+
+          let newX = resizeStart.zoneX;
+          let newY = resizeStart.zoneY;
+          let newWidth = resizeStart.zoneWidth;
+          let newHeight = resizeStart.zoneHeight;
+
+          // Ajuster selon la poignée utilisée
+          switch (handle) {
+            case 'nw': // Coin nord-ouest
+              newX = Math.max(0, resizeStart.zoneX + deltaX);
+              newY = Math.max(0, resizeStart.zoneY + deltaY);
+              newWidth = Math.max(0.01, resizeStart.zoneWidth - deltaX);
+              newHeight = Math.max(0.01, resizeStart.zoneHeight - deltaY);
+              break;
+            case 'ne': // Coin nord-est
+              newY = Math.max(0, resizeStart.zoneY + deltaY);
+              newWidth = Math.max(0.01, resizeStart.zoneWidth + deltaX);
+              newHeight = Math.max(0.01, resizeStart.zoneHeight - deltaY);
+              if (newX + newWidth > 1) newWidth = 1 - newX;
+              break;
+            case 'sw': // Coin sud-ouest
+              newX = Math.max(0, resizeStart.zoneX + deltaX);
+              newWidth = Math.max(0.01, resizeStart.zoneWidth - deltaX);
+              newHeight = Math.max(0.01, resizeStart.zoneHeight + deltaY);
+              if (newY + newHeight > 1) newHeight = 1 - newY;
+              break;
+            case 'se': // Coin sud-est
+              newWidth = Math.max(0.01, resizeStart.zoneWidth + deltaX);
+              newHeight = Math.max(0.01, resizeStart.zoneHeight + deltaY);
+              if (newX + newWidth > 1) newWidth = 1 - newX;
+              if (newY + newHeight > 1) newHeight = 1 - newY;
+              break;
+          }
+
+          this.zones.update(zones =>
+            zones.map(z =>
+              z.id === selectedId ? { ...z, x: newX, y: newY, width: newWidth, height: newHeight } : z
+            )
+          );
+        }
+      }
+      return;
+    }
   }
 
   /**
-   * Gère la sortie de la souris du conteneur pendant le dessin
+   * Gère la fin du dessin d'une zone, du déplacement ou du redimensionnement
    */
-  onMouseLeave(): void {
-    if (this.isDrawing()) {
-      // Ne pas annuler le dessin, juste arrêter le preview
+  onMouseUp(event: MouseEvent): void {
+    // Fin du dessin
+    if (this.isDrawing() && this.drawingStart()) {
+      const rect = this.imageContainer.nativeElement.getBoundingClientRect();
+      const endX = event.clientX - rect.left - this.imageOffsetX();
+      const endY = event.clientY - rect.top - this.imageOffsetY();
+
+      // Limiter les coordonnées à l'intérieur de l'image
+      const clampedEndX = Math.max(0, Math.min(endX, this.displayedImageWidth()));
+      const clampedEndY = Math.max(0, Math.min(endY, this.displayedImageHeight()));
+
+      const start = this.drawingStart()!;
+      
+      // Calculer les coordonnées du rectangle
+      const x = Math.min(start.x, clampedEndX);
+      const y = Math.min(start.y, clampedEndY);
+      const width = Math.abs(clampedEndX - start.x);
+      const height = Math.abs(clampedEndY - start.y);
+
+      // Ignorer les zones trop petites
+      if (width < 10 || height < 10) {
+        this.isDrawing.set(false);
+        this.drawingStart.set(null);
+        this.drawingCurrent.set(null);
+        return;
+      }
+
+      // Convertir en coordonnées relatives
+      const relativeX = x / this.displayedImageWidth();
+      const relativeY = y / this.displayedImageHeight();
+      const relativeWidth = width / this.displayedImageWidth();
+      const relativeHeight = height / this.displayedImageHeight();
+
+      // Créer une nouvelle zone
+      const newZone: ZoneInEdit = {
+        id: `zone-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        x: relativeX,
+        y: relativeY,
+        width: relativeWidth,
+        height: relativeHeight,
+        is_correct: true, // Par défaut, la zone est correcte
+        name: `Zone ${this.zones().length + 1}`,
+      };
+
+      this.zones.update(zones => [...zones, newZone]);
+      this.isDrawing.set(false);
+      this.drawingStart.set(null);
       this.drawingCurrent.set(null);
+      this.emitData();
+      return;
+    }
+
+    // Fin du déplacement
+    if (this.isMoving()) {
+      this.isMoving.set(false);
+      this.moveStart.set(null);
+      this.emitData();
+      return;
+    }
+
+    // Fin du redimensionnement
+    if (this.isResizing()) {
+      this.isResizing.set(false);
+      this.resizeHandle.set(null);
+      this.resizeStart.set(null);
+      this.emitData();
+      return;
     }
   }
 
@@ -417,8 +541,59 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
    * Sélectionne une zone
    */
   selectZone(zoneId: string): void {
-    if (this.editMode() === 'select') {
+    if (this.editMode() === 'select' && !this.isMoving() && !this.isResizing()) {
       this.selectedZoneId.set(zoneId);
+    }
+  }
+
+  /**
+   * Gère le début du redimensionnement via une poignée
+   */
+  onResizeHandleMouseDown(event: MouseEvent, handle: 'nw' | 'ne' | 'sw' | 'se'): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const selectedId = this.selectedZoneId();
+    if (!selectedId) return;
+
+    const zone = this.zones().find(z => z.id === selectedId);
+    if (!zone) return;
+
+    const rect = this.imageContainer.nativeElement.getBoundingClientRect();
+    const x = event.clientX - rect.left - this.imageOffsetX();
+    const y = event.clientY - rect.top - this.imageOffsetY();
+
+    this.isResizing.set(true);
+    this.resizeHandle.set(handle);
+    this.resizeStart.set({
+      x,
+      y,
+      zoneX: zone.x,
+      zoneY: zone.y,
+      zoneWidth: zone.width,
+      zoneHeight: zone.height
+    });
+  }
+
+  /**
+   * Gère la sortie de la souris du conteneur
+   */
+  onMouseLeave(): void {
+    // Pour le dessin, on garde juste le preview (pas d'annulation complète)
+    if (this.isDrawing()) {
+      this.drawingCurrent.set(null);
+    }
+    // Pour le déplacement et le redimensionnement, on finalise et sauvegarde
+    if (this.isMoving()) {
+      this.isMoving.set(false);
+      this.moveStart.set(null);
+      this.emitData();
+    }
+    if (this.isResizing()) {
+      this.isResizing.set(false);
+      this.resizeHandle.set(null);
+      this.resizeStart.set(null);
+      this.emitData();
     }
   }
 

@@ -82,11 +82,13 @@
                   [class.selected]="isZoneSelected(zone.id)"
                   [class.correct]="zone.is_correct"
                   [class.incorrect]="!zone.is_correct"
+                  [class.moving]="isMoving() && isZoneSelected(zone.id)"
                   [style.left.px]="pos.x"
                   [style.top.px]="pos.y"
                   [style.width.px]="pos.width"
                   [style.height.px]="pos.height"
                   (click)="selectZone(zone.id)"
+                  [style.cursor]="editMode() === 'select' && isZoneSelected(zone.id) ? 'move' : 'default'"
                 >
                   <div class="zone-label">
                     {{ zone.name || 'Zone' }}
@@ -109,6 +111,30 @@
                       🗑️
                     </button>
                   </div>
+                  
+                  <!-- Poignées de redimensionnement (seulement en mode select et si la zone est sélectionnée) -->
+                  @if (editMode() === 'select' && isZoneSelected(zone.id)) {
+                    <div
+                      class="resize-handle resize-handle-nw"
+                      (mousedown)="onResizeHandleMouseDown($event, 'nw'); $event.stopPropagation()"
+                      title="Redimensionner (coin nord-ouest)"
+                    ></div>
+                    <div
+                      class="resize-handle resize-handle-ne"
+                      (mousedown)="onResizeHandleMouseDown($event, 'ne'); $event.stopPropagation()"
+                      title="Redimensionner (coin nord-est)"
+                    ></div>
+                    <div
+                      class="resize-handle resize-handle-sw"
+                      (mousedown)="onResizeHandleMouseDown($event, 'sw'); $event.stopPropagation()"
+                      title="Redimensionner (coin sud-ouest)"
+                    ></div>
+                    <div
+                      class="resize-handle resize-handle-se"
+                      (mousedown)="onResizeHandleMouseDown($event, 'se'); $event.stopPropagation()"
+                      title="Redimensionner (coin sud-est)"
+                    ></div>
+                  }
                 </div>
               }
             }
