@@ -60,14 +60,20 @@ export interface SimonData {
 }
 
 // Image interactive : image avec zones cliquables
+// Supporte deux formats : rectangle (rétrocompatibilité) et polygone (nouveau)
 export interface ImageInteractiveZone {
   id: string; // UUID pour identifier la zone
   name?: string; // Nom optionnel de la zone
-  x: number; // Position X relative (0-1)
-  y: number; // Position Y relative (0-1)
-  width: number; // Largeur relative (0-1)
-  height: number; // Hauteur relative (0-1)
   is_correct: boolean; // Si cette zone est une réponse correcte
+  
+  // Format rectangle (rétrocompatibilité) - utilisé si points n'est pas défini
+  x?: number; // Position X relative (0-1)
+  y?: number; // Position Y relative (0-1)
+  width?: number; // Largeur relative (0-1)
+  height?: number; // Hauteur relative (0-1)
+  
+  // Format polygone (nouveau) - utilisé si défini
+  points?: Array<{ x: number; y: number }>; // Points du polygone en coordonnées relatives (0-1)
 }
 
 export interface ImageInteractiveData {

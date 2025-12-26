@@ -40,6 +40,31 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
+
+    .zones-svg {
+      position: absolute;
+      pointer-events: none;
+
+      .zone-polygon {
+        pointer-events: all;
+        transition: all $transition-base;
+
+        &:hover {
+          stroke-width: 3;
+          filter: brightness(1.1);
+        }
+      }
+
+      g.clicked .zone-polygon {
+        stroke-width: 3;
+        filter: brightness(1.2);
+      }
+
+      g.correct-zone .zone-polygon {
+        stroke: $color-success;
+        fill: rgba($color-success, 0.3);
+      }
+    }
   }
 }
 

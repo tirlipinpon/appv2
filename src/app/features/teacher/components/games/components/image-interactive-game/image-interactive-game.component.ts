@@ -133,14 +133,21 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
     const relativeX = clickX / this.displayedImageWidth();
     const relativeY = clickY / this.displayedImageHeight();
 
-    // Trouver la zone cliquée
+    // Trouver la zone cliquée (rectangle ou polygone)
     const clickedZone = this.imageData.zones.find(zone => {
-      return (
-        relativeX >= zone.x &&
-        relativeX <= zone.x + zone.width &&
-        relativeY >= zone.y &&
-        relativeY <= zone.y + zone.height
-      );
+      if (zone.points && zone.points.length > 0) {
+        // Format polygone : utiliser l'algorithme ray casting
+        return this.isPointInPolygon(relativeX, relativeY, zone);
+      } else if (zone.x !== undefined && zone.y !== undefined && zone.width !== undefined && zone.height !== undefined) {
+        // Format rectangle (rétrocompatibilité)
+        return (
+          relativeX >= zone.x &&
+          relativeX <= zone.x + zone.width &&
+          relativeY >= zone.y &&
+          relativeY <= zone.y + zone.height
+        );
+      }
+      return false;
     });
 
     if (clickedZone) {
@@ -204,14 +211,70 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
 
   /**
    * Convertit les coordonnées relatives en absolues pour l'affichage
+   * Retourne null si c'est un polygone (utiliser getAbsolutePolygonPoints à la place)
    */
-  getAbsolutePosition(zone: ImageInteractiveZone): { x: number; y: number; width: number; height: number } {
-    return {
-      x: zone.x * this.displayedImageWidth() + this.imageOffsetX(),
-      y: zone.y * this.displayedImageHeight() + this.imageOffsetY(),
-      width: zone.width * this.displayedImageWidth(),
-      height: zone.height * this.displayedImageHeight(),
-    };
+  getAbsolutePosition(zone: ImageInteractiveZone): { x: number; y: number; width: number; height: number } | null {
+    // Si c'est un polygone, retourner null
+    if (zone.points && zone.points.length > 0) {
+      return null;
+    }
+    
+    // Format rectangle (rétrocompatibilité)
+    if (zone.x !== undefined && zone.y !== undefined && zone.width !== undefined && zone.height !== undefined) {
+      return {
+        x: zone.x * this.displayedImageWidth() + this.imageOffsetX(),
+        y: zone.y * this.displayedImageHeight() + this.imageOffsetY(),
+        width: zone.width * this.displayedImageWidth(),
+        height: zone.height * this.displayedImageHeight(),
+      };
+    }
+    
+    return null;
+  }
+
+  /**
+   * Convertit les points relatifs d'un polygone en coordonnées absolues pour l'affichage
+   */
+  getAbsolutePolygonPoints(zone: ImageInteractiveZone): Array<{ x: number; y: number }> | null {
+    if (!zone.points || zone.points.length === 0) {
+      return null;
+    }
+    
+    return zone.points.map(point => ({
+      x: point.x * this.displayedImageWidth() + this.imageOffsetX(),
+      y: point.y * this.displayedImageHeight() + this.imageOffsetY(),
+    }));
+  }
+
+  /**
+   * Vérifie si une zone est un rectangle ou un polygone
+   */
+  isRectangle(zone: ImageInteractiveZone): boolean {
+    return !zone.points || zone.points.length === 0;
+  }
+
+  /**
+   * Vérifie si un point est dans un polygone (algorithme ray casting)
+   */
+  private isPointInPolygon(x: number, y: number, zone: ImageInteractiveZone): boolean {
+    if (!zone.points || zone.points.length < 3) {
+      return false;
+    }
+    
+    // Algorithme ray casting
+    let inside = false;
+    for (let i = 0, j = zone.points.length - 1; i < zone.points.length; j = i++) {
+      const xi = zone.points[i].x;
+      const yi = zone.points[i].y;
+      const xj = zone.points[j].x;
+      const yj = zone.points[j].y;
+      
+      const intersect = ((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    
+    return inside;
   }
 
   /**
@@ -254,6 +317,16 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
    */
   getCorrectZonesCount(): number {
     return this.imageData.zones.filter((z: ImageInteractiveZone) => z.is_correct).length;
+  }
+
+  /**
+   * Formate les points d'un polygone en chaîne pour l'attribut SVG points
+   */
+  formatPolygonPoints(points: Array<{ x: number; y: number }> | null): string {
+    if (!points || points.length === 0) {
+      return '';
+    }
+    return points.map(p => `${p.x},${p.y}`).join(' ');
   }
 }
 

@@ -30,17 +30,50 @@
             class="btn-mode"
             [class.active]="editMode() === 'draw'"
             (click)="editMode.set('draw')"
+            title="Dessiner une zone"
           >
-            ✏️ Dessiner une zone
+            ✏️
           </button>
           <button
             type="button"
             class="btn-mode"
             [class.active]="editMode() === 'select'"
             (click)="editMode.set('select')"
+            title="Sélectionner"
           >
-            👆 Sélectionner
+            👆
           </button>
+          
+          <!-- Contrôles pour finaliser le polygone en cours -->
+          @if (isCreatingPolygon()) {
+            <button
+              type="button"
+              class="btn-mode btn-confirm"
+              (click)="finalizePolygon()"
+              [disabled]="polygonPoints().length < 3"
+              [title]="'Finaliser le polygone (' + polygonPoints().length + ' points, minimum 3)'"
+            >
+              ✓
+            </button>
+            <button
+              type="button"
+              class="btn-mode btn-cancel"
+              (click)="cancelPolygon()"
+              title="Annuler"
+            >
+              ✗
+            </button>
+            @if (polygonPoints().length > 0) {
+              <button
+                type="button"
+                class="btn-mode btn-undo"
+                (click)="removeLastPolygonPoint()"
+                title="Retirer le dernier point"
+              >
+                ↶
+              </button>
+            }
+          }
         </div>
 
         <div
@@ -50,6 +83,7 @@
           (mousemove)="onMouseMove($event)"
           (mouseup)="onMouseUp($event)"
           (mouseleave)="onMouseLeave()"
+          [style.pointer-events]="editMode() === 'select' && selectedZoneId() ? 'none' : 'auto'"
         >
           <img
             #imageElement
@@ -61,22 +95,100 @@
 
           <!-- Overlay des zones -->
           <div #zonesOverlay class="zones-overlay">
-            <!-- Zone en cours de dessin (preview) -->
-            @if (isDrawing() && getDrawingPreview(); as preview) {
-              <div
-                class="zone zone-preview"
-                [style.left.px]="preview.x + imageOffsetX()"
-                [style.top.px]="preview.y + imageOffsetY()"
-                [style.width.px]="preview.width"
-                [style.height.px]="preview.height"
-              >
-                <div class="zone-label">Nouvelle zone</div>
-              </div>
-            }
+            <!-- SVG pour les polygones -->
+            <svg class="zones-svg" 
+                 [style.width.px]="displayedImageWidth()" 
+                 [style.height.px]="displayedImageHeight()" 
+                 [style.left.px]="imageOffsetX()" 
+                 [style.top.px]="imageOffsetY()">
+              
+              
+              <!-- Polygone en cours de création -->
+              @if (isCreatingPolygon() && polygonPoints().length > 0) {
+                @if (getCurrentPolygonAbsolutePoints(); as previewPoints) {
+                  @if (previewPoints && previewPoints.length >= 2) {
+                    <polyline
+                      [attr.points]="formatPolygonPoints(previewPoints)"
+                      class="zone-polygon zone-preview"
+                      fill="none"
+                      stroke="rgb(59, 130, 246)"
+                      stroke-width="2"
+                      stroke-dasharray="5,5"
+                      pointer-events="none"
+                    />
+                  }
+                  @if (previewPoints && previewPoints.length > 0) {
+                    @for (point of previewPoints; track $index) {
+                      <circle
+                        [attr.cx]="point.x"
+                        [attr.cy]="point.y"
+                        r="5"
+                        fill="rgb(59, 130, 246)"
+                        stroke="white"
+                        stroke-width="2"
+                        pointer-events="none"
+                      />
+                    }
+                  }
+                }
+              }
+              
+              <!-- Polygones existants -->
+              @for (zone of zones(); track zone.id) {
+                @if (!isRectangle(zone)) {
+                  @if (absolutePolygonPointsCache()[zone.id]; as polygonPoints) {
+                    @if (polygonPoints && polygonPoints.length > 0) {
+                      <g
+                        [class.selected]="isZoneSelected(zone.id)"
+                        [class.correct]="zone.is_correct"
+                        [class.incorrect]="!zone.is_correct"
+                        (click)="selectZone(zone.id)"
+                        [style.cursor]="editMode() === 'select' && isZoneSelected(zone.id) ? 'move' : 'pointer'"
+                      >
+                        <polygon
+                          [attr.points]="formatPolygonPoints(polygonPoints)"
+                          class="zone-polygon"
+                          [attr.fill]="zone.is_correct ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'"
+                          [attr.stroke]="zone.is_correct ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)'"
+                          stroke-width="2"
+                          pointer-events="all"
+                        />
+                        @if (isZoneSelected(zone.id)) {
+                          @for (point of absolutePolygonPointsCache()[zone.id] || []; track point.id; let i = $index) {
+                            @if (isDraggingPoint() && draggingPoint()?.zoneId === zone.id && draggingPoint()?.pointIndex === i && draggingPointAbsolutePosition(); as dragPos) {
+                              <circle
+                                [attr.cx]="dragPos.x"
+                                [attr.cy]="dragPos.y"
+                                r="6"
+                                fill="rgb(59, 130, 246)"
+                                stroke="white"
+                                stroke-width="2"
+                                pointer-events="all"
+                              />
+                            } @else {
+                              <circle
+                                [attr.cx]="point.x"
+                                [attr.cy]="point.y"
+                                r="6"
+                                fill="rgb(59, 130, 246)"
+                                stroke="white"
+                                stroke-width="2"
+                                pointer-events="all"
+                                (mousedown)="onCircleMouseDown($event, zone.id, i); $event.stopPropagation()"
+                              />
+                            }
+                          }
+                        }
+                      </g>
+                    }
+                  }
+                }
+              }
+            </svg>
             
-            <!-- Zones existantes -->
+            <!-- Zones rectangulaires existantes (rétrocompatibilité) -->
             @for (zone of zones(); track zone.id) {
-              @if (getAbsolutePosition(zone); as pos) {
+              @if (isRectangle(zone) && getAbsolutePosition(zone); as pos) {
                 <div
                   class="zone"
                   [class.selected]="isZoneSelected(zone.id)"
@@ -200,7 +312,7 @@
               </p>
             </div>
             <p class="help-text">
-              💡 Astuce : Cliquez sur "Dessiner une zone" puis tracez un rectangle sur l'image pour créer une zone cliquable. Vous pouvez définir plusieurs zones correctes en cliquant sur le bouton ✓/✗ pour chaque zone.
+              💡 Astuce : Cliquez sur "Dessiner une zone" puis cliquez plusieurs fois sur l'image pour créer un polygone personnalisé. Cliquez sur "Finaliser" pour terminer le polygone (minimum 3 points). Vous pouvez définir plusieurs zones correctes en cliquant sur le bouton ✓/✗ pour chaque zone.
             </p>
           </div>
         } @else {

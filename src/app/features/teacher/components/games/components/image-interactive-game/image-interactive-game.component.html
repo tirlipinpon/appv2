@@ -15,13 +15,49 @@
 
     <!-- Overlay des zones (invisible mais cliquable) -->
     <div class="zones-overlay">
+      <!-- SVG pour les polygones -->
+      <svg class="zones-svg" [style.width.px]="displayedImageWidth()" [style.height.px]="displayedImageHeight()" 
+           [style.left.px]="imageOffsetX()" [style.top.px]="imageOffsetY()">
+        @for (zone of imageData.zones; track zone.id) {
+          @if (!isRectangle(zone)) {
+            @if (getAbsolutePolygonPoints(zone); as polygonPoints) {
+              @if (polygonPoints && polygonPoints.length > 0) {
+                @if (!isSubmitted() || (isSubmitted() && isCorrect() && isZoneCorrect(zone.id))) {
+                  <g [class.clicked]="isZoneClicked(zone.id)"
+                     [class.correct-zone]="isZoneCorrect(zone.id) && showResult && isSubmitted() && isCorrect()">
+                    <polygon
+                      [attr.points]="formatPolygonPoints(polygonPoints)"
+                      class="zone-polygon"
+                      [attr.fill]="isZoneClicked(zone.id) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.1)'"
+                      stroke="rgb(59, 130, 246)"
+                      [attr.stroke-width]="isZoneClicked(zone.id) ? '3' : '2'"
+                      pointer-events="all"
+                      [style.cursor]="disabled || isSubmitted() ? 'default' : 'pointer'"
+                    />
+                    @if (isZoneClicked(zone.id) && showResult && isZoneCorrect(zone.id) && isCorrect()) {
+                      <text
+                        [attr.x]="polygonPoints[0].x"
+                        [attr.y]="polygonPoints[0].y - 10"
+                        fill="rgb(34, 197, 94)"
+                        font-size="24"
+                        font-weight="bold"
+                        text-anchor="middle"
+                        pointer-events="none"
+                      >
+                        ✓
+                      </text>
+                    }
+                  </g>
+                }
+              }
+            }
+          }
+        }
+      </svg>
+      
+      <!-- Zones rectangulaires (rétrocompatibilité) -->
       @for (zone of imageData.zones; track zone.id) {
-        @if (getAbsolutePosition(zone); as pos) {
-          <!-- 
-            - Avant validation : toutes les zones sont visibles
-            - Après validation correcte : seulement les zones correctes
-            - Après validation incorrecte : aucune zone (pas de révélation de la réponse)
-          -->
+        @if (isRectangle(zone) && getAbsolutePosition(zone); as pos) {
           @if (!isSubmitted() || (isSubmitted() && isCorrect() && isZoneCorrect(zone.id))) {
             <div
               class="zone"

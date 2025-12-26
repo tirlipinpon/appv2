@@ -51,15 +51,28 @@
   display: flex;
   gap: $spacing-sm;
   margin-bottom: $spacing-md;
+  flex-wrap: wrap;
+  align-items: center;
+  position: relative;
+  
+  // S'assurer que les contrôles polygon ne font pas bouger l'image
+  min-height: 45px;
+  
+  // Réserver de l'espace pour le menu polygon si nécessaire
+  padding-bottom: 0;
 
   .btn-mode {
-    padding: $spacing-sm $spacing-md;
+    padding: $spacing-sm;
+    min-width: 40px;
     border: 2px solid $color-border-light;
     background: white;
     border-radius: $border-radius-sm;
     cursor: pointer;
     transition: all $transition-base;
-    font-size: $font-size-sm;
+    font-size: $font-size-base;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     &:hover {
       border-color: $color-primary;
@@ -71,8 +84,44 @@
       color: white;
       border-color: $color-primary;
     }
-  }
 
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &.btn-confirm {
+      background: $color-success;
+      color: white;
+      border-color: $color-success;
+
+      &:hover:not(:disabled) {
+        background: $color-success-dark;
+        border-color: $color-success-dark;
+      }
+    }
+
+    &.btn-cancel {
+      background: $color-danger-lighter;
+      color: $color-danger;
+      border-color: $color-danger;
+
+      &:hover {
+        background: $color-danger;
+        color: white;
+      }
+    }
+
+    &.btn-undo {
+      background: $color-gray-100;
+      color: $color-text-primary;
+      border-color: $color-border-light;
+
+      &:hover {
+        background: $color-gray-200;
+      }
+    }
+  }
 }
 
 .image-container {
@@ -86,6 +135,8 @@
   align-items: center;
   justify-content: center;
   cursor: crosshair;
+  // Empêcher le conteneur de bouger quand le menu apparaît
+  flex-shrink: 0;
 
   .game-image {
     max-width: 100%;
@@ -103,6 +154,63 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
+
+    .zones-svg {
+      position: absolute;
+      pointer-events: none;
+
+      .zone-polygon {
+        pointer-events: all;
+        // Transition seulement sur stroke et fill, pas sur transform/position
+        transition: stroke $transition-base, fill $transition-base, stroke-width $transition-base;
+
+        &.zone-preview {
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        &:hover {
+          stroke-width: 3;
+          filter: brightness(1.1);
+        }
+      }
+
+      g.selected .zone-polygon {
+        stroke-width: 3;
+        filter: drop-shadow(0 0 4px rgba($color-primary, 0.5));
+      }
+
+      g.correct .zone-polygon {
+        stroke: $color-success;
+        fill: rgba($color-success, 0.1);
+      }
+
+      g.incorrect .zone-polygon {
+        stroke: $color-danger;
+        fill: rgba($color-danger, 0.1);
+      }
+
+      circle {
+        pointer-events: all;
+        cursor: move;
+        // Pas de transition pour éviter les tremblements lors des recalculs
+        transition: none;
+        // Utiliser will-change pour optimiser le rendu
+        will-change: auto;
+
+        &:hover {
+          // Pas de transform pour éviter les tremblements
+          // Utiliser opacity et stroke-width à la place
+          opacity: 0.9;
+          stroke-width: 3;
+        }
+      }
+      
+      // Cercles dans une zone sélectionnée - style spécial pour éviter les tremblements
+      g.selected circle {
+        transition: none;
+        will-change: auto;
+      }
+    }
   }
 }
 
