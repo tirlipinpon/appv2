@@ -243,12 +243,13 @@ export class GameCardComponent implements OnInit, OnChanges {
             return;
           }
 
-          // Mettre à jour les données avec la nouvelle URL
+          // Mettre à jour les données avec la nouvelle URL en copiant toutes les propriétés
           const updatedImageData: ImageInteractiveData = {
             image_url: result.url,
             image_width: result.width,
             image_height: result.height,
             zones: imageDataWithFile.zones,
+            require_all_correct_zones: imageDataWithFile.require_all_correct_zones,
           };
 
           // Sauvegarder le jeu avec la nouvelle URL

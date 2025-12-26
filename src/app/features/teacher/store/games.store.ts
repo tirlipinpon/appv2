@@ -10,6 +10,8 @@ import { Infrastructure } from '../components/infrastructure/infrastructure';
 import { GeneratedGameWithState, AIGameGenerationRequest, AIRawResponse } from '../types/ai-game-generation';
 import { ErrorSnackbarService } from '../../../shared/services/snackbar/error-snackbar.service';
 import { setStoreError } from '../../../shared/utils/store-error-helper';
+import { ImageUploadService } from '../components/games/services/image-upload/image-upload.service';
+import type { ImageInteractiveData } from '../types/game-data';
 
 export interface GamesState {
   games: Game[];
@@ -49,7 +51,7 @@ export const GamesStore = signalStore(
     hasGameTypes: () => store.gameTypes().length > 0,
     hasGeneratedGames: () => store.generatedGames().length > 0,
   })),
-  withMethods((store, infrastructure = inject(Infrastructure), errorSnackbar = inject(ErrorSnackbarService)) => ({
+  withMethods((store, infrastructure = inject(Infrastructure), errorSnackbar = inject(ErrorSnackbarService), imageUploadService = inject(ImageUploadService)) => ({
     loadGameTypes: rxMethod<void>(
       pipe(
         tap(() => patchState(store, { isLoading: true, error: [] })),
@@ -171,12 +173,38 @@ export const GamesStore = signalStore(
         tap(() => patchState(store, { isLoading: true, error: [] })),
         switchMap((gameId) => {
           const previous = store.games();
+          const gameToDelete = previous.find((g) => g.id === gameId);
+          
+          // Vérifier si c'est un jeu "click" avec une image à supprimer
+          const isImageInteractive = gameToDelete && gameToDelete.metadata && 
+            'image_url' in gameToDelete.metadata && 
+            typeof gameToDelete.metadata['image_url'] === 'string' &&
+            (gameToDelete.metadata['image_url'] as string).length > 0;
+          
+          const imageUrl = isImageInteractive 
+            ? (gameToDelete.metadata as unknown as ImageInteractiveData).image_url 
+            : null;
+          
+          // Supprimer l'image du storage si elle existe
+          const deleteImage$ = imageUrl 
+            ? imageUploadService.deleteImage(imageUrl).pipe(
+                catchError((error) => {
+                  // Ne pas bloquer la suppression du jeu si l'image ne peut pas être supprimée
+                  console.warn('Erreur lors de la suppression de l\'image:', error);
+                  return of({ success: true, error: null });
+                })
+              )
+            : of({ success: true, error: null });
+          
           // Optimistic update: remove locally first
           patchState(store, {
             games: previous.filter((g) => g.id !== gameId),
             isLoading: false,
           });
-          return infrastructure.deleteGame(gameId).pipe(
+          
+          // Supprimer l'image puis le jeu
+          return deleteImage$.pipe(
+            switchMap(() => infrastructure.deleteGame(gameId)),
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la suppression du jeu';

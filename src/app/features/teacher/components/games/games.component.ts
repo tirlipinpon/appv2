@@ -16,7 +16,7 @@ import { QcmFormComponent } from './components/qcm-form/qcm-form.component';
 import { VraiFauxFormComponent } from './components/vrai-faux-form/vrai-faux-form.component';
 import { MemoryFormComponent } from './components/memory-form/memory-form.component';
 import { SimonFormComponent } from './components/simon-form/simon-form.component';
-import { ImageInteractiveFormComponent } from './components/image-interactive-form/image-interactive-form.component';
+import { ImageInteractiveFormComponent, type ImageInteractiveDataWithFile } from './components/image-interactive-form/image-interactive-form.component';
 import { AIGameGeneratorFormComponent } from './components/ai-game-generator-form/ai-game-generator-form.component';
 import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './components/game-global-fields/game-global-fields.component';
@@ -32,6 +32,9 @@ import { Infrastructure } from '../infrastructure/infrastructure';
 import { normalizeGameData } from '../../utils/game-data-mapper';
 import { SCHOOL_LEVELS } from '../../utils/school-levels.util';
 import type { DuplicateGameData } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
+import { ImageUploadService } from './services/image-upload/image-upload.service';
+import { switchMap } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 @Component({
   selector: 'app-games',
@@ -66,6 +69,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly errorSnackbar = inject(ErrorSnackbarService);
   private readonly teacherService = inject(TeacherService);
   private readonly infra = inject(Infrastructure);
+  private readonly imageUploadService = inject(ImageUploadService);
   readonly gamesStore = inject(GamesStore);
   readonly subjectsStore = inject(TeacherAssignmentStore);
 
@@ -168,6 +172,9 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Données initiales pour l'édition
   readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
+  
+  // Données spécifiques pour le jeu image-interactive avec le fichier File (pour l'upload lors de la création)
+  private imageInteractiveDataWithFile = signal<ImageInteractiveDataWithFile | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
 
   // États des toggles pour les sections
@@ -359,8 +366,17 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData): void {
-    this.gameSpecificData.set(data);
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | ImageInteractiveDataWithFile): void {
+    // Si c'est ImageInteractiveDataWithFile, stocker séparément pour gérer l'upload
+    if ('imageFile' in data || 'oldImageUrl' in data) {
+      this.imageInteractiveDataWithFile.set(data as ImageInteractiveDataWithFile);
+      // Stocker aussi les données sans le fichier pour la compatibilité
+      const { imageFile, oldImageUrl, ...dataWithoutFile } = data as ImageInteractiveDataWithFile;
+      this.gameSpecificData.set(dataWithoutFile as ImageInteractiveData);
+    } else {
+      this.gameSpecificData.set(data);
+      this.imageInteractiveDataWithFile.set(null); // Réinitialiser si ce n'est pas ImageInteractive
+    }
   }
 
   onGameValidityChange(valid: boolean): void {
@@ -387,7 +403,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.gameForm.valid || !this.subjectId() || !this.gameSpecificValid()) return;
     const v = this.gameForm.value;
     const subjectId = this.subjectId()!;
-    const gameData = this.gameSpecificData();
+    let gameData = this.gameSpecificData();
     if (!gameData) return;
 
     // Générer un nom automatique
@@ -398,6 +414,53 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     // Construire les aides
     const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
 
+    // Vérifier si on a un fichier image à uploader (pour ImageInteractive)
+    const imageDataWithFile = this.imageInteractiveDataWithFile();
+    const isImageInteractive = this.selectedGameTypeName()?.toLowerCase() === 'click' || 
+                               this.selectedGameTypeName()?.toLowerCase() === 'image interactive';
+
+    if (isImageInteractive && imageDataWithFile?.imageFile) {
+      // Uploader l'image avant de créer le jeu
+      const file = imageDataWithFile.imageFile;
+
+      this.imageUploadService.uploadImage(file).subscribe({
+        next: (result) => {
+          if (result.error) {
+            console.error('Erreur upload:', result.error);
+            alert(`Erreur lors de l'upload de l'image: ${result.error}`);
+            return;
+          }
+
+          // Mettre à jour les données avec la nouvelle URL en copiant toutes les propriétés
+          const updatedImageData: ImageInteractiveData = {
+            image_url: result.url,
+            image_width: result.width,
+            image_height: result.height,
+            zones: imageDataWithFile.zones,
+            require_all_correct_zones: imageDataWithFile.require_all_correct_zones,
+          };
+
+          // Créer le jeu avec la nouvelle URL
+          this.createGameWithData(v, subjectId, autoName, aides, updatedImageData);
+        },
+        error: (error) => {
+          console.error('Erreur upload:', error);
+          alert('Erreur lors de l\'upload de l\'image');
+        }
+      });
+    } else {
+      // Pas de nouveau fichier, créer directement
+      this.createGameWithData(v, subjectId, autoName, aides, gameData);
+    }
+  }
+
+  private createGameWithData(
+    v: any,
+    subjectId: string,
+    autoName: string,
+    aides: string[],
+    gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData
+  ): void {
     // Stocker les données spécifiques dans metadata
     // Si on est en mode "gestion d'une sous-catégorie spécifique", utiliser le categoryId des query params
     const categoryId = this.isCategoryContext() 
@@ -461,6 +524,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.initialGameData.set(null);
     this.initialGlobalFields.set(null);
     this.selectedCategoryId.set(null);
+    this.imageInteractiveDataWithFile.set(null); // Réinitialiser les données avec fichier
   }
 
   update(): void {
