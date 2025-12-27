@@ -16,6 +16,7 @@ import { Infrastructure } from '../../../../components/infrastructure/infrastruc
 import { CategoriesCacheService } from '../../../../../../shared/services/categories-cache/categories-cache.service';
 import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
+import type { PostgrestError } from '@supabase/supabase-js';
 
 @Component({
   selector: 'app-assignments-section',
@@ -366,7 +367,64 @@ export class AssignmentsSectionComponent {
 
   // Méthode pour supprimer une affectation
   onDeleteAssignment(assignmentId: string): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette affectation ?')) return;
+    const assignment = this.filteredAssignments().find(a => a.id === assignmentId);
+    if (!assignment) {
+      console.error('Affectation non trouvée:', assignmentId);
+      return;
+    }
+
+    // Récupérer toutes les informations nécessaires
+    const studentCount = this.getStudentCount(assignmentId);
+    const categories = this.getCategoriesForAssignment(assignmentId);
+    const categoriesCount = categories.length;
+    
+    // Calculer le nombre total de jeux
+    let totalGamesCount = 0;
+    if (assignment.subject_id) {
+      totalGamesCount = this.getTotalGamesCount(assignment.subject_id);
+    }
+    
+    // Récupérer les informations des catégories (sans additionner pour éviter les doublons)
+    const categoriesInfo: { name: string; childrenCount: number; gamesCount: number }[] = [];
+    categories.forEach(category => {
+      const childrenCount = this.getChildrenCountForCategory(category.id);
+      const gamesCount = this.getGamesForCategory(category.id).length;
+      categoriesInfo.push({
+        name: category.name,
+        childrenCount,
+        gamesCount
+      });
+    });
+
+    // Construire le message détaillé
+    let message = `⚠️ SUPPRESSION D'AFFECTATION\n\n`;
+    
+    message += `📊 CONTENU DE L'AFFECTATION :\n\n`;
+    message += `👥 Nombre total d'enfants uniques : ${studentCount}\n`;
+    message += `📁 Nombre de catégories (sous-catégories) : ${categoriesCount}\n`;
+    message += `🎮 Nombre total de jeux : ${totalGamesCount}\n`;
+    
+    // Afficher les détails des catégories si elles existent
+    if (categoriesCount > 0) {
+      message += `\n📋 Détails par catégorie :\n`;
+      categoriesInfo.forEach((cat, index) => {
+        message += `  ${index + 1}. ${cat.name} : ${cat.childrenCount} enfant(s), ${cat.gamesCount} jeu(x)\n`;
+      });
+      message += `\n⚠️ Note : Un enfant peut être dans plusieurs catégories, le total unique est ${studentCount}\n`;
+    }
+    
+    message += `\n⚠️ CONSÉQUENCES DE LA SUPPRESSION :\n\n`;
+    message += `• Cette affectation sera définitivement supprimée\n`;
+    if (studentCount > 0) {
+      message += `• ${studentCount} enfant(s) unique(s) ne seront plus associés à cette affectation\n`;
+    }
+    if (categoriesCount > 0) {
+      message += `• Les ${categoriesCount} catégorie(s) et leurs ${totalGamesCount} jeu(x) resteront dans la matière mais ne seront plus accessibles via cette affectation\n`;
+    }
+    message += `• Cette action est irréversible\n\n`;
+    message += `Êtes-vous sûr de vouloir continuer ?`;
+
+    if (!confirm(message)) return;
     this.teacherAssignmentStore.deleteAssignment(assignmentId);
   }
 
@@ -459,7 +517,7 @@ export class AssignmentsSectionComponent {
     this.loadingCategories.set(loading);
 
     // Utiliser le service de cache qui évite les appels redondants
-    this.categoriesCacheService.loadCategory(subjectId).subscribe(({ categories, error }: { categories: SubjectCategory[]; error: any }) => {
+    this.categoriesCacheService.loadCategory(subjectId).subscribe(({ categories, error }: { categories: SubjectCategory[]; error: PostgrestError | null }) => {
       const loadingMap = new Map(this.loadingCategories());
       loadingMap.set(assignmentId, false);
       this.loadingCategories.set(loadingMap);
