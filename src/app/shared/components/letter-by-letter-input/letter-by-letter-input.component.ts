@@ -131,9 +131,9 @@ export class LetterByLetterInputComponent implements OnInit, OnChanges {
       return;
     }
 
-    // Lettres (a-z, A-Z) et trait d'union si autorisé
+    // Lettres (a-z, A-Z), nombres (0-9) et trait d'union si autorisé
     if (e.key.length === 1) {
-      const isValidLetter = /[a-zA-Z]/.test(e.key);
+      const isValidLetter = /[a-zA-Z0-9]/.test(e.key);
       const isValidHyphen = this.allowHyphen && e.key === '-';
       
       if (isValidLetter || isValidHyphen) {
@@ -254,7 +254,7 @@ export class LetterByLetterInputComponent implements OnInit, OnChanges {
     if (value.length > previous.length) {
       // Nouvelle lettre ajoutée
       const newLetter = value[value.length - 1];
-      if (/[A-Z-]/.test(newLetter)) {
+      if (/[A-Z0-9-]/.test(newLetter)) {
         this.handleLetterInput(newLetter);
       }
     } else if (value.length < previous.length) {
