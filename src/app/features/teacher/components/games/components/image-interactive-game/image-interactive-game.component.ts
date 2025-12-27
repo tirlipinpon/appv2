@@ -212,6 +212,8 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
   /**
    * Convertit les coordonnées relatives en absolues pour l'affichage
    * Retourne null si c'est un polygone (utiliser getAbsolutePolygonPoints à la place)
+   * IMPORTANT: Les zones rectangulaires sont positionnées dans .zones-overlay (absolu, top:0, left:0)
+   * donc elles DOIVENT inclure l'offset pour être positionnées correctement par rapport à l'image
    */
   getAbsolutePosition(zone: ImageInteractiveZone): { x: number; y: number; width: number; height: number } | null {
     // Si c'est un polygone, retourner null
@@ -222,7 +224,7 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
     // Format rectangle (rétrocompatibilité)
     if (zone.x !== undefined && zone.y !== undefined && zone.width !== undefined && zone.height !== undefined) {
       return {
-        x: zone.x * this.displayedImageWidth() + this.imageOffsetX(),
+        x: zone.x * this.displayedImageWidth() + this.imageOffsetX(), // Les rectangles sont dans .zones-overlay, donc inclure l'offset
         y: zone.y * this.displayedImageHeight() + this.imageOffsetY(),
         width: zone.width * this.displayedImageWidth(),
         height: zone.height * this.displayedImageHeight(),
@@ -234,6 +236,7 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
 
   /**
    * Convertit les points relatifs d'un polygone en coordonnées absolues pour l'affichage
+   * IMPORTANT: Ne PAS inclure offsetX/offsetY car le SVG lui-même est déjà positionné avec ces offsets
    */
   getAbsolutePolygonPoints(zone: ImageInteractiveZone): Array<{ x: number; y: number }> | null {
     if (!zone.points || zone.points.length === 0) {
@@ -241,8 +244,8 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
     }
     
     return zone.points.map(point => ({
-      x: point.x * this.displayedImageWidth() + this.imageOffsetX(),
-      y: point.y * this.displayedImageHeight() + this.imageOffsetY(),
+      x: point.x * this.displayedImageWidth(), // Coordonnées relatives à l'image dans le SVG (sans offset)
+      y: point.y * this.displayedImageHeight(), // Le SVG est déjà positionné avec offsetX/offsetY
     }));
   }
 

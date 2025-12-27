@@ -22,33 +22,32 @@
           @if (!isRectangle(zone)) {
             @if (getAbsolutePolygonPoints(zone); as polygonPoints) {
               @if (polygonPoints && polygonPoints.length > 0) {
-                @if (!isSubmitted() || (isSubmitted() && isCorrect() && isZoneCorrect(zone.id))) {
-                  <g [class.clicked]="isZoneClicked(zone.id)"
-                     [class.correct-zone]="isZoneCorrect(zone.id) && showResult && isSubmitted() && isCorrect()">
-                    <polygon
-                      [attr.points]="formatPolygonPoints(polygonPoints)"
-                      class="zone-polygon"
-                      [attr.fill]="isZoneClicked(zone.id) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.1)'"
-                      stroke="rgb(59, 130, 246)"
-                      [attr.stroke-width]="isZoneClicked(zone.id) ? '3' : '2'"
-                      pointer-events="all"
-                      [style.cursor]="disabled || isSubmitted() ? 'default' : 'pointer'"
-                    />
-                    @if (isZoneClicked(zone.id) && showResult && isZoneCorrect(zone.id) && isCorrect()) {
-                      <text
-                        [attr.x]="polygonPoints[0].x"
-                        [attr.y]="polygonPoints[0].y - 10"
-                        fill="rgb(34, 197, 94)"
-                        font-size="24"
-                        font-weight="bold"
-                        text-anchor="middle"
-                        pointer-events="none"
-                      >
-                        ✓
-                      </text>
-                    }
-                  </g>
-                }
+                <g [class.clicked]="isZoneClicked(zone.id)"
+                   [class.correct-zone]="isZoneCorrect(zone.id) && showResult && isSubmitted() && isCorrect()"
+                   [class.visible]="isZoneClicked(zone.id)">
+                  <polygon
+                    [attr.points]="formatPolygonPoints(polygonPoints)"
+                    class="zone-polygon"
+                    [attr.fill]="isZoneClicked(zone.id) ? 'rgba(59, 130, 246, 0.3)' : (isZoneCorrect(zone.id) && showResult && isSubmitted() && isCorrect() ? 'rgba(34, 197, 94, 0.3)' : 'transparent')"
+                    [attr.stroke]="isZoneCorrect(zone.id) && showResult && isSubmitted() && isCorrect() ? 'rgb(34, 197, 94)' : 'rgb(59, 130, 246)'"
+                    [attr.stroke-width]="isZoneClicked(zone.id) ? '3' : '2'"
+                    pointer-events="all"
+                    [style.cursor]="disabled || isSubmitted() ? 'default' : 'pointer'"
+                  />
+                  @if (isZoneClicked(zone.id) && showResult && isZoneCorrect(zone.id) && isCorrect()) {
+                    <text
+                      [attr.x]="polygonPoints[0].x"
+                      [attr.y]="polygonPoints[0].y - 10"
+                      fill="rgb(34, 197, 94)"
+                      font-size="24"
+                      font-weight="bold"
+                      text-anchor="middle"
+                      pointer-events="none"
+                    >
+                      ✓
+                    </text>
+                  }
+                </g>
               }
             }
           }
@@ -58,23 +57,22 @@
       <!-- Zones rectangulaires (rétrocompatibilité) -->
       @for (zone of imageData.zones; track zone.id) {
         @if (isRectangle(zone) && getAbsolutePosition(zone); as pos) {
-          @if (!isSubmitted() || (isSubmitted() && isCorrect() && isZoneCorrect(zone.id))) {
-            <div
-              class="zone"
-              [class.clicked]="isZoneClicked(zone.id)"
-              [class.correct-zone]="isZoneCorrect(zone.id) && showResult && isSubmitted() && isCorrect()"
-              [style.left.px]="pos.x"
-              [style.top.px]="pos.y"
-              [style.width.px]="pos.width"
-              [style.height.px]="pos.height"
-            >
-              @if (isZoneClicked(zone.id) && showResult && isZoneCorrect(zone.id) && isCorrect()) {
-                <div class="zone-marker">
-                  ✓
-                </div>
-              }
-            </div>
-          }
+          <div
+            class="zone"
+            [class.clicked]="isZoneClicked(zone.id)"
+            [class.correct-zone]="isZoneCorrect(zone.id) && showResult && isSubmitted() && isCorrect()"
+            [class.visible]="isZoneClicked(zone.id)"
+            [style.left.px]="pos.x"
+            [style.top.px]="pos.y"
+            [style.width.px]="pos.width"
+            [style.height.px]="pos.height"
+          >
+            @if (isZoneClicked(zone.id) && showResult && isZoneCorrect(zone.id) && isCorrect()) {
+              <div class="zone-marker">
+                ✓
+              </div>
+            }
+          </div>
         }
       }
     </div>

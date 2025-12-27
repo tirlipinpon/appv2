@@ -139,8 +139,10 @@
   flex-shrink: 0;
 
   .game-image {
+    object-fit: contain; // Préserver le ratio d'aspect et garantir que l'image ne se déforme pas
     max-width: 100%;
     max-height: 70vh;
+    width: auto;
     height: auto;
     display: block;
     user-select: none;

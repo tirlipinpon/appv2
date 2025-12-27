@@ -96,31 +96,26 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     const displayedHeight = this.displayedImageHeight();
     const offsetX = this.imageOffsetX();
     const offsetY = this.imageOffsetY();
+    const nativeWidth = this.imageWidth();
+    const nativeHeight = this.imageHeight();
     
-    // #region agent log
-    if (this.isDraggingPoint()) {
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'image-interactive-form.component.ts:90',message:'absolutePolygonPointsCache recalculating during drag',data:{zonesCount:zones.length,displayedWidth,displayedHeight,offsetX,offsetY},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
-    }
-    // #endregion
     
     // Retourner un objet simple avec des points qui incluent un ID unique
     const cache: Record<string, Array<{ id: string; x: number; y: number }>> = {};
     
     for (const zone of zones) {
       if (zone.points && zone.points.length > 0) {
+        
+        // Les coordonnées relatives sont par rapport à l'image native (0-1)
+        // On les convertit en coordonnées absolues pour l'affichage en utilisant les dimensions affichées
+        // IMPORTANT: Ne PAS inclure offsetX/offsetY car le SVG lui-même est déjà positionné avec ces offsets
         const points = zone.points.map((point, index) => ({
           id: `${zone.id}-point-${index}`, // ID unique pour chaque point
-          x: point.x * displayedWidth + offsetX,
-          y: point.y * displayedHeight + offsetY,
+          x: point.x * displayedWidth, // Coordonnées relatives à l'image dans le SVG (sans offset)
+          y: point.y * displayedHeight, // Le SVG est déjà positionné avec offsetX/offsetY
         }));
         cache[zone.id] = points;
         
-        // #region agent log
-        if (this.isDraggingPoint() && this.draggingPoint()?.zoneId === zone.id) {
-          const dragInfo = this.draggingPoint()!;
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'image-interactive-form.component.ts:107',message:'absolutePolygonPointsCache point calculated',data:{zoneId:zone.id,pointIndex:dragInfo.pointIndex,calculatedPoint:points[dragInfo.pointIndex],originalPoint:zone.points[dragInfo.pointIndex]},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
-        }
-        // #endregion
       }
     }
     
@@ -281,15 +276,39 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     this.zones.set(zones);
 
 
+    // Attendre que l'image soit chargée avant de calculer les dimensions
+    // Utiliser requestAnimationFrame pour s'assurer que le DOM est prêt
     setTimeout(() => {
+      // Vérifier que l'élément image existe et est chargé
+      if (this.imageElement?.nativeElement) {
+        const img = this.imageElement.nativeElement;
+        if (img.complete && img.naturalWidth > 0) {
+          // L'image est déjà chargée, mettre à jour les dimensions
+          this.updateImageDimensions();
+        } else {
+          // Attendre que l'image se charge
+          img.onload = () => {
+            this.updateImageDimensions();
+            this.isInitializing = false;
+            this.emitData();
+          };
+          // Fallback si l'image ne se charge pas
+          setTimeout(() => {
+            this.updateImageDimensions();
+            this.isInitializing = false;
+            this.emitData();
+          }, 1000);
+          return;
+        }
+      }
       this.isInitializing = false;
-      this.updateImageDimensions();
       this.emitData();
-    }, 0);
+    }, 100);
   }
 
   /**
    * Met à jour les dimensions affichées de l'image
+   * Utilise les dimensions natives de l'image comme source de vérité
    */
   updateImageDimensions(): void {
     if (!this.imageElement?.nativeElement || !this.imageContainer?.nativeElement) {
@@ -305,33 +324,57 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
       return;
     }
 
-    const containerWidth = container.clientWidth;
-    const originalWidth = this.imageWidth();
-    const originalHeight = this.imageHeight();
+    // IMPORTANT: Utiliser les dimensions NATIVES de l'image comme source de vérité
+    // Ces dimensions ne changent jamais, même si l'image est redimensionnée dans le DOM
+    const nativeWidth = img.naturalWidth;
+    const nativeHeight = img.naturalHeight;
 
-    if (originalWidth === 0 || originalHeight === 0) {
+    if (nativeWidth === 0 || nativeHeight === 0) {
       return;
     }
 
-    // Calculer les dimensions affichées en conservant le ratio
-    const aspectRatio = originalWidth / originalHeight;
-    let displayedWidth = containerWidth;
-    let displayedHeight = containerWidth / aspectRatio;
 
-    // Si l'image est plus haute que large, ajuster
-    if (displayedHeight > container.clientHeight) {
-      displayedHeight = container.clientHeight;
-      displayedWidth = displayedHeight * aspectRatio;
+    // Mettre à jour les dimensions natives si elles ont changé (ne devrait pas arriver)
+    // mais cela garantit la cohérence
+    if (this.imageWidth() !== nativeWidth || this.imageHeight() !== nativeHeight) {
+      this.imageWidth.set(nativeWidth);
+      this.imageHeight.set(nativeHeight);
     }
 
-    this.displayedImageWidth.set(displayedWidth);
-    this.displayedImageHeight.set(displayedHeight);
+    // Utiliser getBoundingClientRect() pour obtenir les dimensions RÉELLES de l'image dans le DOM
+    // Cela prend en compte le CSS (object-fit: contain, etc.)
+    const imgRect = img.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    // Les dimensions réelles affichées de l'image dans le DOM
+    const actualDisplayedWidth = imgRect.width;
+    const actualDisplayedHeight = imgRect.height;
+    
+    // Calculer les offsets par rapport au conteneur en utilisant les positions relatives
+    // Utiliser getBoundingClientRect() mais s'assurer que les deux sont dans le même référentiel
+    // Le conteneur utilise display: flex avec align-items: center et justify-content: center
+    // Donc l'image est centrée dans le conteneur
+    const offsetX = imgRect.left - containerRect.left;
+    const offsetY = imgRect.top - containerRect.top;
+    
+    // Vérifier la cohérence : si l'image est centrée, offsetX devrait être (containerWidth - imageWidth) / 2
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height;
+    const expectedOffsetX = (containerWidth - actualDisplayedWidth) / 2;
+    const expectedOffsetY = (containerHeight - actualDisplayedHeight) / 2;
+    
+    // Utiliser les offsets calculés à partir du centrage flex plutôt que getBoundingClientRect()
+    // pour éviter les problèmes de positionnement par rapport au viewport
+    const finalOffsetX = expectedOffsetX;
+    const finalOffsetY = expectedOffsetY;
+    
 
-    // Calculer les offsets pour centrer l'image
-    const offsetX = (containerWidth - displayedWidth) / 2;
-    const offsetY = (container.clientHeight - displayedHeight) / 2;
-    this.imageOffsetX.set(offsetX);
-    this.imageOffsetY.set(offsetY);
+    // Utiliser les dimensions RÉELLES de l'image pour les calculs de coordonnées
+    // Utiliser les offsets calculés à partir du centrage flex pour la stabilité
+    this.displayedImageWidth.set(actualDisplayedWidth);
+    this.displayedImageHeight.set(actualDisplayedHeight);
+    this.imageOffsetX.set(finalOffsetX);
+    this.imageOffsetY.set(finalOffsetY);
   }
 
   private handleResize(): void {
@@ -442,10 +485,21 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
 
     // Mode dessin : création de polygone par clics successifs
     if (this.editMode() === 'draw') {
-      // Convertir en coordonnées relatives (0-1) par rapport à l'image affichée
-      // Ces coordonnées seront converties en coordonnées relatives par rapport à l'image native lors de la sauvegarde
+      // IMPORTANT: Convertir en coordonnées relatives (0-1) par rapport à l'IMAGE NATIVE
+      // Les coordonnées cliquées sont par rapport à l'image affichée
+      // On doit les convertir en coordonnées relatives par rapport à l'image native
+      // Comme l'image conserve son ratio d'aspect avec object-fit: contain,
+      // les coordonnées relatives par rapport à l'image native sont identiques
+      // aux coordonnées relatives par rapport à l'image affichée
+      const nativeWidth = this.imageWidth();
+      const nativeHeight = this.imageHeight();
+      
+      // Calculer les coordonnées relatives par rapport à l'image native
+      // Comme l'image conserve son ratio d'aspect, on peut utiliser directement
+      // les dimensions affichées pour calculer les coordonnées relatives
       const relativeX = clampedX / displayedWidth;
       const relativeY = clampedY / displayedHeight;
+      
       
       // Si on est déjà en train de créer un polygone, ajouter un point
       if (this.isCreatingPolygon()) {
@@ -504,9 +558,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   onMouseMove(event: MouseEvent): void {
     // Si on est en train de déplacer un point, laisser onCircleMouseMove gérer
     if (this.isDraggingPoint()) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'image-interactive-form.component.ts:431',message:'onMouseMove delegating to onCircleMouseMove',data:{isDraggingPoint:this.isDraggingPoint()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'H'})}).catch(()=>{});
-      // #endregion
       this.onCircleMouseMove(event);
       return;
     }
@@ -724,12 +775,13 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     const foreignObjectY = this.absolutePolygonPointsCache()[zoneId][pointIndex].y - 6;
     
     // Position absolue = position du foreignObject + position relative du drag
+    // Les coordonnées sont déjà relatives à l'image (sans offset) car le SVG est déjà positionné avec offsetX/offsetY
     const absoluteX = foreignObjectX + position.x + 6;
     const absoluteY = foreignObjectY + position.y + 6;
     
-    // Coordonnées par rapport à l'image (soustraire les offsets)
-    const imageX = absoluteX - offsetX;
-    const imageY = absoluteY - offsetY;
+    // Coordonnées par rapport à l'image (déjà sans offset car le SVG est décalé)
+    const imageX = absoluteX;
+    const imageY = absoluteY;
     
     // Limiter à l'intérieur de l'image
     const clampedX = Math.max(0, Math.min(imageX, displayedWidth));
@@ -768,9 +820,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
    * Gère le clic sur un cercle (point de contrôle) - méthode legacy, remplacée par CDK Drag
    */
   onCircleMouseDown(event: MouseEvent, zoneId: string, pointIndex: number): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'image-interactive-form.component.ts:658',message:'onCircleMouseDown called',data:{zoneId,pointIndex,editMode:this.editMode()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'H'})}).catch(()=>{});
-    // #endregion
     event.preventDefault();
     event.stopPropagation();
     
@@ -778,9 +827,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     
     const zone = this.zones().find(z => z.id === zoneId);
     if (!zone || !zone.points || pointIndex >= zone.points.length) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'image-interactive-form.component.ts:665',message:'onCircleMouseDown zone not found',data:{zoneId,pointIndex,hasZone:!!zone,pointsLength:zone?.points?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'H'})}).catch(()=>{});
-      // #endregion
       return;
     }
     
@@ -793,9 +839,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     const displayedWidth = this.displayedImageWidth();
     const displayedHeight = this.displayedImageHeight();
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'image-interactive-form.component.ts:680',message:'onCircleMouseDown starting drag',data:{zoneId,pointIndex,mouseX,mouseY,pointRelativeX:point.x,pointRelativeY:point.y,displayedWidth,displayedHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'H'})}).catch(()=>{});
-    // #endregion
     
     this.isDraggingPoint.set(true);
     this.draggingPoint.set({
@@ -1069,9 +1112,10 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
       return [];
     }
     
+    // IMPORTANT: Ne PAS inclure offsetX/offsetY car le SVG lui-même est déjà positionné avec ces offsets
     return relativePoints.map(point => ({
-      x: point.x * displayedWidth + offsetX,
-      y: point.y * displayedHeight + offsetY,
+      x: point.x * displayedWidth, // Coordonnées relatives à l'image dans le SVG (sans offset)
+      y: point.y * displayedHeight, // Le SVG est déjà positionné avec offsetX/offsetY
     }));
   }
 
