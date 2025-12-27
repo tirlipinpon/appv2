@@ -102,11 +102,23 @@ export class LoginComponent implements OnInit {
   }
 
   async onSubmit() {
+    console.log('🔵 [LOGIN] onSubmit() - START', {
+      formValid: this.loginForm.valid,
+      formInvalid: this.loginForm.invalid,
+      isLocalhost: this.isLocalhost,
+      isForgotPasswordMode: this.isForgotPasswordMode,
+      formErrors: this.loginForm.errors,
+      emailErrors: this.loginForm.get('email')?.errors,
+      passwordErrors: this.loginForm.get('password')?.errors
+    });
+
     if (this.loginForm.invalid && !this.isLocalhost) {
+      console.log('❌ [LOGIN] Form is invalid and not localhost, returning');
       return;
     }
 
     if (this.isForgotPasswordMode && !this.isLocalhost) {
+      console.log('❌ [LOGIN] Forgot password mode and not localhost, returning');
       return;
     }
 
@@ -115,7 +127,9 @@ export class LoginComponent implements OnInit {
     this.successMessage = null;
 
     const { email, password } = this.loginForm.value;
+    console.log('🔵 [LOGIN] Calling signIn with:', { email, hasPassword: !!password });
     const { session, error } = await this.authService.signIn(email, password);
+    console.log('📥 [LOGIN] signIn result:', { hasSession: !!session, hasError: !!error, error });
 
     this.isLoading = false;
 
@@ -156,21 +170,58 @@ export class LoginComponent implements OnInit {
       // Récupérer le profil
       const profile = await this.authService.getProfile();
       
+      // #region agent log
+      console.log('🔍 [DEBUG-LOGIN] Profile loaded before navigation', { hasProfile: !!profile, rolesCount: profile?.roles?.length || 0, roles: profile?.roles, hasMultipleRoles: this.authService.hasMultipleRoles() });
+      // #endregion
+
       if (profile) {
         // Si plusieurs rôles, toujours rediriger vers le sélecteur pour laisser l'utilisateur choisir
         // Le rôle sauvegardé sera restauré automatiquement par le dashboard ou le role-selector si nécessaire
         if (this.authService.hasMultipleRoles()) {
-          this.router.navigate(['/select-role']);
-        } else if (profile.roles.length === 1) {
+          // #region agent log
+          console.log('🔍 [DEBUG-LOGIN] BEFORE navigate to select-role (multiple)', { target: '/select-role' });
+          // #endregion
+          const navResult = await this.router.navigate(['/select-role']);
+          // #region agent log
+          console.log('🔍 [DEBUG-LOGIN] AFTER navigate to select-role (multiple)', { navResult, currentUrl: this.router.url, success: navResult });
+          // #endregion
+        } else if (profile.roles && profile.roles.length === 1) {
           // Un seul rôle, définir automatiquement et rediriger
           this.authService.setActiveRole(profile.roles[0]);
-          this.router.navigate(['/dashboard']);
+          // #region agent log
+          console.log('🔍 [DEBUG-LOGIN] BEFORE navigate to dashboard (single role)', { target: '/dashboard', role: profile.roles[0] });
+          // #endregion
+          const navResult = await this.router.navigate(['/dashboard']);
+          // #region agent log
+          console.log('🔍 [DEBUG-LOGIN] AFTER navigate to dashboard (single role)', { navResult, currentUrl: this.router.url, success: navResult });
+          // #endregion
+        } else if (profile.roles && profile.roles.length > 0) {
+          // Plusieurs rôles ou aucun rôle spécifique, rediriger vers le sélecteur
+          // #region agent log
+          console.log('🔍 [DEBUG-LOGIN] BEFORE navigate to select-role (roles>0)', { target: '/select-role' });
+          // #endregion
+          const navResult = await this.router.navigate(['/select-role']);
+          // #region agent log
+          console.log('🔍 [DEBUG-LOGIN] AFTER navigate to select-role (roles>0)', { navResult, currentUrl: this.router.url, success: navResult });
+          // #endregion
         } else {
           // Pas de rôle, rediriger vers le sélecteur
-          this.router.navigate(['/select-role']);
+          // #region agent log
+          console.log('🔍 [DEBUG-LOGIN] BEFORE navigate to select-role (no roles)', { target: '/select-role' });
+          // #endregion
+          const navResult = await this.router.navigate(['/select-role']);
+          // #region agent log
+          console.log('🔍 [DEBUG-LOGIN] AFTER navigate to select-role (no roles)', { navResult, currentUrl: this.router.url, success: navResult });
+          // #endregion
         }
       } else {
-        this.router.navigate(['/dashboard']);
+        // #region agent log
+        console.log('🔍 [DEBUG-LOGIN] BEFORE navigate to dashboard (no profile)', { target: '/dashboard' });
+        // #endregion
+        const navResult = await this.router.navigate(['/dashboard']);
+        // #region agent log
+        console.log('🔍 [DEBUG-LOGIN] AFTER navigate to dashboard (no profile)', { navResult, currentUrl: this.router.url, success: navResult });
+        // #endregion
       }
     }
   }

@@ -71,16 +71,41 @@ export class ProfileService {
 
   async createProfileWithRoles(userId: string, roles: string[]): Promise<{ profile: Profile | null; error: Error | null }> {
     try {
-      const { data: existingProfile } = await this.supabaseService.client
+      // Vérifier d'abord si le profil existe déjà
+      const { data: existingProfile, error: checkError } = await this.supabaseService.client
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (existingProfile) {
-        return { profile: existingProfile, error: null };
+      // Si le profil existe déjà, ajouter les rôles manquants
+      if (existingProfile && !checkError) {
+        // Vérifier et ajouter chaque rôle s'il n'existe pas déjà
+        for (const role of roles) {
+          const roleExists = existingProfile.roles?.includes(role) || false;
+          
+          if (!roleExists) {
+            const { error: addError } = await this.supabaseService.client
+              .rpc('add_role_to_profile', {
+                user_id: userId,
+                new_role: role
+              });
+            
+            if (addError) {
+              console.error(`Error adding role ${role}:`, addError);
+              // Continue avec les autres rôles même en cas d'erreur
+            }
+          }
+        }
+        
+        // Recharger le profil pour obtenir la version mise à jour
+        this.profileLoadingPromise = null; // Réinitialiser pour forcer le rechargement
+        this.currentProfileSubject.next(null); // Réinitialiser le cache pour forcer le rechargement
+        const profile = await this.getProfile();
+        return { profile, error: null };
       }
 
+      // Si le profil n'existe pas, le créer avec les rôles
       const { error } = await this.supabaseService.client
         .rpc('create_profile_after_signup', {
           user_id: userId,
@@ -92,6 +117,9 @@ export class ProfileService {
         return { profile: null, error: new Error(error.message) };
       }
 
+      // Recharger le profil
+      this.profileLoadingPromise = null; // Réinitialiser pour forcer le rechargement
+      this.currentProfileSubject.next(null); // Réinitialiser le cache pour forcer le rechargement
       const profile = await this.getProfile();
       return { profile, error: null };
     } catch (error) {

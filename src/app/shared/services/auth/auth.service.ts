@@ -261,6 +261,16 @@ export class AuthService {
         // Dans ce cas, on laisse passer pour permettre la confirmation d'email
       }
 
+      // Si une session est créée automatiquement (en développement), initialiser l'utilisateur
+      if (data.session) {
+        // #region agent log
+        console.log('🔍 [DEBUG-AUTH] Session created, setting currentUser', { userId: data.session.user.id, email: data.session.user.email });
+        // #endregion
+        this.currentUserSubject.next(data.session.user);
+        // Ne pas charger le profil immédiatement car il n'est peut-être pas encore créé
+        // Il sera chargé lors de la navigation
+      }
+
       // Ne pas créer le profil immédiatement car l'utilisateur n'est pas encore confirmé
       // Le profil sera créé automatiquement par le trigger handle_new_user lors de la confirmation
       // Les rôles seront ajoutés après confirmation d'email dans auth-confirm component
@@ -268,6 +278,7 @@ export class AuthService {
       console.log('✅ [AUTH] signUp() - Success, returning user:', {
         userId: data.user?.id,
         email: data.user?.email,
+        hasSession: !!data.session,
         userMetadata: data.user?.user_metadata
       });
       console.groupEnd();
@@ -375,8 +386,14 @@ export class AuthService {
       }
 
       if (data.session) {
+        // #region agent log
+        console.log('🔍 [DEBUG-AUTH] SignIn session created, setting currentUser', { userId: data.session.user.id, email: data.session.user.email });
+        // #endregion
         this.currentUserSubject.next(data.session.user);
         await this.loadProfile();
+        // #region agent log
+        console.log('🔍 [DEBUG-AUTH] Profile loaded after signIn', { hasProfile: !!this.currentProfileSubject.value });
+        // #endregion
       }
 
       return { session: data.session, error: null };
@@ -477,7 +494,7 @@ export class AuthService {
     // Créer une promesse de chargement
     this.profileLoadingPromise = (async () => {
       try {
-        const { data, error } = await this.supabaseService.client
+        const { data: profileData, error } = await this.supabaseService.client
           .from('profiles')
           .select('*')
           .eq('id', user.id)
@@ -488,21 +505,42 @@ export class AuthService {
           return null;
         }
 
-        this.currentProfileSubject.next(data);
+        let finalProfileData = profileData;
+
+        // Si le profil existe mais n'a pas de rôles, vérifier user_metadata et ajouter les rôles
+        if (profileData && (!profileData.roles || profileData.roles.length === 0)) {
+          const rolesFromMetadata = (user.user_metadata?.['roles'] as string[] | undefined) || [];
+          if (rolesFromMetadata.length > 0) {
+            console.log('[AuthService] Profile has no roles, but user_metadata has roles. Adding roles...', rolesFromMetadata);
+            // Ajouter les rôles au profil
+            await this.createProfileWithRoles(user.id, rolesFromMetadata);
+            // Recharger le profil pour obtenir la version mise à jour (sans passer par getProfile pour éviter les récursions)
+            const { data: updatedData, error: updateError } = await this.supabaseService.client
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+            if (!updateError && updatedData) {
+              finalProfileData = updatedData;
+            }
+          }
+        }
+
+        this.currentProfileSubject.next(finalProfileData);
         
         // Restaurer le rôle sauvegardé après avoir chargé le profil
-        if (data && data.roles && data.roles.length > 0) {
-          if (data.roles.length === 1) {
+        if (finalProfileData && finalProfileData.roles && finalProfileData.roles.length > 0) {
+          if (finalProfileData.roles.length === 1) {
             // Un seul rôle, le définir automatiquement
-            this.activeRoleSignal.set(data.roles[0]);
-            this.saveActiveRole(data.roles[0]);
+            this.activeRoleSignal.set(finalProfileData.roles[0]);
+            this.saveActiveRole(finalProfileData.roles[0]);
           } else {
             // Plusieurs rôles, restaurer le rôle sauvegardé
             this.restoreActiveRole();
           }
         }
         
-        return data;
+        return finalProfileData;
       } finally {
         // Réinitialiser la promesse après le chargement
         this.profileLoadingPromise = null;
