@@ -11,11 +11,14 @@ import { Infrastructure } from '../infrastructure/infrastructure';
 import { AssignmentsSectionComponent } from './components/assignments-section/assignments-section.component';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
 import { getSchoolLevelLabel } from '../../utils/school-levels.util';
+import { AuthService } from '../../../../shared/services/auth/auth.service';
+import { TeacherStore } from '../../store/index';
+import { ActionLinksComponent, ActionLink } from '../../../../shared/components/action-links/action-links.component';
 
 @Component({
   selector: 'app-assignments',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent, AssignmentsSectionComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent, AssignmentsSectionComponent, ActionLinksComponent],
   templateUrl: './assignments.component.html',
   styleUrl: './assignments.component.scss'
 })
@@ -26,7 +29,9 @@ export class AssignmentsComponent implements OnInit {
   private readonly infrastructure = inject(Infrastructure);
   private readonly teacherService = inject(TeacherService);
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
+  private readonly authService = inject(AuthService);
   readonly store = inject(TeacherAssignmentStore);
+  readonly teacherStore = inject(TeacherStore);
 
   // Signals UI
   readonly showAssignmentForm = signal(false);
@@ -48,6 +53,27 @@ export class AssignmentsComponent implements OnInit {
   readonly assignments = computed(() => this.store.assignments());
   readonly hasAssignments = computed(() => this.store.hasAssignments());
   readonly isLoading = computed(() => this.store.isLoading());
+
+  // Dashboard section
+  activeRole: string | null = null;
+  readonly hasTeacher = computed(() => this.teacherStore.hasTeacher());
+  readonly teacherButtonText = computed(() => this.hasTeacher() ? 'Éditer mon profil' : 'Créer mon profil');
+  readonly teacherActions = computed<ActionLink[]>(() => {
+    return [
+      {
+        label: this.teacherButtonText(),
+        route: '/teacher-profile',
+        variant: this.hasTeacher() ? 'edit' : 'add'
+      },
+      {
+        label: 'Ajouter une affectation',
+        route: '/teacher-assignments',
+        queryParams: { add: 'true' },
+        icon: '➕',
+        variant: 'add'
+      }
+    ];
+  });
 
   // Affichage "affectées / non affectées" pour l'école + niveau sélectionnés
   readonly selectedSchoolId = computed<string | null>(() => this.assignmentForm ? (this.assignmentForm.get('school_id')?.value || null) : null);
@@ -102,7 +128,10 @@ export class AssignmentsComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    // Charger le rôle actif pour la section dashboard
+    this.activeRole = this.authService.getActiveRole();
+    
     this.initializeForms();
     this.loadInitialData();
     this.loadTeacherId();

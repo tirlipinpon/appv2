@@ -1,3 +1,18 @@
+<div class="dashboard-container">
+  <main class="dashboard-content">
+    <div class="welcome-card">
+      <h2>Bienvenue sur votre tableau de bord</h2>
+      <p *ngIf="activeRole === 'prof'">Vous êtes connecté en tant que professeur.</p>
+
+      <!-- Liens vers l'édition/création pour les professeurs -->
+      <app-action-links 
+        *ngIf="activeRole === 'prof'" 
+        [actions]="teacherActions()">
+      </app-action-links>
+    </div>
+  </main>
+</div>
+
 <div class="assignment-section">
   <div *ngIf="showAssignmentForm()" class="assignment-form-container">
     <h3>Nouvelle Affectation</h3>

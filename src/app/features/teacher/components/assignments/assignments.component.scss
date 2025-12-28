@@ -1,3 +1,39 @@
+@use '../../../../../styles/variables' as *;
+@use '../../../../../styles/mixins' as *;
+
+.dashboard-container {
+  min-height: 100vh;
+  background: $color-bg-secondary;
+}
+
+.dashboard-content {
+  padding: $spacing-md;
+  max-width: $container-max-width;
+  margin: 0 auto;
+
+  @include respond-to(md) {
+    padding: $spacing-xl;
+  }
+
+  .welcome-card {
+    background: white;
+    border-radius: 8px;
+    padding: 40px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+
+    h2 {
+      margin: 0 0 20px 0;
+      color: #333;
+    }
+
+    p {
+      margin: 10px 0;
+      color: #666;
+    }
+  }
+}
+
 .assignment-form-container{background:#f9f9f9;border-radius:8px;padding:1.5rem;margin:2rem 0}
 .nested-form{background:#fff;border:1px solid #ddd;border-radius:4px;padding:1rem;margin:1rem 0}
 .form-group{margin-bottom:1.5rem}
