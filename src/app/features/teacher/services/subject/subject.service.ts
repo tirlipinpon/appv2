@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { Subject } from '../../types/subject';
 import type { PostgrestError } from '@supabase/supabase-js';
@@ -243,63 +243,65 @@ export class SubjectService {
     schoolId: string | null = null,
     schoolLevel: string | null = null
   ): Observable<{ children: Child[]; error: PostgrestError | null }> {
-    // Joindre avec la table children pour obtenir les informations complètes
-    let query = this.supabaseService.client
+    // D'abord récupérer les child_id depuis child_subject_enrollments
+    let enrollmentsQuery = this.supabaseService.client
       .from('child_subject_enrollments')
-      .select('child_id, child:children(*)')
+      .select('child_id')
       .eq('subject_id', subjectId)
       .eq('selected', true);
 
-    // Filtrer par school_id si fourni
+    // Filtrer par school_id si fourni (au niveau de la table enrollments)
     if (schoolId) {
-      query = query.eq('school_id', schoolId);
+      enrollmentsQuery = enrollmentsQuery.eq('school_id', schoolId);
     }
 
-    return from(query).pipe(
-      map(({ data: enrollments, error: enrollmentsError }) => {
+    return from(enrollmentsQuery).pipe(
+      switchMap(({ data: enrollments, error: enrollmentsError }) => {
         if (enrollmentsError || !enrollments || enrollments.length === 0) {
-          return { children: [], error: enrollmentsError || null };
+          return from(Promise.resolve({ children: [], error: enrollmentsError || null }));
         }
 
-        // Filtrer les résultats par school_level et is_active
-        const enrollmentsWithChildren = (enrollments as unknown) as {
-          child_id: string;
-          child: Child | null;
-        }[];
+        const childIds = enrollments.map(e => e.child_id);
 
-        // Filtrer par school_level si fourni et is_active
-        const activeChildren = enrollmentsWithChildren
-          .filter(e => {
-            const child = e.child;
-            // Vérifier que l'enfant existe et est actif
-            if (!child || !child.is_active) {
-              return false;
+        // Construire la requête sur children avec tous les filtres au niveau de la base de données
+        let childrenQuery = this.supabaseService.client
+          .from('children')
+          .select('*')
+          .in('id', childIds)
+          .eq('is_active', true);
+
+        // Filtrer par school_id si fourni (au niveau de la table children)
+        if (schoolId) {
+          childrenQuery = childrenQuery.eq('school_id', schoolId);
+        }
+
+        // Filtrer par school_level si fourni (au niveau de la base de données)
+        if (schoolLevel) {
+          childrenQuery = childrenQuery.eq('school_level', schoolLevel);
+        }
+
+        return from(
+          childrenQuery.order('firstname', { ascending: true })
+        ).pipe(
+          map(({ data: children, error: childrenError }) => {
+            if (childrenError || !children) {
+              return { children: [], error: childrenError || null };
             }
-            // Filtrer par school_level si fourni
-            if (schoolLevel && child.school_level !== schoolLevel) {
-              return false;
-            }
-            return true;
+
+            // Utiliser un Map pour éviter les doublons (un enfant peut avoir plusieurs enrollments)
+            const uniqueChildrenMap = new Map<string, Child>();
+            children.forEach(child => {
+              if (child && child.id && !uniqueChildrenMap.has(child.id)) {
+                uniqueChildrenMap.set(child.id, child);
+              }
+            });
+
+            return {
+              children: Array.from(uniqueChildrenMap.values()),
+              error: null,
+            };
           })
-          .map(e => e.child)
-          .filter((child): child is Child => child !== null);
-
-        // Utiliser un Map pour éviter les doublons (un enfant peut avoir plusieurs enrollments)
-        const uniqueChildrenMap = new Map<string, Child>();
-        activeChildren.forEach(child => {
-          if (child && child.id && !uniqueChildrenMap.has(child.id)) {
-            uniqueChildrenMap.set(child.id, child);
-          }
-        });
-
-        // Trier par prénom
-        const uniqueChildren = Array.from(uniqueChildrenMap.values()).sort((a, b) => {
-          const firstNameA = a.firstname || '';
-          const firstNameB = b.firstname || '';
-          return firstNameA.localeCompare(firstNameB);
-        });
-
-        return { children: uniqueChildren, error: null };
+        );
       })
     );
   }
