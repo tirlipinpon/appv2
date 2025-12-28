@@ -13,6 +13,11 @@
   box-shadow: $shadow-sm;
   margin-bottom: $spacing-xl;
 
+  @media (max-width: $breakpoint-md - 1px) {
+    padding: $spacing-md $spacing-lg;
+    margin-bottom: $spacing-lg;
+  }
+
   .btn-back {
     display: inline-block;
     margin-bottom: $spacing-md;
@@ -39,6 +44,10 @@
   max-width: $container-max-width;
   margin: 0 auto;
   padding: 0 $spacing-2xl $spacing-2xl;
+
+  @media (max-width: $breakpoint-md - 1px) {
+    padding: 0 $spacing-md $spacing-xl;
+  }
 }
 
 .child-info-card {
@@ -162,12 +171,12 @@
 
 .subjects-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: $spacing-xl;
   margin-bottom: $spacing-2xl;
 
-  @include respond-to(md) {
-    grid-template-columns: 1fr;
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -176,6 +185,10 @@
   padding: $spacing-lg;
   display: flex;
   flex-direction: column;
+
+  @media (max-width: $breakpoint-md - 1px) {
+    padding: $spacing-md;
+  }
 
   &.active-column {
     border-top: $border-width-medium solid $color-success;
@@ -196,6 +209,13 @@
       justify-content: space-between;
       align-items: center;
       gap: $spacing-md;
+      flex-wrap: wrap;
+
+      @media (max-width: $breakpoint-md - 1px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: $spacing-sm;
+      }
     }
 
     h2 {
@@ -204,6 +224,10 @@
       font-size: $font-size-xl;
       font-weight: $font-weight-semibold;
       flex-shrink: 0;
+
+      @media (max-width: $breakpoint-md - 1px) {
+        font-size: $font-size-lg;
+      }
     }
 
     .column-search-input {
@@ -215,6 +239,11 @@
       max-width: 200px;
       flex-shrink: 0;
       transition: border-color $transition-base, box-shadow $transition-base;
+
+      @media (max-width: $breakpoint-md - 1px) {
+        width: 100%;
+        max-width: 100%;
+      }
 
       &:focus {
         outline: none;
