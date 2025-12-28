@@ -178,13 +178,16 @@ export class SubjectService {
     schoolLevel: string | null
   ): Observable<{ count: number; error: PostgrestError | null }> {
     // Joindre avec la table children pour obtenir le school_level et filtrer
-    // Ne pas filtrer par school_id dans child_subject_enrollments car cette colonne
-    // peut ne pas exister ou être null - on filtre côté client après le join
-    const query = this.supabaseService.client
+    let query = this.supabaseService.client
       .from('child_subject_enrollments')
       .select('child_id, child:children(school_level, school_id, is_active)')
       .eq('subject_id', subjectId)
       .eq('selected', true);
+
+    // Filtrer par school_id si fourni (colonne existe dans child_subject_enrollments)
+    if (schoolId) {
+      query = query.eq('school_id', schoolId);
+    }
 
     // Récupérer les données et filtrer par school_level côté client
     // car Supabase ne permet pas de filtrer directement sur les colonnes de la table jointe
@@ -200,22 +203,31 @@ export class SubjectService {
 
         // Filtrer les résultats par school_level et is_active
         // Note: Supabase retourne child comme un objet unique pour une relation one-to-one
-        const enrollments = (data as unknown) as Array<{
+        const enrollments = (data as unknown) as {
           child_id: string;
           child: { school_level: string | null; school_id: string | null; is_active: boolean } | null;
-        }>;
+        }[];
 
-        // Pour les matières, on compte tous les enfants inscrits (actifs)
-        // sans filtrer par école/niveau car une matière peut être enseignée
-        // dans plusieurs écoles/niveaux
+        // Filtrer par school_level si fourni et compter les enfants uniques
         const activeChildren = enrollments.filter(e => {
           const child = e.child;
-          // Vérifier uniquement que l'enfant existe et est actif
-          return child && child.is_active;
+          // Vérifier que l'enfant existe et est actif
+          if (!child || !child.is_active) {
+            return false;
+          }
+          // Filtrer par school_level si fourni (pour une affectation spécifique)
+          if (schoolLevel && child.school_level !== schoolLevel) {
+            return false;
+          }
+          return true;
         });
 
+        // Utiliser un Set pour compter les enfants uniques (éviter les doublons)
+        // Un enfant peut avoir plusieurs enrollments (ex: catégories différentes)
+        const uniqueChildIds = new Set(activeChildren.map(e => e.child_id));
+
         return {
-          count: activeChildren.length,
+          count: uniqueChildIds.size,
           error: null,
         };
       })
