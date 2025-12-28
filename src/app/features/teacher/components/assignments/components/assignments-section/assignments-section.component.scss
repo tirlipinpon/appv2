@@ -176,6 +176,30 @@
               }
             }
           }
+
+          &.other-teachers {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background-color: #f8f9ff;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+
+            .teachers-label {
+              font-weight: 500;
+              color: #333;
+              margin-right: 0.5rem;
+            }
+
+            .teachers-list {
+              color: #666;
+              font-size: 0.9rem;
+
+              .teacher-name {
+                color: #667eea;
+                font-weight: 500;
+              }
+            }
+          }
         }
 
         .games-stats {

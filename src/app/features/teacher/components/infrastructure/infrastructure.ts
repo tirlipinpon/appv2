@@ -9,6 +9,7 @@ import { TeacherAssignmentService } from '../../services/teacher-assignment/teac
 import { GameTypeService } from '../../services/game-type/game-type.service';
 import { GameService } from '../../services/game/game.service';
 import { AIGameGeneratorService } from '../../services/ai-game-generator/ai-game-generator.service';
+import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { Teacher, TeacherUpdate } from '../../types/teacher';
 import type { School } from '../../types/school';
 import type { Subject } from '../../types/subject';
@@ -34,6 +35,7 @@ export class Infrastructure {
   private readonly gameTypeService = inject(GameTypeService);
   private readonly gameService = inject(GameService);
   private readonly aiGameGeneratorService = inject(AIGameGeneratorService);
+  private readonly supabaseService = inject(SupabaseService);
 
   getTeacherProfile(): Observable<Teacher | null> {
     return this.teacherService.getTeacherProfile();
@@ -198,6 +200,64 @@ export class Infrastructure {
     error: PostgrestError | null 
   }> {
     return this.teacherAssignmentService.getSharedAssignments(assignmentId);
+  }
+
+  /**
+   * Récupère tous les professeurs qui enseignent une matière donnée
+   * @param subjectId ID de la matière
+   * @param excludeTeacherId ID du professeur à exclure (optionnel)
+   * @returns Observable avec la liste des professeurs
+   */
+  getTeachersForSubject(
+    subjectId: string,
+    excludeTeacherId?: string | null
+  ): Observable<{ teachers: { id: string; fullname: string | null }[]; error: PostgrestError | null }> {
+    return from(
+      this.supabaseService.client
+        .from('teacher_assignments')
+        .select('teacher_id')
+        .eq('subject_id', subjectId)
+        .is('deleted_at', null)
+    ).pipe(
+      switchMap(({ data: assignments, error: assignmentsError }) => {
+        if (assignmentsError) {
+          return of({ teachers: [], error: assignmentsError as PostgrestError });
+        }
+
+        const assignmentRows = (assignments as Array<{ teacher_id: string }> | null) || [];
+        const teacherIds = [...new Set(assignmentRows.map(a => a.teacher_id).filter(Boolean))];
+        
+        // Exclure le professeur actuel si spécifié
+        const filteredTeacherIds = excludeTeacherId 
+          ? teacherIds.filter(id => id !== excludeTeacherId)
+          : teacherIds;
+
+        if (filteredTeacherIds.length === 0) {
+          return of({ teachers: [], error: null });
+        }
+
+        // Récupérer les informations des professeurs
+        return from(
+          this.supabaseService.client
+            .from('teachers')
+            .select('id, fullname')
+            .in('id', filteredTeacherIds)
+        ).pipe(
+          map(({ data: teachers, error: teachersError }) => {
+            if (teachersError) {
+              return { teachers: [], error: teachersError as PostgrestError };
+            }
+
+            const teachersList = ((teachers || []) as Array<{ id: string; fullname: string | null }>).map(t => ({
+              id: t.id,
+              fullname: t.fullname || null
+            }));
+
+            return { teachers: teachersList, error: null };
+          })
+        );
+      })
+    );
   }
 
   // ===== Domaine Jeux =====

@@ -74,6 +74,14 @@
             👥 Enfants: {{ getStudentCount(assignment.id) }}
           </span>
         </p>
+        <p *ngIf="getOtherTeachersForSubject(assignment.subject_id).length > 0" class="other-teachers">
+          <span class="teachers-label">👨‍🏫 Autre{{ getOtherTeachersForSubject(assignment.subject_id).length > 1 ? 's' : '' }} prof{{ getOtherTeachersForSubject(assignment.subject_id).length > 1 ? 's' : '' }}:</span>
+          <span class="teachers-list">
+            <span *ngFor="let teacher of getOtherTeachersForSubject(assignment.subject_id); let last = last" class="teacher-name">
+              {{ teacher.fullname || 'Professeur sans nom' }}<span *ngIf="!last">, </span>
+            </span>
+          </span>
+        </p>
         <app-games-stats-display
           *ngIf="assignment.subject_id"
           [subjectId]="assignment.subject_id">

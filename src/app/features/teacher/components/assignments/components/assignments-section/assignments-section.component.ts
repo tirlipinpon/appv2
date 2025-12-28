@@ -52,6 +52,9 @@ export class AssignmentsSectionComponent {
   readonly loadingCategories = signal<Map<string, boolean>>(new Map());
   readonly subjectsWithCategories = signal<Set<string>>(new Set()); // IDs des matières qui ont des catégories
 
+  // Signal pour stocker les autres professeurs par matière (excluant le professeur actuel)
+  readonly otherTeachersBySubject = signal<Map<string, { id: string; fullname: string | null }[]>>(new Map());
+
   // Signals pour les affectations
   readonly teacherAssignments = computed(() => this.teacherAssignmentStore.assignments());
   readonly hasAssignments = computed(() => this.teacherAssignmentStore.hasAssignments());
@@ -268,6 +271,44 @@ export class AssignmentsSectionComponent {
       if (!loadedSchoolIds.has(schoolId)) {
         this.teacherAssignmentStore.loadSchoolYears(schoolId);
       }
+    });
+  });
+
+  // Effect pour charger les autres professeurs pour chaque matière
+  private readonly loadOtherTeachersEffect = effect(() => {
+    const assignments = this.filteredAssignments();
+    const currentTeacherId = this.getCurrentTeacherId();
+    
+    if (assignments.length === 0 || !currentTeacherId) {
+      this.otherTeachersBySubject.set(new Map());
+      return;
+    }
+
+    // Extraire les subject_id uniques
+    const subjectIds = [...new Set(
+      assignments
+        .filter(a => a.subject_id)
+        .map(a => a.subject_id!)
+    )];
+
+    if (subjectIds.length === 0) return;
+
+    // Charger les professeurs pour chaque matière en parallèle
+    const teacherObservables = subjectIds.map(subjectId =>
+      this.infrastructure.getTeachersForSubject(subjectId, currentTeacherId).pipe(
+        map(({ teachers, error }) => ({
+          subjectId,
+          teachers: error ? [] : teachers
+        }))
+      )
+    );
+
+    forkJoin(teacherObservables).subscribe(results => {
+      const updatedTeachers = new Map(this.otherTeachersBySubject());
+      results.forEach(({ subjectId, teachers }) => {
+        updatedTeachers.set(subjectId, teachers);
+      });
+      this.otherTeachersBySubject.set(updatedTeachers);
     });
   });
 
@@ -696,6 +737,12 @@ export class AssignmentsSectionComponent {
     this.showChildrenModal.set(false);
     this.selectedCategoryForChildren.set(null);
     this.selectedSubjectForChildren.set(null);
+  }
+
+  // Obtenir les autres professeurs d'une matière
+  getOtherTeachersForSubject(subjectId: string | null | undefined): { id: string; fullname: string | null }[] {
+    if (!subjectId) return [];
+    return this.otherTeachersBySubject().get(subjectId) || [];
   }
 
 }
