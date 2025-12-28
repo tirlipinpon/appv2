@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { from, Observable } from 'rxjs';
+import { from, Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
@@ -758,6 +758,189 @@ export class ParentSubjectService {
         enrollments: (data as CategoryEnrollment[] | null) || [],
         error: error || null,
       }))
+    );
+  }
+
+  /**
+   * Récupère les professeurs assignés à une matière pour une école et un niveau donnés
+   */
+  getTeachersForSubject(
+    subjectId: string,
+    schoolId?: string | null,
+    schoolLevel?: string | null
+  ): Observable<{ teachers: { id: string; fullname: string | null }[]; error: PostgrestError | null }> {
+    let query = this.supabase.client
+      .from('teacher_assignments')
+      .select('teacher_id')
+      .eq('subject_id', subjectId)
+      .is('deleted_at', null);
+
+    if (schoolId) {
+      query = query.eq('school_id', schoolId);
+    }
+    if (schoolLevel) {
+      query = query.eq('school_level', schoolLevel);
+    }
+
+    return from(query).pipe(
+      switchMap(({ data: assignments, error: assignmentsError }) => {
+        if (assignmentsError) {
+          return of({ teachers: [], error: assignmentsError as PostgrestError });
+        }
+
+        const assignmentRows = (assignments as Array<{ teacher_id: string }> | null) || [];
+        const teacherIds = [...new Set(assignmentRows.map(a => a.teacher_id).filter(Boolean))];
+
+        if (teacherIds.length === 0) {
+          return of({ teachers: [], error: null });
+        }
+
+        // Récupérer les informations des professeurs
+        return from(
+          this.supabase.client
+            .from('teachers')
+            .select('id, fullname')
+            .in('id', teacherIds)
+        ).pipe(
+          map(({ data: teachers, error: teachersError }) => {
+            if (teachersError) {
+              console.warn('[getTeachersForSubject] Erreur lors de la récupération des professeurs:', teachersError);
+              return { teachers: [], error: teachersError as PostgrestError };
+            }
+
+            const teachersList = ((teachers || []) as Array<{ id: string; fullname: string | null }>).map(t => ({
+              id: t.id,
+              fullname: t.fullname || null
+            }));
+
+            return {
+              teachers: teachersList,
+              error: null
+            };
+          })
+        );
+      })
+    );
+  }
+
+  /**
+   * Récupère les professeurs pour plusieurs matières en batch (optimisation)
+   */
+  getTeachersForSubjectsBatch(
+    subjectIds: string[],
+    schoolId?: string | null,
+    schoolLevel?: string | null
+  ): Observable<{ teachersBySubject: Map<string, { id: string; fullname: string | null }[]>; error: PostgrestError | null }> {
+    if (subjectIds.length === 0) {
+      return of({ teachersBySubject: new Map(), error: null });
+    }
+
+    let query = this.supabase.client
+      .from('teacher_assignments')
+      .select('subject_id, teacher_id, school_level')
+      .in('subject_id', subjectIds)
+      .is('deleted_at', null);
+
+    if (schoolId) {
+      query = query.eq('school_id', schoolId);
+    }
+    // Ne pas filtrer par school_level pour récupérer tous les professeurs qui enseignent cette matière à cette école
+    // Les matières disponibles sont déjà filtrées par niveau dans getAvailableSubjectsForChild
+
+    return from(query).pipe(
+      switchMap(({ data: assignments, error: assignmentsError }) => {
+        if (assignmentsError) {
+          return of({ teachersBySubject: new Map(), error: assignmentsError as PostgrestError });
+        }
+
+        const assignmentRows = (assignments as Array<{ subject_id: string; teacher_id: string }> | null) || [];
+        console.log('[getTeachersForSubjectsBatch] Assignments trouvés:', assignmentRows.length, {
+          subjectIds,
+          schoolId,
+          schoolLevel,
+          assignments: assignmentRows
+        });
+        
+        // Récupérer tous les teacher_ids uniques
+        const teacherIds = [...new Set(assignmentRows.map(a => a.teacher_id).filter(Boolean))];
+        console.log('[getTeachersForSubjectsBatch] Teacher IDs uniques:', teacherIds);
+
+        if (teacherIds.length === 0) {
+          const result = new Map<string, { id: string; fullname: string | null }[]>();
+          subjectIds.forEach(subjectId => {
+            result.set(subjectId, []);
+          });
+          return of({ teachersBySubject: result, error: null });
+        }
+
+        // Récupérer les informations des professeurs
+        return from(
+          this.supabase.client
+            .from('teachers')
+            .select('id, fullname')
+            .in('id', teacherIds)
+        ).pipe(
+          map(({ data: teachers, error: teachersError }) => {
+            if (teachersError) {
+              console.warn('[getTeachersForSubjectsBatch] Erreur lors de la récupération des professeurs:', teachersError);
+              const result = new Map<string, { id: string; fullname: string | null }[]>();
+              subjectIds.forEach(subjectId => {
+                result.set(subjectId, []);
+              });
+              return { teachersBySubject: result, error: teachersError as PostgrestError };
+            }
+
+            // Créer une map des professeurs par ID
+            const teachersMap = new Map<string, { id: string; fullname: string | null }>();
+            ((teachers || []) as Array<{ id: string; fullname: string | null }>).forEach(t => {
+              teachersMap.set(t.id, {
+                id: t.id,
+                fullname: t.fullname || null
+              });
+            });
+
+            // Créer une map des professeurs par matière
+            const teachersBySubject = new Map<string, Map<string, { id: string; fullname: string | null }>>();
+            assignmentRows.forEach((assignment) => {
+              const subjectId = assignment.subject_id;
+              const teacherId = assignment.teacher_id;
+              const teacher = teachersMap.get(teacherId);
+              
+              if (teacher) {
+                if (!teachersBySubject.has(subjectId)) {
+                  teachersBySubject.set(subjectId, new Map());
+                }
+                const subjectTeachers = teachersBySubject.get(subjectId)!;
+                if (!subjectTeachers.has(teacherId)) {
+                  subjectTeachers.set(teacherId, teacher);
+                }
+              } else {
+                console.warn('[getTeachersForSubjectsBatch] Teacher non trouvé pour ID:', teacherId);
+              }
+            });
+
+            // Convertir en Map<string, Array>
+            const result = new Map<string, { id: string; fullname: string | null }[]>();
+            teachersBySubject.forEach((teachersMap, subjectId) => {
+              const teachersArray = Array.from(teachersMap.values());
+              result.set(subjectId, teachersArray);
+              console.log(`[getTeachersForSubjectsBatch] Professeurs pour matière ${subjectId}:`, teachersArray.map(t => t.fullname));
+            });
+
+            // S'assurer que toutes les matières ont au moins un tableau vide
+            subjectIds.forEach(subjectId => {
+              if (!result.has(subjectId)) {
+                result.set(subjectId, []);
+              }
+            });
+
+            return {
+              teachersBySubject: result,
+              error: null
+            };
+          })
+        );
+      })
     );
   }
 }

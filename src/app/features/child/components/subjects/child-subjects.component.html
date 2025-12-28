@@ -67,6 +67,14 @@
                   </button>
                 </div>
               </div>
+              <div *ngIf="getTeachersForSubject(s.id).length > 0" class="subject-teachers">
+                <span class="teachers-label">👨‍🏫 Prof{{ getTeachersForSubject(s.id).length > 1 ? 's' : '' }}:</span>
+                <span class="teachers-list">
+                  <span *ngFor="let teacher of getTeachersForSubject(s.id); let last = last">
+                    {{ teacher.fullname || 'Professeur' }}<span *ngIf="!last">, </span>
+                  </span>
+                </span>
+              </div>
               <div class="subject-games-stats">
                 <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
               </div>
@@ -134,6 +142,14 @@
                     <span class="toggle-icon" [class.expanded]="isCategoriesExpanded(s.id)">▼</span>
                   </button>
                 </div>
+              </div>
+              <div *ngIf="getTeachersForSubject(s.id).length > 0" class="subject-teachers">
+                <span class="teachers-label">👨‍🏫 Prof{{ getTeachersForSubject(s.id).length > 1 ? 's' : '' }}:</span>
+                <span class="teachers-list">
+                  <span *ngFor="let teacher of getTeachersForSubject(s.id); let last = last">
+                    {{ teacher.fullname || 'Professeur' }}<span *ngIf="!last">, </span>
+                  </span>
+                </span>
               </div>
               <div class="subject-games-stats">
                 <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>

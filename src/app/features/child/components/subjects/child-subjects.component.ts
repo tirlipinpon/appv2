@@ -37,6 +37,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
   readonly categoryEnrollments = signal<CategoryEnrollment[]>([]);
   readonly expandedSubjects = signal<Set<string>>(new Set()); // Matières avec sous-catégories visibles
   readonly selectedSubjectTypeFilter = signal<'scolaire' | 'extra' | 'optionnelle' | null>(null);
+  readonly teachersBySubject = signal<Map<string, { id: string; fullname: string | null }[]>>(new Map());
   
   getSchoolLevelForSubject(subjectId: string): string | null {
     // Chercher d'abord dans availableSubjects
@@ -84,6 +85,12 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
           
           // Mettre à jour availableSubjects
           this.availableSubjects.set(availableSubjects.subjects || []);
+          
+          // Charger les professeurs pour toutes les matières disponibles
+          if (availableSubjects.subjects && availableSubjects.subjects.length > 0) {
+            const subjectIds = availableSubjects.subjects.map(s => s.id);
+            this.loadTeachersForSubjects(subjectIds, child.school_id || null, child.school_level || null);
+          }
           
           // Créer automatiquement les enrollments manquants avec selected=true pour les matières dans availableSubjects
           const existingEnrollmentIds = new Set(allEnrollments.map(e => e.subject_id));
@@ -293,6 +300,12 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
             }
             console.log('Available subjects loaded:', availableSubjects.subjects?.length, availableSubjects.subjects);
             this.availableSubjects.set(availableSubjects.subjects || []);
+            
+            // Charger les professeurs pour toutes les matières disponibles
+            if (availableSubjects.subjects && availableSubjects.subjects.length > 0) {
+              const subjectIds = availableSubjects.subjects.map(s => s.id);
+              this.loadTeachersForSubjects(subjectIds, child.school_id || null, child.school_level || null);
+            }
             
             // Traiter les enrollments
             if (enrollments.error) {
@@ -847,6 +860,40 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
   // Récupère le nombre de sous-catégories pour une matière
   getCategoriesCount(subjectId: string): number {
     return this.getCategoriesForSubject(subjectId).length;
+  }
+
+  /**
+   * Charge les professeurs pour plusieurs matières en batch
+   */
+  private loadTeachersForSubjects(subjectIds: string[], schoolId: string | null, schoolLevel: string | null): void {
+    if (subjectIds.length === 0) return;
+
+    this.parentSvc.getTeachersForSubjectsBatch(subjectIds, schoolId, schoolLevel).subscribe({
+      next: ({ teachersBySubject, error }) => {
+        if (error) {
+          console.error('Error loading teachers for subjects:', error);
+          return;
+        }
+
+        // Mettre à jour le signal avec les professeurs
+        const currentTeachers = this.teachersBySubject();
+        teachersBySubject.forEach((teachers, subjectId) => {
+          console.log(`[loadTeachersForSubjects] Professeurs chargés pour matière ${subjectId}:`, teachers.map(t => t.fullname));
+          currentTeachers.set(subjectId, teachers);
+        });
+        this.teachersBySubject.set(new Map(currentTeachers));
+      },
+      error: (err) => {
+        console.error('Error in loadTeachersForSubjects subscription:', err);
+      }
+    });
+  }
+
+  /**
+   * Récupère les professeurs d'une matière
+   */
+  getTeachersForSubject(subjectId: string): { id: string; fullname: string | null }[] {
+    return this.teachersBySubject().get(subjectId) || [];
   }
 }
 

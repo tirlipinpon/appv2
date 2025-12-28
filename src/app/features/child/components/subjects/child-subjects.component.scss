@@ -325,6 +325,23 @@
       flex-shrink: 0;
     }
 
+    .subject-teachers {
+      margin-left: 36px; // Align with checkbox + gap
+      margin-top: $spacing-xs;
+      padding-top: $spacing-xs;
+      font-size: $font-size-sm;
+      color: $color-text-secondary;
+
+      .teachers-label {
+        font-weight: $font-weight-medium;
+        margin-right: $spacing-xs;
+      }
+
+      .teachers-list {
+        color: $color-text-primary;
+      }
+    }
+
     .total-games-badge {
       @include badge-base;
       @include badge-variant($color-primary-lighter, $color-primary);
