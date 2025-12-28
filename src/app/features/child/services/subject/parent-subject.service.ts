@@ -222,19 +222,39 @@ export class ParentSubjectService {
     // Approche UPDATE puis INSERT si nécessaire pour éviter les problèmes de contrainte ON CONFLICT
     return from(
       (async () => {
-        // D'abord, essayer de mettre à jour l'enrollment existant
-        // On cherche par child_id et subject_id (contrainte la plus probable)
+        // D'abord, récupérer tous les enrollments existants (gérer les doublons)
         console.log('🔍 [ParentSubjectService] Checking for existing enrollment...');
-        const { data: existing, error: selectError } = await this.supabase.client
+        const { data: existingList, error: selectError } = await this.supabase.client
           .from('child_subject_enrollments')
           .select('*')
           .eq('child_id', enr.child_id)
-          .eq('subject_id', enr.subject_id)
-          .maybeSingle();
+          .eq('subject_id', enr.subject_id);
 
         if (selectError) {
           console.error('❌ [ParentSubjectService] Error checking existing enrollment:', selectError);
           return { data: null, error: selectError };
+        }
+
+        const existing = existingList && existingList.length > 0 ? existingList[0] : null;
+        const hasDuplicates = existingList && existingList.length > 1;
+
+        if (hasDuplicates) {
+          console.warn(`⚠️ [ParentSubjectService] Found ${existingList.length} duplicate enrollments for child ${enr.child_id} and subject ${enr.subject_id}. Cleaning up duplicates...`);
+          
+          // Supprimer tous les doublons sauf le premier
+          const duplicateIds = existingList.slice(1).map(e => e.id);
+          if (duplicateIds.length > 0) {
+            const { error: deleteError } = await this.supabase.client
+              .from('child_subject_enrollments')
+              .delete()
+              .in('id', duplicateIds);
+            
+            if (deleteError) {
+              console.error('❌ [ParentSubjectService] Error deleting duplicates:', deleteError);
+            } else {
+              console.log(`✅ [ParentSubjectService] Deleted ${duplicateIds.length} duplicate enrollment(s)`);
+            }
+          }
         }
 
         if (existing) {
@@ -247,8 +267,7 @@ export class ParentSubjectService {
               school_year_id: enr.school_year_id ?? null,
               selected: enr.selected,
             })
-            .eq('child_id', enr.child_id)
-            .eq('subject_id', enr.subject_id)
+            .eq('id', existing.id)
             .select('*')
             .single();
 
