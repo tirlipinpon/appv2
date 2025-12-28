@@ -171,6 +171,7 @@
   [subjectName]="selectedSubjectForChildren()?.name || ''"
   [schoolId]="selectedCategoryForChildren()?.schoolId || selectedSubjectForChildren()?.schoolId || null"
   [schoolLevel]="selectedCategoryForChildren()?.schoolLevel || selectedSubjectForChildren()?.schoolLevel || null"
+  [teacherId]="getCurrentTeacherId()"
   (modalClose)="closeChildrenModal()">
 </app-children-list-modal>
 

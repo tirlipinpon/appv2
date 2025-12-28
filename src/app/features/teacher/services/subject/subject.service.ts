@@ -176,24 +176,56 @@ export class SubjectService {
   countStudentsBySubject(
     subjectId: string,
     schoolId: string | null,
-    schoolLevel: string | null
+    schoolLevel: string | null,
+    teacherId?: string | null
   ): Observable<{ count: number; error: PostgrestError | null }> {
-    // Joindre avec la table children pour obtenir le school_level et filtrer
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:176',message:'countStudentsBySubject entrée',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    // Si teacherId est fourni, utiliser la fonction RPC pour contourner la politique RLS
+    // La fonction RPC vérifie si l'enseignant a une affectation et retourne le compte
+    if (teacherId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:185',message:'countStudentsBySubject - utilisation RPC',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      return from(
+        this.supabaseService.client.rpc('count_students_by_subject_for_teacher', {
+          p_subject_id: subjectId,
+          p_school_id: schoolId,
+          p_school_level: schoolLevel,
+          p_teacher_id: teacherId
+        })
+      ).pipe(
+        map(({ data, error }) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:195',message:'countStudentsBySubject - réponse RPC',data:{subjectId,schoolId,schoolLevel,teacherId,count:data?.[0]?.count||0,error:error?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
+          if (error) {
+            return { count: 0, error: error || null };
+          }
+          const count = (data && data[0] && data[0].count) ? Number(data[0].count) : 0;
+          return { count, error: null };
+        })
+      );
+    }
+
+    // Sinon, utiliser la méthode normale (pour compatibilité)
     let query = this.supabaseService.client
       .from('child_subject_enrollments')
-      .select('child_id, child:children(school_level, school_id, is_active)')
+      .select('child_id, school_id, child:children(school_level, school_id, is_active)')
       .eq('subject_id', subjectId)
       .eq('selected', true);
 
-    // Filtrer par school_id si fourni (colonne existe dans child_subject_enrollments)
-    if (schoolId) {
-      query = query.eq('school_id', schoolId);
-    }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:210',message:'countStudentsBySubject - requête normale (sans teacherId)',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
-    // Récupérer les données et filtrer par school_level côté client
-    // car Supabase ne permet pas de filtrer directement sur les colonnes de la table jointe
     return from(query).pipe(
       map(({ data, error }) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:216',message:'countStudentsBySubject - réponse requête normale',data:{subjectId,schoolId,schoolLevel,enrollmentsCount:data?.length||0,error:error?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         if (error) {
           return { count: 0, error: error || null };
         }
@@ -202,29 +234,30 @@ export class SubjectService {
           return { count: 0, error: null };
         }
 
-        // Filtrer les résultats par school_level et is_active
-        // Note: Supabase retourne child comme un objet unique pour une relation one-to-one
         const enrollments = (data as unknown) as {
           child_id: string;
+          school_id: string | null;
           child: { school_level: string | null; school_id: string | null; is_active: boolean } | null;
         }[];
 
-        // Filtrer par school_level si fourni et compter les enfants uniques
         const activeChildren = enrollments.filter(e => {
           const child = e.child;
-          // Vérifier que l'enfant existe et est actif
           if (!child || !child.is_active) {
             return false;
           }
-          // Filtrer par school_level si fourni (pour une affectation spécifique)
+          if (schoolId) {
+            const enrollmentSchoolId = e.school_id;
+            const childSchoolId = child.school_id;
+            if (enrollmentSchoolId !== schoolId && childSchoolId !== schoolId) {
+              return false;
+            }
+          }
           if (schoolLevel && child.school_level !== schoolLevel) {
             return false;
           }
           return true;
         });
 
-        // Utiliser un Set pour compter les enfants uniques (éviter les doublons)
-        // Un enfant peut avoir plusieurs enrollments (ex: catégories différentes)
         const uniqueChildIds = new Set(activeChildren.map(e => e.child_id));
 
         return {
@@ -241,41 +274,80 @@ export class SubjectService {
   getChildrenBySubject(
     subjectId: string,
     schoolId: string | null = null,
-    schoolLevel: string | null = null
+    schoolLevel: string | null = null,
+    teacherId?: string | null
   ): Observable<{ children: Child[]; error: PostgrestError | null }> {
-    // D'abord récupérer les child_id depuis child_subject_enrollments
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:241',message:'getChildrenBySubject entrée',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    // Si teacherId est fourni, utiliser la fonction RPC pour contourner la politique RLS
+    // La fonction RPC vérifie si l'enseignant a une affectation et retourne les enfants
+    if (teacherId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:250',message:'getChildrenBySubject - utilisation RPC',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      return from(
+        this.supabaseService.client.rpc('get_children_by_subject_for_teacher', {
+          p_subject_id: subjectId,
+          p_school_id: schoolId,
+          p_school_level: schoolLevel,
+          p_teacher_id: teacherId
+        })
+      ).pipe(
+        map(({ data, error }) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:260',message:'getChildrenBySubject - réponse RPC',data:{subjectId,schoolId,schoolLevel,teacherId,childrenCount:data?.length||0,error:error?.message||null,children:data?.slice(0,3).map((c:any)=>({id:c.id,firstname:c.firstname,schoolId:c.school_id,schoolLevel:c.school_level}))||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
+          if (error) {
+            return { children: [], error: error || null };
+          }
+          return { children: (data as Child[]) || [], error: null };
+        })
+      );
+    }
+
+    // Sinon, utiliser la méthode normale (pour compatibilité)
     let enrollmentsQuery = this.supabaseService.client
       .from('child_subject_enrollments')
-      .select('child_id')
+      .select('child_id, school_id')
       .eq('subject_id', subjectId)
       .eq('selected', true);
 
-    // Filtrer par school_id si fourni (au niveau de la table enrollments)
-    if (schoolId) {
-      enrollmentsQuery = enrollmentsQuery.eq('school_id', schoolId);
-    }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:275',message:'getChildrenBySubject - requête normale (sans teacherId)',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
     return from(enrollmentsQuery).pipe(
       switchMap(({ data: enrollments, error: enrollmentsError }) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:279',message:'getChildrenBySubject - réponse enrollments',data:{subjectId,schoolId,schoolLevel,enrollmentsCount:enrollments?.length||0,error:enrollmentsError?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         if (enrollmentsError || !enrollments || enrollments.length === 0) {
           return from(Promise.resolve({ children: [], error: enrollmentsError || null }));
         }
 
-        const childIds = enrollments.map(e => e.child_id);
+        let filteredEnrollments = enrollments;
+        if (schoolId) {
+          filteredEnrollments = enrollments.filter((e: any) => e.school_id === schoolId);
+        }
 
-        // Construire la requête sur children avec tous les filtres au niveau de la base de données
+        const childIds = filteredEnrollments.map((e: any) => e.child_id);
+
+        if (childIds.length === 0) {
+          return from(Promise.resolve({ children: [], error: null }));
+        }
+
         let childrenQuery = this.supabaseService.client
           .from('children')
           .select('*')
           .in('id', childIds)
           .eq('is_active', true);
 
-        // Filtrer par school_id si fourni (au niveau de la table children)
         if (schoolId) {
           childrenQuery = childrenQuery.eq('school_id', schoolId);
         }
 
-        // Filtrer par school_level si fourni (au niveau de la base de données)
         if (schoolLevel) {
           childrenQuery = childrenQuery.eq('school_level', schoolLevel);
         }
@@ -288,7 +360,6 @@ export class SubjectService {
               return { children: [], error: childrenError || null };
             }
 
-            // Utiliser un Map pour éviter les doublons (un enfant peut avoir plusieurs enrollments)
             const uniqueChildrenMap = new Map<string, Child>();
             children.forEach(child => {
               if (child && child.id && !uniqueChildrenMap.has(child.id)) {

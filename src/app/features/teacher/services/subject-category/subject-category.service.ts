@@ -99,8 +99,42 @@ export class SubjectCategoryService {
   getChildrenByCategory(
     categoryId: string,
     schoolId: string | null = null,
-    schoolLevel: string | null = null
+    schoolLevel: string | null = null,
+    teacherId?: string | null
   ): Observable<{ children: Child[]; error: PostgrestError | null }> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:99',message:'getChildrenByCategory entrée',data:{categoryId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category-list',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    // Si teacherId est fourni, utiliser la fonction RPC pour contourner la politique RLS
+    if (teacherId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:105',message:'getChildrenByCategory - utilisation RPC',data:{categoryId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category-list',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      return from(
+        this.supabaseService.client.rpc('get_children_by_category_for_teacher', {
+          p_category_id: categoryId,
+          p_school_id: schoolId,
+          p_school_level: schoolLevel,
+          p_teacher_id: teacherId
+        })
+      ).pipe(
+        map(({ data, error }) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:117',message:'getChildrenByCategory - réponse RPC',data:{categoryId,schoolId,schoolLevel,teacherId,childrenCount:data?.length||0,error:error?.message||null,children:data?.slice(0,3).map((c:any)=>({id:c.id,firstname:c.firstname,schoolId:c.school_id,schoolLevel:c.school_level}))||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category-list',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
+          if (error) {
+            return { children: [], error: error || null };
+          }
+          return { children: (data as Child[]) || [], error: null };
+        })
+      );
+    }
+
+    // Sinon, utiliser la méthode normale (pour compatibilité)
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:128',message:'getChildrenByCategory - requête normale (sans teacherId)',data:{categoryId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category-list',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     return from(
       this.supabaseService.client
         .from('child_subject_category_enrollments')
@@ -109,6 +143,9 @@ export class SubjectCategoryService {
         .eq('selected', true)
     ).pipe(
       switchMap(({ data: enrollments, error: enrollmentsError }) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:137',message:'getChildrenByCategory - réponse enrollments',data:{categoryId,schoolId,schoolLevel,enrollmentsCount:enrollments?.length||0,error:enrollmentsError?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category-list',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         if (enrollmentsError || !enrollments || enrollments.length === 0) {
           return from(Promise.resolve({ children: [], error: enrollmentsError || null }));
         }
@@ -121,12 +158,10 @@ export class SubjectCategoryService {
           .in('id', childIds)
           .eq('is_active', true);
 
-        // Filtrer par school_id si fourni
         if (schoolId) {
           childrenQuery = childrenQuery.eq('school_id', schoolId);
         }
 
-        // Filtrer par school_level si fourni
         if (schoolLevel) {
           childrenQuery = childrenQuery.eq('school_level', schoolLevel);
         }
@@ -155,9 +190,43 @@ export class SubjectCategoryService {
   countChildrenByCategory(
     categoryId: string,
     schoolId: string | null = null,
-    schoolLevel: string | null = null
+    schoolLevel: string | null = null,
+    teacherId?: string | null
   ): Observable<{ count: number; error: PostgrestError | null }> {
-    // D'abord, récupérer les enfants inscrits à la sous-catégorie
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:155',message:'countChildrenByCategory entrée',data:{categoryId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    // Si teacherId est fourni, utiliser la fonction RPC pour contourner la politique RLS
+    if (teacherId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:162',message:'countChildrenByCategory - utilisation RPC',data:{categoryId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      return from(
+        this.supabaseService.client.rpc('count_children_by_category_for_teacher', {
+          p_category_id: categoryId,
+          p_school_id: schoolId,
+          p_school_level: schoolLevel,
+          p_teacher_id: teacherId
+        })
+      ).pipe(
+        map(({ data, error }) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:172',message:'countChildrenByCategory - réponse RPC',data:{categoryId,schoolId,schoolLevel,teacherId,count:data?.[0]?.count||0,error:error?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
+          if (error) {
+            return { count: 0, error: error || null };
+          }
+          const count = (data && data[0] && data[0].count) ? Number(data[0].count) : 0;
+          return { count, error: null };
+        })
+      );
+    }
+
+    // Sinon, utiliser la méthode normale (pour compatibilité)
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:182',message:'countChildrenByCategory - requête normale (sans teacherId)',data:{categoryId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     return from(
       this.supabaseService.client
         .from('child_subject_category_enrollments')
@@ -166,24 +235,24 @@ export class SubjectCategoryService {
         .eq('selected', true)
     ).pipe(
       switchMap(({ data: enrollments, error: enrollmentsError }) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject-category.service.ts:192',message:'countChildrenByCategory - réponse enrollments',data:{categoryId,schoolId,schoolLevel,enrollmentsCount:enrollments?.length||0,error:enrollmentsError?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix-category',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         if (enrollmentsError || !enrollments || enrollments.length === 0) {
           return from(Promise.resolve({ count: 0, error: enrollmentsError || null }));
         }
 
         const childIds = enrollments.map(e => e.child_id);
 
-        // Construire la requête avec filtres optionnels
         let childrenQuery = this.supabaseService.client
           .from('children')
           .select('id, is_active')
           .in('id', childIds);
 
-        // Filtrer par school_id si fourni
         if (schoolId) {
           childrenQuery = childrenQuery.eq('school_id', schoolId);
         }
 
-        // Filtrer par school_level si fourni
         if (schoolLevel) {
           childrenQuery = childrenQuery.eq('school_level', schoolLevel);
         }
@@ -194,7 +263,6 @@ export class SubjectCategoryService {
               return { count: 0, error: childrenError || null };
             }
 
-            // Filtrer uniquement par is_active
             const activeChildren = children.filter(child => child.is_active);
 
             return {

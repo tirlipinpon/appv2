@@ -91,17 +91,19 @@ export class Infrastructure {
   countStudentsBySubject(
     subjectId: string,
     schoolId: string | null,
-    schoolLevel: string | null
+    schoolLevel: string | null,
+    teacherId?: string | null
   ): Observable<{ count: number; error: PostgrestError | null }> {
-    return this.subjectService.countStudentsBySubject(subjectId, schoolId, schoolLevel);
+    return this.subjectService.countStudentsBySubject(subjectId, schoolId, schoolLevel, teacherId);
   }
 
   getChildrenBySubject(
     subjectId: string,
     schoolId: string | null = null,
-    schoolLevel: string | null = null
+    schoolLevel: string | null = null,
+    teacherId?: string | null
   ): Observable<{ children: Child[]; error: PostgrestError | null }> {
-    return this.subjectService.getChildrenBySubject(subjectId, schoolId, schoolLevel);
+    return this.subjectService.getChildrenBySubject(subjectId, schoolId, schoolLevel, teacherId);
   }
 
   createSubject(subjectData: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): Observable<{ subject: Subject | null; error: PostgrestError | null }> {
@@ -136,17 +138,19 @@ export class Infrastructure {
   getChildrenByCategory(
     categoryId: string,
     schoolId: string | null = null,
-    schoolLevel: string | null = null
+    schoolLevel: string | null = null,
+    teacherId?: string | null
   ): Observable<{ children: Child[]; error: PostgrestError | null }> {
-    return this.subjectCategoryService.getChildrenByCategory(categoryId, schoolId, schoolLevel);
+    return this.subjectCategoryService.getChildrenByCategory(categoryId, schoolId, schoolLevel, teacherId);
   }
 
   countChildrenByCategory(
     categoryId: string,
     schoolId: string | null = null,
-    schoolLevel: string | null = null
+    schoolLevel: string | null = null,
+    teacherId?: string | null
   ): Observable<{ count: number; error: PostgrestError | null }> {
-    return this.subjectCategoryService.countChildrenByCategory(categoryId, schoolId, schoolLevel);
+    return this.subjectCategoryService.countChildrenByCategory(categoryId, schoolId, schoolLevel, teacherId);
   }
 
   getTeacherAssignments(teacherId: string): Observable<{ assignments: TeacherAssignment[]; error: PostgrestError | null }> {

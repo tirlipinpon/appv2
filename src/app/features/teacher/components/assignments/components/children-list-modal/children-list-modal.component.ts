@@ -18,6 +18,7 @@ export class ChildrenListModalComponent {
   @Input() subjectName = '';
   @Input() schoolId: string | null = null;
   @Input() schoolLevel: string | null = null;
+  @Input() teacherId: string | null = null;
   @Output() modalClose = new EventEmitter<void>();
 
   private readonly infrastructure = inject(Infrastructure);
@@ -52,12 +53,14 @@ export class ChildrenListModalComponent {
       ? this.infrastructure.getChildrenByCategory(
           this.categoryId,
           this.schoolId,
-          this.schoolLevel
+          this.schoolLevel,
+          this.teacherId
         )
       : this.infrastructure.getChildrenBySubject(
           this.subjectId!,
           this.schoolId,
-          this.schoolLevel
+          this.schoolLevel,
+          this.teacherId
         );
 
     observable.subscribe({

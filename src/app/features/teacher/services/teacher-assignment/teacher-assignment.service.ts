@@ -16,6 +16,9 @@ export class TeacherAssignmentService {
    * Récupère les affectations du professeur connecté
    */
   getTeacherAssignments(teacherId: string): Observable<{ assignments: TeacherAssignment[]; error: PostgrestError | null }> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'teacher-assignment.service.ts:18',message:'getTeacherAssignments entrée',data:{teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'check-assignments',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     return from(
       this.supabaseService.client
         .from('teacher_assignments')
@@ -28,10 +31,15 @@ export class TeacherAssignmentService {
         .eq('teacher_id', teacherId)
         .order('created_at', { ascending: false })
     ).pipe(
-      map(({ data, error }) => ({
-        assignments: data || [],
-        error: error || null,
-      }))
+      map(({ data, error }) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'teacher-assignment.service.ts:31',message:'getTeacherAssignments résultat',data:{teacherId,assignmentsCount:data?.length||0,error:error?.message||null,assignments:data?.map((a:any)=>({id:a.id,subjectId:a.subject_id,subjectName:a.subject?.name,schoolId:a.school_id,schoolLevel:a.school_level,teacherId:a.teacher_id}))||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'check-assignments',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        return {
+          assignments: data || [],
+          error: error || null,
+        };
+      })
     );
   }
 
