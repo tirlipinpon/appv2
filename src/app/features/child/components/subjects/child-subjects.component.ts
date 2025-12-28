@@ -36,6 +36,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
   readonly categoriesBySubject = signal<Map<string, SubjectCategory[]>>(new Map());
   readonly categoryEnrollments = signal<CategoryEnrollment[]>([]);
   readonly expandedSubjects = signal<Set<string>>(new Set()); // Matières avec sous-catégories visibles
+  readonly selectedSubjectTypeFilter = signal<'scolaire' | 'extra' | 'optionnelle' | null>(null);
   
   getSchoolLevelForSubject(subjectId: string): string | null {
     // Chercher d'abord dans availableSubjects
@@ -45,6 +46,15 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     // Sinon chercher dans unofficialSubjects
     const unofficial = this.unofficialSubjects().find(s => s.id === subjectId);
     return unofficial?.school_level || null;
+  }
+
+  getSubjectTypeLabel(type: 'scolaire' | 'extra' | 'optionnelle'): string {
+    const labels = {
+      'scolaire': 'Scolaire',
+      'extra': 'Extra-scolaire',
+      'optionnelle': 'Optionnelle'
+    };
+    return labels[type] || type;
   }
   
   // Mécanisme pour recharger les données quand la page redevient visible (après transfert d'affectation)
@@ -421,6 +431,11 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     });
     
     const result = Array.from(byId.values());
+    // Appliquer le filtre par type
+    const typeFilter = this.selectedSubjectTypeFilter();
+    if (typeFilter) {
+      return result.filter(s => s.type === typeFilter);
+    }
     return result;
   });
 
@@ -440,7 +455,13 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     // Matières avec selected=false ou absentes des enrollments
     const selectedIds = new Set(explicit.filter(e => e.selected === true).map(e => e.subject_id));
     // Afficher toutes les matières disponibles qui ne sont pas sélectionnées
-    return this.availableSubjects().filter(s => !selectedIds.has(s.id));
+    const filtered = this.availableSubjects().filter(s => !selectedIds.has(s.id));
+    // Appliquer le filtre par type
+    const typeFilter = this.selectedSubjectTypeFilter();
+    if (typeFilter) {
+      return filtered.filter(s => s.type === typeFilter);
+    }
+    return filtered;
   });
   isUnofficial(subjectId: string): boolean {
     const isInAvailable = this.availableSubjects().some(s => s.id === subjectId);

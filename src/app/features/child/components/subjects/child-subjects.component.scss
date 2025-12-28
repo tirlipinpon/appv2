@@ -67,6 +67,41 @@
   }
 }
 
+.filter-section {
+  @include card-base;
+  padding: $spacing-md $spacing-lg;
+  margin-bottom: $spacing-lg;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  
+  label {
+    font-weight: $font-weight-medium;
+    color: $color-text-primary;
+  }
+  
+  select {
+    padding: $spacing-xs $spacing-md;
+    border: 1px solid $color-border-light;
+    border-radius: $border-radius-md;
+    background: $color-bg-primary;
+    color: $color-text-primary;
+    font-size: $font-size-base;
+    cursor: pointer;
+    transition: border-color $transition-base;
+    
+    &:hover {
+      border-color: $color-primary;
+    }
+    
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 2px rgba($color-primary, 0.2);
+    }
+  }
+}
+
 .subjects-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

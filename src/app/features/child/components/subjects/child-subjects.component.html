@@ -18,6 +18,19 @@
       </div>
     </div>
 
+    <div class="filter-section">
+      <label for="subject-type-filter">Filtrer par type :</label>
+      <select 
+        id="subject-type-filter"
+        [value]="selectedSubjectTypeFilter() || ''"
+        (change)="selectedSubjectTypeFilter.set($any($event.target).value || null)">
+        <option value="">Tous les types</option>
+        <option value="scolaire">Scolaire</option>
+        <option value="extra">Extra-scolaire</option>
+        <option value="optionnelle">Optionnelle</option>
+      </select>
+    </div>
+
     <div class="subjects-grid">
       <div class="subjects-column active-column">
         <div class="column-header">

@@ -14,6 +14,7 @@ import type { SubjectCategory } from '../../../../types/subject';
 import type { Game } from '../../../../types/game';
 import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
 import { CategoriesCacheService } from '../../../../../../shared/services/categories-cache/categories-cache.service';
+import { SchoolsStore } from '../../../../../../shared/store/schools.store';
 import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
 import type { PostgrestError } from '@supabase/supabase-js';
@@ -38,6 +39,7 @@ export class AssignmentsSectionComponent {
   private readonly infrastructure = inject(Infrastructure);
   private readonly gamesStatsService = inject(GamesStatsService);
   private readonly categoriesCacheService = inject(CategoriesCacheService);
+  private readonly schoolsStore = inject(SchoolsStore);
 
   // Signal pour stocker le nombre d'enfants par affectation
   readonly studentCounts = signal<Map<string, number>>(new Map());
@@ -72,10 +74,13 @@ export class AssignmentsSectionComponent {
   // Filtre par niveau
   readonly selectedLevel = signal<string | null>(null); // null = tous les niveaux
 
+  // Filtre par type de matière
+  readonly selectedSubjectType = signal<'scolaire' | 'extra' | 'optionnelle' | null>(null); // null = tous les types
+
   // Liste des écoles uniques depuis les affectations
   readonly uniqueSchools = computed(() => {
     const assignments = this.teacherAssignments();
-    const schools = this.teacherAssignmentStore.schools();
+    const schools = this.schoolsStore.schools();
     const schoolIds = new Set(assignments.map(a => a.school_id).filter(Boolean));
 
     // Si les écoles sont chargées, les filtrer et trier
@@ -137,11 +142,12 @@ export class AssignmentsSectionComponent {
     return this.selectedSchoolId() !== null && this.availableLevels().length > 0;
   });
 
-  // Affectations filtrées par école et niveau
+  // Affectations filtrées par école, niveau et type de matière
   readonly filteredAssignments = computed(() => {
     const assignments = this.teacherAssignments();
     const schoolId = this.selectedSchoolId();
     const level = this.selectedLevel();
+    const subjectType = this.selectedSubjectType();
 
     let filtered = assignments;
 
@@ -151,6 +157,13 @@ export class AssignmentsSectionComponent {
 
     if (level) {
       filtered = filtered.filter(a => a.school_level === level);
+    }
+
+    if (subjectType) {
+      filtered = filtered.filter(a => {
+        const assignmentType = this.getAssignmentSubjectType(a);
+        return assignmentType === subjectType;
+      });
     }
 
     return filtered;
@@ -340,7 +353,7 @@ export class AssignmentsSectionComponent {
 
   // Méthodes utilitaires
   getSchoolName(schoolId: string): string {
-    const schools = this.teacherAssignmentStore.schools();
+    const schools = this.schoolsStore.schools();
     const school = schools.find(s => s.id === schoolId);
     return school ? school.name : 'École inconnue';
   }
@@ -369,6 +382,20 @@ export class AssignmentsSectionComponent {
     const joinedName = assignment && assignment.subject && assignment.subject.name;
     if (joinedName && typeof joinedName === 'string') return joinedName;
     return assignment && assignment.subject_id ? this.getSubjectName(assignment.subject_id) : 'Matière inconnue';
+  }
+
+  getAssignmentSubjectType(assignment: { subject?: { type?: 'scolaire' | 'extra' | 'optionnelle' }; subject_id?: string } | null | undefined): 'scolaire' | 'extra' | 'optionnelle' | null {
+    // Si le subject est déjà joint, utiliser directement son type
+    if (assignment && assignment.subject && assignment.subject.type) {
+      return assignment.subject.type;
+    }
+    // Sinon, chercher dans le store
+    if (assignment && assignment.subject_id) {
+      const subjects = this.teacherAssignmentStore.subjects();
+      const subject = subjects.find(s => s.id === assignment.subject_id);
+      return subject ? subject.type : null;
+    }
+    return null;
   }
 
   readonly getSchoolLevelLabel = getSchoolLevelLabel;
