@@ -176,6 +176,30 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   // Données spécifiques pour le jeu image-interactive avec le fichier File (pour l'upload lors de la création)
   private imageInteractiveDataWithFile = signal<ImageInteractiveDataWithFile | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
+  
+  // Computed signals pour les données initiales (évite les appels répétés inutiles)
+  readonly initialDataForImageInteractive = computed(() => {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    
+    // Vérifier que le type correspond (peut être "click" ou "Click")
+    if (currentType && currentType.toLowerCase() === 'click' && data) {
+      // Vérifier que les propriétés requises existent
+      if (
+        'image_url' in data && 
+        'image_width' in data && 
+        'image_height' in data && 
+        'zones' in data &&
+        typeof data.image_url === 'string' &&
+        typeof data.image_width === 'number' &&
+        typeof data.image_height === 'number' &&
+        Array.isArray(data.zones)
+      ) {
+        return data as ImageInteractiveData;
+      }
+    }
+    return null;
+  });
 
   // États des toggles pour les sections
   readonly isAIGenerationExpanded = signal<boolean>(false);
@@ -653,33 +677,8 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getInitialDataForImageInteractive(): ImageInteractiveData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    
-    console.log('[GamesComponent] getInitialDataForImageInteractive - Type:', currentType, 'Data:', data);
-    
-    // Vérifier que le type correspond (peut être "click" ou "Click")
-    if (currentType && currentType.toLowerCase() === 'click' && data) {
-      // Vérifier que les propriétés requises existent
-      if (
-        'image_url' in data && 
-        'image_width' in data && 
-        'image_height' in data && 
-        'zones' in data &&
-        typeof data.image_url === 'string' &&
-        typeof data.image_width === 'number' &&
-        typeof data.image_height === 'number' &&
-        Array.isArray(data.zones)
-      ) {
-        console.log('[GamesComponent] Données ImageInteractive valides, retour:', data);
-        return data as ImageInteractiveData;
-      } else {
-        console.warn('[GamesComponent] Données ImageInteractive invalides - propriétés manquantes ou types incorrects');
-      }
-    } else {
-      console.log('[GamesComponent] Type ne correspond pas ou pas de données - Type:', currentType, 'Has data:', !!data);
-    }
-    return null;
+    // Utiliser le computed signal pour éviter les appels répétés inutiles
+    return this.initialDataForImageInteractive();
   }
 
   // Méthodes pour la génération IA

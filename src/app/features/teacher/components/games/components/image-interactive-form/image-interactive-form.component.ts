@@ -154,6 +154,11 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
 
   // ResizeObserver pour détecter les changements de taille
   private resizeObserver?: ResizeObserver;
+  
+  // Références liées pour les listeners globaux (pour pouvoir les détacher correctement)
+  private handleGlobalMouseUpBound = this.handleGlobalMouseUp.bind(this);
+  private handleGlobalMouseMoveBound = this.handleGlobalMouseMove.bind(this);
+  private handleResizeBound = this.handleResize.bind(this);
 
   ngOnInit(): void {
     // Charger les données initiales si elles sont déjà présentes
@@ -172,13 +177,10 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     }
 
     // Observer les changements de taille de la fenêtre
-    window.addEventListener('resize', this.handleResize.bind(this));
+    window.addEventListener('resize', this.handleResizeBound);
     
-    // Listener global pour mouseup (pour terminer le drag même si la souris sort du cercle)
-    window.addEventListener('mouseup', this.handleGlobalMouseUp.bind(this));
-    
-    // Listener global pour mousemove (pour capturer le drag même si pointer-events est none)
-    window.addEventListener('mousemove', this.handleGlobalMouseMove.bind(this));
+    // Ne pas attacher les listeners globaux mouseup/mousemove ici
+    // Ils seront attachés uniquement pendant le drag pour éviter les appels inutiles
     
     // Mettre à jour les dimensions après l'initialisation de la vue
     if (this.initialData) {
@@ -192,27 +194,65 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
    * Gère le mouseup global (pour terminer le drag même si la souris sort du cercle)
    */
   private handleGlobalMouseUp(event: MouseEvent): void {
-    if (this.isDraggingPoint()) {
-      this.onMouseUp(event);
+    // Vérifier que le drag est actif
+    if (!this.isDraggingPoint()) {
+      return;
     }
+    
+    // Vérifier que la souris est toujours dans le conteneur ou proche
+    if (this.imageContainer?.nativeElement) {
+      const rect = this.imageContainer.nativeElement.getBoundingClientRect();
+      const isInContainer = 
+        event.clientX >= rect.left - 50 && 
+        event.clientX <= rect.right + 50 &&
+        event.clientY >= rect.top - 50 && 
+        event.clientY <= rect.bottom + 50;
+      
+      if (!isInContainer) {
+        // Si la souris est sortie du conteneur, terminer le drag
+        this.onMouseUp(event);
+        return;
+      }
+    }
+    
+    this.onMouseUp(event);
   }
   
   /**
    * Gère le mousemove global (pour capturer le drag même si pointer-events est none)
    */
   private handleGlobalMouseMove(event: MouseEvent): void {
-    if (this.isDraggingPoint()) {
-      this.onCircleMouseMove(event);
+    // Retourner immédiatement si on n'est pas en train de draguer
+    if (!this.isDraggingPoint()) {
+      return;
     }
+    
+    // Vérifier que la souris est dans ou proche du conteneur
+    if (this.imageContainer?.nativeElement) {
+      const rect = this.imageContainer.nativeElement.getBoundingClientRect();
+      const isInContainer = 
+        event.clientX >= rect.left - 100 && 
+        event.clientX <= rect.right + 100 &&
+        event.clientY >= rect.top - 100 && 
+        event.clientY <= rect.bottom + 100;
+      
+      if (!isInContainer) {
+        return; // Ignorer les mouvements hors du conteneur
+      }
+    }
+    
+    this.onCircleMouseMove(event);
   }
 
   ngOnDestroy(): void {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
-    window.removeEventListener('resize', this.handleResize.bind(this));
-    window.removeEventListener('mouseup', this.handleGlobalMouseUp.bind(this));
-    window.removeEventListener('mousemove', this.handleGlobalMouseMove.bind(this));
+    window.removeEventListener('resize', this.handleResizeBound);
+    
+    // Détacher les listeners globaux s'ils sont encore attachés
+    window.removeEventListener('mouseup', this.handleGlobalMouseUpBound, true);
+    window.removeEventListener('mousemove', this.handleGlobalMouseMoveBound, true);
     
     // Libérer l'URL blob si elle existe
     const imageUrl = this.imageUrl();
@@ -679,6 +719,11 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
       this.isDraggingPoint.set(false);
       this.draggingPoint.set(null);
       this.draggingPointAbsolutePosition.set(null);
+      
+      // Détacher les listeners globaux quand le drag se termine
+      window.removeEventListener('mouseup', this.handleGlobalMouseUpBound, true);
+      window.removeEventListener('mousemove', this.handleGlobalMouseMoveBound, true);
+      
       this.emitData();
       return;
     }
@@ -849,6 +894,10 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
       startRelativeX: point.x,
       startRelativeY: point.y,
     });
+    
+    // Attacher les listeners globaux uniquement quand on commence le drag
+    window.addEventListener('mouseup', this.handleGlobalMouseUpBound, true);
+    window.addEventListener('mousemove', this.handleGlobalMouseMoveBound, true);
   }
 
   /**

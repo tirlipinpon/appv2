@@ -215,7 +215,7 @@
           <!-- Image Interactive (Click) -->
           @if (selectedGameTypeName()?.toLowerCase() === 'click') {
             <app-image-interactive-form
-              [initialData]="getInitialDataForImageInteractive()"
+              [initialData]="initialDataForImageInteractive()"
               (dataChange)="onGameDataChange($event)"
               (validityChange)="onGameValidityChange($event)">
             </app-image-interactive-form>
