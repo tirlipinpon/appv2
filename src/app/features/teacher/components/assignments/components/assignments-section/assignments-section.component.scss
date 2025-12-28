@@ -137,20 +137,6 @@
             }
           }
 
-          .toggle-btn {
-            background: none;
-            border: none;
-            font-size: 1rem;
-            cursor: pointer;
-            color: #667eea;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-
-            &:hover {
-              background-color: rgba(102, 126, 234, 0.1);
-            }
-          }
         }
 
         p {

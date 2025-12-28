@@ -56,11 +56,11 @@
           <button
             *ngIf="hasCategories(assignment)"
             type="button"
-            class="toggle-btn"
+            class="btn btn-sm btn-outline-secondary"
             (click)="toggleAssignment(assignment.id)"
             [attr.aria-expanded]="isAssignmentExpanded(assignment.id)"
             matTooltip="Afficher sous-catégories">
-            {{ isAssignmentExpanded(assignment.id) ? '▼' : '▶' }}
+            {{ isAssignmentExpanded(assignment.id) ? '📂' : '📁' }}
           </button>
         </div>
         <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
