@@ -109,7 +109,7 @@ export class DashboardComponent implements OnInit {
       if (activeChildren.length > 0) {
         // Vérifier si les enfants ont changé pour éviter les rechargements inutiles
         const currentIds = activeChildren.map(c => c.id).sort().join(',');
-        const lastIds = this.lastLoadedChildrenIds.sort().join(',');
+        const lastIds = [...this.lastLoadedChildrenIds].sort().join(',');
         
         if (currentIds !== lastIds) {
           this.lastLoadedChildrenIds = activeChildren.map(c => c.id);
@@ -155,7 +155,7 @@ export class DashboardComponent implements OnInit {
             return of({
               enrollments: { enrollments: enrollments.enrollments || [], error: enrollments.error },
               categoryEnrollments: { enrollments: categoryEnrollments.enrollments || [], error: categoryEnrollments.error },
-              categoriesBySubject: new Map<string, Array<{ id: string; subject_id: string }>>(),
+              categoriesBySubject: new Map<string, { id: string; subject_id: string }[]>(),
               selectedAndAvailableSubjectIds: []
             });
           }
