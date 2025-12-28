@@ -875,13 +875,18 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
           return;
         }
 
-        // Mettre à jour le signal avec les professeurs
+        // Créer une nouvelle Map à partir de la Map existante (copie) pour préserver la réactivité
         const currentTeachers = this.teachersBySubject();
+        const updatedTeachers = new Map(currentTeachers);
+        
+        // Mettre à jour avec les nouveaux professeurs
         teachersBySubject.forEach((teachers, subjectId) => {
           console.log(`[loadTeachersForSubjects] Professeurs chargés pour matière ${subjectId}:`, teachers.map(t => t.fullname));
-          currentTeachers.set(subjectId, teachers);
+          updatedTeachers.set(subjectId, teachers);
         });
-        this.teachersBySubject.set(new Map(currentTeachers));
+        
+        // Mettre à jour le signal avec la nouvelle Map (nouvelle référence)
+        this.teachersBySubject.set(updatedTeachers);
       },
       error: (err) => {
         console.error('Error in loadTeachersForSubjects subscription:', err);
