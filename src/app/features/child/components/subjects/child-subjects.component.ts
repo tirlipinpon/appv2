@@ -101,7 +101,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
             );
             
             forkJoin(enrollmentCreates).subscribe({
-              next: (results) => {
+              next: () => {
                 // Recharger les enrollments après création
                 this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
                   if (!error && enrollments) {
@@ -138,7 +138,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
   // Effect pour charger les matières hors programme quand availableSubjects et enrollments sont chargés
   private loadUnofficialSubjectsTimeout: ReturnType<typeof setTimeout> | null = null;
   private isLoadingUnofficialSubjects = false;
-  private lastLoadUnofficialSubjectsIds: string = '';
+  private lastLoadUnofficialSubjectsIds = '';
   
   private readonly loadUnofficialSubjectsEffect = effect(() => {
     this.availableSubjects();
@@ -322,7 +322,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
                 );
                 
                 forkJoin(enrollmentCreates).subscribe({
-                  next: (results) => {
+                  next: () => {
                     // Recharger les enrollments après création
                     this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
                       if (!error && enrollments) {
@@ -560,7 +560,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadCategoriesForSubject(subjectId: string, isSelected: boolean = true): void {
+  private loadCategoriesForSubject(subjectId: string, isSelected = true): void {
     // Vérifier si déjà chargé
     if (this.categoriesBySubject().has(subjectId)) {
       // Si la matière est sélectionnée, s'assurer que les enrollments sont créés
