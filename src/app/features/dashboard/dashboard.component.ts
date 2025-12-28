@@ -1,15 +1,15 @@
-import { Component, OnInit, OnDestroy, inject, computed, effect, signal } from '@angular/core';
+import { Component, OnInit, inject, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, NavigationEnd, Router } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { AuthService, Profile } from '../../shared/services/auth/auth.service';
 import { ParentStore } from '../parent/store/index';
-import { ChildStore } from '../child/store/index';
+import { ChildrenStore } from '../../shared/store/children.store';
 import { TeacherStore } from '../teacher/store/index';
 import { TeacherAssignmentStore } from '../teacher/store/assignments.store';
 import { Child } from '../child/types/child';
-import { filter, Subscription } from 'rxjs';
 import { ActionLinksComponent, ActionLink } from '../../shared/components/action-links/action-links.component';
 import { AssignmentsSectionComponent } from '../teacher/components/assignments/components/assignments-section/assignments-section.component';
+import { AppInitializationService } from '../../shared/services/initialization/app-initialization.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -18,16 +18,16 @@ import { AssignmentsSectionComponent } from '../teacher/components/assignments/c
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
-export class DashboardComponent implements OnInit, OnDestroy {
+export class DashboardComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly appInitializationService = inject(AppInitializationService);
   readonly parentStore = inject(ParentStore);
-  readonly childStore = inject(ChildStore);
+  readonly childStore = inject(ChildrenStore);
   readonly teacherStore = inject(TeacherStore);
   readonly teacherAssignmentStore = inject(TeacherAssignmentStore);
   profile: Profile | null = null;
   activeRole: string | null = null;
-  private routerSubscription?: Subscription;
   private lastLoadedTeacherId: string | null = null;
   private readonly activeRoleSig = signal<string | null>(null);
 
@@ -121,7 +121,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
               this.router.navigate(['/select-role']);
               return;
             }
-          } catch (error) {
+          } catch {
             // En cas d'erreur, rediriger vers le sélecteur
             this.router.navigate(['/select-role']);
             return;
@@ -139,43 +139,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     this.activeRoleSig.set(this.activeRole);
     
-    // Si le rôle actif est parent, charger le profil et vérifier le statut
-    if (this.activeRole === 'parent') {
-      this.parentStore.loadParentProfile();
-      this.parentStore.checkParentStatus();
-      this.childStore.loadChildren();
+    // Utiliser AppInitializationService pour charger les données
+    // Cela évite les appels répétés si déjà initialisé
+    if (this.activeRole) {
+      if (!this.appInitializationService.isInitialized(this.activeRole)) {
+        this.appInitializationService.initializeForRole(this.activeRole);
+      }
+      
+      // Pour le rôle parent, vérifier le statut après chargement
+      if (this.activeRole === 'parent') {
+        this.parentStore.checkParentStatus();
+      }
+      
+      // Pour le rôle prof, charger les affectations après que le teacher soit chargé
+      // (géré par l'effect ci-dessous)
     }
-    
-    // Si le rôle actif est prof, charger le profil et les affectations
-    if (this.activeRole === 'prof') {
-      this.teacherStore.loadTeacherProfile();
-      this.teacherAssignmentStore.loadSchools();
-      // Ne pas charger toutes les matières globales ici pour ne pas écraser la liste filtrée
-    }
-    
-    // Écouter les navigations pour recharger les données quand on revient au dashboard
-    this.routerSubscription = this.router.events
-      .pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe((event: NavigationEnd) => {
-        if (event.url === '/dashboard') {
-          if (this.activeRole === 'parent') {
-            this.childStore.loadChildren();
-          } else if (this.activeRole === 'prof') {
-            // Recharger les affectations pour avoir les dernières données
-            const teacher = this.teacherStore.teacher();
-            if (teacher) {
-              this.teacherAssignmentStore.loadAssignments(teacher.id);
-            }
-          }
-        }
-      });
   }
 
-  ngOnDestroy() {
-    if (this.routerSubscription) {
-      this.routerSubscription.unsubscribe();
-    }
-  }
 
 
   trackByChildId(index: number, child: Child): string {
@@ -188,7 +168,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!isActive && !confirm('Êtes-vous sûr de vouloir désactiver cet enfant ? Vous pourrez le réactiver plus tard.')) {
       return;
     }
-    this.childStore.setChildActiveStatus({ childId, isActive });
+    this.childStore.setActiveStatus({ childId, isActive });
   }
 
 }

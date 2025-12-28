@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
@@ -13,15 +13,30 @@ import type { PostgrestError } from '@supabase/supabase-js';
 })
 export class ChildService {
   private readonly supabaseService = inject(SupabaseService);
-  private readonly authService = inject(AuthService);
+  private readonly injector = inject(Injector);
   private readonly parentStore = inject(ParentStore);
+  
+  /**
+   * Obtient AuthService de manière lazy pour éviter les dépendances circulaires
+   */
+  private getAuthService(): AuthService | null {
+    try {
+      return this.injector.get(AuthService, null);
+    } catch {
+      return null;
+    }
+  }
 
   /**
    * Récupère l'ID du parent (qui est l'ID de l'utilisateur auth.users.id)
    * Dans la table children, parent_id fait référence à auth.users.id, pas à parents.id
    */
   private getParentId(): Observable<string | null> {
-    const user = this.authService.getCurrentUser();
+    const authService = this.getAuthService();
+    if (!authService) {
+      return of(null);
+    }
+    const user = authService.getCurrentUser();
     if (!user) {
       return of(null);
     }

@@ -2,13 +2,10 @@ import { Component, inject, OnInit, OnDestroy, computed, signal, effect, Input }
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { AuthService, Profile } from '../../services/auth/auth.service';
-import { ParentService } from '../../../features/parent/services/parent/parent.service';
-import { TeacherService } from '../../../features/teacher/services/teacher/teacher.service';
+import { ParentStore } from '../../../features/parent/store/index';
+import { TeacherStore } from '../../../features/teacher/store/index';
 import { filter, Subscription } from 'rxjs';
-import { firstValueFrom } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
-import type { Parent } from '../../../features/parent/types/parent';
-import type { Teacher } from '../../../features/teacher/types/teacher';
 import { APP_VERSION } from '../../../core/version';
 
 export interface HeaderNavItem {
@@ -38,8 +35,8 @@ export interface HeaderConfig {
 export class AppHeaderComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly parentService = inject(ParentService);
-  private readonly teacherService = inject(TeacherService);
+  private readonly parentStore = inject(ParentStore);
+  private readonly teacherStore = inject(TeacherStore);
   
   // Inputs pour la configuration générique
   @Input() config?: HeaderConfig;
@@ -54,14 +51,14 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
   activeRole = signal<string | null>(null);
   currentRoute = signal<string>('');
   isMenuOpen = signal(false);
-  parentProfile = signal<Parent | null>(null);
-  teacherProfile = signal<Teacher | null>(null);
+  
+  // Utiliser les stores directement pour les profils
+  readonly parentProfile = computed(() => this.parentStore.parent());
+  readonly teacherProfile = computed(() => this.teacherStore.teacher());
   
   private profileSubscription?: Subscription;
   private userSubscription?: Subscription;
   private routerSubscription?: Subscription;
-  private isLoadingParent = false;
-  private isLoadingTeacher = false;
   
   // Computed pour les éléments de navigation visibles
   readonly visibleNavItems = computed(() => {
@@ -163,33 +160,22 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
     console.log('[Header] Effect déclenché:', { isAuth, role, effectiveRole, roles: p?.roles });
     
     if (!isAuth) {
-      console.log('[Header] Utilisateur non authentifié, nettoyage des profils');
-      this.parentProfile.set(null);
-      this.teacherProfile.set(null);
-      this.isLoadingParent = false;
-      this.isLoadingTeacher = false;
+      console.log('[Header] Utilisateur non authentifié');
       return;
     }
 
     if (effectiveRole === 'parent') {
       console.log('[Header] Rôle parent détecté, chargement du profil parent');
-      // Nettoyer le profil professeur si on passe en mode parent
-      this.teacherProfile.set(null);
-      this.isLoadingTeacher = false;
-      void this.loadParentProfile();
+      // Charger le profil parent via le store (utilise le cache si déjà initialisé)
+      if (!this.parentStore.checkIsInitialized()) {
+        this.parentStore.loadParentProfile();
+      }
     } else if (effectiveRole === 'prof') {
       console.log('[Header] Rôle prof détecté, chargement du profil professeur');
-      // Nettoyer le profil parent si on passe en mode professeur
-      this.parentProfile.set(null);
-      this.isLoadingParent = false;
-      void this.loadTeacherProfile();
-    } else {
-      console.log('[Header] Aucun rôle spécifique détecté, nettoyage des profils');
-      // Si aucun rôle spécifique, nettoyer les profils
-      this.parentProfile.set(null);
-      this.teacherProfile.set(null);
-      this.isLoadingParent = false;
-      this.isLoadingTeacher = false;
+      // Charger le profil professeur via le store (utilise le cache si déjà initialisé)
+      if (!this.teacherStore.checkIsInitialized()) {
+        this.teacherStore.loadTeacherProfile();
+      }
     }
   }, { allowSignalWrites: true });
 
@@ -212,11 +198,15 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
       
       this.activeRole.set(role);
       
-      // Forcer le chargement du profil approprié selon le rôle
+      // Charger le profil approprié selon le rôle via les stores
       if (role === 'parent') {
-        await this.loadParentProfile();
+        if (!this.parentStore.checkIsInitialized()) {
+          this.parentStore.loadParentProfile();
+        }
       } else if (role === 'prof') {
-        await this.loadTeacherProfile();
+        if (!this.teacherStore.checkIsInitialized()) {
+          this.teacherStore.loadTeacherProfile();
+        }
       }
     } else {
       // S'assurer que le profil est null si l'utilisateur n'est pas connecté
@@ -231,10 +221,6 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
       if (!user) {
         this.profile.set(null);
         this.activeRole.set(null);
-        this.parentProfile.set(null);
-        this.teacherProfile.set(null);
-        this.isLoadingParent = false;
-        this.isLoadingTeacher = false;
       }
     });
     
@@ -267,10 +253,6 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
         // Si l'utilisateur n'est pas connecté, s'assurer que le profil est null
         this.profile.set(null);
         this.activeRole.set(null);
-        this.parentProfile.set(null);
-        this.teacherProfile.set(null);
-        this.isLoadingParent = false;
-        this.isLoadingTeacher = false;
       }
     });
     
@@ -365,63 +347,4 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
     return items;
   }
 
-  /**
-   * Charge le profil parent si nécessaire
-   */
-  private async loadParentProfile(): Promise<void> {
-    // Éviter les chargements multiples simultanés
-    if (this.isLoadingParent) {
-      console.log('[Header] Chargement parent déjà en cours, ignoré');
-      return;
-    }
-
-    console.log('[Header] Début du chargement du profil parent');
-    this.isLoadingParent = true;
-    try {
-      const parent = await firstValueFrom(this.parentService.getParentProfile());
-      console.log('[Header] Profil parent chargé:', parent);
-      this.parentProfile.set(parent);
-      
-      if (!parent) {
-        console.warn('[Header] Aucun profil parent trouvé en base de données');
-      } else if (!parent.fullname) {
-        console.warn('[Header] Profil parent trouvé mais sans nom complet (fullname)');
-      }
-    } catch (error) {
-      console.error('[Header] Erreur lors du chargement du profil parent:', error);
-      this.parentProfile.set(null);
-    } finally {
-      this.isLoadingParent = false;
-    }
-  }
-
-  /**
-   * Charge le profil professeur si nécessaire
-   */
-  private async loadTeacherProfile(): Promise<void> {
-    // Éviter les chargements multiples simultanés
-    if (this.isLoadingTeacher) {
-      console.log('[Header] Chargement professeur déjà en cours, ignoré');
-      return;
-    }
-
-    console.log('[Header] Début du chargement du profil professeur');
-    this.isLoadingTeacher = true;
-    try {
-      const teacher = await firstValueFrom(this.teacherService.getTeacherProfile());
-      console.log('[Header] Profil professeur chargé:', teacher);
-      this.teacherProfile.set(teacher);
-      
-      if (!teacher) {
-        console.warn('[Header] Aucun profil professeur trouvé en base de données');
-      } else if (!teacher.fullname) {
-        console.warn('[Header] Profil professeur trouvé mais sans nom complet (fullname)');
-      }
-    } catch (error) {
-      console.error('[Header] Erreur lors du chargement du profil professeur:', error);
-      this.teacherProfile.set(null);
-    } finally {
-      this.isLoadingTeacher = false;
-    }
-  }
 }

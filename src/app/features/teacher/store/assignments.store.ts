@@ -17,6 +17,7 @@ export interface TeacherAssignmentState {
   schoolYears: { id: string; label: string }[];
   isLoading: boolean;
   error: string[];
+  isInitialized: boolean;
 }
 
 const initialState: TeacherAssignmentState = {
@@ -26,6 +27,7 @@ const initialState: TeacherAssignmentState = {
   schoolYears: [],
   isLoading: false,
   error: [],
+  isInitialized: false,
 };
 
 export const TeacherAssignmentStore = signalStore(
@@ -227,7 +229,7 @@ export const TeacherAssignmentStore = signalStore(
                 const errorMessage = result.error.message || 'Erreur lors du chargement des affectations';
                 setStoreError(store, errorSnackbar, errorMessage);
               } else {
-                patchState(store, { assignments: result.assignments });
+                patchState(store, { assignments: result.assignments, isInitialized: true });
               }
             }),
             catchError((error) => {
@@ -432,6 +434,27 @@ export const TeacherAssignmentStore = signalStore(
     },
     clearSubjects: () => {
       patchState(store, { subjects: [] });
+    },
+
+    /**
+     * Marque le store comme initialisé
+     */
+    markAsInitialized: () => {
+      patchState(store, { isInitialized: true });
+    },
+
+    /**
+     * Vérifie si le store est initialisé
+     */
+    checkIsInitialized: () => {
+      return store.isInitialized();
+    },
+
+    /**
+     * Réinitialise le flag d'initialisation
+     */
+    resetInitialization: () => {
+      patchState(store, { isInitialized: false });
     },
   }))
 );

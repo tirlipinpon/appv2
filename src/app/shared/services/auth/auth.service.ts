@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { SupabaseService } from '../supabase/supabase.service';
 import type { User, Session, AuthError, PostgrestError } from '@supabase/supabase-js';
+import { AppInitializationService } from '../initialization/app-initialization.service';
 
 export interface Profile {
   id: string;
@@ -42,6 +43,7 @@ export interface SignInResult {
 export class AuthService {
   private readonly supabaseService = inject(SupabaseService);
   private readonly router = inject(Router);
+  private readonly appInitializationService = inject(AppInitializationService);
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   private currentProfileSubject = new BehaviorSubject<Profile | null>(null);
   private activeRoleSignal = signal<string | null>(null);
@@ -394,6 +396,12 @@ export class AuthService {
         // #region agent log
         console.log('🔍 [DEBUG-AUTH] Profile loaded after signIn', { hasProfile: !!this.currentProfileSubject.value });
         // #endregion
+        
+        // Initialiser les données pour le rôle actif si disponible
+        const activeRole = this.getActiveRole();
+        if (activeRole) {
+          this.appInitializationService.initializeForRole(activeRole);
+        }
       }
 
       return { session: data.session, error: null };
@@ -612,6 +620,8 @@ export class AuthService {
     if (profile && profile.roles.includes(role)) {
       this.activeRoleSignal.set(role);
       this.saveActiveRole(role);
+      // Initialiser les données pour le nouveau rôle
+      this.appInitializationService.initializeForRole(role);
     }
   }
 

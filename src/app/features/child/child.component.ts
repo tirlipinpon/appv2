@@ -4,11 +4,12 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ChildStore } from './store/index';
 import { Application } from './components/application/application';
-import { SchoolService } from './services/school/school.service';
+import { SchoolsStore } from '../../shared/store/schools.store';
+import { SchoolService } from '../../features/teacher/services/school/school.service';
 import { ErrorSnackbarService } from '../../shared/services/snackbar/error-snackbar.service';
 import type { Child } from './types/child';
 import type { School } from './types/school';
-import { Subscription, firstValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { SchoolLevelSelectComponent } from '../../shared/components/school-level-select/school-level-select.component';
 import { AvatarPinGeneratorComponent } from './components/avatar-pin-generator/avatar-pin-generator.component';
 
@@ -24,6 +25,7 @@ export class ChildComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly schoolsStore = inject(SchoolsStore);
   private readonly schoolService = inject(SchoolService);
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
   private readonly injector = inject(Injector);
@@ -36,8 +38,8 @@ export class ChildComponent implements OnInit, OnDestroy {
   readonly showCopySelection = signal(false);
   readonly sourceChildId = signal<string | null>(null);
 
-  // Écoles
-  readonly schools = signal<School[]>([]);
+  // Écoles - utiliser le store
+  readonly schools = computed(() => this.schoolsStore.schools());
   readonly showOtherSchoolInput = signal(false);
   readonly otherSchoolName = signal('');
 
@@ -49,7 +51,6 @@ export class ChildComponent implements OnInit, OnDestroy {
 
   // Formulaire réactif
   childForm!: FormGroup;
-  private schoolsSubscription?: Subscription;
 
   // Computed signals
   readonly selectedChild = computed(() => this.store.selectedChild());
@@ -101,8 +102,8 @@ export class ChildComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     this.initializeForm();
     
-    // Charger toutes les écoles
-    this.loadSchools();
+    // Charger toutes les écoles (utilise le cache si déjà initialisé)
+    this.schoolsStore.loadSchools();
     
     // Charger tous les enfants
     this.application.loadChildren();
@@ -293,9 +294,15 @@ export class ChildComponent implements OnInit, OnDestroy {
         if (this.otherSchoolName().trim()) {
           this.schoolService.createSchool({
             name: this.otherSchoolName().trim(),
+            address: null,
+            city: null,
+            country: null,
+            metadata: null,
           }).subscribe({
             next: (result) => {
               if (result.school) {
+                // Mettre à jour le store avec la nouvelle école
+                this.schoolsStore.addSchoolToCache(result.school);
                 finalSchoolId = result.school.id;
                 this.createOrUpdateChild(finalSchoolId, formValue);
               } else {
@@ -417,7 +424,6 @@ export class ChildComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.schoolsSubscription?.unsubscribe();
     // Désactiver l'effet de gestion du menu de sélection
     if (this.childListEffect) {
       this.childListEffect.destroy();
@@ -432,17 +438,6 @@ export class ChildComponent implements OnInit, OnDestroy {
       this.updateChildEffect.destroy();
       this.updateChildEffect = undefined;
     }
-  }
-
-  private loadSchools(): void {
-    this.schoolsSubscription = this.schoolService.getSchools().subscribe({
-      next: (schools) => {
-        this.schools.set(schools);
-      },
-      error: (error) => {
-        console.error('Error loading schools:', error);
-      }
-    });
   }
 
   onCancel(): void {

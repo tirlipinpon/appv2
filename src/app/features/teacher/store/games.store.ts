@@ -20,6 +20,9 @@ export interface GamesState {
   error: string[];
   currentSubjectId: string | null; // Track le subjectId courant pour filtrer les jeux
   currentCategoryId: string | null; // Track le categoryId courant pour filtrer les jeux
+  // Stats de jeux par matière/catégorie
+  statsBySubject: Record<string, { stats: Record<string, number>; total: number }>; // Key: subjectId
+  statsByCategory: Record<string, { stats: Record<string, number>; total: number }>; // Key: categoryId
   // États pour la génération IA
   generatedGames: GeneratedGameWithState[];
   isGenerating: boolean;
@@ -35,6 +38,8 @@ const initialState: GamesState = {
   error: [],
   currentSubjectId: null,
   currentCategoryId: null,
+  statsBySubject: {},
+  statsByCategory: {},
   generatedGames: [],
   isGenerating: false,
   generationProgress: 0,
@@ -438,6 +443,110 @@ export const GamesStore = signalStore(
         isGenerating: false, 
         generationProgress: 0,
         aiResponseHistory: [] 
+      });
+    },
+
+    /**
+     * Charge les stats de jeux pour plusieurs matières en batch
+     */
+    loadStatsBySubjectsBatch: rxMethod<{ subjectIds: string[]; skipAssignmentCheck?: boolean }>(
+      pipe(
+        switchMap(({ subjectIds, skipAssignmentCheck = false }) => {
+          if (subjectIds.length === 0) {
+            return of(null);
+          }
+
+          // Filtrer les IDs qui ne sont pas déjà en cache
+          const cached = store.statsBySubject();
+          const idsToLoad = subjectIds.filter(id => !cached[id]);
+
+          if (idsToLoad.length === 0) {
+            return of(null);
+          }
+
+          return infrastructure.getGamesStatsBySubjectsBatch(idsToLoad, skipAssignmentCheck).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du chargement des stats de jeux';
+                setStoreError(store, errorSnackbar, errorMessage, false);
+              } else {
+                const currentStats = store.statsBySubject();
+                const newStats: Record<string, { stats: Record<string, number>; total: number }> = { ...currentStats };
+                
+                result.statsBySubject.forEach((statsData, subjectId) => {
+                  newStats[subjectId] = {
+                    stats: statsData.stats,
+                    total: statsData.total
+                  };
+                });
+
+                patchState(store, { statsBySubject: newStats });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du chargement des stats de jeux';
+              setStoreError(store, errorSnackbar, errorMessage, false);
+              return of(null);
+            })
+          );
+        })
+      )
+    ),
+
+    /**
+     * Charge les stats de jeux pour plusieurs catégories en batch
+     */
+    loadStatsByCategoriesBatch: rxMethod<string[]>(
+      pipe(
+        switchMap((categoryIds) => {
+          if (categoryIds.length === 0) {
+            return of(null);
+          }
+
+          // Filtrer les IDs qui ne sont pas déjà en cache
+          const cached = store.statsByCategory();
+          const idsToLoad = categoryIds.filter(id => !cached[id]);
+
+          if (idsToLoad.length === 0) {
+            return of(null);
+          }
+
+          return infrastructure.getGamesStatsByCategoriesBatch(idsToLoad).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors du chargement des stats de jeux par catégorie';
+                setStoreError(store, errorSnackbar, errorMessage, false);
+              } else {
+                const currentStats = store.statsByCategory();
+                const newStats: Record<string, { stats: Record<string, number>; total: number }> = { ...currentStats };
+                
+                result.statsByCategory.forEach((statsData, categoryId) => {
+                  newStats[categoryId] = {
+                    stats: statsData.stats,
+                    total: statsData.total
+                  };
+                });
+
+                patchState(store, { statsByCategory: newStats });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors du chargement des stats de jeux par catégorie';
+              setStoreError(store, errorSnackbar, errorMessage, false);
+              return of(null);
+            })
+          );
+        })
+      )
+    ),
+
+    /**
+     * Efface le cache des stats
+     */
+    clearStatsCache: () => {
+      patchState(store, { 
+        statsBySubject: {},
+        statsByCategory: {}
       });
     },
   }))
