@@ -171,10 +171,6 @@ export class AssignmentsSectionComponent {
     const allAssignments = this.teacherAssignments();
     const currentTeacherId = this.getCurrentTeacherId();
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'assignments-section.component.ts:169',message:'loadStudentCountsEffect - toutes les affectations',data:{teacherId:currentTeacherId,allAssignmentsCount:allAssignments.length,allAssignments:allAssignments.map(a=>({id:a.id,subjectId:a.subject_id,schoolId:a.school_id,schoolLevel:a.school_level,teacherId:(a as any).teacher_id})),filteredAssignmentsCount:assignments.length,filteredAssignments:assignments.map(a=>({id:a.id,subjectId:a.subject_id,schoolId:a.school_id,schoolLevel:a.school_level}))},timestamp:Date.now(),sessionId:'debug-session',runId:'check-assignments',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    
     if (assignments.length === 0) {
       this.studentCounts.set(new Map());
       return;
@@ -184,9 +180,6 @@ export class AssignmentsSectionComponent {
     const countObservables = assignments
       .filter(a => a.subject_id)
       .map(assignment => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'assignments-section.component.ts:180',message:'countStudentsBySubject appelé',data:{assignmentId:assignment.id,subjectId:assignment.subject_id,schoolId:assignment.school_id,schoolLevel:assignment.school_level,teacherId:currentTeacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         return this.infrastructure.countStudentsBySubject(
           assignment.subject_id!,
           assignment.school_id,
@@ -194,9 +187,6 @@ export class AssignmentsSectionComponent {
           currentTeacherId
         ).pipe(
           map(({ count, error }) => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'assignments-section.component.ts:188',message:'countStudentsBySubject résultat',data:{assignmentId:assignment.id,count,error:error?.message||null,subjectId:assignment.subject_id,schoolId:assignment.school_id,schoolLevel:assignment.school_level},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
             return {
               assignmentId: assignment.id,
               count: error ? 0 : count
@@ -212,9 +202,6 @@ export class AssignmentsSectionComponent {
       results.forEach(({ assignmentId, count }) => {
         counts.set(assignmentId, count);
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'assignments-section.component.ts:199',message:'loadStudentCountsEffect - résultats finaux',data:{teacherId:currentTeacherId,counts:Array.from(counts.entries()).map(([id,c])=>({assignmentId:id,count:c}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       this.studentCounts.set(counts);
     });
   });

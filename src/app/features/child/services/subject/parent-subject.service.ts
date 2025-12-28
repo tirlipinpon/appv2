@@ -78,7 +78,7 @@ export class ParentSubjectService {
     // Récupérer les matières assignées par les profs pour cette école et ce niveau (FILTRER par niveau)
     const teacherAssignmentsQuery = client
       .from('teacher_assignments')
-      .select('subject_id, school_level, updated_at')
+      .select('subject_id, school_level, updated_at, teacher_id, id')
       .eq('school_id', schoolId)
       .eq('school_level', schoolLevel || '')
       .is('deleted_at', null);
@@ -100,7 +100,7 @@ export class ParentSubjectService {
         const extra = (extras.data as Subject[] | null) || [];
         
         // Extraire les subject_id et school_level des affectations (TOUS les niveaux)
-        const assignmentRows = (teacherAssignments.data as { subject_id: string; school_level: string; updated_at?: string }[] | null) || [];
+        const assignmentRows = (teacherAssignments.data as { subject_id: string; school_level: string; updated_at?: string; teacher_id: string; id: string }[] | null) || [];
         const teacherSubjectIds = [...new Set(assignmentRows.map(r => r.subject_id))];
         const assignmentLevels = new Map<string, { level: string; updated_at: string }>();
         assignmentRows.forEach(r => {

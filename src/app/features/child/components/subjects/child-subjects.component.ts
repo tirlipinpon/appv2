@@ -1,9 +1,9 @@
-import { Component, Input, OnInit, inject, signal, computed, effect } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { ParentSubjectService, CategoryEnrollment } from '../../services/subject/parent-subject.service';
+import { ParentSubjectService, CategoryEnrollment, Enrollment } from '../../services/subject/parent-subject.service';
 import { SchoolService } from '../../services/school/school.service';
 import { GamesStatsService } from '../../../../shared/services/games-stats/games-stats.service';
 import { GamesStatsDisplayComponent } from '../../../../shared/components/games-stats-display/games-stats-display.component';
@@ -18,7 +18,7 @@ import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
   templateUrl: './child-subjects.component.html',
   styleUrls: ['./child-subjects.component.scss'],
 })
-export class ChildSubjectsComponent implements OnInit {
+export class ChildSubjectsComponent implements OnInit, OnDestroy {
   @Input() childId?: string;
   private readonly parentSvc = inject(ParentSubjectService);
   private readonly schoolService = inject(SchoolService);
@@ -47,6 +47,84 @@ export class ChildSubjectsComponent implements OnInit {
     return unofficial?.school_level || null;
   }
   
+  // Mécanisme pour recharger les données quand la page redevient visible (après transfert d'affectation)
+  private visibilityChangeHandler: (() => void) | null = null;
+  private reloadDataTimeout: ReturnType<typeof setTimeout> | null = null;
+  private reloadDataInterval: ReturnType<typeof setInterval> | null = null;
+  
+  private reloadData(): void {
+    const child = this.child();
+    if (!child) return;
+    
+    // Annuler le timeout précédent si existant
+    if (this.reloadDataTimeout) {
+      clearTimeout(this.reloadDataTimeout);
+    }
+    
+    // Utiliser un petit délai pour éviter les appels multiples
+    this.reloadDataTimeout = setTimeout(() => {
+      // Recharger availableSubjects et enrollments en parallèle
+      forkJoin({
+        availableSubjects: this.parentSvc.getAvailableSubjectsForChild(child),
+        enrollments: this.parentSvc.getEnrollments(child.id)
+        }).subscribe({
+          next: ({ availableSubjects, enrollments }) => {
+          try {
+          const allEnrollments = enrollments.enrollments || [];
+          
+          // Mettre à jour availableSubjects
+          this.availableSubjects.set(availableSubjects.subjects || []);
+          
+          // Créer automatiquement les enrollments manquants avec selected=true pour les matières dans availableSubjects
+          const existingEnrollmentIds = new Set(allEnrollments.map(e => e.subject_id));
+          const missingEnrollments = (availableSubjects.subjects || []).filter(s => !existingEnrollmentIds.has(s.id));
+          
+          if (missingEnrollments.length > 0 && child.school_id) {
+            // Créer tous les enrollments manquants en parallèle
+            const enrollmentCreates = missingEnrollments.map(subject => 
+              this.parentSvc.upsertEnrollment({
+                child_id: child.id,
+                school_id: child.school_id!,
+                subject_id: subject.id,
+                selected: true
+              })
+            );
+            
+            forkJoin(enrollmentCreates).subscribe({
+              next: (results) => {
+                // Recharger les enrollments après création
+                this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
+                  if (!error && enrollments) {
+                    this.enrollments.set(enrollments.map((e: Enrollment) => ({ 
+                      subject_id: e.subject_id, 
+                      selected: e.selected
+                    })));
+                  }
+                });
+              },
+              error: (err) => {
+                console.error('Error creating missing enrollments:', err);
+              }
+            });
+          } else {
+            // Mettre à jour enrollments normalement si aucun enrollment manquant
+            this.enrollments.set((enrollments.enrollments || []).map(e => ({ 
+              subject_id: e.subject_id, 
+              selected: e.selected
+            })));
+          }
+          } catch (err) {
+            console.error('Error in reloadData next callback:', err);
+          }
+          },
+          error: (err) => {
+            console.error('Error reloading data:', err);
+          }
+        });
+      this.reloadDataTimeout = null;
+    }, 200);
+  }
+
   // Effect pour charger les matières hors programme quand availableSubjects et enrollments sont chargés
   private loadUnofficialSubjectsTimeout: ReturnType<typeof setTimeout> | null = null;
   private isLoadingUnofficialSubjects = false;
@@ -211,10 +289,46 @@ export class ChildSubjectsComponent implements OnInit {
               console.error('Error loading enrollments:', enrollments.error);
             }
             console.log('Enrollments loaded:', enrollments.enrollments?.length, enrollments.enrollments);
-            this.enrollments.set((enrollments.enrollments || []).map(e => ({ 
+            const allEnrollments = enrollments.enrollments || [];
+            this.enrollments.set(allEnrollments.map(e => ({ 
               subject_id: e.subject_id, 
               selected: e.selected
             })));
+            
+            // Créer automatiquement les enrollments manquants avec selected=true pour les matières dans availableSubjects
+            if (child.school_id && availableSubjects.subjects && availableSubjects.subjects.length > 0) {
+              const existingEnrollmentIds = new Set(allEnrollments.map(e => e.subject_id));
+              const missingEnrollments = availableSubjects.subjects.filter(s => !existingEnrollmentIds.has(s.id));
+              
+              if (missingEnrollments.length > 0 && child.school_id) {
+                // Créer tous les enrollments manquants en parallèle
+                const enrollmentCreates = missingEnrollments.map(subject => 
+                  this.parentSvc.upsertEnrollment({
+                    child_id: child.id,
+                    school_id: child.school_id!,
+                    subject_id: subject.id,
+                    selected: true
+                  })
+                );
+                
+                forkJoin(enrollmentCreates).subscribe({
+                  next: (results) => {
+                    // Recharger les enrollments après création
+                    this.parentSvc.getEnrollments(child.id).subscribe(({ enrollments, error }) => {
+                      if (!error && enrollments) {
+                        this.enrollments.set(enrollments.map((e: Enrollment) => ({ 
+                          subject_id: e.subject_id, 
+                          selected: e.selected
+                        })));
+                      }
+                    });
+                  },
+                  error: (err) => {
+                    console.error('Error creating missing enrollments:', err);
+                  }
+                });
+              }
+            }
             
             // Traiter les category enrollments
             if (categoryEnrollments.error) {
@@ -241,6 +355,38 @@ export class ChildSubjectsComponent implements OnInit {
         }
       }
     });
+    
+    // Écouter les événements de visibilité pour recharger les données quand la page redevient visible
+    // Cela permet de synchroniser les données après un transfert d'affectation quand l'utilisateur revient sur la page
+    if (typeof document !== 'undefined') {
+      this.visibilityChangeHandler = () => {
+        if (document.visibilityState === 'visible') {
+          this.reloadData();
+        }
+      };
+      document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+      
+      // Recharger les données périodiquement (toutes les 5 secondes) pour détecter les changements
+      // Cela permet de synchroniser les données même si l'utilisateur reste sur la page
+      this.reloadDataInterval = setInterval(() => {
+        if (document.visibilityState === 'visible' && this.child()) {
+          this.reloadData();
+        }
+      }, 5000);
+    }
+  }
+  
+  ngOnDestroy(): void {
+    // Nettoyer les listeners
+    if (this.visibilityChangeHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+    }
+    if (this.reloadDataTimeout) {
+      clearTimeout(this.reloadDataTimeout);
+    }
+    if (this.reloadDataInterval) {
+      clearInterval(this.reloadDataInterval);
+    }
   }
 
   readonly selectedSubjects = computed(() => {
@@ -272,7 +418,8 @@ export class ChildSubjectsComponent implements OnInit {
       }
     });
     
-    return Array.from(byId.values());
+    const result = Array.from(byId.values());
+    return result;
   });
 
   // Effect pour charger les stats de jeux quand les matières changent

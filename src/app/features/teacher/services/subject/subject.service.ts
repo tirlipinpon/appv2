@@ -179,16 +179,9 @@ export class SubjectService {
     schoolLevel: string | null,
     teacherId?: string | null
   ): Observable<{ count: number; error: PostgrestError | null }> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:176',message:'countStudentsBySubject entrée',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    
     // Si teacherId est fourni, utiliser la fonction RPC pour contourner la politique RLS
     // La fonction RPC vérifie si l'enseignant a une affectation et retourne le compte
     if (teacherId) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:185',message:'countStudentsBySubject - utilisation RPC',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return from(
         this.supabaseService.client.rpc('count_students_by_subject_for_teacher', {
           p_subject_id: subjectId,
@@ -198,9 +191,6 @@ export class SubjectService {
         })
       ).pipe(
         map(({ data, error }) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:195',message:'countStudentsBySubject - réponse RPC',data:{subjectId,schoolId,schoolLevel,teacherId,count:data?.[0]?.count||0,error:error?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
           if (error) {
             return { count: 0, error: error || null };
           }
@@ -217,15 +207,8 @@ export class SubjectService {
       .eq('subject_id', subjectId)
       .eq('selected', true);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:210',message:'countStudentsBySubject - requête normale (sans teacherId)',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-
     return from(query).pipe(
       map(({ data, error }) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:216',message:'countStudentsBySubject - réponse requête normale',data:{subjectId,schoolId,schoolLevel,enrollmentsCount:data?.length||0,error:error?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         if (error) {
           return { count: 0, error: error || null };
         }
@@ -277,16 +260,9 @@ export class SubjectService {
     schoolLevel: string | null = null,
     teacherId?: string | null
   ): Observable<{ children: Child[]; error: PostgrestError | null }> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:241',message:'getChildrenBySubject entrée',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    
     // Si teacherId est fourni, utiliser la fonction RPC pour contourner la politique RLS
     // La fonction RPC vérifie si l'enseignant a une affectation et retourne les enfants
     if (teacherId) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:250',message:'getChildrenBySubject - utilisation RPC',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return from(
         this.supabaseService.client.rpc('get_children_by_subject_for_teacher', {
           p_subject_id: subjectId,
@@ -296,9 +272,6 @@ export class SubjectService {
         })
       ).pipe(
         map(({ data, error }) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:260',message:'getChildrenBySubject - réponse RPC',data:{subjectId,schoolId,schoolLevel,teacherId,childrenCount:data?.length||0,error:error?.message||null,children:data?.slice(0,3).map((c:any)=>({id:c.id,firstname:c.firstname,schoolId:c.school_id,schoolLevel:c.school_level}))||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
           if (error) {
             return { children: [], error: error || null };
           }
@@ -314,15 +287,8 @@ export class SubjectService {
       .eq('subject_id', subjectId)
       .eq('selected', true);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:275',message:'getChildrenBySubject - requête normale (sans teacherId)',data:{subjectId,schoolId,schoolLevel,teacherId},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-
     return from(enrollmentsQuery).pipe(
       switchMap(({ data: enrollments, error: enrollmentsError }) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'subject.service.ts:279',message:'getChildrenBySubject - réponse enrollments',data:{subjectId,schoolId,schoolLevel,enrollmentsCount:enrollments?.length||0,error:enrollmentsError?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'rpc-fix',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         if (enrollmentsError || !enrollments || enrollments.length === 0) {
           return from(Promise.resolve({ children: [], error: enrollmentsError || null }));
         }
