@@ -1,0 +1,175 @@
+@use '../../../../../../../styles/variables' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: $spacing-lg;
+  overflow-y: auto;
+}
+
+.dialog-content {
+  background: $color-bg-primary;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-xl;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-lg $spacing-xl;
+  border-bottom: $border-width-medium solid $color-border-light;
+
+  h2 {
+    margin: 0;
+    color: $color-text-primary;
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    font-size: $font-size-2xl;
+    color: $color-text-secondary;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $border-radius-sm;
+    transition: all $transition-base;
+
+    &:hover {
+      background: $color-gray-100;
+      color: $color-text-primary;
+    }
+  }
+}
+
+.dialog-body {
+  padding: $spacing-xl;
+  overflow-y: auto;
+  flex: 1;
+
+  .form-group {
+    margin-bottom: $spacing-lg;
+
+    .form-label {
+      display: block;
+      margin-bottom: $spacing-sm;
+      font-weight: $font-weight-medium;
+      color: $color-text-primary;
+    }
+
+    .form-select,
+    .form-input {
+      width: 100%;
+      padding: $spacing-sm $spacing-md;
+      border: $border-width-thin solid $color-border-light;
+      border-radius: $border-radius-sm;
+      font-size: $font-size-base;
+      font-family: inherit;
+      margin-bottom: $spacing-sm;
+      background: $color-bg-primary;
+      color: $color-text-primary;
+
+      &:focus {
+        outline: none;
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      &.error {
+        border-color: $color-danger;
+      }
+    }
+
+    textarea.form-input {
+      resize: vertical;
+    }
+
+    .btn-sm {
+      padding: $spacing-xs $spacing-md;
+      font-size: $font-size-sm;
+      margin-top: $spacing-sm;
+    }
+  }
+
+  .nested-form {
+    background: $color-gray-50;
+    border: $border-width-thin solid $color-border-light;
+    border-radius: $border-radius-sm;
+    padding: $spacing-md;
+    margin: $spacing-md 0;
+
+    h4 {
+      margin-top: 0;
+      margin-bottom: $spacing-md;
+      font-size: $font-size-base;
+      color: $color-text-primary;
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    gap: $spacing-md;
+    margin-top: $spacing-lg;
+  }
+}
+
+.dialog-footer {
+  padding: $spacing-lg $spacing-xl;
+  border-top: $border-width-medium solid $color-border-light;
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-md;
+
+  .btn {
+    @include button-base;
+    padding: $spacing-sm $spacing-lg;
+
+    &.btn-primary {
+      @include button-variant($color-primary, white, $color-primary-dark);
+
+      &:disabled {
+        background-color: $color-gray-300;
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+    }
+
+    &.btn-secondary {
+      @include button-variant($color-gray-200, $color-text-primary, $color-gray-300);
+    }
+  }
+}
+

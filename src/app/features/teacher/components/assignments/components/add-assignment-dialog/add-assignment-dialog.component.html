@@ -1,0 +1,113 @@
+<div class="dialog-overlay" (click)="onCancel()" (keydown.escape)="onCancel()" tabindex="0" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+  <div class="dialog-content" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="-1">
+    <div class="dialog-header">
+      <h2 id="dialog-title">Nouvelle Affectation</h2>
+      <button type="button" class="close-btn" (click)="onCancel()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="dialog-body">
+      <form [formGroup]="assignmentForm" id="assignmentForm" (ngSubmit)="onSubmitAssignment()">
+        <div class="form-group">
+          <label for="school_id" class="form-label">École *</label>
+          <select 
+            id="school_id" 
+            formControlName="school_id"
+            (change)="onSchoolChange($any($event.target).value)"
+            class="form-select"
+            [class.error]="assignmentForm.get('school_id')?.invalid && assignmentForm.get('school_id')?.touched">
+            <option value="">Sélectionner une école</option>
+            <option *ngFor="let school of schools()" [value]="school.id">{{ school.name }}</option>
+          </select>
+          <button type="button" (click)="showCreateSchool.set(true)" class="btn btn-secondary btn-sm">➕ Créer une école</button>
+        </div>
+
+        <div *ngIf="showCreateSchool()" class="nested-form">
+          <h4>Créer une nouvelle école</h4>
+          <form [formGroup]="schoolForm" (ngSubmit)="onCreateSchool()">
+            <div class="form-group">
+              <label for="school_name">Nom de l'école *</label>
+              <input id="school_name" type="text" formControlName="name" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="school_address">Adresse</label>
+              <input id="school_address" type="text" formControlName="address" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="school_city">Ville</label>
+              <input id="school_city" type="text" formControlName="city" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="school_country">Pays</label>
+              <input id="school_country" type="text" formControlName="country" class="form-input">
+            </div>
+            <div class="form-actions">
+              <button type="submit" [disabled]="schoolForm.invalid || creatingSchool()" class="btn btn-primary">Créer</button>
+              <button type="button" (click)="showCreateSchool.set(false)" class="btn btn-secondary">Annuler</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="form-group">
+          <app-school-level-select
+            [label]="'Niveau scolaire'"
+            [required]="true"
+            formControlName="school_level"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="subject_id" class="form-label">Matière *</label>
+          <select 
+            id="subject_id" 
+            formControlName="subject_id"
+            class="form-select"
+            [class.error]="assignmentForm.get('subject_id')?.invalid && assignmentForm.get('subject_id')?.touched">
+            <option value="">Sélectionner une matière</option>
+            <option *ngFor="let subject of subjects()" [value]="subject.id">{{ subject.name }} ({{ subject.type }})</option>
+          </select>
+          <button type="button" (click)="showCreateSubject.set(true)" class="btn btn-secondary btn-sm">➕ Créer une matière</button>
+        </div>
+
+        <div *ngIf="showCreateSubject()" class="nested-form">
+          <h4>Créer une nouvelle matière</h4>
+          <form [formGroup]="subjectForm" (ngSubmit)="onCreateSubject()">
+            <div class="form-group">
+              <label for="subject_name">Nom de la matière *</label>
+              <input id="subject_name" type="text" formControlName="name" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="subject_description">Description</label>
+              <textarea id="subject_description" formControlName="description" rows="3" class="form-input"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="subject_type">Type *</label>
+              <select id="subject_type" formControlName="type" class="form-select">
+                <option value="scolaire">Scolaire</option>
+                <option value="extra">Extra-scolaire</option>
+                <option value="optionnelle">Optionnelle</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button type="submit" [disabled]="subjectForm.invalid || creatingSubject()" class="btn btn-primary">Créer</button>
+              <button type="button" (click)="showCreateSubject.set(false)" class="btn btn-secondary">Annuler</button>
+            </div>
+          </form>
+        </div>
+      </form>
+    </div>
+
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        Annuler
+      </button>
+      <button 
+        type="submit" 
+        form="assignmentForm"
+        class="btn btn-primary" 
+        [disabled]="assignmentForm.invalid || isLoading()">
+        Ajouter l'affectation
+      </button>
+    </div>
+  </div>
+</div>
+

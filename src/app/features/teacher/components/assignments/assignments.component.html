@@ -5,146 +5,34 @@
       <p *ngIf="activeRole === 'prof'">Vous êtes connecté en tant que professeur.</p>
 
       <!-- Liens vers l'édition/création pour les professeurs -->
-      <app-action-links 
-        *ngIf="activeRole === 'prof'" 
-        [actions]="teacherActions()">
-      </app-action-links>
+      <div class="action-links" *ngIf="activeRole === 'prof'">
+        <a
+          [routerLink]="'/teacher-profile'"
+          class="btn"
+          [class.btn-edit]="hasTeacher()"
+          [class.btn-add]="!hasTeacher()">
+          <span class="label">{{ teacherButtonText() }}</span>
+        </a>
+        <button
+          type="button"
+          (click)="openAssignmentDialog()"
+          class="btn btn-add">
+          <span class="icon">➕</span>
+          <span class="label">Ajouter une affectation</span>
+        </button>
+      </div>
     </div>
   </main>
 </div>
 
 <div class="assignment-section">
-  <div *ngIf="showAssignmentForm()" class="assignment-form-container">
-    <h3>Nouvelle Affectation</h3>
-    <form [formGroup]="assignmentForm" (ngSubmit)="onSubmitAssignment()">
-      <div class="form-group">
-        <label for="school_id">École *</label>
-        <select 
-          id="school_id" 
-          formControlName="school_id"
-          (change)="onSchoolChange($any($event.target).value)"
-          [class.error]="assignmentForm.get('school_id')?.invalid && assignmentForm.get('school_id')?.touched">
-          <option value="">Sélectionner une école</option>
-          <option *ngFor="let school of schools()" [value]="school.id">{{ school.name }}</option>
-        </select>
-        <button type="button" (click)="showCreateSchool.set(true)" class="btn btn-secondary btn-sm">➕ Créer une école</button>
-      </div>
-
-      <div *ngIf="showCreateSchool()" class="nested-form">
-        <h4>Créer une nouvelle école</h4>
-        <form [formGroup]="schoolForm" (ngSubmit)="onCreateSchool()">
-          <div class="form-group">
-            <label for="school_name">Nom de l'école *</label>
-            <input id="school_name" type="text" formControlName="name">
-          </div>
-          <div class="form-group">
-            <label for="school_address">Adresse</label>
-            <input id="school_address" type="text" formControlName="address">
-          </div>
-          <div class="form-group">
-            <label for="school_city">Ville</label>
-            <input id="school_city" type="text" formControlName="city">
-          </div>
-          <div class="form-group">
-            <label for="school_country">Pays</label>
-            <input id="school_country" type="text" formControlName="country">
-          </div>
-          <div class="form-actions">
-            <button type="submit" [disabled]="schoolForm.invalid || creatingSchool()" class="btn btn-primary">Créer</button>
-            <button type="button" (click)="showCreateSchool.set(false)" class="btn btn-secondary">Annuler</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="form-group">
-        <app-school-level-select
-          [label]="'Niveau scolaire'"
-          [required]="true"
-          formControlName="school_level"
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="subject_id">Matière *</label>
-        <select 
-          id="subject_id" 
-          formControlName="subject_id"
-          [class.error]="assignmentForm.get('subject_id')?.invalid && assignmentForm.get('subject_id')?.touched">
-          <option value="">Sélectionner une matière</option>
-          <option *ngFor="let subject of subjects()" [value]="subject.id">{{ subject.name }} ({{ subject.type }})</option>
-        </select>
-        <button type="button" (click)="showCreateSubject.set(true)" class="btn btn-secondary btn-sm">➕ Créer une matière</button>
-      </div>
-
-      <div *ngIf="showCreateSubject()" class="nested-form">
-        <h4>Créer une nouvelle matière</h4>
-        <form [formGroup]="subjectForm" (ngSubmit)="onCreateSubject()">
-          <div class="form-group">
-            <label for="subject_name">Nom de la matière *</label>
-            <input id="subject_name" type="text" formControlName="name">
-          </div>
-          <div class="form-group">
-            <label for="subject_description">Description</label>
-            <textarea id="subject_description" formControlName="description" rows="3"></textarea>
-          </div>
-          <div class="form-group">
-            <label for="subject_type">Type *</label>
-            <select id="subject_type" formControlName="type">
-              <option value="scolaire">Scolaire</option>
-              <option value="extra">Extra-scolaire</option>
-              <option value="optionnelle">Optionnelle</option>
-            </select>
-          </div>
-          <div class="form-actions">
-            <button type="submit" [disabled]="subjectForm.invalid || creatingSubject()" class="btn btn-primary">Créer</button>
-            <button type="button" (click)="showCreateSubject.set(false)" class="btn btn-secondary">Annuler</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit" [disabled]="assignmentForm.invalid || isLoading()" class="btn btn-primary">
-          Ajouter l'affectation
-        </button>
-        <button type="button" (click)="showAssignmentForm.set(false)" class="btn btn-secondary">
-          Annuler
-        </button>
-      </div>
-    </form>
-  </div>
-
-  <div *ngIf="selectedSchoolId() && selectedSchoolLevel()" class="selection-summary">
-    <h3>Matières pour {{ getSchoolName(selectedSchoolId()!) }} — {{ selectedSchoolLevel() }}</h3>
-
-    <div class="assigned-block" *ngIf="assignmentsForSelection().length > 0">
-      <h4>Matières affectées</h4>
-      <ul>
-        <li *ngFor="let a of assignmentsForSelection()">
-          {{ getAssignmentSubjectName(a) }}
-        </li>
-      </ul>
-    </div>
-
-    <div class="unassigned-block">
-      <h4>Matières non affectées</h4>
-      <ul>
-        <li *ngFor="let s of unassignedSubjectsForSelection()">
-          {{ s.name }}
-        </li>
-        <li *ngIf="unassignedSubjectsForSelection().length === 0">Toutes les matières disponibles sont déjà affectées.</li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- Matières non affectées (pour l'école+niveau sélectionnés) -->
-  <div *ngIf="selectedSchoolId() && selectedSchoolLevel() && unassignedSubjectsForSelection().length > 0" class="unassigned-inline">
-    <h4>Matières non affectées pour {{ getSchoolName(selectedSchoolId()!) }} — {{ selectedSchoolLevel() }}</h4>
-    <ul>
-      <li *ngFor="let s of unassignedSubjectsForSelection()">
-        {{ s.name }} <span class="muted">(non affectée)</span>
-      </li>
-    </ul>
-  </div>
+  <!-- Modal pour ajouter une affectation -->
+  <app-add-assignment-dialog
+    *ngIf="showAssignmentDialog()"
+    [teacherId]="teacherId()"
+    (close)="showAssignmentDialog.set(false)"
+    (assignmentCreated)="onAssignmentCreated()">
+  </app-add-assignment-dialog>
 
   <!-- Section des affectations avec le composant réutilisable -->
   <app-assignments-section *ngIf="hasAssignments()"></app-assignments-section>
