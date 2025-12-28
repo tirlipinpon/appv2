@@ -34,37 +34,31 @@
         </div>
 
         <div class="teacher-details">
-          <div class="detail-section">
+          <div *ngIf="teacher()?.bio" class="detail-section">
             <strong>📝 Biographie :</strong>
-            <p *ngIf="teacher()?.bio">{{ teacher()?.bio }}</p>
-            <p *ngIf="!teacher()?.bio" class="no-info">Aucune biographie renseignée.</p>
+            <p>{{ teacher()?.bio }}</p>
           </div>
 
-          <div class="detail-section">
+          <div *ngIf="teacherEmail() && teacher()?.share_email" class="detail-section">
             <strong>📧 Email :</strong>
-            <p *ngIf="teacherEmail() && teacher()?.share_email">
+            <p>
               <a [href]="'mailto:' + teacherEmail()" class="email-link">{{ teacherEmail() }}</a>
             </p>
-            <p *ngIf="teacherEmail() && !teacher()?.share_email" class="no-info">Email non partagé par le professeur.</p>
-            <p *ngIf="!teacherEmail()" class="no-info">Email non disponible.</p>
           </div>
 
-          <div class="detail-section">
+          <div *ngIf="teacher()?.phone && teacher()?.share_phone" class="detail-section">
             <strong>📞 Téléphone :</strong>
-            <p *ngIf="teacher()?.phone && teacher()?.share_phone">{{ teacher()?.phone }}</p>
-            <p *ngIf="teacher()?.phone && !teacher()?.share_phone" class="no-info">Téléphone non partagé par le professeur.</p>
-            <p *ngIf="!teacher()?.phone" class="no-info">Aucun téléphone renseigné.</p>
+            <p>{{ teacher()?.phone }}</p>
           </div>
 
-          <div class="detail-section">
+          <div *ngIf="teacher()?.avatar_url" class="detail-section">
             <strong>🖼️ Avatar :</strong>
-            <div *ngIf="teacher()?.avatar_url" class="avatar-preview">
+            <div class="avatar-preview">
               <img [src]="teacher()?.avatar_url" [alt]="teacher()?.fullname || 'Avatar'" class="avatar-image">
               <a [href]="teacher()?.avatar_url" target="_blank" rel="noopener noreferrer" class="avatar-link">
                 {{ teacher()?.avatar_url }}
               </a>
             </div>
-            <p *ngIf="!teacher()?.avatar_url" class="no-info">Aucun avatar renseigné.</p>
           </div>
 
           <div *ngIf="assignments().length > 0" class="detail-section">
