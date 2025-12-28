@@ -398,6 +398,37 @@ export class AssignmentsSectionComponent {
     return null;
   }
 
+  getSubjectTypeLabel(type: 'scolaire' | 'extra' | 'optionnelle'): string {
+    const labels = {
+      'scolaire': 'Scolaire',
+      'extra': 'Extra-scolaire',
+      'optionnelle': 'Optionnelle'
+    };
+    return labels[type] || type;
+  }
+
+  // Types de matières uniques disponibles dans les affectations
+  readonly availableSubjectTypes = computed(() => {
+    const assignments = this.teacherAssignments();
+    const types = new Set<'scolaire' | 'extra' | 'optionnelle'>();
+    
+    assignments.forEach(assignment => {
+      const type = this.getAssignmentSubjectType(assignment);
+      if (type) {
+        types.add(type);
+      }
+    });
+
+    // Trier selon un ordre logique : scolaire, extra, optionnelle
+    const typeOrder: Record<'scolaire' | 'extra' | 'optionnelle', number> = {
+      'scolaire': 1,
+      'extra': 2,
+      'optionnelle': 3
+    };
+    
+    return Array.from(types).sort((a, b) => typeOrder[a] - typeOrder[b]);
+  });
+
   readonly getSchoolLevelLabel = getSchoolLevelLabel;
 
   // Méthode pour supprimer une affectation

@@ -8,27 +8,26 @@
 
   <main class="subjects-content">
     <div class="child-info-card">
-      <div class="info-item">
+      <div class="info-content">
         <span class="info-label">École:</span>
         <span class="info-value">{{ schoolName() || c.school_id || 'Non renseignée' }}</span>
+        <span class="info-item" *ngIf="c.school_level">
+          <span class="info-label">Niveau:</span>
+          <span class="info-value">{{ getSchoolLevelLabel(c.school_level) }}</span>
+        </span>
+        <span class="filter-section">
+          <label for="subject-type-filter">Filtrer par type :</label>
+          <select 
+            id="subject-type-filter"
+            [value]="selectedSubjectTypeFilter() || ''"
+            (change)="selectedSubjectTypeFilter.set($any($event.target).value || null)">
+            <option value="">Tous les types</option>
+            <option value="scolaire">Scolaire</option>
+            <option value="extra">Extra-scolaire</option>
+            <option value="optionnelle">Optionnelle</option>
+          </select>
+        </span>
       </div>
-      <div class="info-item" *ngIf="c.school_level">
-        <span class="info-label">Niveau:</span>
-        <span class="info-value">{{ getSchoolLevelLabel(c.school_level) }}</span>
-      </div>
-    </div>
-
-    <div class="filter-section">
-      <label for="subject-type-filter">Filtrer par type :</label>
-      <select 
-        id="subject-type-filter"
-        [value]="selectedSubjectTypeFilter() || ''"
-        (change)="selectedSubjectTypeFilter.set($any($event.target).value || null)">
-        <option value="">Tous les types</option>
-        <option value="scolaire">Scolaire</option>
-        <option value="extra">Extra-scolaire</option>
-        <option value="optionnelle">Optionnelle</option>
-      </select>
     </div>
 
     <div class="subjects-grid">

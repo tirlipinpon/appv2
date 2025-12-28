@@ -45,14 +45,12 @@
   @include card-base;
   padding: $spacing-lg $spacing-xl;
   margin-bottom: $spacing-xl;
-  display: flex;
-  gap: $spacing-xl;
-  flex-wrap: wrap;
 
-  .info-item {
+  .info-content {
     display: flex;
     align-items: center;
-    gap: $spacing-md;
+    gap: $spacing-xl;
+    flex-wrap: wrap;
 
     .info-label {
       font-weight: $font-weight-semibold;
@@ -63,6 +61,64 @@
     .info-value {
       color: $color-text-primary;
       font-size: $font-size-base;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: $spacing-md;
+    }
+
+    .filter-section {
+      display: flex;
+      align-items: center;
+      gap: $spacing-md;
+      margin-left: auto;
+      
+      label {
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        white-space: nowrap;
+      }
+      
+      select {
+        padding: $spacing-xs $spacing-md;
+        border: 1px solid $color-border-light;
+        border-radius: $border-radius-md;
+        background: $color-bg-primary;
+        color: $color-text-primary;
+        font-size: $font-size-base;
+        cursor: pointer;
+        transition: border-color $transition-base;
+        
+        &:hover {
+          border-color: $color-primary;
+        }
+        
+        &:focus {
+          outline: none;
+          border-color: $color-primary;
+          box-shadow: 0 0 0 2px rgba($color-primary, 0.2);
+        }
+      }
+    }
+
+    // Responsive: sur les petits écrans, tout passe en colonne
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-md;
+
+      .filter-section {
+        margin-left: 0;
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+
+    // Sur les écrans moyens et plus grands, tout sur une ligne
+    @include respond-to(md) {
+      flex-wrap: nowrap;
     }
   }
 }
@@ -101,6 +157,8 @@
     }
   }
 }
+
+// Style pour filter-section quand il est à l'intérieur de child-info-card (déjà défini ci-dessus dans .child-info-card)
 
 .subjects-grid {
   display: grid;

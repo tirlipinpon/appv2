@@ -33,6 +33,15 @@
           {{ getSchoolLevelLabel(level) }}
         </option>
       </select>
+      <select
+        class="subject-type-filter"
+        [value]="selectedSubjectType() || ''"
+        (change)="selectedSubjectType.set($any($event.target).value || null)">
+        <option value="">Tous les types</option>
+        <option *ngFor="let type of availableSubjectTypes()" [value]="type">
+          {{ getSubjectTypeLabel(type) }}
+        </option>
+      </select>
     </div>
   </div>
 
