@@ -54,7 +54,14 @@
         <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
         <p *ngIf="assignment.school_year_id">📅 Année: {{ getSchoolYearLabel(assignment.school_year_id) }}</p>
         <p *ngIf="assignment.school_level">🎓 Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
-        <p>👥 Enfants: {{ getStudentCount(assignment.id) }}</p>
+        <p>
+          <span 
+            class="children-count clickable" 
+            (click)="openChildrenModalForAssignment(assignment)"
+            title="Voir la liste des enfants">
+            👥 Enfants: {{ getStudentCount(assignment.id) }}
+          </span>
+        </p>
         <app-games-stats-display
           *ngIf="assignment.subject_id"
           [subjectId]="assignment.subject_id">
@@ -157,11 +164,13 @@
 
 <!-- Modal de liste des enfants -->
 <app-children-list-modal
-  *ngIf="showChildrenModal() && selectedCategoryForChildren()"
-  [categoryId]="selectedCategoryForChildren()!.id"
-  [categoryName]="selectedCategoryForChildren()!.name"
-  [schoolId]="selectedCategoryForChildren()!.schoolId"
-  [schoolLevel]="selectedCategoryForChildren()!.schoolLevel"
-  (close)="closeChildrenModal()">
+  *ngIf="showChildrenModal() && (selectedCategoryForChildren() || selectedSubjectForChildren())"
+  [categoryId]="selectedCategoryForChildren()?.id || null"
+  [subjectId]="selectedSubjectForChildren()?.id || null"
+  [categoryName]="selectedCategoryForChildren()?.name || ''"
+  [subjectName]="selectedSubjectForChildren()?.name || ''"
+  [schoolId]="selectedCategoryForChildren()?.schoolId || selectedSubjectForChildren()?.schoolId || null"
+  [schoolLevel]="selectedCategoryForChildren()?.schoolLevel || selectedSubjectForChildren()?.schoolLevel || null"
+  (modalClose)="closeChildrenModal()">
 </app-children-list-modal>
 

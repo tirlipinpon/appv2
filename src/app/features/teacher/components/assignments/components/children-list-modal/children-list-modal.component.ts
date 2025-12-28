@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
 import type { Child } from '../../../../../child/types/child';
@@ -13,10 +13,12 @@ import { getSchoolLevelLabel } from '../../../../utils/school-levels.util';
 })
 export class ChildrenListModalComponent {
   @Input() categoryId: string | null = null;
-  @Input() categoryName: string = '';
+  @Input() subjectId: string | null = null;
+  @Input() categoryName = '';
+  @Input() subjectName = '';
   @Input() schoolId: string | null = null;
   @Input() schoolLevel: string | null = null;
-  @Output() close = new EventEmitter<void>();
+  @Output() modalClose = new EventEmitter<void>();
 
   private readonly infrastructure = inject(Infrastructure);
 
@@ -26,25 +28,39 @@ export class ChildrenListModalComponent {
 
   readonly getSchoolLevelLabel = getSchoolLevelLabel;
 
+  // Computed pour obtenir le nom à afficher
+  readonly displayName = computed(() => {
+    return this.subjectName || this.categoryName || '';
+  });
+
   // Effect pour charger les enfants quand les inputs changent
   private readonly loadChildrenEffect = effect(() => {
     const categoryId = this.categoryId;
-    if (categoryId) {
+    const subjectId = this.subjectId;
+    if (categoryId || subjectId) {
       this.loadChildren();
     }
   });
 
   loadChildren(): void {
-    if (!this.categoryId) return;
+    if (!this.categoryId && !this.subjectId) return;
 
     this.loading.set(true);
     this.error.set(null);
 
-    this.infrastructure.getChildrenByCategory(
-      this.categoryId,
-      this.schoolId,
-      this.schoolLevel
-    ).subscribe({
+    const observable = this.categoryId
+      ? this.infrastructure.getChildrenByCategory(
+          this.categoryId,
+          this.schoolId,
+          this.schoolLevel
+        )
+      : this.infrastructure.getChildrenBySubject(
+          this.subjectId!,
+          this.schoolId,
+          this.schoolLevel
+        );
+
+    observable.subscribe({
       next: ({ children, error }) => {
         this.loading.set(false);
         if (error) {
@@ -61,7 +77,7 @@ export class ChildrenListModalComponent {
   }
 
   onClose(): void {
-    this.close.emit();
+    this.modalClose.emit();
   }
 
   onBackdropClick(event: MouseEvent): void {

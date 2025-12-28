@@ -8,7 +8,7 @@
   aria-labelledby="modal-title">
   <div class="modal-content" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h3 id="modal-title">👥 Enfants inscrits à "{{ categoryName }}"</h3>
+      <h3 id="modal-title">👥 Enfants inscrits à "{{ displayName() }}"</h3>
       <button type="button" class="close-btn" (click)="onClose()" (keydown.enter)="onClose()" aria-label="Fermer">×</button>
     </div>
 
@@ -22,7 +22,7 @@
       </div>
 
       <div *ngIf="!loading() && !error() && children().length === 0" class="empty-state">
-        <p>Aucun enfant inscrit à cette sous-catégorie.</p>
+        <p>Aucun enfant inscrit{{ categoryId ? ' à cette sous-catégorie' : ' à cette matière' }}.</p>
       </div>
 
       <div *ngIf="!loading() && !error() && children().length > 0" class="children-list">

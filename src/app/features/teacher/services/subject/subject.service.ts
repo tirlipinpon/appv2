@@ -4,6 +4,7 @@ import { map } from 'rxjs/operators';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { Subject } from '../../types/subject';
 import type { PostgrestError } from '@supabase/supabase-js';
+import type { Child } from '../../../child/types/child';
 
 @Injectable({
   providedIn: 'root',
@@ -230,6 +231,75 @@ export class SubjectService {
           count: uniqueChildIds.size,
           error: null,
         };
+      })
+    );
+  }
+
+  /**
+   * Récupère la liste des enfants inscrits à une matière
+   */
+  getChildrenBySubject(
+    subjectId: string,
+    schoolId: string | null = null,
+    schoolLevel: string | null = null
+  ): Observable<{ children: Child[]; error: PostgrestError | null }> {
+    // Joindre avec la table children pour obtenir les informations complètes
+    let query = this.supabaseService.client
+      .from('child_subject_enrollments')
+      .select('child_id, child:children(*)')
+      .eq('subject_id', subjectId)
+      .eq('selected', true);
+
+    // Filtrer par school_id si fourni
+    if (schoolId) {
+      query = query.eq('school_id', schoolId);
+    }
+
+    return from(query).pipe(
+      map(({ data: enrollments, error: enrollmentsError }) => {
+        if (enrollmentsError || !enrollments || enrollments.length === 0) {
+          return { children: [], error: enrollmentsError || null };
+        }
+
+        // Filtrer les résultats par school_level et is_active
+        const enrollmentsWithChildren = (enrollments as unknown) as {
+          child_id: string;
+          child: Child | null;
+        }[];
+
+        // Filtrer par school_level si fourni et is_active
+        const activeChildren = enrollmentsWithChildren
+          .filter(e => {
+            const child = e.child;
+            // Vérifier que l'enfant existe et est actif
+            if (!child || !child.is_active) {
+              return false;
+            }
+            // Filtrer par school_level si fourni
+            if (schoolLevel && child.school_level !== schoolLevel) {
+              return false;
+            }
+            return true;
+          })
+          .map(e => e.child)
+          .filter((child): child is Child => child !== null);
+
+        // Utiliser un Map pour éviter les doublons (un enfant peut avoir plusieurs enrollments)
+        const uniqueChildrenMap = new Map<string, Child>();
+        activeChildren.forEach(child => {
+          if (child && child.id && !uniqueChildrenMap.has(child.id)) {
+            uniqueChildrenMap.set(child.id, child);
+          }
+        });
+
+        // Trier par prénom
+        const uniqueChildren = Array.from(uniqueChildrenMap.values()).sort((a, b) => {
+          const firstNameA = a.firstname || '';
+          const firstNameB = b.firstname || '';
+          return firstNameA.localeCompare(firstNameB);
+        });
+
+        return { children: uniqueChildren, error: null };
       })
     );
   }

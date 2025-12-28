@@ -63,6 +63,7 @@ export class AssignmentsSectionComponent {
   // Signal pour gérer l'affichage du modal des enfants
   readonly showChildrenModal = signal<boolean>(false);
   readonly selectedCategoryForChildren = signal<{ id: string; name: string; schoolId: string | null; schoolLevel: string | null } | null>(null);
+  readonly selectedSubjectForChildren = signal<{ id: string; name: string; schoolId: string | null; schoolLevel: string | null } | null>(null);
 
 
   // Filtre par école
@@ -606,6 +607,22 @@ export class AssignmentsSectionComponent {
       schoolId: assignment.school_id || null,
       schoolLevel: assignment.school_level || null
     });
+    this.selectedSubjectForChildren.set(null);
+    this.showChildrenModal.set(true);
+  }
+
+  // Ouvrir le modal des enfants pour une affectation (sujet)
+  openChildrenModalForAssignment(assignment: TeacherAssignment): void {
+    if (!assignment.subject_id) return;
+    
+    const subjectName = this.getAssignmentSubjectName(assignment);
+    this.selectedSubjectForChildren.set({
+      id: assignment.subject_id,
+      name: subjectName,
+      schoolId: assignment.school_id || null,
+      schoolLevel: assignment.school_level || null
+    });
+    this.selectedCategoryForChildren.set(null);
     this.showChildrenModal.set(true);
   }
 
@@ -613,6 +630,7 @@ export class AssignmentsSectionComponent {
   closeChildrenModal(): void {
     this.showChildrenModal.set(false);
     this.selectedCategoryForChildren.set(null);
+    this.selectedSubjectForChildren.set(null);
   }
 
 }

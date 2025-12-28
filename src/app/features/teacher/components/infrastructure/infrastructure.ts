@@ -18,6 +18,7 @@ import type { GameType } from '../../types/game-type';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type { PostgrestError } from '@supabase/supabase-js';
 import type { SchoolYear } from '../../types/school';
+import type { Child } from '../../../child/types/child';
 import type { AIGameGenerationRequest, AIRawResponse } from '../../types/ai-game-generation';
 
 @Injectable({
@@ -95,6 +96,14 @@ export class Infrastructure {
     return this.subjectService.countStudentsBySubject(subjectId, schoolId, schoolLevel);
   }
 
+  getChildrenBySubject(
+    subjectId: string,
+    schoolId: string | null = null,
+    schoolLevel: string | null = null
+  ): Observable<{ children: Child[]; error: PostgrestError | null }> {
+    return this.subjectService.getChildrenBySubject(subjectId, schoolId, schoolLevel);
+  }
+
   createSubject(subjectData: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): Observable<{ subject: Subject | null; error: PostgrestError | null }> {
     return this.subjectService.createSubject(subjectData);
   }
@@ -128,7 +137,7 @@ export class Infrastructure {
     categoryId: string,
     schoolId: string | null = null,
     schoolLevel: string | null = null
-  ): Observable<{ children: any[]; error: PostgrestError | null }> {
+  ): Observable<{ children: Child[]; error: PostgrestError | null }> {
     return this.subjectCategoryService.getChildrenByCategory(categoryId, schoolId, schoolLevel);
   }
 

@@ -4,6 +4,7 @@ import { map, switchMap } from 'rxjs/operators';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 import type { SubjectCategory, SubjectCategoryCreate, SubjectCategoryUpdate } from '../../types/subject';
 import type { PostgrestError } from '@supabase/supabase-js';
+import type { Child } from '../../../child/types/child';
 
 // Note: Pour compter les enfants par sous-catégorie avec filtres école/niveau,
 // on utilise une approche différente car on doit joindre avec child_subject_enrollments
@@ -99,7 +100,7 @@ export class SubjectCategoryService {
     categoryId: string,
     schoolId: string | null = null,
     schoolLevel: string | null = null
-  ): Observable<{ children: any[]; error: PostgrestError | null }> {
+  ): Observable<{ children: Child[]; error: PostgrestError | null }> {
     return from(
       this.supabaseService.client
         .from('child_subject_category_enrollments')
@@ -114,13 +115,24 @@ export class SubjectCategoryService {
 
         const childIds = enrollments.map(e => e.child_id);
 
+        let childrenQuery = this.supabaseService.client
+          .from('children')
+          .select('*')
+          .in('id', childIds)
+          .eq('is_active', true);
+
+        // Filtrer par school_id si fourni
+        if (schoolId) {
+          childrenQuery = childrenQuery.eq('school_id', schoolId);
+        }
+
+        // Filtrer par school_level si fourni
+        if (schoolLevel) {
+          childrenQuery = childrenQuery.eq('school_level', schoolLevel);
+        }
+
         return from(
-          this.supabaseService.client
-            .from('children')
-            .select('*')
-            .in('id', childIds)
-            .eq('is_active', true)
-            .order('firstname', { ascending: true })
+          childrenQuery.order('firstname', { ascending: true })
         ).pipe(
           map(({ data: children, error: childrenError }) => {
             if (childrenError || !children) {
@@ -160,21 +172,29 @@ export class SubjectCategoryService {
 
         const childIds = enrollments.map(e => e.child_id);
 
-        // Pour les sous-catégories, on compte tous les enfants inscrits (actifs)
-        // sans filtrer par école/niveau car une catégorie peut être partagée
-        // entre plusieurs écoles/niveaux
-        return from(
-          this.supabaseService.client
-            .from('children')
-            .select('id, is_active')
-            .in('id', childIds)
-        ).pipe(
+        // Construire la requête avec filtres optionnels
+        let childrenQuery = this.supabaseService.client
+          .from('children')
+          .select('id, is_active')
+          .in('id', childIds);
+
+        // Filtrer par school_id si fourni
+        if (schoolId) {
+          childrenQuery = childrenQuery.eq('school_id', schoolId);
+        }
+
+        // Filtrer par school_level si fourni
+        if (schoolLevel) {
+          childrenQuery = childrenQuery.eq('school_level', schoolLevel);
+        }
+
+        return from(childrenQuery).pipe(
           map(({ data: children, error: childrenError }) => {
             if (childrenError || !children) {
               return { count: 0, error: childrenError || null };
             }
 
-            // Filtrer uniquement par is_active (pas par école/niveau)
+            // Filtrer uniquement par is_active
             const activeChildren = children.filter(child => child.is_active);
 
             return {
