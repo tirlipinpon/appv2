@@ -13,7 +13,7 @@ import type { Teacher, TeacherUpdate } from '../../types/teacher';
 import type { School } from '../../types/school';
 import type { Subject } from '../../types/subject';
 import type { SubjectCategory, SubjectCategoryCreate, SubjectCategoryUpdate } from '../../types/subject';
-import type { TeacherAssignment, TeacherAssignmentCreate } from '../../types/teacher-assignment';
+import type { TeacherAssignment, TeacherAssignmentCreate, TeacherAssignmentUpdate } from '../../types/teacher-assignment';
 import type { GameType } from '../../types/game-type';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type { PostgrestError } from '@supabase/supabase-js';
@@ -146,6 +146,10 @@ export class Infrastructure {
 
   createAssignment(assignmentData: TeacherAssignmentCreate): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
     return this.teacherAssignmentService.createAssignment(assignmentData);
+  }
+
+  updateAssignment(id: string, updates: TeacherAssignmentUpdate): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+    return this.teacherAssignmentService.updateAssignment(id, updates);
   }
 
   deleteAssignment(id: string): Observable<{ error: PostgrestError | null }> {

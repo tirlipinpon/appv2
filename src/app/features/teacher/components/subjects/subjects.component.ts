@@ -11,13 +11,17 @@ import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error
 import { ToastService } from '../../../../shared/services/toast/toast.service';
 import { TransferCategoryDialogComponent, TransferCategoryData } from './components/transfer-category-dialog/transfer-category-dialog.component';
 import { GamesStatsService } from '../../../../shared/services/games-stats/games-stats.service';
+import { SchoolLevelSelectComponent } from '../../../../shared/components/school-level-select/school-level-select.component';
+import { Application } from '../application/application';
+import { TeacherService } from '../../services/teacher/teacher.service';
 import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
+import type { TeacherAssignment } from '../../types/teacher-assignment';
 
 @Component({
   selector: 'app-subjects',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, MatTooltipModule, TransferCategoryDialogComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, MatTooltipModule, TransferCategoryDialogComponent, SchoolLevelSelectComponent],
   templateUrl: './subjects.component.html',
   styleUrls: ['./subjects.component.scss'],
 })
@@ -29,11 +33,30 @@ export class SubjectsComponent implements OnInit {
   private readonly errorSnackbar = inject(ErrorSnackbarService);
   private readonly toastService = inject(ToastService);
   private readonly gamesStatsService = inject(GamesStatsService);
+  private readonly application = inject(Application);
+  private readonly teacherService = inject(TeacherService);
   readonly store = inject(TeacherAssignmentStore);
 
   readonly subjectId = signal<string | null>(null);
   readonly subjects = computed(() => this.store.subjects());
   readonly schools = computed(() => this.store.schools());
+  readonly assignments = computed(() => this.store.assignments());
+  
+  // Query params pour détecter si on vient d'une affectation
+  readonly currentSchoolId = signal<string | null>(null);
+  readonly currentSchoolLevel = signal<string | null>(null);
+  readonly currentAssignment = computed<TeacherAssignment | null>(() => {
+    const schoolId = this.currentSchoolId();
+    const schoolLevel = this.currentSchoolLevel();
+    const subjectId = this.subjectId();
+    if (!schoolId || !schoolLevel || !subjectId) return null;
+    
+    return this.assignments().find(a => 
+      a.school_id === schoolId && 
+      a.school_level === schoolLevel && 
+      a.subject_id === subjectId
+    ) || null;
+  });
   readonly currentSubjectName = computed(() => {
     const id = this.subjectId();
     if (!id) return '';
@@ -88,6 +111,7 @@ export class SubjectsComponent implements OnInit {
     name: ['', Validators.required],
     description: [''],
     type: ['scolaire', Validators.required],
+    assignment_school_level: [''], // Champ pour modifier le niveau scolaire de l'affectation
   });
 
   constructor() {
@@ -133,20 +157,45 @@ export class SubjectsComponent implements OnInit {
     const qpSchoolLevel = q.get('school_level');
     if (qpSchoolId || qpSchoolLevel) {
       const normalizedLevel = this.normalizeLevel(qpSchoolLevel || '');
+      this.currentSchoolId.set(qpSchoolId);
+      this.currentSchoolLevel.set(normalizedLevel);
       this.linkForm.patchValue({
         school_id: qpSchoolId || '',
         school_level: normalizedLevel || '',
       });
+      // Pré-remplir le champ de modification du niveau scolaire de l'affectation
+      if (normalizedLevel) {
+        this.subjectForm.patchValue({
+          assignment_school_level: normalizedLevel
+        });
+      }
     }
     this.route.queryParamMap.subscribe(params => {
       const sId = params.get('school_id');
       const sLvl = params.get('school_level');
       if (sId || sLvl) {
         const normalized = this.normalizeLevel(sLvl || '');
+        this.currentSchoolId.set(sId);
+        this.currentSchoolLevel.set(normalized);
         this.linkForm.patchValue({
           school_id: sId || this.linkForm.get('school_id')?.value || '',
           school_level: normalized || this.linkForm.get('school_level')?.value || '',
         });
+        // Mettre à jour le champ de modification du niveau scolaire de l'affectation
+        if (normalized) {
+          this.subjectForm.patchValue({
+            assignment_school_level: normalized
+          });
+        }
+      }
+    });
+    
+    // Charger les affectations si on a un teacherId
+    this.teacherService.getTeacherProfile().subscribe({
+      next: (teacher) => {
+        if (teacher) {
+          this.application.loadAssignments(teacher.id);
+        }
       }
     });
 
@@ -246,7 +295,20 @@ export class SubjectsComponent implements OnInit {
       }
       // Succès même si 'subject' est null (aucun champ réellement changé)
       this.store.loadSubjects();
-      this.toastService.success('Matière enregistrée.');
+      
+      // Si on vient d'une affectation et que le niveau scolaire a changé, mettre à jour l'affectation
+      const assignment = this.currentAssignment();
+      const newSchoolLevel = v.assignment_school_level;
+      if (assignment && newSchoolLevel && assignment.school_level !== newSchoolLevel) {
+        this.application.updateAssignment(assignment.id, {
+          school_level: newSchoolLevel || null
+        });
+        // Mettre à jour le signal pour refléter le changement
+        this.currentSchoolLevel.set(newSchoolLevel);
+        this.toastService.success('Matière et niveau scolaire enregistrés.');
+      } else {
+        this.toastService.success('Matière enregistrée.');
+      }
     });
   }
 

@@ -68,17 +68,17 @@ export class ParentSubjectService {
     // Utiliser École + Niveau avec le code belge direct (M1-M3, P1-P6, S1-S6)
     const linksQuery = schoolLevel
       ? client.from('school_level_subjects')
-          .select('subject:subjects(*), school_level')
+          .select('subject:subjects(*), school_level, created_at')
           .eq('school_id', schoolId)
           .eq('school_level', schoolLevel)
       : client.from('school_level_subjects')
-          .select('subject:subjects(*), school_level')
+          .select('subject:subjects(*), school_level, created_at')
           .eq('school_id', schoolId);
 
     // Récupérer les matières assignées par les profs pour cette école et ce niveau (FILTRER par niveau)
     const teacherAssignmentsQuery = client
       .from('teacher_assignments')
-      .select('subject_id, school_level')
+      .select('subject_id, school_level, updated_at')
       .eq('school_id', schoolId)
       .eq('school_level', schoolLevel || '')
       .is('deleted_at', null);
@@ -91,16 +91,28 @@ export class ParentSubjectService {
       teacherAssignmentsQuery
     ])).pipe(
       switchMap(async ([links, extras, teacherAssignments]) => {
-        const linkRows = (links.data as { subject: Subject; school_level: string }[] | null) || [];
-        const linked = linkRows.map(r => ({ ...r.subject, school_level: r.school_level }));
+        const linkRows = (links.data as { subject: Subject; school_level: string; created_at?: string }[] | null) || [];
+        const linked = linkRows.map(r => ({ 
+          ...r.subject, 
+          school_level: r.school_level,
+          _link_created_at: r.created_at || new Date(0).toISOString()
+        }));
         const extra = (extras.data as Subject[] | null) || [];
         
         // Extraire les subject_id et school_level des affectations (TOUS les niveaux)
-        const assignmentRows = (teacherAssignments.data as { subject_id: string; school_level: string }[] | null) || [];
+        const assignmentRows = (teacherAssignments.data as { subject_id: string; school_level: string; updated_at?: string }[] | null) || [];
         const teacherSubjectIds = [...new Set(assignmentRows.map(r => r.subject_id))];
-        const assignmentLevels = new Map<string, string>();
+        const assignmentLevels = new Map<string, { level: string; updated_at: string }>();
         assignmentRows.forEach(r => {
-          assignmentLevels.set(r.subject_id, r.school_level);
+          const existing = assignmentLevels.get(r.subject_id);
+          const updatedAt = r.updated_at || new Date().toISOString();
+          // Garder la dernière affectation mise à jour (par updated_at)
+          if (!existing || (existing.updated_at < updatedAt)) {
+            assignmentLevels.set(r.subject_id, { 
+              level: r.school_level, 
+              updated_at: updatedAt 
+            });
+          }
         });
         
         // Récupérer les subjects correspondants
@@ -112,7 +124,7 @@ export class ParentSubjectService {
             .in('id', teacherSubjectIds);
           teacherSubjects = ((subjectsData as Subject[] | null) || []).map(s => ({
             ...s,
-            school_level: assignmentLevels.get(s.id) || null
+            school_level: assignmentLevels.get(s.id)?.level || null
           }));
           if (subjectsError) {
             console.error('Error loading teacher assignment subjects:', subjectsError);
@@ -120,25 +132,37 @@ export class ParentSubjectService {
         }
         
         // Combiner toutes les matières avec leur niveau
-        const byId = new Map<string, Subject & { school_level?: string | null }>();
+        const byId = new Map<string, Subject & { school_level?: string | null; _source_updated_at?: string }>();
         
-        // D'abord ajouter les matières de school_level_subjects (avec leur niveau)
+        // D'abord ajouter les matières de school_level_subjects (avec leur niveau et created_at)
         linked.forEach(s => {
           if (s && s.id) {
-            byId.set(s.id, s);
+            byId.set(s.id, {
+              ...s,
+              _source_updated_at: (s as any)._link_created_at
+            });
           }
         });
         
         // Ensuite ajouter les matières des teacher_assignments (avec leur niveau)
         teacherSubjects.forEach(s => {
           if (s && s.id) {
-            // Si la matière existe déjà, garder le niveau le plus spécifique (non null)
             const existing = byId.get(s.id);
-            if (!existing || !existing.school_level) {
-              byId.set(s.id, s);
-            } else if (s.school_level) {
-              // Si les deux ont un niveau, garder celui qui existe déjà (priorité aux school_level_subjects)
-              byId.set(s.id, existing);
+            const assignmentUpdatedAt = assignmentLevels.get(s.id)?.updated_at || new Date(0).toISOString();
+            const existingUpdatedAt = existing?._source_updated_at || new Date(0).toISOString();
+            
+            // Si pas de matière existante, ou si l'affectation est plus récente, utiliser l'affectation
+            if (!existing || assignmentUpdatedAt > existingUpdatedAt) {
+              byId.set(s.id, {
+                ...s,
+                _source_updated_at: assignmentUpdatedAt
+              });
+            } else if (!existing.school_level && s.school_level) {
+              // Si la matière existante n'a pas de niveau mais l'affectation en a un, utiliser l'affectation
+              byId.set(s.id, {
+                ...s,
+                _source_updated_at: assignmentUpdatedAt
+              });
             }
           }
         });
@@ -150,8 +174,15 @@ export class ParentSubjectService {
           }
         });
         
+        // Nettoyer les propriétés temporaires avant de retourner
+        const cleanedSubjects = Array.from(byId.values())
+          .map((subject: any) => {
+            const { _source_updated_at, _link_created_at, ...rest } = subject;
+            return rest;
+          });
+        
         return {
-          subjects: Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name)),
+          subjects: cleanedSubjects.sort((a, b) => a.name.localeCompare(b.name)),
           error: (links.error as PostgrestError | null) || (extras.error as PostgrestError | null) || (teacherAssignments.error as PostgrestError | null) || null,
         };
       })
@@ -293,12 +324,12 @@ export class ParentSubjectService {
         // Recherche dans school_level_subjects
         this.supabase.client
           .from('school_level_subjects')
-          .select('subject:subjects(*), school_level')
+          .select('subject:subjects(*), school_level, created_at')
           .eq('school_id', schoolId),
         // Recherche dans teacher_assignments (récupérer d'abord les IDs, puis filtrer)
         this.supabase.client
           .from('teacher_assignments')
-          .select('subject_id, school_level')
+          .select('subject_id, school_level, updated_at')
           .eq('school_id', schoolId)
           .is('deleted_at', null),
         // Recherche dans toutes les matières (pour les extra/optionnelles)
@@ -309,16 +340,28 @@ export class ParentSubjectService {
       ])
     ).pipe(
       switchMap(async ([linksRes, assignmentsRes, extrasRes]) => {
-        const linkRows = (linksRes.data as { subject: Subject; school_level: string }[] | null) || [];
-        // Filtrer par nom après récupération
+        const linkRows = (linksRes.data as { subject: Subject; school_level: string; created_at?: string }[] | null) || [];
+        // Filtrer par nom après récupération et stocker created_at pour comparaison
         const linked = linkRows
           .filter(r => r.subject && r.subject.name.toLowerCase().includes(q.toLowerCase()))
-          .map(r => ({ ...r.subject, school_level: r.school_level }));
+          .map(r => ({ 
+            ...r.subject, 
+            school_level: r.school_level,
+            _link_created_at: r.created_at || new Date(0).toISOString() // Pour comparaison avec updated_at
+          }));
         
-        const assignmentRows = (assignmentsRes.data as { subject_id: string; school_level: string }[] | null) || [];
-        const assignmentLevels = new Map<string, string>();
+        const assignmentRows = (assignmentsRes.data as { subject_id: string; school_level: string; updated_at?: string }[] | null) || [];
+        const assignmentLevels = new Map<string, { level: string; updated_at: string }>();
         assignmentRows.forEach(r => {
-          assignmentLevels.set(r.subject_id, r.school_level);
+          const existing = assignmentLevels.get(r.subject_id);
+          const updatedAt = r.updated_at || new Date().toISOString();
+          // Garder la dernière affectation mise à jour (par updated_at)
+          if (!existing || (existing.updated_at < updatedAt)) {
+            assignmentLevels.set(r.subject_id, { 
+              level: r.school_level, 
+              updated_at: updatedAt 
+            });
+          }
         });
         
         // Récupérer les subjects correspondants et filtrer par nom
@@ -334,7 +377,7 @@ export class ParentSubjectService {
             .filter(s => s.name.toLowerCase().includes(q.toLowerCase()))
             .map(s => ({
               ...s,
-              school_level: assignmentLevels.get(s.id) || null
+              school_level: assignmentLevels.get(s.id)?.level || null
             }));
           
           if (subjectsError) {
@@ -346,21 +389,31 @@ export class ParentSubjectService {
           .filter(s => s.name.toLowerCase().includes(q.toLowerCase()));
         
         // Combiner toutes les matières avec leur niveau
-        const byId = new Map<string, Subject & { school_level?: string | null }>();
+        const byId = new Map<string, Subject & { school_level?: string | null; _source_updated_at?: string }>();
         
-        // Ajouter les matières de school_level_subjects
+        // Ajouter les matières de school_level_subjects avec leur created_at
         linked.forEach(s => {
           if (s && s.id) {
-            byId.set(s.id, s);
+            byId.set(s.id, {
+              ...s,
+              _source_updated_at: (s as any)._link_created_at
+            });
           }
         });
         
-        // Ajouter les matières des teacher_assignments (priorité si déjà existante)
+        // Ajouter les matières des teacher_assignments (priorité si plus récente)
         assignments.forEach(s => {
           if (s && s.id) {
             const existing = byId.get(s.id);
-            if (!existing || !existing.school_level) {
-              byId.set(s.id, s);
+            const assignmentUpdatedAt = assignmentLevels.get(s.id)?.updated_at || new Date(0).toISOString();
+            const existingUpdatedAt = existing?._source_updated_at || new Date(0).toISOString();
+            
+            // Si pas de matière existante, ou si l'affectation est plus récente, utiliser l'affectation
+            if (!existing || assignmentUpdatedAt > existingUpdatedAt) {
+              byId.set(s.id, {
+                ...s,
+                _source_updated_at: assignmentUpdatedAt
+              });
             }
           }
         });
@@ -372,7 +425,9 @@ export class ParentSubjectService {
           }
         });
         
+        // Nettoyer les propriétés temporaires avant de retourner
         const subjects = Array.from(byId.values())
+          .map(({ _source_updated_at, ...rest }) => rest)
           .sort((a, b) => a.name.localeCompare(b.name))
           .slice(0, 20);
         
@@ -420,7 +475,7 @@ export class ParentSubjectService {
           .in('subject_id', subjectIds),
         this.supabase.client
           .from('teacher_assignments')
-          .select('subject_id, school_level')
+          .select('subject_id, school_level, updated_at')
           .eq('school_id', schoolId)
           .in('subject_id', subjectIds)
           .is('deleted_at', null)
@@ -428,21 +483,27 @@ export class ParentSubjectService {
     ).pipe(
       map(([subjectsRes, linksRes, assignmentsRes]) => {
         const subjects = (subjectsRes.data as Subject[] | null) || [];
-        const links = (linksRes.data as { subject_id: string; school_level: string }[] | null) || [];
-        const assignments = (assignmentsRes.data as { subject_id: string; school_level: string }[] | null) || [];
+        const links = (linksRes.data as { subject_id: string; school_level: string; created_at?: string }[] | null) || [];
+        const assignments = (assignmentsRes.data as { subject_id: string; school_level: string; updated_at?: string }[] | null) || [];
         
-        // Créer une map des niveaux (priorité aux school_level_subjects)
-        const levelMap = new Map<string, string>();
-        links.forEach(l => levelMap.set(l.subject_id, l.school_level));
+        // Créer une map des niveaux (priorité à la source la plus récente)
+        const levelMap = new Map<string, { level: string; updated_at: string; source: 'link' | 'assignment' }>();
+        links.forEach(l => {
+          const linkCreatedAt = l.created_at || new Date(0).toISOString();
+          levelMap.set(l.subject_id, { level: l.school_level, updated_at: linkCreatedAt, source: 'link' });
+        });
         assignments.forEach(a => {
-          if (!levelMap.has(a.subject_id)) {
-            levelMap.set(a.subject_id, a.school_level);
+          const existing = levelMap.get(a.subject_id);
+          const updatedAt = a.updated_at || new Date(0).toISOString();
+          // Si pas de niveau depuis school_level_subjects, ou si l'affectation est plus récente, utiliser l'affectation
+          if (!existing || updatedAt > existing.updated_at) {
+            levelMap.set(a.subject_id, { level: a.school_level, updated_at: updatedAt, source: 'assignment' });
           }
         });
         
         const enrichedSubjects = subjects.map(s => ({
           ...s,
-          school_level: levelMap.get(s.id) || null
+          school_level: levelMap.get(s.id)?.level || null
         }));
         
         const error = (subjectsRes.error as PostgrestError | null) || 

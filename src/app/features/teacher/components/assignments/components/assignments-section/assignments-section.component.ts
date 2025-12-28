@@ -27,7 +27,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
     MatTooltipModule,
     GamesStatsDisplayComponent,
     TransferAssignmentDialogComponent,
-    ChildrenListModalComponent
+    ChildrenListModalComponent,
   ],
   templateUrl: './assignments-section.component.html',
   styleUrl: './assignments-section.component.scss'
@@ -63,6 +63,7 @@ export class AssignmentsSectionComponent {
   // Signal pour gérer l'affichage du modal des enfants
   readonly showChildrenModal = signal<boolean>(false);
   readonly selectedCategoryForChildren = signal<{ id: string; name: string; schoolId: string | null; schoolLevel: string | null } | null>(null);
+
 
   // Filtre par école
   readonly selectedSchoolId = signal<string | null>(null); // null = toutes les écoles
@@ -613,5 +614,6 @@ export class AssignmentsSectionComponent {
     this.showChildrenModal.set(false);
     this.selectedCategoryForChildren.set(null);
   }
+
 }
 

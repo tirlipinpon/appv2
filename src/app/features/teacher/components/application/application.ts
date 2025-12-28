@@ -4,7 +4,7 @@ import { TeacherAssignmentStore } from '../../store/assignments.store';
 import type { Teacher, TeacherUpdate } from '../../types/teacher';
 import type { School } from '../../types/school';
 import type { Subject } from '../../types/subject';
-import type { TeacherAssignmentCreate } from '../../types/teacher-assignment';
+import type { TeacherAssignmentCreate, TeacherAssignmentUpdate } from '../../types/teacher-assignment';
 
 @Injectable({
   providedIn: 'root',
@@ -53,6 +53,9 @@ export class Application {
   }
   createAssignment(assignmentData: TeacherAssignmentCreate): void {
     this.assignmentStore.createAssignment(assignmentData);
+  }
+  updateAssignment(assignmentId: string, updates: TeacherAssignmentUpdate): void {
+    this.assignmentStore.updateAssignment({ id: assignmentId, updates });
   }
   deleteAssignment(assignmentId: string): void {
     this.assignmentStore.deleteAssignment(assignmentId);

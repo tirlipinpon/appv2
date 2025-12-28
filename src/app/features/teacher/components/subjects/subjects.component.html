@@ -62,6 +62,16 @@
             <option value="optionnelle">Optionnelle</option>
           </select>
         </div>
+        <!-- Modification du niveau scolaire de l'affectation si on vient d'une affectation -->
+        <div *ngIf="currentAssignment()" class="form-group">
+          <label for="assignment_school_level">🎓 Niveau scolaire de l'affectation</label>
+          <app-school-level-select
+            [label]="''"
+            [required]="false"
+            formControlName="assignment_school_level"
+          />
+          <p class="form-hint">Modifier le niveau scolaire de cette affectation</p>
+        </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" [disabled]="subjectForm.invalid">Enregistrer</button>
         </div>

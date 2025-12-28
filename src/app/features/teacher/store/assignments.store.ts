@@ -5,7 +5,7 @@ import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap, catchError, of } from 'rxjs';
 import { School, SchoolYear } from '../types/school';
 import { Subject } from '../types/subject';
-import { TeacherAssignment, TeacherAssignmentCreate } from '../types/teacher-assignment';
+import { TeacherAssignment, TeacherAssignmentCreate, TeacherAssignmentUpdate } from '../types/teacher-assignment';
 import { Infrastructure } from '../components/infrastructure/infrastructure';
 import { ErrorSnackbarService } from '../../../shared/services/snackbar/error-snackbar.service';
 import { setStoreError } from '../../../shared/utils/store-error-helper';
@@ -267,6 +267,51 @@ export const TeacherAssignmentStore = signalStore(
             })
           )
         )
+      )
+    ),
+
+    updateAssignment: rxMethod<{ id: string; updates: TeacherAssignmentUpdate }>(
+      pipe(
+        tap(() => {
+          patchState(store, { isLoading: true, error: [] });
+        }),
+        switchMap(({ id, updates }) => {
+          const previous = store.assignments();
+          // Optimistic update: update locally first
+          const updatedAssignments = previous.map(a => 
+            a.id === id ? { ...a, ...updates } : a
+          );
+          patchState(store, { assignments: updatedAssignments });
+          
+          return infrastructure.updateAssignment(id, updates).pipe(
+            tap((result) => {
+              if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors de la modification de l\'affectation';
+                // rollback
+                patchState(store, { assignments: previous });
+                setStoreError(store, errorSnackbar, errorMessage, false);
+              } else if (result.assignment) {
+                // Update with server response
+                const finalAssignments = previous.map(a => 
+                  a.id === id ? result.assignment! : a
+                );
+                patchState(store, { 
+                  assignments: finalAssignments,
+                  isLoading: false 
+                });
+              } else {
+                patchState(store, { isLoading: false });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors de la modification de l\'affectation';
+              // rollback
+              patchState(store, { assignments: previous });
+              setStoreError(store, errorSnackbar, errorMessage, false);
+              return of(null);
+            })
+          );
+        })
       )
     ),
 
