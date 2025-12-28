@@ -5,6 +5,8 @@ export interface Teacher {
   bio: string | null;
   phone: string | null;
   avatar_url: string | null;
+  share_email: boolean | null;
+  share_phone: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -14,5 +16,7 @@ export interface TeacherUpdate {
   bio?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
+  share_email?: boolean | null;
+  share_phone?: boolean | null;
 }
 

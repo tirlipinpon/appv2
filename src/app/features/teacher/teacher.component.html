@@ -62,6 +62,37 @@
         <small class="info-hint">Cet email est associé à votre compte et ne peut pas être modifié ici.</small>
       </div>
 
+      <div class="form-group sharing-preferences">
+        <label class="sharing-preferences-title">🔒 Préférences de partage</label>
+        <p class="sharing-preferences-description">Choisissez quelles informations vous souhaitez partager avec les parents dans votre profil public.</p>
+        
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              formControlName="share_email"
+              id="share_email">
+            <span class="checkbox-text">
+              <strong>Partager mon email</strong>
+              <small>Les parents pourront voir et vous contacter par email</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              formControlName="share_phone"
+              id="share_phone">
+            <span class="checkbox-text">
+              <strong>Partager mon téléphone</strong>
+              <small>Les parents pourront voir votre numéro de téléphone</small>
+            </span>
+          </label>
+        </div>
+      </div>
+
       <div class="form-actions">
         <button 
           type="submit" 

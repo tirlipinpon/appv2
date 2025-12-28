@@ -75,6 +75,8 @@ export class TeacherComponent implements OnInit {
       bio: [''],
       phone: [''],
       avatar_url: [''],
+      share_email: [false],
+      share_phone: [false],
     });
   }
 
@@ -99,6 +101,8 @@ export class TeacherComponent implements OnInit {
       bio: teacher.bio || '',
       phone: teacher.phone || '',
       avatar_url: teacher.avatar_url || '',
+      share_email: teacher.share_email ?? false,
+      share_phone: teacher.share_phone ?? false,
     });
   }
 
@@ -110,6 +114,8 @@ export class TeacherComponent implements OnInit {
         bio: formValue.bio || null,
         phone: formValue.phone || null,
         avatar_url: formValue.avatar_url || null,
+        share_email: formValue.share_email ?? false,
+        share_phone: formValue.share_phone ?? false,
       };
 
       if (this.isCreating()) {

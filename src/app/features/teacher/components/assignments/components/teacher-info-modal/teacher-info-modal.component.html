@@ -42,15 +42,17 @@
 
           <div class="detail-section">
             <strong>📧 Email :</strong>
-            <p *ngIf="teacherEmail()">
+            <p *ngIf="teacherEmail() && teacher()?.share_email">
               <a [href]="'mailto:' + teacherEmail()" class="email-link">{{ teacherEmail() }}</a>
             </p>
+            <p *ngIf="teacherEmail() && !teacher()?.share_email" class="no-info">Email non partagé par le professeur.</p>
             <p *ngIf="!teacherEmail()" class="no-info">Email non disponible.</p>
           </div>
 
           <div class="detail-section">
             <strong>📞 Téléphone :</strong>
-            <p *ngIf="teacher()?.phone">{{ teacher()?.phone }}</p>
+            <p *ngIf="teacher()?.phone && teacher()?.share_phone">{{ teacher()?.phone }}</p>
+            <p *ngIf="teacher()?.phone && !teacher()?.share_phone" class="no-info">Téléphone non partagé par le professeur.</p>
             <p *ngIf="!teacher()?.phone" class="no-info">Aucun téléphone renseigné.</p>
           </div>
 
