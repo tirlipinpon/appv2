@@ -103,10 +103,18 @@
         <label for="birthdate">Date de naissance</label>
         <input
           id="birthdate"
-          type="date"
+          type="text"
           formControlName="birthdate"
           class="form-control"
+          placeholder="jj/mm/aaaa"
+          (input)="onBirthdateInput($event)"
+          [class.invalid]="childForm.get('birthdate')?.invalid && childForm.get('birthdate')?.touched"
         />
+        @if (childForm.get('birthdate')?.invalid && childForm.get('birthdate')?.touched) {
+          <span class="error-text">
+            Le format de date doit être jj/mm/aaaa (ex: 15/03/2015)
+          </span>
+        }
       </div>
 
       <div class="form-group">

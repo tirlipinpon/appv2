@@ -157,7 +157,7 @@ export class ChildComponent implements OnInit, OnDestroy {
     this.childForm = this.fb.group({
       firstname: ['', [Validators.required]],
       lastname: ['', [Validators.required]],
-      birthdate: [''],
+      birthdate: ['', [this.birthdateValidator.bind(this)]],
       gender: [''],
       school_id: [''], // null ou ID d'école ou 'other'
       school_level: [''],
@@ -214,11 +214,14 @@ export class ChildComponent implements OnInit, OnDestroy {
     if (!this.isLoading()) {
       const isCopyMode = this.sourceChildId() !== null && this.currentChildId() === null;
       
+      // Convertir la date de yyyy-mm-dd vers dd/mm/yyyy pour l'affichage
+      const formattedBirthdate = child.birthdate ? this.formatDateForDisplay(child.birthdate) : '';
+      
       this.childForm.patchValue({
         // Si on est en mode copie, vider le prénom pour forcer une modification
         firstname: isCopyMode ? '' : (child.firstname || ''),
         lastname: child.lastname || '',
-        birthdate: child.birthdate || '',
+        birthdate: formattedBirthdate,
         gender: child.gender || '',
         school_id: child.school_id || '',
         school_level: child.school_level || '',
@@ -263,9 +266,11 @@ export class ChildComponent implements OnInit, OnDestroy {
           }
           
           // Vérifier qu'au moins un autre champ est différent
+          // Convertir la date source pour la comparaison (formValue est en dd/mm/yyyy, sourceChild est en yyyy-mm-dd)
+          const sourceBirthdateFormatted = sourceChild.birthdate ? this.formatDateForDisplay(sourceChild.birthdate) : '';
           const hasOtherChanges = 
             (formValue.lastname || '').trim() !== (sourceChild.lastname || '').trim() ||
-            (formValue.birthdate || '') !== (sourceChild.birthdate || '') ||
+            (formValue.birthdate || '') !== sourceBirthdateFormatted ||
             (formValue.gender || '') !== (sourceChild.gender || '') ||
             (formValue.school_id || '') !== (sourceChild.school_id || '') ||
             (formValue.school_level || '') !== (sourceChild.school_level || '') ||
@@ -336,10 +341,13 @@ export class ChildComponent implements OnInit, OnDestroy {
   }
 
   private createOrUpdateChild(schoolId: string | null, formValue: { firstname: string; lastname: string; birthdate: string; gender: string; school_id: string; school_level: string; notes: string; avatar_url: string }): void {
+    // Convertir la date de dd/mm/yyyy vers yyyy-mm-dd pour la base de données
+    const dbBirthdate = formValue.birthdate ? this.formatDateForDatabase(formValue.birthdate) : null;
+    
     const profileData = {
       firstname: formValue.firstname || null,
       lastname: formValue.lastname || null,
-      birthdate: formValue.birthdate || null,
+      birthdate: dbBirthdate,
       gender: formValue.gender || null,
       school_id: schoolId,
       school_level: formValue.school_level || null,
@@ -462,5 +470,136 @@ export class ChildComponent implements OnInit, OnDestroy {
 
   onValidationChange(isValid: boolean): void {
     this.avatarPinValid.set(isValid);
+  }
+
+  /**
+   * Convertit une date du format yyyy-mm-dd (base de données) vers dd/mm/yyyy (affichage)
+   */
+  private formatDateForDisplay(dateString: string): string {
+    if (!dateString) return '';
+    
+    // Si la date est déjà au format dd/mm/yyyy, la retourner telle quelle
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    // Convertir de yyyy-mm-dd vers dd/mm/yyyy
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    
+    return dateString;
+  }
+
+  /**
+   * Convertit une date du format dd/mm/yyyy (affichage) vers yyyy-mm-dd (base de données)
+   */
+  private formatDateForDatabase(dateString: string): string | null {
+    if (!dateString || dateString.trim() === '') return null;
+    
+    // Si la date est déjà au format yyyy-mm-dd, la retourner telle quelle
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    // Convertir de dd/mm/yyyy vers yyyy-mm-dd
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      const year = parts[2];
+      
+      // Valider que c'est une date valide
+      const date = new Date(`${year}-${month}-${day}`);
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      
+      return `${year}-${month}-${day}`;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Valide le format de date dd/mm/yyyy
+   */
+  validateDateFormat(dateString: string): boolean {
+    if (!dateString || dateString.trim() === '') return true; // Vide est valide (optionnel)
+    
+    const regex = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!regex.test(dateString)) {
+      return false;
+    }
+    
+    const parts = dateString.split('/');
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    
+    // Vérifier que les valeurs sont dans des plages valides
+    if (month < 1 || month > 12) return false;
+    if (day < 1 || day > 31) return false;
+    if (year < 1900 || year > 2100) return false;
+    
+    // Vérifier que c'est une date valide
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Validateur personnalisé pour le champ birthdate
+   */
+  private birthdateValidator(control: any): { [key: string]: any } | null {
+    const value = control.value;
+    if (!value || value.trim() === '') {
+      return null; // Vide est valide (optionnel)
+    }
+    
+    if (!this.validateDateFormat(value)) {
+      return { invalidFormat: true };
+    }
+    
+    return null;
+  }
+
+  /**
+   * Gère le formatage automatique de la date pendant la saisie
+   */
+  onBirthdateInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/\D/g, ''); // Supprimer tout sauf les chiffres
+    
+    // Limiter à 8 chiffres (ddmmyyyy)
+    if (value.length > 8) {
+      value = value.substring(0, 8);
+    }
+    
+    // Formater avec des slashes
+    let formatted = value;
+    if (value.length > 2) {
+      formatted = value.substring(0, 2) + '/' + value.substring(2);
+    }
+    if (value.length > 4) {
+      formatted = value.substring(0, 2) + '/' + value.substring(2, 4) + '/' + value.substring(4);
+    }
+    
+    // Mettre à jour la valeur dans le formulaire
+    const control = this.childForm.get('birthdate');
+    if (control) {
+      control.setValue(formatted, { emitEvent: false });
+      
+      // Valider le format
+      if (formatted && !this.validateDateFormat(formatted)) {
+        control.setErrors({ invalidFormat: true });
+      } else {
+        control.setErrors(null);
+      }
+    }
   }
 }
