@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from } from 'rxjs';
+import { Observable, from, forkJoin } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
@@ -39,8 +39,18 @@ export class TeacherAssignmentService {
 
   /**
    * Crée une nouvelle affectation
+   * Vérifie s'il existe une affectation supprimée pour la même matière et la réactive si nécessaire
+   * Retourne une confirmation si une affectation active avec un niveau différent existe
    */
-  createAssignment(assignmentData: TeacherAssignmentCreate): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+  createAssignment(assignmentData: TeacherAssignmentCreate): Observable<{ 
+    assignment: TeacherAssignment | null; 
+    error: PostgrestError | null;
+    requiresConfirmation?: {
+      conflictingAssignments: Array<{ id: string; school_level: string }>;
+      message: string;
+      assignmentData: TeacherAssignmentCreate;
+    };
+  }> {
     // Normaliser school_level pour respecter la contrainte UNIQUE (pas de NULL)
     const normalized = {
       ...assignmentData,
@@ -48,21 +58,121 @@ export class TeacherAssignmentService {
       roles: assignmentData.roles || ['titulaire'],
       deleted_at: null, // réactiver en cas d'upsert sur une ligne soft-supprimée
     };
-    return from(
-      this.supabaseService.client
-        .from('teacher_assignments')
-        .upsert(normalized, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
-        .select(`
-          *,
-          school:schools(*),
-          subject:subjects(*)
-        `)
-        .single()
-    ).pipe(
-      map(({ data, error }) => ({
-        assignment: data,
-        error: error || null,
-      }))
+
+    // Vérifier s'il existe une affectation supprimée pour la même matière (même teacher_id, school_id, subject_id)
+    // mais avec un school_level différent - cela peut indiquer une erreur de niveau
+    let checkQuery = this.supabaseService.client
+      .from('teacher_assignments')
+      .select('id, school_level, deleted_at')
+      .eq('teacher_id', normalized.teacher_id)
+      .eq('subject_id', normalized.subject_id)
+      .not('deleted_at', 'is', null); // Chercher les affectations supprimées
+
+    // Gérer school_id (peut être null)
+    if (normalized.school_id) {
+      checkQuery = checkQuery.eq('school_id', normalized.school_id);
+    } else {
+      checkQuery = checkQuery.is('school_id', null);
+    }
+
+    return from(checkQuery).pipe(
+      switchMap(({ data: deletedAssignments, error: checkError }) => {
+        // Si erreur lors de la vérification, continuer avec la création normale
+        if (checkError) {
+          console.warn('[createAssignment] Erreur lors de la vérification des affectations supprimées:', checkError);
+        }
+
+        // Vérifier s'il existe une affectation active avec un niveau différent
+        // Si oui, la supprimer pour éviter les doublons
+        let activeCheckQuery = this.supabaseService.client
+          .from('teacher_assignments')
+          .select('id, school_level')
+          .eq('teacher_id', normalized.teacher_id)
+          .eq('subject_id', normalized.subject_id)
+          .is('deleted_at', null)
+          .neq('school_level', normalized.school_level);
+
+        if (normalized.school_id) {
+          activeCheckQuery = activeCheckQuery.eq('school_id', normalized.school_id);
+        } else {
+          activeCheckQuery = activeCheckQuery.is('school_id', null);
+        }
+
+        return from(activeCheckQuery).pipe(
+          switchMap(({ data: activeAssignments, error: activeCheckError }) => {
+            // Si une affectation active existe avec un niveau différent, demander confirmation
+            if (activeAssignments && activeAssignments.length > 0) {
+              console.log('[createAssignment] Affectation active trouvée avec un niveau différent, demande de confirmation:', activeAssignments);
+              
+              // Construire le message de confirmation
+              const levels = activeAssignments.map((a: { school_level: string }) => a.school_level).join(', ');
+              const message = `Une affectation active existe déjà pour cette matière avec le${activeAssignments.length > 1 ? 's niveau' : ' niveau'} "${levels}". Voulez-vous la remplacer par le niveau "${normalized.school_level}" ?`;
+              
+              // Retourner une demande de confirmation au lieu de supprimer automatiquement
+              return of({
+                assignment: null,
+                error: null,
+                requiresConfirmation: {
+                  conflictingAssignments: activeAssignments.map((a: { id: string; school_level: string }) => ({
+                    id: a.id,
+                    school_level: a.school_level
+                  })),
+                  message,
+                  assignmentData: normalized
+                }
+              });
+            }
+
+            // Pas d'affectation active avec niveau différent, vérifier s'il existe une affectation supprimée avec le bon niveau
+            const deletedWithCorrectLevel = (deletedAssignments || []).find(
+              (a: { school_level: string }) => a.school_level === normalized.school_level
+            );
+
+            if (deletedWithCorrectLevel) {
+              // Réactiver l'affectation supprimée avec le bon niveau
+              console.log('[createAssignment] Réactivation de l\'affectation supprimée avec le bon niveau:', deletedWithCorrectLevel.id);
+              return from(
+                this.supabaseService.client
+                  .from('teacher_assignments')
+                  .update({
+                    ...normalized,
+                    deleted_at: null
+                  })
+                  .eq('id', deletedWithCorrectLevel.id)
+                  .select(`
+                    *,
+                    school:schools(*),
+                    subject:subjects(*)
+                  `)
+                  .single()
+              ).pipe(
+                map(({ data, error }) => ({
+                  assignment: data as TeacherAssignment | null,
+                  error: error || null,
+                }))
+              );
+            }
+
+            // Créer une nouvelle affectation normalement
+            return from(
+              this.supabaseService.client
+                .from('teacher_assignments')
+                .upsert(normalized, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
+                .select(`
+                  *,
+                  school:schools(*),
+                  subject:subjects(*)
+                `)
+                .single()
+            ).pipe(
+              map(({ data, error }) => ({
+                assignment: data as TeacherAssignment | null,
+                error: error || null,
+              }))
+            );
+          })
+        );
+      })
     );
   }
 
@@ -82,6 +192,98 @@ export class TeacherAssignmentService {
         assignment: data,
         error: error || null,
       }))
+    );
+  }
+
+  /**
+   * Crée une affectation après confirmation (supprime les affectations conflictuelles)
+   */
+  createAssignmentWithConfirmation(
+    assignmentData: TeacherAssignmentCreate,
+    conflictingAssignmentIds: string[]
+  ): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+    // Normaliser school_level pour respecter la contrainte UNIQUE (pas de NULL)
+    const normalized = {
+      ...assignmentData,
+      school_level: (assignmentData.school_level ?? '') as string,
+      roles: assignmentData.roles || ['titulaire'],
+      deleted_at: null,
+    };
+
+    // Supprimer les affectations conflictuelles
+    const deleteObservables = conflictingAssignmentIds.map(id => this.deleteAssignment(id));
+    
+    return forkJoin(deleteObservables).pipe(
+      switchMap(() => {
+        // Vérifier s'il existe une affectation supprimée avec le bon niveau à réactiver
+        let checkQuery = this.supabaseService.client
+          .from('teacher_assignments')
+          .select('id, school_level, deleted_at')
+          .eq('teacher_id', normalized.teacher_id)
+          .eq('subject_id', normalized.subject_id)
+          .not('deleted_at', 'is', null);
+
+        if (normalized.school_id) {
+          checkQuery = checkQuery.eq('school_id', normalized.school_id);
+        } else {
+          checkQuery = checkQuery.is('school_id', null);
+        }
+
+        return from(checkQuery).pipe(
+          switchMap(({ data: deletedAssignments, error: checkError }) => {
+            if (checkError) {
+              console.warn('[createAssignmentWithConfirmation] Erreur lors de la vérification:', checkError);
+            }
+
+            const deletedWithCorrectLevel = (deletedAssignments || []).find(
+              (a: { school_level: string }) => a.school_level === normalized.school_level
+            );
+
+            if (deletedWithCorrectLevel) {
+              // Réactiver l'affectation supprimée avec le bon niveau
+              console.log('[createAssignmentWithConfirmation] Réactivation de l\'affectation supprimée:', deletedWithCorrectLevel.id);
+              return from(
+                this.supabaseService.client
+                  .from('teacher_assignments')
+                  .update({
+                    ...normalized,
+                    deleted_at: null
+                  })
+                  .eq('id', deletedWithCorrectLevel.id)
+                  .select(`
+                    *,
+                    school:schools(*),
+                    subject:subjects(*)
+                  `)
+                  .single()
+              ).pipe(
+                map(({ data, error }) => ({
+                  assignment: data as TeacherAssignment | null,
+                  error: error || null,
+                }))
+              );
+            }
+
+            // Créer une nouvelle affectation
+            return from(
+              this.supabaseService.client
+                .from('teacher_assignments')
+                .upsert(normalized, { onConflict: 'teacher_id,school_id,school_level,subject_id' })
+                .select(`
+                  *,
+                  school:schools(*),
+                  subject:subjects(*)
+                `)
+                .single()
+            ).pipe(
+              map(({ data, error }) => ({
+                assignment: data as TeacherAssignment | null,
+                error: error || null,
+              }))
+            );
+          })
+        );
+      })
     );
   }
 

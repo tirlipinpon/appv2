@@ -159,8 +159,23 @@ export class Infrastructure {
     return this.teacherAssignmentService.getTeacherAssignments(teacherId);
   }
 
-  createAssignment(assignmentData: TeacherAssignmentCreate): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+  createAssignment(assignmentData: TeacherAssignmentCreate): Observable<{ 
+    assignment: TeacherAssignment | null; 
+    error: PostgrestError | null;
+    requiresConfirmation?: {
+      conflictingAssignments: Array<{ id: string; school_level: string }>;
+      message: string;
+      assignmentData: TeacherAssignmentCreate;
+    };
+  }> {
     return this.teacherAssignmentService.createAssignment(assignmentData);
+  }
+
+  createAssignmentWithConfirmation(
+    assignmentData: TeacherAssignmentCreate,
+    conflictingAssignmentIds: string[]
+  ): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {
+    return this.teacherAssignmentService.createAssignmentWithConfirmation(assignmentData, conflictingAssignmentIds);
   }
 
   updateAssignment(id: string, updates: TeacherAssignmentUpdate): Observable<{ assignment: TeacherAssignment | null; error: PostgrestError | null }> {

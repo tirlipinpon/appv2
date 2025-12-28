@@ -18,6 +18,11 @@ export interface TeacherAssignmentState {
   isLoading: boolean;
   error: string[];
   isInitialized: boolean;
+  pendingConfirmation?: {
+    conflictingAssignments: Array<{ id: string; school_level: string }>;
+    message: string;
+    assignmentData: TeacherAssignmentCreate;
+  };
 }
 
 const initialState: TeacherAssignmentState = {
@@ -245,10 +250,49 @@ export const TeacherAssignmentStore = signalStore(
     createAssignment: rxMethod<TeacherAssignmentCreate>(
       pipe(
         tap(() => {
-          patchState(store, { isLoading: true, error: [] });
+          patchState(store, { isLoading: true, error: [], pendingConfirmation: undefined });
         }),
         switchMap((assignmentData) =>
           infrastructure.createAssignment(assignmentData).pipe(
+            tap((result) => {
+              if (result.requiresConfirmation) {
+                // Demander confirmation à l'utilisateur
+                patchState(store, { 
+                  isLoading: false,
+                  pendingConfirmation: result.requiresConfirmation
+                });
+              } else if (result.error) {
+                const errorMessage = result.error.message || 'Erreur lors de la création de l\'affectation';
+                setStoreError(store, errorSnackbar, errorMessage, false);
+              } else if (result.assignment) {
+                patchState(store, { 
+                  assignments: [result.assignment, ...store.assignments()],
+                  isLoading: false 
+                });
+              } else {
+                patchState(store, { isLoading: false });
+              }
+            }),
+            catchError((error) => {
+              const errorMessage = error?.message || 'Erreur lors de la création de l\'affectation';
+              setStoreError(store, errorSnackbar, errorMessage, false);
+              return of(null);
+            })
+          )
+        )
+      )
+    ),
+
+    confirmAndCreateAssignment: rxMethod<{
+      assignmentData: TeacherAssignmentCreate;
+      conflictingAssignmentIds: string[];
+    }>(
+      pipe(
+        tap(() => {
+          patchState(store, { isLoading: true, error: [], pendingConfirmation: undefined });
+        }),
+        switchMap(({ assignmentData, conflictingAssignmentIds }) =>
+          infrastructure.createAssignmentWithConfirmation(assignmentData, conflictingAssignmentIds).pipe(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors de la création de l\'affectation';
@@ -269,6 +313,14 @@ export const TeacherAssignmentStore = signalStore(
             })
           )
         )
+      )
+    ),
+
+    clearPendingConfirmation: rxMethod<void>(
+      pipe(
+        tap(() => {
+          patchState(store, { pendingConfirmation: undefined });
+        })
       )
     ),
 

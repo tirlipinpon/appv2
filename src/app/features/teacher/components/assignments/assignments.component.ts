@@ -76,6 +76,30 @@ export class AssignmentsComponent implements OnInit {
       const tid = this.teacherId();
       if (tid) this.application.loadAssignments(tid);
     });
+
+    // Écouter les demandes de confirmation
+    effect(() => {
+      // Accéder à pendingConfirmation via le store (propriété optionnelle du state)
+      const storeState = this.store as any;
+      const pendingConfirmation = storeState.pendingConfirmation?.();
+      if (pendingConfirmation) {
+        const confirmed = confirm(pendingConfirmation.message);
+        if (confirmed) {
+          // L'utilisateur a confirmé, procéder avec la création
+          this.store.confirmAndCreateAssignment({
+            assignmentData: pendingConfirmation.assignmentData,
+            conflictingAssignmentIds: pendingConfirmation.conflictingAssignments.map((a: { id: string }) => a.id)
+          });
+          // Recharger les affectations après création
+          if (this.teacherId()) {
+            this.application.loadAssignments(this.teacherId()!);
+          }
+        } else {
+          // L'utilisateur a annulé, effacer la demande de confirmation
+          this.store.clearPendingConfirmation();
+        }
+      }
+    });
   }
 
   ngOnInit(): void {
