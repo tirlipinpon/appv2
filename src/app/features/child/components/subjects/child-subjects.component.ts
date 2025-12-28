@@ -358,6 +358,8 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     
     // Écouter les événements de visibilité pour recharger les données quand la page redevient visible
     // Cela permet de synchroniser les données après un transfert d'affectation quand l'utilisateur revient sur la page
+    // NOTE: Le setInterval a été désactivé pour éviter les appels API répétés inutiles
+    // La synchronisation se fait uniquement via visibilitychange (quand l'utilisateur revient sur l'onglet)
     if (typeof document !== 'undefined') {
       this.visibilityChangeHandler = () => {
         if (document.visibilityState === 'visible') {
@@ -366,13 +368,13 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
       };
       document.addEventListener('visibilitychange', this.visibilityChangeHandler);
       
-      // Recharger les données périodiquement (toutes les 5 secondes) pour détecter les changements
-      // Cela permet de synchroniser les données même si l'utilisateur reste sur la page
-      this.reloadDataInterval = setInterval(() => {
-        if (document.visibilityState === 'visible' && this.child()) {
-          this.reloadData();
-        }
-      }, 5000);
+      // DÉSACTIVÉ: Rechargement périodique désactivé pour optimiser les performances
+      // Si nécessaire, vous pouvez réactiver avec un intervalle plus long (ex: 30000ms = 30 secondes)
+      // this.reloadDataInterval = setInterval(() => {
+      //   if (document.visibilityState === 'visible' && this.child()) {
+      //     this.reloadData();
+      //   }
+      // }, 30000); // 30 secondes au lieu de 5
     }
   }
   
