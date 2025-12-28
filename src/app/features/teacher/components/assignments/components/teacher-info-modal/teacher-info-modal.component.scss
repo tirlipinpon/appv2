@@ -157,6 +157,50 @@
           color: $color-text-secondary;
           font-size: $font-size-base;
           line-height: 1.6;
+
+          &.no-info {
+            color: $color-text-tertiary;
+            font-style: italic;
+          }
+        }
+
+        .email-link {
+          color: $color-primary;
+          text-decoration: none;
+          transition: color $transition-base;
+
+          &:hover {
+            color: $color-primary-dark;
+            text-decoration: underline;
+          }
+        }
+
+        .avatar-preview {
+          display: flex;
+          flex-direction: column;
+          gap: $spacing-sm;
+          margin-top: $spacing-sm;
+
+          .avatar-image {
+            width: 120px;
+            height: 120px;
+            border-radius: $border-radius-md;
+            object-fit: cover;
+            border: $border-width-medium solid $color-border-light;
+          }
+
+          .avatar-link {
+            color: $color-primary;
+            font-size: $font-size-sm;
+            text-decoration: none;
+            word-break: break-all;
+            transition: color $transition-base;
+
+            &:hover {
+              color: $color-primary-dark;
+              text-decoration: underline;
+            }
+          }
         }
 
         .assignments-list {

@@ -395,6 +395,23 @@
 
       .teachers-list {
         color: $color-text-primary;
+
+        .teacher-name {
+          color: $color-primary;
+          font-weight: $font-weight-medium;
+
+          &.clickable {
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-color: transparent;
+            transition: text-decoration-color $transition-base;
+
+            &:hover {
+              text-decoration-color: $color-primary;
+              color: $color-primary-dark;
+            }
+          }
+        }
       }
     }
 

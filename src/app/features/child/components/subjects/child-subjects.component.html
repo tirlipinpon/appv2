@@ -78,7 +78,11 @@
               <div *ngIf="getTeachersForSubject(s.id).length > 0" class="subject-teachers">
                 <span class="teachers-label">👨‍🏫 Prof{{ getTeachersForSubject(s.id).length > 1 ? 's' : '' }}:</span>
                 <span class="teachers-list">
-                  <span *ngFor="let teacher of getTeachersForSubject(s.id); let last = last">
+                  <span 
+                    *ngFor="let teacher of getTeachersForSubject(s.id); let last = last"
+                    class="teacher-name clickable"
+                    (click)="openTeacherModal(teacher, s.id)"
+                    title="Voir les informations du professeur">
                     {{ teacher.fullname || 'Professeur' }}<span *ngIf="!last">, </span>
                   </span>
                 </span>
@@ -165,7 +169,11 @@
               <div *ngIf="getTeachersForSubject(s.id).length > 0" class="subject-teachers">
                 <span class="teachers-label">👨‍🏫 Prof{{ getTeachersForSubject(s.id).length > 1 ? 's' : '' }}:</span>
                 <span class="teachers-list">
-                  <span *ngFor="let teacher of getTeachersForSubject(s.id); let last = last">
+                  <span 
+                    *ngFor="let teacher of getTeachersForSubject(s.id); let last = last"
+                    class="teacher-name clickable"
+                    (click)="openTeacherModal(teacher, s.id)"
+                    title="Voir les informations du professeur">
                     {{ teacher.fullname || 'Professeur' }}<span *ngIf="!last">, </span>
                   </span>
                 </span>
@@ -234,6 +242,18 @@
       </div>
     </div>
   </main>
+
+  <!-- Modal d'informations du professeur -->
+  <app-teacher-info-modal
+    *ngIf="showTeacherModal() && selectedTeacher()"
+    [teacherId]="selectedTeacher()?.id || null"
+    [teacherName]="selectedTeacher()?.fullname || null"
+    [subjectId]="selectedTeacher()?.subjectId || null"
+    [subjectName]="selectedTeacher()?.subjectName || null"
+    [schoolId]="selectedTeacher()?.schoolId || null"
+    [schoolLevel]="selectedTeacher()?.schoolLevel || null"
+    (modalClose)="closeTeacherModal()">
+  </app-teacher-info-modal>
 </div>
 
 

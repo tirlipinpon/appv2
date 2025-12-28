@@ -7,6 +7,7 @@ import { ParentSubjectService, CategoryEnrollment, Enrollment } from '../../serv
 import { SchoolService } from '../../services/school/school.service';
 import { GamesStatsService } from '../../../../shared/services/games-stats/games-stats.service';
 import { GamesStatsDisplayComponent } from '../../../../shared/components/games-stats-display/games-stats-display.component';
+import { TeacherInfoModalComponent } from '../../../teacher/components/assignments/components/teacher-info-modal/teacher-info-modal.component';
 import type { Subject, SubjectCategory } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
 import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
@@ -14,7 +15,7 @@ import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
 @Component({
   selector: 'app-child-subjects',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, GamesStatsDisplayComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, GamesStatsDisplayComponent, TeacherInfoModalComponent],
   templateUrl: './child-subjects.component.html',
   styleUrls: ['./child-subjects.component.scss'],
 })
@@ -40,6 +41,10 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
   readonly expandedSubjects = signal<Set<string>>(new Set()); // Matières avec sous-catégories visibles
   readonly selectedSubjectTypeFilter = signal<'scolaire' | 'extra' | 'optionnelle' | null>(null);
   readonly teachersBySubject = signal<Map<string, { id: string; fullname: string | null }[]>>(new Map());
+  
+  // Signal pour gérer l'affichage du modal du professeur
+  readonly showTeacherModal = signal<boolean>(false);
+  readonly selectedTeacher = signal<{ id: string; fullname: string | null; subjectId: string | null; subjectName: string | null; schoolId: string | null; schoolLevel: string | null } | null>(null);
   
   getSchoolLevelForSubject(subjectId: string): string | null {
     // Chercher d'abord dans availableSubjects
@@ -925,6 +930,33 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
    */
   getTeachersForSubject(subjectId: string): { id: string; fullname: string | null }[] {
     return this.teachersBySubject().get(subjectId) || [];
+  }
+
+  /**
+   * Ouvre le modal d'informations du professeur
+   */
+  openTeacherModal(teacher: { id: string; fullname: string | null }, subjectId: string): void {
+    const subject = this.availableSubjects().find(s => s.id === subjectId) || 
+                    this.unofficialSubjects().find(s => s.id === subjectId);
+    const child = this.child();
+    
+    this.selectedTeacher.set({
+      id: teacher.id,
+      fullname: teacher.fullname,
+      subjectId: subjectId,
+      subjectName: subject?.name || null,
+      schoolId: child?.school_id || null,
+      schoolLevel: child?.school_level || null
+    });
+    this.showTeacherModal.set(true);
+  }
+
+  /**
+   * Ferme le modal du professeur
+   */
+  closeTeacherModal(): void {
+    this.showTeacherModal.set(false);
+    this.selectedTeacher.set(null);
   }
 }
 

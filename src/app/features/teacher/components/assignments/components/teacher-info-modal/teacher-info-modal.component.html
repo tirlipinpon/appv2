@@ -34,14 +34,35 @@
         </div>
 
         <div class="teacher-details">
-          <div *ngIf="teacher()?.bio" class="detail-section">
+          <div class="detail-section">
             <strong>📝 Biographie :</strong>
-            <p>{{ teacher()?.bio }}</p>
+            <p *ngIf="teacher()?.bio">{{ teacher()?.bio }}</p>
+            <p *ngIf="!teacher()?.bio" class="no-info">Aucune biographie renseignée.</p>
           </div>
 
-          <div *ngIf="teacher()?.phone" class="detail-section">
+          <div class="detail-section">
+            <strong>📧 Email :</strong>
+            <p *ngIf="teacherEmail()">
+              <a [href]="'mailto:' + teacherEmail()" class="email-link">{{ teacherEmail() }}</a>
+            </p>
+            <p *ngIf="!teacherEmail()" class="no-info">Email non disponible.</p>
+          </div>
+
+          <div class="detail-section">
             <strong>📞 Téléphone :</strong>
-            <p>{{ teacher()?.phone }}</p>
+            <p *ngIf="teacher()?.phone">{{ teacher()?.phone }}</p>
+            <p *ngIf="!teacher()?.phone" class="no-info">Aucun téléphone renseigné.</p>
+          </div>
+
+          <div class="detail-section">
+            <strong>🖼️ Avatar :</strong>
+            <div *ngIf="teacher()?.avatar_url" class="avatar-preview">
+              <img [src]="teacher()?.avatar_url" [alt]="teacher()?.fullname || 'Avatar'" class="avatar-image">
+              <a [href]="teacher()?.avatar_url" target="_blank" rel="noopener noreferrer" class="avatar-link">
+                {{ teacher()?.avatar_url }}
+              </a>
+            </div>
+            <p *ngIf="!teacher()?.avatar_url" class="no-info">Aucun avatar renseigné.</p>
           </div>
 
           <div *ngIf="assignments().length > 0" class="detail-section">

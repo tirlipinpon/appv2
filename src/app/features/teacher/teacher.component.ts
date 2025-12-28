@@ -5,6 +5,8 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TeacherStore } from './store/index';
 import { Application } from './components/application/application';
 import { ErrorSnackbarService } from '../../shared/services/snackbar/error-snackbar.service';
+import { AuthService } from '../../shared/services/auth/auth.service';
+import { SupabaseService } from '../../shared/services/supabase/supabase.service';
 import type { Teacher } from './types/teacher';
 
 @Component({
@@ -20,7 +22,11 @@ export class TeacherComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
+  private readonly authService = inject(AuthService);
+  private readonly supabaseService = inject(SupabaseService);
   readonly store = inject(TeacherStore);
+  
+  readonly teacherEmail = signal<string | null>(null);
 
   // Signals pour contrôler l'affichage
   readonly showForm = signal(true);
@@ -72,8 +78,18 @@ export class TeacherComponent implements OnInit {
     });
   }
 
-  private loadTeacherData(): void {
+  private async loadTeacherData(): Promise<void> {
     this.application.loadTeacherProfile();
+    
+    // Charger l'email de l'utilisateur connecté
+    try {
+      const { data: sessionData } = await this.supabaseService.client.auth.getSession();
+      if (sessionData?.session && sessionData.session.user?.email) {
+        this.teacherEmail.set(sessionData.session.user.email);
+      }
+    } catch (err) {
+      console.warn('Impossible de récupérer l\'email:', err);
+    }
   }
 
 

@@ -28,6 +28,7 @@ export class TeacherInfoModalComponent {
   private readonly schoolsStore = inject(SchoolsStore);
 
   readonly teacher = signal<Teacher | null>(null);
+  readonly teacherEmail = signal<string | null>(null);
   readonly assignments = signal<TeacherAssignment[]>([]);
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
@@ -54,13 +55,30 @@ export class TeacherInfoModalComponent {
       .select('*')
       .eq('id', this.teacherId)
       .single()
-      .then(({ data, error }) => {
-        this.loading.set(false);
+      .then(async ({ data, error }) => {
         if (error) {
+          this.loading.set(false);
           this.error.set(error.message || 'Erreur lors du chargement du professeur');
           return;
         }
         this.teacher.set(data as Teacher);
+
+        // Récupérer l'email depuis la session si c'est l'utilisateur connecté
+        // Pour les autres utilisateurs, l'email n'est pas accessible directement
+        if (data?.profile_id) {
+          try {
+            const { data: sessionData } = await this.supabaseService.client.auth.getSession();
+            if (sessionData?.session && sessionData.session.user?.id === data.profile_id) {
+              this.teacherEmail.set(sessionData.session.user.email || null);
+            }
+            // Note: Pour récupérer l'email d'autres utilisateurs, il faudrait une fonction RPC
+            // ou stocker l'email dans la table teachers
+          } catch (err) {
+            console.warn('Impossible de récupérer l\'email du professeur:', err);
+          }
+        }
+
+        this.loading.set(false);
 
         // Charger les affectations du professeur pour cette matière si subjectId est fourni
         if (this.subjectId) {

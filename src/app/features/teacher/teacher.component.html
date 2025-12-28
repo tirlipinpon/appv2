@@ -48,6 +48,18 @@
           type="url" 
           formControlName="avatar_url"
           placeholder="https://example.com/avatar.jpg">
+        <div *ngIf="teacherForm.get('avatar_url')?.value" class="avatar-preview">
+          <img [src]="teacherForm.get('avatar_url')?.value" [alt]="'Avatar preview'" class="avatar-preview-image" 
+               onerror="this.style.display='none'">
+        </div>
+      </div>
+
+      <div *ngIf="teacherEmail()" class="form-group info-group">
+        <label>📧 Email de contact</label>
+        <p class="info-value">
+          <a [href]="'mailto:' + teacherEmail()" class="email-link">{{ teacherEmail() }}</a>
+        </p>
+        <small class="info-hint">Cet email est associé à votre compte et ne peut pas être modifié ici.</small>
       </div>
 
       <div class="form-actions">

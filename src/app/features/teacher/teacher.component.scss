@@ -138,6 +138,55 @@
     margin-top: 0.25rem;
     display: block;
   }
+
+  .avatar-preview {
+    margin-top: 0.5rem;
+
+    .avatar-preview-image {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 2px solid #ddd;
+    }
+  }
+
+  &.info-group {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+
+    label {
+      margin-bottom: 0.5rem;
+      color: #495057;
+    }
+
+    .info-value {
+      margin: 0.5rem 0;
+      font-size: 1rem;
+      color: #212529;
+
+      .email-link {
+        color: #007bff;
+        text-decoration: none;
+        transition: color 0.2s;
+
+        &:hover {
+          color: #0056b3;
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .info-hint {
+      display: block;
+      margin-top: 0.5rem;
+      color: #6c757d;
+      font-size: 0.875rem;
+      font-style: italic;
+    }
+  }
 }
 
 .form-actions {
