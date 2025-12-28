@@ -2,7 +2,6 @@
 @use '../../../../../styles/mixins' as *;
 
 .dashboard-container {
-  min-height: 100vh;
   background: $color-bg-secondary;
 }
 
@@ -34,7 +33,24 @@
   }
 }
 
-.assignment-form-container{background:#f9f9f9;border-radius:8px;padding:1.5rem;margin:2rem 0}
+.assignment-section {
+  background: $color-bg-secondary;
+  padding: $spacing-md;
+  max-width: $container-max-width;
+  margin: 0 auto;
+
+  @include respond-to(md) {
+    padding: $spacing-xl;
+  }
+}
+
+.assignment-form-container {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
 .nested-form{background:#fff;border:1px solid #ddd;border-radius:4px;padding:1rem;margin:1rem 0}
 .form-group{margin-bottom:1.5rem}
 .form-group label{display:block;margin-bottom:.5rem;font-weight:500;color:#333}

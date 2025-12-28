@@ -804,23 +804,31 @@ export class TeacherAssignmentService {
           return of({ sharedAssignments: [], error: fetchError || null });
         }
 
-        const schoolLevel = sourceAssignment.school_level || '';
-        
         // Construire la requête pour trouver les autres affectations
+        // On cherche les affectations avec le même subject_id et school_id
+        // (même si le school_level est différent, pour être cohérent avec l'affichage "Autre prof")
         let query = this.supabaseService.client
           .from('teacher_assignments')
           .select('*')
           .eq('subject_id', sourceAssignment.subject_id)
-          .eq('school_level', schoolLevel)
           .is('deleted_at', null)
           .neq('id', assignmentId); // Exclure l'affectation actuelle
 
+        // Exclure les affectations du même professeur (pour ne compter que les autres professeurs)
+        if (sourceAssignment.teacher_id) {
+          query = query.neq('teacher_id', sourceAssignment.teacher_id);
+        }
+
         // Gérer school_id (peut être null)
+        // On filtre par school_id pour trouver les affectations dans la même école
         if (sourceAssignment.school_id) {
           query = query.eq('school_id', sourceAssignment.school_id);
         } else {
           query = query.is('school_id', null);
         }
+        
+        // Note: On ne filtre plus par school_level pour être cohérent avec l'affichage "Autre prof"
+        // qui montre tous les professeurs qui enseignent la même matière dans la même école
 
         return from(query).pipe(
           switchMap(({ data: assignments, error }) => {
