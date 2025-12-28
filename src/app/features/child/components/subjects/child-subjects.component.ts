@@ -33,6 +33,8 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
   readonly enrollments = signal<{ subject_id: string; selected: boolean }[]>([]);
   readonly searchQuery = signal<string>('');
   readonly searchResults = signal<(Subject & { school_level?: string | null })[]>([]);
+  readonly activeSubjectsSearchQuery = signal<string>('');
+  readonly availableSubjectsSearchQuery = signal<string>('');
   readonly categoriesBySubject = signal<Map<string, SubjectCategory[]>>(new Map());
   readonly categoryEnrollments = signal<CategoryEnrollment[]>([]);
   readonly expandedSubjects = signal<Set<string>>(new Set()); // Matières avec sous-catégories visibles
@@ -446,6 +448,21 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     return result;
   });
 
+  readonly filteredSelectedSubjects = computed(() => {
+    const subjects = this.selectedSubjects();
+    const query = this.activeSubjectsSearchQuery().trim().toLowerCase();
+    
+    if (!query) {
+      return subjects;
+    }
+    
+    return subjects.filter(s => 
+      s.name.toLowerCase().includes(query) ||
+      s.type.toLowerCase().includes(query) ||
+      (s.school_level && getSchoolLevelLabel(s.school_level).toLowerCase().includes(query))
+    );
+  });
+
   // Effect pour charger les stats de jeux quand les matières changent
   private readonly loadGamesStatsEffect = effect(() => {
     const selectedSubjects = this.selectedSubjects();
@@ -469,6 +486,21 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
       return filtered.filter(s => s.type === typeFilter);
     }
     return filtered;
+  });
+
+  readonly filteredUnselectedSubjects = computed(() => {
+    const subjects = this.unselectedSubjects();
+    const query = this.availableSubjectsSearchQuery().trim().toLowerCase();
+    
+    if (!query) {
+      return subjects;
+    }
+    
+    return subjects.filter(s => 
+      s.name.toLowerCase().includes(query) ||
+      s.type.toLowerCase().includes(query) ||
+      (s.school_level && getSchoolLevelLabel(s.school_level).toLowerCase().includes(query))
+    );
   });
   isUnofficial(subjectId: string): boolean {
     const isInAvailable = this.availableSubjects().some(s => s.id === subjectId);

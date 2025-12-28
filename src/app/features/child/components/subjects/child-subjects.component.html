@@ -33,11 +33,19 @@
     <div class="subjects-grid">
       <div class="subjects-column active-column">
         <div class="column-header">
-          <h2>📖 Matières activées</h2>
-          <span class="count-badge">{{ selectedSubjects().length }}</span>
+          <div class="column-header-top">
+            <h2>📖 Matières activées</h2>
+            <input 
+              type="text" 
+              class="column-search-input"
+              placeholder="Rechercher..." 
+              [value]="activeSubjectsSearchQuery()" 
+              (input)="activeSubjectsSearchQuery.set($any($event.target).value)">
+            <span class="count-badge">{{ filteredSelectedSubjects().length }}</span>
+          </div>
         </div>
         <div class="subjects-list">
-          <div *ngFor="let s of selectedSubjects()" class="subject-card active" (click)="$event.stopPropagation()">
+          <div *ngFor="let s of filteredSelectedSubjects()" class="subject-card active" (click)="$event.stopPropagation()">
             <div class="subject-header">
               <div class="subject-header-top">
                 <div class="subject-info">
@@ -102,19 +110,30 @@
               </div>
             </div>
           </div>
-          <div *ngIf="selectedSubjects().length === 0" class="empty-state">
+          <div *ngIf="filteredSelectedSubjects().length === 0 && activeSubjectsSearchQuery().trim().length === 0" class="empty-state">
             <p class="muted">Aucune matière activée.</p>
+          </div>
+          <div *ngIf="filteredSelectedSubjects().length === 0 && activeSubjectsSearchQuery().trim().length > 0" class="empty-state">
+            <p class="muted">Aucune matière activée ne correspond à "{{ activeSubjectsSearchQuery() }}".</p>
           </div>
         </div>
       </div>
 
       <div class="subjects-column available-column">
         <div class="column-header">
-          <h2>📚 Matières disponibles</h2>
-          <span class="count-badge">{{ unselectedSubjects().length }}</span>
+          <div class="column-header-top">
+            <h2>📚 Matières disponibles</h2>
+            <input 
+              type="text" 
+              class="column-search-input"
+              placeholder="Rechercher..." 
+              [value]="availableSubjectsSearchQuery()" 
+              (input)="availableSubjectsSearchQuery.set($any($event.target).value)">
+            <span class="count-badge">{{ filteredUnselectedSubjects().length }}</span>
+          </div>
         </div>
         <div class="subjects-list">
-          <div *ngFor="let s of unselectedSubjects()" class="subject-card" (click)="$event.stopPropagation()">
+          <div *ngFor="let s of filteredUnselectedSubjects()" class="subject-card" (click)="$event.stopPropagation()">
             <div class="subject-header">
               <div class="subject-header-top">
                 <div class="subject-info">
@@ -174,8 +193,11 @@
               </div>
             </div>
           </div>
-          <div *ngIf="unselectedSubjects().length === 0" class="empty-state">
+          <div *ngIf="filteredUnselectedSubjects().length === 0 && availableSubjectsSearchQuery().trim().length === 0" class="empty-state">
             <p class="muted">Aucune autre matière disponible.</p>
+          </div>
+          <div *ngIf="filteredUnselectedSubjects().length === 0 && availableSubjectsSearchQuery().trim().length > 0" class="empty-state">
+            <p class="muted">Aucune matière disponible ne correspond à "{{ availableSubjectsSearchQuery() }}".</p>
           </div>
         </div>
       </div>
