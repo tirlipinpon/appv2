@@ -1,0 +1,49 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.scroll-to-top-btn {
+  position: fixed;
+  bottom: $spacing-xl;
+  right: $spacing-xl;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: $color-primary;
+  color: $color-white;
+  border: none;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  cursor: pointer;
+  box-shadow: $shadow-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $z-index-fixed;
+  transition: all $transition-base;
+  opacity: 0.9;
+
+  &:hover {
+    opacity: 1;
+    background-color: $color-primary-dark;
+    transform: translateY(-2px);
+    box-shadow: $shadow-xl;
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:focus {
+    outline: none;
+    @include focus-ring($color-primary);
+  }
+
+  @media (max-width: $breakpoint-md - 1px) {
+    bottom: $spacing-lg;
+    right: $spacing-lg;
+    width: 44px;
+    height: 44px;
+    font-size: $font-size-lg;
+  }
+}
+
