@@ -29,6 +29,15 @@
             <div class="child-info">
               <h4>{{ child.firstname }} {{ child.lastname }}</h4>
               <p *ngIf="child.birthdate">Né(e) le : {{ child.birthdate | date:'dd/MM/yyyy' }}</p>
+              <p class="child-stats">
+                <span *ngIf="getChildStats(child.id).subjectsCount > 0">
+                  {{ getChildStats(child.id).subjectsCount }} matière{{ getChildStats(child.id).subjectsCount > 1 ? 's' : '' }}
+                </span>
+                <span *ngIf="getChildStats(child.id).categoriesCount > 0" class="categories-count">
+                  <span *ngIf="getChildStats(child.id).subjectsCount > 0"> • </span>
+                  {{ getChildStats(child.id).categoriesCount }} sous-matière{{ getChildStats(child.id).categoriesCount > 1 ? 's' : '' }}
+                </span>
+              </p>
             </div>
             <div class="child-actions">
               <a 

@@ -10,6 +10,9 @@ import { Child } from '../child/types/child';
 import { ActionLinksComponent, ActionLink } from '../../shared/components/action-links/action-links.component';
 import { AssignmentsSectionComponent } from '../teacher/components/assignments/components/assignments-section/assignments-section.component';
 import { AppInitializationService } from '../../shared/services/initialization/app-initialization.service';
+import { ParentSubjectService } from '../child/services/subject/parent-subject.service';
+import { forkJoin, of } from 'rxjs';
+import { switchMap, map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-dashboard',
@@ -22,6 +25,7 @@ export class DashboardComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly appInitializationService = inject(AppInitializationService);
+  private readonly parentSubjectService = inject(ParentSubjectService);
   readonly parentStore = inject(ParentStore);
   readonly childStore = inject(ChildrenStore);
   readonly teacherStore = inject(TeacherStore);
@@ -30,6 +34,9 @@ export class DashboardComponent implements OnInit {
   activeRole: string | null = null;
   private lastLoadedTeacherId: string | null = null;
   private readonly activeRoleSig = signal<string | null>(null);
+
+  // Signal pour stocker les statistiques de matières par enfant
+  private readonly childStatsSig = signal<Map<string, { subjectsCount: number; categoriesCount: number }>>(new Map());
 
   // Computed signals pour le bouton parent
   readonly hasParent = computed(() => this.parentStore.hasParent());
@@ -93,6 +100,113 @@ export class DashboardComponent implements OnInit {
       }
     }
   });
+
+  // Effect pour charger les statistiques de matières pour chaque enfant actif
+  private lastLoadedChildrenIds: string[] = [];
+  private readonly loadChildStatsEffect = effect(() => {
+    if (this.activeRoleSig() === 'parent') {
+      const activeChildren = this.activeChildren();
+      if (activeChildren.length > 0) {
+        // Vérifier si les enfants ont changé pour éviter les rechargements inutiles
+        const currentIds = activeChildren.map(c => c.id).sort().join(',');
+        const lastIds = this.lastLoadedChildrenIds.sort().join(',');
+        
+        if (currentIds !== lastIds) {
+          this.lastLoadedChildrenIds = activeChildren.map(c => c.id);
+          this.loadChildrenStats(activeChildren);
+        }
+      }
+    }
+  });
+
+  // Méthode pour charger les statistiques de tous les enfants
+  private loadChildrenStats(children: Child[]): void {
+    const statsMap = new Map<string, { subjectsCount: number; categoriesCount: number }>();
+    
+    // Initialiser toutes les entrées avec 0 pour éviter les erreurs d'affichage
+    children.forEach(child => {
+      statsMap.set(child.id, { subjectsCount: 0, categoriesCount: 0 });
+    });
+    
+    this.childStatsSig.set(statsMap);
+
+    // Charger les stats pour chaque enfant en parallèle
+    children.forEach(child => {
+      forkJoin({
+        enrollments: this.parentSubjectService.getEnrollments(child.id),
+        categoryEnrollments: this.parentSubjectService.getCategoryEnrollments(child.id),
+        availableSubjects: this.parentSubjectService.getAvailableSubjectsForChild(child)
+      }).pipe(
+        // Charger les catégories pour les matières sélectionnées ET disponibles
+        switchMap(({ enrollments, categoryEnrollments, availableSubjects }) => {
+          // Obtenir les IDs des matières disponibles
+          const availableSubjectIds = new Set((availableSubjects.subjects || []).map(s => s.id));
+          
+          // Filtrer les enrollments pour ne garder que ceux qui sont :
+          // 1. Sélectionnés (selected=true)
+          // 2. Disponibles (présents dans availableSubjects)
+          // C'est la même logique que selectedSubjects dans child-subjects.component.ts
+          const selectedAndAvailableSubjectIds = enrollments.enrollments
+            ?.filter(e => e.selected === true && availableSubjectIds.has(e.subject_id))
+            .map(e => e.subject_id) || [];
+          
+          if (selectedAndAvailableSubjectIds.length === 0) {
+            // Pas de matières sélectionnées ET disponibles, retourner avec Map vide pour les catégories
+            return of({
+              enrollments: { enrollments: enrollments.enrollments || [], error: enrollments.error },
+              categoryEnrollments: { enrollments: categoryEnrollments.enrollments || [], error: categoryEnrollments.error },
+              categoriesBySubject: new Map<string, Array<{ id: string; subject_id: string }>>(),
+              selectedAndAvailableSubjectIds: []
+            });
+          }
+          
+          // Charger les catégories pour les matières sélectionnées ET disponibles
+          return this.parentSubjectService.getSubjectCategoriesBatch(selectedAndAvailableSubjectIds).pipe(
+            map((categoriesResult) => ({
+              enrollments: { enrollments: enrollments.enrollments || [], error: enrollments.error },
+              categoryEnrollments: { enrollments: categoryEnrollments.enrollments || [], error: categoryEnrollments.error },
+              categoriesBySubject: categoriesResult.categoriesBySubject,
+              selectedAndAvailableSubjectIds
+            }))
+          );
+        })
+      ).subscribe({
+        next: ({ enrollments, categoryEnrollments, categoriesBySubject, selectedAndAvailableSubjectIds }) => {
+          // Compter uniquement les matières qui sont sélectionnées ET disponibles
+          // (même logique que selectedSubjects dans child-subjects.component.ts)
+          const subjectsCount = selectedAndAvailableSubjectIds.length;
+          
+          // Obtenir tous les IDs de catégories pour les matières sélectionnées ET disponibles
+          const validCategoryIds = new Set<string>();
+          categoriesBySubject.forEach((categories) => {
+            categories.forEach(category => {
+              validCategoryIds.add(category.id);
+            });
+          });
+          
+          // Compter uniquement les catégories qui :
+          // 1. Sont sélectionnées (selected=true)
+          // 2. Appartiennent aux matières sélectionnées ET disponibles
+          const categoriesCount = categoryEnrollments.enrollments?.filter(e => 
+            e.selected === true && validCategoryIds.has(e.subject_category_id)
+          ).length || 0;
+          
+          const currentStats = this.childStatsSig();
+          currentStats.set(child.id, { subjectsCount, categoriesCount });
+          this.childStatsSig.set(new Map(currentStats));
+        },
+        error: (err) => {
+          console.error(`Error loading stats for child ${child.id}:`, err);
+          // En cas d'erreur, garder 0 comme valeur par défaut
+        }
+      });
+    });
+  }
+
+  // Méthode helper pour obtenir les statistiques d'un enfant
+  getChildStats(childId: string): { subjectsCount: number; categoriesCount: number } {
+    return this.childStatsSig().get(childId) || { subjectsCount: 0, categoriesCount: 0 };
+  }
 
   // NOTE: Le chargement des stats de jeux est géré par AssignmentsSectionComponent
   // pour éviter les doublons de requêtes réseau
