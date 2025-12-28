@@ -88,7 +88,7 @@ export class GamesStatsService {
       .map(([type, count]) => `${type.toLowerCase()} (${count})`)
       .join(' • ');
 
-    return `🎮 ${stats.total} jeu${stats.total > 1 ? 'x' : ''} : ${formattedTypes}`;
+    return `${stats.total} jeu${stats.total > 1 ? 'x' : ''} : ${formattedTypes}`;
   }
 
   /**
@@ -161,7 +161,7 @@ export class GamesStatsService {
       .map(([type, count]) => `${type.toLowerCase()} (${count})`)
       .join(' • ');
 
-    return `🎮 ${stats.total} jeu${stats.total > 1 ? 'x' : ''} : ${formattedTypes}`;
+    return `${stats.total} jeu${stats.total > 1 ? 'x' : ''} : ${formattedTypes}`;
   }
 
   /**
