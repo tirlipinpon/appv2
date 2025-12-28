@@ -152,14 +152,15 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     const enrollments = this.enrollments();
     const child = this.child();
     
-    // Nettoyer les matières scolaires qui ne sont plus dans availableSubjects
-    // (c'est-à-dire dont l'affectation a été supprimée)
+    // Nettoyer les matières scolaires qui ne sont plus dans availableSubjects ET qui ne sont plus sélectionnées
+    // (c'est-à-dire dont l'affectation a été supprimée ET qui ont été désactivées)
     const availableIds = new Set(this.availableSubjects().map(s => s.id));
+    const selectedIds = new Set(enrollments.filter(e => e.selected === true).map(e => e.subject_id));
     const currentUnofficial = this.unofficialSubjects();
     const cleanedUnofficial = currentUnofficial.filter(s => {
-      // Si c'est une matière scolaire, elle doit être dans availableSubjects (affectation active)
+      // Si c'est une matière scolaire, la garder si elle est dans availableSubjects OU si elle est toujours sélectionnée (hors programme)
       if (s.type === 'scolaire') {
-        return availableIds.has(s.id);
+        return availableIds.has(s.id) || selectedIds.has(s.id);
       }
       // Pour les matières extra/optionnelles, on peut les garder
       return true;
@@ -234,16 +235,9 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
             return s;
           });
           
-          // Filtrer les matières scolaires qui ne sont pas dans availableSubjects
-          // (car cela signifie que l'affectation a été supprimée)
-          const filteredSubjects = enrichedSubjects.filter(s => {
-            // Si c'est une matière scolaire, elle doit être dans availableSubjects (affectation active)
-            if (s.type === 'scolaire') {
-              return availableIds.has(s.id);
-            }
-            // Pour les matières extra/optionnelles, on peut les charger
-            return true;
-          });
+          // Ne pas filtrer les matières scolaires "hors programme" (celles qui sont sélectionnées mais pas dans availableSubjects)
+          // Ces matières sont activées manuellement même si elles n'ont pas d'affectation active pour le niveau de l'enfant
+          const filteredSubjects = enrichedSubjects;
           
           // Dédupliquer par ID pour éviter les doublons (garder seulement les nouvelles matières)
           const currentUnofficial = this.unofficialSubjects();
@@ -423,13 +417,13 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     const fromAvailable = this.availableSubjects().filter(s => selectedIds.has(s.id));
     
     // Matières hors programme qui sont sélectionnées (exclure celles déjà dans availableSubjects)
-    // IMPORTANT: Pour les matières scolaires, ne les afficher que si elles sont dans availableSubjects
-    // (c'est-à-dire si l'affectation existe toujours)
+    // IMPORTANT: Pour les matières scolaires, les afficher si elles sont dans availableSubjects (affectation active)
+    // OU si elles sont sélectionnées dans unofficialSubjects (hors programme activé manuellement)
     const availableIds = new Set(fromAvailable.map(s => s.id));
     const fromUnofficial = this.unofficialSubjects().filter(s => {
-      // Si c'est une matière scolaire, elle doit être dans availableSubjects (affectation active)
+      // Si c'est une matière scolaire, l'afficher si elle est dans availableSubjects OU si elle est sélectionnée (hors programme)
       if (s.type === 'scolaire') {
-        return availableIds.has(s.id);
+        return availableIds.has(s.id) || selectedIds.has(s.id);
       }
       // Pour les matières extra/optionnelles, on peut les afficher même si pas dans availableSubjects
       return selectedIds.has(s.id) && !availableIds.has(s.id);
