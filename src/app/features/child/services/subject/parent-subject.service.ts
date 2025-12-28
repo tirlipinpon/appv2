@@ -179,7 +179,7 @@ export class ParentSubjectService {
           .map((subject: any) => {
             const { _source_updated_at, _link_created_at, ...rest } = subject;
             return rest;
-          });
+        });
         
         return {
           subjects: cleanedSubjects.sort((a, b) => a.name.localeCompare(b.name)),
