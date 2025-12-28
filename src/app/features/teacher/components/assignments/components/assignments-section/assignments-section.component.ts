@@ -8,6 +8,7 @@ import { GamesStatsDisplayComponent } from '../../../../../../shared/components/
 import { GamesStatsService } from '../../../../../../shared/services/games-stats/games-stats.service';
 import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../transfer-assignment-dialog/transfer-assignment-dialog.component';
 import { ChildrenListModalComponent } from '../children-list-modal/children-list-modal.component';
+import { TeacherInfoModalComponent } from '../teacher-info-modal/teacher-info-modal.component';
 import { getSchoolLevelLabel, SCHOOL_LEVELS } from '../../../../utils/school-levels.util';
 import type { TeacherAssignment } from '../../../../types/teacher-assignment';
 import type { SubjectCategory } from '../../../../types/subject';
@@ -15,7 +16,7 @@ import type { Game } from '../../../../types/game';
 import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
 import { CategoriesCacheService } from '../../../../../../shared/services/categories-cache/categories-cache.service';
 import { SchoolsStore } from '../../../../../../shared/store/schools.store';
-import { forkJoin } from 'rxjs';
+import { forkJoin, firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 import type { PostgrestError } from '@supabase/supabase-js';
 
@@ -29,6 +30,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
     GamesStatsDisplayComponent,
     TransferAssignmentDialogComponent,
     ChildrenListModalComponent,
+    TeacherInfoModalComponent,
   ],
   templateUrl: './assignments-section.component.html',
   styleUrl: './assignments-section.component.scss'
@@ -69,6 +71,10 @@ export class AssignmentsSectionComponent {
   readonly showChildrenModal = signal<boolean>(false);
   readonly selectedCategoryForChildren = signal<{ id: string; name: string; schoolId: string | null; schoolLevel: string | null } | null>(null);
   readonly selectedSubjectForChildren = signal<{ id: string; name: string; schoolId: string | null; schoolLevel: string | null } | null>(null);
+
+  // Signal pour gérer l'affichage du modal du professeur
+  readonly showTeacherModal = signal<boolean>(false);
+  readonly selectedTeacher = signal<{ id: string; fullname: string | null; subjectId: string | null; subjectName: string | null; schoolId: string | null; schoolLevel: string | null } | null>(null);
 
 
   // Filtre par école
@@ -184,7 +190,6 @@ export class AssignmentsSectionComponent {
   // Effect pour charger le nombre d'enfants pour chaque affectation
   private readonly loadStudentCountsEffect = effect(() => {
     const assignments = this.filteredAssignments();
-    const allAssignments = this.teacherAssignments();
     const currentTeacherId = this.getCurrentTeacherId();
     
     if (assignments.length === 0) {
@@ -473,12 +478,25 @@ export class AssignmentsSectionComponent {
   readonly getSchoolLevelLabel = getSchoolLevelLabel;
 
   // Méthode pour supprimer une affectation
-  onDeleteAssignment(assignmentId: string): void {
+  async onDeleteAssignment(assignmentId: string): Promise<void> {
     const assignment = this.filteredAssignments().find(a => a.id === assignmentId);
     if (!assignment) {
       console.error('Affectation non trouvée:', assignmentId);
       return;
     }
+
+    // Vérifier si l'affectation est partagée avec d'autres professeurs
+    let sharedAssignments: { assignment: TeacherAssignment; teacher: { id: string; fullname: string | null } }[] = [];
+    try {
+      const sharedResult = await firstValueFrom(this.infrastructure.getSharedAssignments(assignmentId));
+      if (!sharedResult.error && sharedResult.sharedAssignments) {
+        sharedAssignments = sharedResult.sharedAssignments;
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification des affectations partagées:', error);
+    }
+
+    const hasSharedAssignments = sharedAssignments.length > 0;
 
     // Récupérer toutes les informations nécessaires
     const studentCount = this.getStudentCount(assignmentId);
@@ -522,9 +540,22 @@ export class AssignmentsSectionComponent {
     
     message += `\n⚠️ CONSÉQUENCES DE LA SUPPRESSION :\n\n`;
     message += `• Cette affectation sera définitivement supprimée\n`;
-    if (studentCount > 0) {
-      message += `• ${studentCount} enfant(s) unique(s) ne seront plus associés à cette affectation\n`;
+    
+    // Adapter le message selon qu'il y a des affectations partagées ou non
+    if (hasSharedAssignments) {
+      const otherTeachersNames = sharedAssignments
+        .map(sa => sa.teacher.fullname || 'Professeur sans nom')
+        .join(', ');
+      message += `• Cette affectation est partagée avec ${sharedAssignments.length} autre(s) professeur(s) : ${otherTeachersNames}\n`;
+      if (studentCount > 0) {
+        message += `• Les ${studentCount} enfant(s) resteront associés à cette matière via les autres affectations\n`;
+      }
+    } else {
+      if (studentCount > 0) {
+        message += `• ${studentCount} enfant(s) unique(s) ne seront plus associés à cette affectation\n`;
+      }
     }
+    
     if (categoriesCount > 0) {
       message += `• Les ${categoriesCount} catégorie(s) et leurs ${totalGamesCount} jeu(x) resteront dans la matière mais ne seront plus accessibles via cette affectation\n`;
     }
@@ -737,6 +768,26 @@ export class AssignmentsSectionComponent {
     this.showChildrenModal.set(false);
     this.selectedCategoryForChildren.set(null);
     this.selectedSubjectForChildren.set(null);
+  }
+
+  // Ouvrir le modal du professeur
+  openTeacherModal(teacher: { id: string; fullname: string | null }, assignment: TeacherAssignment): void {
+    const subjectName = this.getAssignmentSubjectName(assignment);
+    this.selectedTeacher.set({
+      id: teacher.id,
+      fullname: teacher.fullname,
+      subjectId: assignment.subject_id || null,
+      subjectName: subjectName,
+      schoolId: assignment.school_id || null,
+      schoolLevel: assignment.school_level || null
+    });
+    this.showTeacherModal.set(true);
+  }
+
+  // Fermer le modal du professeur
+  closeTeacherModal(): void {
+    this.showTeacherModal.set(false);
+    this.selectedTeacher.set(null);
   }
 
   // Obtenir les autres professeurs d'une matière
