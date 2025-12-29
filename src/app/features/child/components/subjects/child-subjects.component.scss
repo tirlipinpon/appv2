@@ -32,73 +32,86 @@
     }
   }
 
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xl;
+    flex-wrap: nowrap;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-md;
+    }
+  }
+
   h1 {
     margin: 0;
     color: $color-text-primary;
-    font-size: $font-size-3xl;
+    font-size: $font-size-2xl;
     font-weight: $font-weight-semibold;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      font-size: $font-size-xl;
+      white-space: normal;
+    }
   }
-}
-
-.subjects-content {
-  max-width: $container-max-width;
-  margin: 0 auto;
-  padding: 0 $spacing-2xl $spacing-2xl;
-
-  @media (max-width: $breakpoint-md - 1px) {
-    padding: 0 $spacing-md $spacing-xl;
-  }
-}
-
-.child-info-card {
-  @include card-base;
-  padding: $spacing-lg $spacing-xl;
-  margin-bottom: $spacing-xl;
 
   .info-content {
     display: flex;
     align-items: center;
-    gap: $spacing-xl;
-    flex-wrap: wrap;
+    gap: $spacing-lg;
+    flex-wrap: nowrap;
+    flex: 1;
+    min-width: 0;
 
     .info-label {
       font-weight: $font-weight-semibold;
       color: $color-text-secondary;
       font-size: $font-size-sm;
+      white-space: nowrap;
     }
 
     .info-value {
       color: $color-text-primary;
-      font-size: $font-size-base;
+      font-size: $font-size-sm;
+      white-space: nowrap;
     }
 
     .info-item {
       display: flex;
       align-items: center;
-      gap: $spacing-md;
+      gap: $spacing-sm;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .filter-section {
       display: flex;
       align-items: center;
-      gap: $spacing-md;
+      gap: $spacing-sm;
       margin-left: auto;
+      flex-shrink: 0;
       
       label {
         font-weight: $font-weight-medium;
         color: $color-text-primary;
         white-space: nowrap;
+        font-size: $font-size-sm;
       }
       
       select {
-        padding: $spacing-xs $spacing-md;
+        padding: $spacing-xs $spacing-sm;
         border: 1px solid $color-border-light;
         border-radius: $border-radius-md;
         background: $color-bg-primary;
         color: $color-text-primary;
-        font-size: $font-size-base;
+        font-size: $font-size-sm;
         cursor: pointer;
         transition: border-color $transition-base;
+        white-space: nowrap;
         
         &:hover {
           border-color: $color-primary;
@@ -113,10 +126,15 @@
     }
 
     // Responsive: sur les petits écrans, tout passe en colonne
-    @media (max-width: 768px) {
-      flex-direction: column;
-      align-items: flex-start;
+    @media (max-width: $breakpoint-md - 1px) {
+      flex-wrap: wrap;
       gap: $spacing-md;
+      width: 100%;
+
+      .info-item {
+        flex: 1 1 auto;
+        min-width: calc(50% - #{$spacing-md / 2});
+      }
 
       .filter-section {
         margin-left: 0;
@@ -125,12 +143,24 @@
       }
     }
 
-    // Sur les écrans moyens et plus grands, tout sur une ligne
-    @include respond-to(md) {
-      flex-wrap: nowrap;
+    // Sur les écrans moyens, tout sur une ligne avec espacement réduit
+    @media (min-width: $breakpoint-md) and (max-width: $breakpoint-lg - 1px) {
+      gap: $spacing-md;
+      font-size: $font-size-sm;
     }
   }
 }
+
+.subjects-content {
+  max-width: $container-max-width;
+  margin: 0 auto;
+  padding: 0 $spacing-2xl $spacing-2xl;
+
+  @media (max-width: $breakpoint-md - 1px) {
+    padding: 0 $spacing-md $spacing-xl;
+  }
+}
+
 
 .filter-section {
   @include card-base;

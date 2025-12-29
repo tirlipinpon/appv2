@@ -3,14 +3,13 @@
     <a routerLink="/dashboard" class="btn-back">
       ← Retour au dashboard
     </a>
-    <h1>Matières de {{ c.firstname }} {{ c.lastname }}</h1>
-  </header>
-
-  <main class="subjects-content">
-    <div class="child-info-card">
+    <div class="header-content">
+      <h1>Matières de {{ c.firstname }} {{ c.lastname }}</h1>
       <div class="info-content">
-        <span class="info-label">École:</span>
-        <span class="info-value">{{ schoolName() || c.school_id || 'Non renseignée' }}</span>
+        <span class="info-item">
+          <span class="info-label">École:</span>
+          <span class="info-value">{{ schoolName() || c.school_id || 'Non renseignée' }}</span>
+        </span>
         <span class="info-item" *ngIf="c.school_level">
           <span class="info-label">Niveau:</span>
           <span class="info-value">{{ getSchoolLevelLabel(c.school_level) }}</span>
@@ -29,6 +28,9 @@
         </span>
       </div>
     </div>
+  </header>
+
+  <main class="subjects-content">
 
     <div class="subjects-grid">
       <div class="subjects-column active-column">
