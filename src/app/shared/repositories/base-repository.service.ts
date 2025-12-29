@@ -1,4 +1,3 @@
-import { inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { SupabaseService } from '../services/supabase/supabase.service';
@@ -13,18 +12,44 @@ export interface RepositoryResult<T> {
 }
 
 /**
- * Classe abstraite de base pour tous les repositories
+ * Helper pour injecter les dépendances communes des repositories
+ * Utilisé pour éviter les problèmes avec inject() dans les classes de base
+ */
+export interface RepositoryDependencies {
+  supabaseService: SupabaseService;
+  authCoreService: AuthCoreService;
+  cacheService: CacheService;
+  logger: LoggerService;
+}
+
+/**
+ * Classe de base pour tous les repositories
  * Principe DIP : Abstraction pour la couche de données
  * Principe OCP : Extensible par héritage
+ * 
+ * NOTE: Cette classe utilise la composition via dépendances injectées
+ * pour éviter les problèmes de bundling avec Vite et l'héritage
  */
-export abstract class BaseRepository<T> {
-  protected readonly supabaseService = inject(SupabaseService);
-  protected readonly authCoreService = inject(AuthCoreService);
-  protected readonly cacheService = inject(CacheService);
-  protected readonly logger = inject(LoggerService);
+export class BaseRepository<T> {
+  protected readonly supabaseService: SupabaseService;
+  protected readonly authCoreService: AuthCoreService;
+  protected readonly cacheService: CacheService;
+  protected readonly logger: LoggerService;
+  protected readonly tableName: string;
+  protected readonly cacheKey: string;
 
-  protected abstract readonly tableName: string;
-  protected abstract readonly cacheKey: string;
+  constructor(
+    tableName: string,
+    cacheKey: string,
+    dependencies: RepositoryDependencies
+  ) {
+    this.tableName = tableName;
+    this.cacheKey = cacheKey;
+    this.supabaseService = dependencies.supabaseService;
+    this.authCoreService = dependencies.authCoreService;
+    this.cacheService = dependencies.cacheService;
+    this.logger = dependencies.logger;
+  }
 
   /**
    * Récupère un enregistrement par ID

@@ -11,7 +11,7 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import type { Session } from '@supabase/supabase-js';
-import { AuthService } from '../../../../shared/services/auth/auth.service';
+import { getAuthService } from '../../../../shared/services/auth/auth-service.factory';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
 
 const passwordsMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
@@ -34,7 +34,7 @@ const passwordsMatchValidator: ValidatorFn = (group: AbstractControl): Validatio
 })
 export class PasswordResetComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
-  private readonly authService = inject(AuthService);
+  private readonly authService = getAuthService();
   private readonly supabaseService = inject(SupabaseService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

@@ -1,7 +1,8 @@
 import { Component, OnInit, inject, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { AuthService, Profile } from '../../shared/services/auth/auth.service';
+import { getAuthService } from '../../shared/services/auth/auth-service.factory';
+import type { Profile } from '../../shared/services/auth/auth.service';
 import { ParentStore } from '../parent/store/index';
 import { ChildrenStore } from '../../shared/store/children.store';
 import { TeacherStore } from '../teacher/store/index';
@@ -22,7 +23,7 @@ import { switchMap, map } from 'rxjs/operators';
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
-  private readonly authService = inject(AuthService);
+  private readonly authService = getAuthService();
   private readonly router = inject(Router);
   private readonly appInitializationService = inject(AppInitializationService);
   private readonly parentSubjectService = inject(ParentSubjectService);
@@ -215,8 +216,12 @@ export class DashboardComponent implements OnInit {
     this.profile = await this.authService.getProfile();
     this.activeRole = this.authService.getActiveRole();
     
+    console.log('[Dashboard] OnInit - Profile:', this.profile);
+    console.log('[Dashboard] OnInit - ActiveRole:', this.activeRole);
+    console.log('[Dashboard] OnInit - Profile roles:', this.profile?.roles);
+    
     // Si aucun rôle actif mais que le profil a des rôles, essayer de restaurer
-    if (!this.activeRole && this.profile) {
+    if (!this.activeRole && this.profile && this.profile.roles && Array.isArray(this.profile.roles)) {
       if (this.profile.roles.length === 1) {
         // Un seul rôle, le définir automatiquement
         this.authService.setActiveRole(this.profile.roles[0]);

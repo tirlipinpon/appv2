@@ -1,16 +1,17 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn, ActivatedRouteSnapshot } from '@angular/router';
-import { AuthService } from '../../../shared/services/auth/auth.service';
+import { getAuthService } from '../../../shared/services/auth/auth-service.factory';
 import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
 import { map, take, switchMap } from 'rxjs/operators';
 import { from } from 'rxjs';
+import type { User } from '@supabase/supabase-js';
 
 /**
  * Guard qui vérifie que l'utilisateur connecté est bien le parent de l'enfant
  * avant d'autoriser l'accès à la route
  */
 export const childParentGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
-  const authService = inject(AuthService);
+  const authService = getAuthService();
   const supabaseService = inject(SupabaseService);
   const router = inject(Router);
 
@@ -23,7 +24,7 @@ export const childParentGuard: CanActivateFn = (route: ActivatedRouteSnapshot) =
 
   return authService.currentUser$.pipe(
     take(1),
-    switchMap(user => {
+    switchMap((user: User | null) => {
       if (!user) {
         router.navigate(['/login']);
         return [false];

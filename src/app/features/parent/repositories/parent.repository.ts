@@ -1,8 +1,12 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { BaseRepository } from '../../../shared/repositories/base-repository.service';
+import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
+import { AuthCoreService } from '../../../core/auth/core/auth-core.service';
+import { CacheService } from '../../../shared/services/cache/cache.service';
+import { LoggerService } from '../../../shared/services/logging/logger.service';
 import type { Parent } from '../types/parent';
 
 /**
@@ -13,8 +17,14 @@ import type { Parent } from '../types/parent';
   providedIn: 'root',
 })
 export class ParentRepository extends BaseRepository<Parent> {
-  protected readonly tableName = 'parents';
-  protected readonly cacheKey = 'parent-profile';
+  constructor() {
+    super('parents', 'parent-profile', {
+      supabaseService: inject(SupabaseService),
+      authCoreService: inject(AuthCoreService),
+      cacheService: inject(CacheService),
+      logger: inject(LoggerService),
+    });
+  }
 
   /**
    * Vérifie si des enfants sont inscrits pour un parent donné

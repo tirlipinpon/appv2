@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../shared/services/auth/auth.service';
+import { getAuthService } from '../../shared/services/auth/auth-service.factory';
 
 @Component({
   selector: 'app-login',
@@ -13,7 +13,7 @@ import { AuthService } from '../../shared/services/auth/auth.service';
 })
 export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
-  private readonly authService = inject(AuthService);
+  private readonly authService = getAuthService();
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   readonly isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';

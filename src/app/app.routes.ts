@@ -17,6 +17,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/components/auth-confirm/auth-confirm.component').then(m => m.AuthConfirmComponent)
   },
   {
+    path: 'auth/verify-email',
+    loadComponent: () => import('./features/login/components/auth-confirm/auth-confirm.component').then(m => m.AuthConfirmComponent)
+  },
+  {
     path: 'auth/reset',
     loadComponent: () =>
       import('./features/login/components/password-reset/password-reset.component').then(m => m.PasswordResetComponent)

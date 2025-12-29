@@ -2,6 +2,9 @@
 export const environment = {
   production: false,
   supabaseUrl: 'VOTRE_URL_SUPABASE',
-  supabaseAnonKey: 'VOTRE_CLE_ANON'
+  supabaseAnonKey: 'VOTRE_CLE_ANON',
+  // Feature flag pour activer l'authentification personnalisée
+  // Mettre à true pour utiliser CustomAuthService au lieu de AuthService
+  customAuthEnabled: true
 };
 

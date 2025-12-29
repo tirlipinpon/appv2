@@ -1,24 +1,25 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn, ActivatedRouteSnapshot } from '@angular/router';
-import { AuthService } from '../../../shared/services/auth/auth.service';
+import { getAuthService } from '../../../shared/services/auth/auth-service.factory';
 import { map, take } from 'rxjs/operators';
+import type { Profile } from '../../../shared/services/auth/auth.service';
 
 export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
-  const authService = inject(AuthService);
+  const authService = getAuthService();
   const router = inject(Router);
 
   const requiredRole = route.data['role'] as string;
 
   return authService.currentProfile$.pipe(
     take(1),
-    map(profile => {
+    map((profile: Profile | null) => {
       if (!profile) {
         router.navigate(['/login']);
         return false;
       }
 
       // Vérifier que l'utilisateur a le rôle requis
-      if (!profile.roles.includes(requiredRole)) {
+      if (!profile.roles || !profile.roles.includes(requiredRole)) {
         router.navigate(['/dashboard']);
         return false;
       }

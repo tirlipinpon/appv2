@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
 import { ProfileService } from '../../../core/auth/profile/profile.service';
 import { AuthCoreService } from '../../../core/auth/core/auth-core.service';
+import { environment } from '../../../../environments/environment';
 import type { User } from '@supabase/supabase-js';
 
 export interface ConfirmationResult {
@@ -63,6 +64,44 @@ export class EmailConfirmationService {
 
       await this.handleUserConfirmed(data.user);
       return { success: true, user: data.user, error: null };
+    } catch (error) {
+      return { 
+        success: false, 
+        user: null, 
+        error: error instanceof Error ? error : new Error('Erreur inattendue')
+      };
+    }
+  }
+
+  /**
+   * Confirme l'email avec un token simple (pour l'authentification personnalisée)
+   * Appelle l'Edge Function auth-verify-email
+   */
+  async confirmWithToken(token: string): Promise<ConfirmationResult> {
+    try {
+      const response = await fetch(`${environment.supabaseUrl}/functions/v1/auth-verify-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': environment.supabaseAnonKey,
+          'Authorization': `Bearer ${environment.supabaseAnonKey}`,
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { 
+          success: false, 
+          user: null, 
+          error: new Error(data.error || 'Erreur lors de la vérification')
+        };
+      }
+
+      // L'email est maintenant vérifié, mais on n'a pas de User ici
+      // L'utilisateur devra se connecter après la vérification
+      return { success: true, user: null, error: null };
     } catch (error) {
       return { 
         success: false, 

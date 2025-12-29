@@ -5,7 +5,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TeacherStore } from './store/index';
 import { Application } from './components/application/application';
 import { ErrorSnackbarService } from '../../shared/services/snackbar/error-snackbar.service';
-import { AuthService } from '../../shared/services/auth/auth.service';
+import { getAuthService } from '../../shared/services/auth/auth-service.factory';
 import { SupabaseService } from '../../shared/services/supabase/supabase.service';
 import type { Teacher } from './types/teacher';
 
@@ -22,7 +22,7 @@ export class TeacherComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
-  private readonly authService = inject(AuthService);
+  private readonly authService = getAuthService();
   private readonly supabaseService = inject(SupabaseService);
   readonly store = inject(TeacherStore);
   

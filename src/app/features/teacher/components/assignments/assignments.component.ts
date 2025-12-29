@@ -7,7 +7,7 @@ import { TeacherService } from '../../services/teacher/teacher.service';
 import { ErrorSnackbarService } from '../../../../shared/services/snackbar/error-snackbar.service';
 import { AssignmentsSectionComponent } from './components/assignments-section/assignments-section.component';
 import { AddAssignmentDialogComponent } from './components/add-assignment-dialog/add-assignment-dialog.component';
-import { AuthService } from '../../../../shared/services/auth/auth.service';
+import { getAuthService } from '../../../../shared/services/auth/auth-service.factory';
 import { TeacherStore } from '../../store/index';
 import type { ActionLink } from '../../../../shared/components/action-links/action-links.component';
 
@@ -21,7 +21,7 @@ import type { ActionLink } from '../../../../shared/components/action-links/acti
 export class AssignmentsComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
-  private readonly authService = inject(AuthService);
+  private readonly authService = getAuthService();
   private readonly application = inject(Application);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly route = inject(ActivatedRoute);

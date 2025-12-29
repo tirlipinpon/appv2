@@ -3,7 +3,7 @@ import { Observable, from } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
-import { AuthService } from '../../../../shared/services/auth/auth.service';
+import { getAuthService, IAuthService } from '../../../../shared/services/auth/auth-service.factory';
 import { ParentStore } from '../../../parent/store/index';
 import type { Child, ChildUpdate } from '../../types/child';
 import type { PostgrestError } from '@supabase/supabase-js';
@@ -13,15 +13,14 @@ import type { PostgrestError } from '@supabase/supabase-js';
 })
 export class ChildService {
   private readonly supabaseService = inject(SupabaseService);
-  private readonly injector = inject(Injector);
   private readonly parentStore = inject(ParentStore);
   
   /**
    * Obtient AuthService de manière lazy pour éviter les dépendances circulaires
    */
-  private getAuthService(): AuthService | null {
+  private getAuthService(): IAuthService | null {
     try {
-      return this.injector.get(AuthService, null);
+      return getAuthService();
     } catch {
       return null;
     }

@@ -1,7 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
+import { getAuthService } from '../../../shared/services/auth/auth-service.factory';
+import { environment } from '../../../../environments/environment';
 import type { User, Session } from '@supabase/supabase-js';
+import type { CustomUser } from '../../../shared/services/auth/custom-auth.service';
 
 export interface SignInResult {
   session: Session | null;
@@ -22,7 +25,11 @@ export class AuthCoreService {
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor() {
-    this.initializeAuth();
+    if (!environment.customAuthEnabled) {
+      this.initializeAuth();
+    } else {
+      this.initializeCustomAuth();
+    }
   }
 
   private async initializeAuth(): Promise<void> {
@@ -38,6 +45,32 @@ export class AuthCoreService {
         this.currentUserSubject.next(null);
       }
     });
+  }
+
+  private initializeCustomAuth(): void {
+    // Pour l'authentification personnalisée, écouter les changements via getAuthService
+    try {
+      const authService = getAuthService();
+      authService.currentUser$.subscribe((user: CustomUser | null) => {
+        // Convertir CustomUser en User de Supabase pour compatibilité
+        if (user) {
+          const supabaseUser = {
+            id: user.id,
+            email: user.email || '',
+            email_confirmed_at: user.email_verified ? new Date().toISOString() : null,
+            app_metadata: {},
+            user_metadata: {},
+            aud: 'authenticated',
+            created_at: new Date().toISOString(),
+          } as User;
+          this.currentUserSubject.next(supabaseUser);
+        } else {
+          this.currentUserSubject.next(null);
+        }
+      });
+    } catch (error) {
+      console.warn('[AuthCoreService] Impossible d\'initialiser l\'authentification personnalisée:', error);
+    }
   }
 
   async signIn(email: string, password: string): Promise<SignInResult> {
@@ -78,6 +111,27 @@ export class AuthCoreService {
   }
 
   getCurrentUser(): User | null {
+    // Si l'authentification personnalisée est activée, utiliser getAuthService
+    if (environment.customAuthEnabled) {
+      try {
+        const authService = getAuthService();
+        const user = authService.getCurrentUser();
+        if (user) {
+          // Convertir CustomUser en User de Supabase pour compatibilité
+          return {
+            id: user.id,
+            email: user.email || '',
+            email_confirmed_at: user.email_verified ? new Date().toISOString() : null,
+            app_metadata: {},
+            user_metadata: {},
+            aud: 'authenticated',
+            created_at: new Date().toISOString(),
+          } as User;
+        }
+      } catch (error) {
+        console.warn('[AuthCoreService] Erreur lors de la récupération de l\'utilisateur:', error);
+      }
+    }
     return this.currentUserSubject.value;
   }
 

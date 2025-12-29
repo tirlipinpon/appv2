@@ -1,11 +1,11 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
-import { AuthService } from '../../../shared/services/auth/auth.service';
+import { getAuthService } from '../../../shared/services/auth/auth-service.factory';
 import { from, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
 export const authGuard: CanActivateFn = (route, state) => {
-  const authService = inject(AuthService);
+  const authService = getAuthService();
   const router = inject(Router);
 
   // Vérifier d'abord si l'utilisateur est déjà chargé (cas synchrone)

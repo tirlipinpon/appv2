@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { AuthService, ServiceError } from '../../../../shared/services/auth/auth.service';
+import { getAuthService } from '../../../../shared/services/auth/auth-service.factory';
+import type { ServiceError } from '../../../../shared/services/auth/auth.service';
 import { passwordMatchValidator } from '../../utils/password-match.validator';
 
 type SignupRole = 'parent' | 'prof';
@@ -35,7 +36,7 @@ const ROLE_CONFIG: Record<SignupRole, RoleConfig> = {
 })
 export class SignupRoleComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly authService = inject(AuthService);
+  private readonly authService = getAuthService();
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 

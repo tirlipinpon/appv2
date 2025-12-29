@@ -103,6 +103,7 @@ export class AuthConfirmComponent implements OnInit {
 
 
     const tokenHash = queryParams['token_hash'] || hashParams.get('token_hash');
+    const token = queryParams['token'] || hashParams.get('token');
 
 
 
@@ -111,33 +112,14 @@ export class AuthConfirmComponent implements OnInit {
 
 
     if (accessToken) {
-
-
-
       await this.confirmWithTokens(accessToken, refreshToken || '');
-
-
-
     } else if (tokenHash) {
-
-
-
       await this.confirmWithTokenHash(tokenHash);
-
-
-
+    } else if (token) {
+      await this.confirmWithToken(token);
     } else {
-
-
-
       this.errorMessage = 'Token de confirmation manquant';
-
-
-
       this.isLoading = false;
-
-
-
     }
 
 
@@ -171,15 +153,13 @@ export class AuthConfirmComponent implements OnInit {
 
 
   private async confirmWithTokenHash(tokenHash: string): Promise<void> {
-
     const result = await this.confirmationService.confirmWithTokenHash(tokenHash);
-
-
-
     this.handleConfirmationResult(result.success, result.error);
+  }
 
-
-
+  private async confirmWithToken(token: string): Promise<void> {
+    const result = await this.confirmationService.confirmWithToken(token);
+    this.handleConfirmationResult(result.success, result.error);
   }
 
 

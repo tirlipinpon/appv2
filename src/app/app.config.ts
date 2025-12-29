@@ -6,6 +6,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
 import { GlobalErrorHandler } from './shared/services/error/global-error-handler.service';
 import { httpErrorInterceptor } from './shared/interceptors/http-error.interceptor';
+import { authInterceptor } from './shared/interceptors/auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,7 +14,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideAnimationsAsync(),
     provideHttpClient(
-      withInterceptors([httpErrorInterceptor])
+      withInterceptors([httpErrorInterceptor, authInterceptor])
     ),
     {
       provide: ErrorHandler,

@@ -1,7 +1,8 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService, Profile } from '../../../../shared/services/auth/auth.service';
+import { getAuthService } from '../../../../shared/services/auth/auth-service.factory';
+import type { Profile } from '../../../../shared/services/auth/auth.service';
 import { ParentStore } from '../../../parent/store/index';
 import { TrackByUtils } from '../../../../shared/utils/track-by.util';
 
@@ -14,7 +15,7 @@ import { TrackByUtils } from '../../../../shared/utils/track-by.util';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RoleSelectorComponent implements OnInit {
-  private readonly authService = inject(AuthService);
+  private readonly authService = getAuthService();
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly parentStore = inject(ParentStore);

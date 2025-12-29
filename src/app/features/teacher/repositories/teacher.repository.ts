@@ -1,5 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BaseRepository } from '../../../shared/repositories/base-repository.service';
+import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
+import { AuthCoreService } from '../../../core/auth/core/auth-core.service';
+import { CacheService } from '../../../shared/services/cache/cache.service';
+import { LoggerService } from '../../../shared/services/logging/logger.service';
 import type { Teacher } from '../types/teacher';
 
 /**
@@ -10,6 +14,12 @@ import type { Teacher } from '../types/teacher';
   providedIn: 'root',
 })
 export class TeacherRepository extends BaseRepository<Teacher> {
-  protected readonly tableName = 'teachers';
-  protected readonly cacheKey = 'teacher-profile';
+  constructor() {
+    super('teachers', 'teacher-profile', {
+      supabaseService: inject(SupabaseService),
+      authCoreService: inject(AuthCoreService),
+      cacheService: inject(CacheService),
+      logger: inject(LoggerService),
+    });
+  }
 }

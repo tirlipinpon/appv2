@@ -1,7 +1,8 @@
 import { Component, inject, OnInit, OnDestroy, computed, signal, effect, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
-import { AuthService, Profile } from '../../services/auth/auth.service';
+import { getAuthService } from '../../services/auth/auth-service.factory';
+import type { Profile } from '../../services/auth/auth.service';
 import { ParentStore } from '../../../features/parent/store/index';
 import { TeacherStore } from '../../../features/teacher/store/index';
 import { filter, Subscription } from 'rxjs';
@@ -33,7 +34,7 @@ export interface HeaderConfig {
   styleUrl: './app-header.component.scss'
 })
 export class AppHeaderComponent implements OnInit, OnDestroy {
-  private readonly authService = inject(AuthService);
+  private readonly authService = getAuthService();
   private readonly router = inject(Router);
   private readonly parentStore = inject(ParentStore);
   private readonly teacherStore = inject(TeacherStore);
@@ -132,7 +133,7 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
   // Effect pour synchroniser le rôle actif depuis AuthService
   private readonly activeRoleSyncEffect = effect(() => {
     // Lire le rôle actif depuis AuthService (cela crée une dépendance réactive)
-    const authServiceRole = this.authService.activeRole$();
+    const authServiceRole = this.authService.getActiveRole();
     const currentRole = this.activeRole();
     
     console.log('[Header] Synchronisation rôle actif:', { 
@@ -215,7 +216,7 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
     }
     
     // Écouter les changements d'utilisateur (session)
-    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.subscribe((user: User | null) => {
       this.currentUser.set(user);
       // Si l'utilisateur se déconnecte, réinitialiser le profil
       if (!user) {
@@ -225,7 +226,7 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
     });
     
     // Écouter les changements de profil
-    this.profileSubscription = this.authService.currentProfile$.subscribe(profile => {
+    this.profileSubscription = this.authService.currentProfile$.subscribe((profile: Profile | null) => {
       // Ne mettre à jour le profil que si l'utilisateur est connecté
       if (this.currentUser()) {
         this.profile.set(profile);
