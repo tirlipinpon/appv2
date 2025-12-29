@@ -1,7 +1,7 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { SupabaseService } from '../../../shared/services/supabase/supabase.service';
-import { getAuthService } from '../../../shared/services/auth/auth-service.factory';
+import { CustomAuthService } from '../../../shared/services/auth/custom-auth.service';
 import { environment } from '../../../../environments/environment';
 import type { User, Session } from '@supabase/supabase-js';
 import type { CustomUser } from '../../../shared/services/auth/custom-auth.service';
@@ -20,7 +20,9 @@ export interface SignInResult {
 })
 export class AuthCoreService {
   private readonly supabaseService = inject(SupabaseService);
+  private readonly injector = inject(Injector);
   private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private customAuthInitialized = false;
 
   public currentUser$ = this.currentUserSubject.asObservable();
 
@@ -28,7 +30,11 @@ export class AuthCoreService {
     if (!environment.customAuthEnabled) {
       this.initializeAuth();
     } else {
-      this.initializeCustomAuth();
+      // Différer l'initialisation pour éviter la dépendance circulaire
+      // Utiliser queueMicrotask pour permettre à tous les services d'être initialisés
+      queueMicrotask(() => {
+        this.initializeCustomAuth();
+      });
     }
   }
 
@@ -48,9 +54,32 @@ export class AuthCoreService {
   }
 
   private initializeCustomAuth(): void {
-    // Pour l'authentification personnalisée, écouter les changements via getAuthService
+    // Pour éviter la dépendance circulaire, utiliser Injector pour obtenir CustomAuthService de manière paresseuse
     try {
-      const authService = getAuthService();
+      const authService = this.injector.get(CustomAuthService, null);
+      if (!authService) {
+        console.warn('[AuthCoreService] CustomAuthService non disponible');
+        return;
+      }
+      
+      this.customAuthInitialized = true;
+      
+      // Récupérer l'utilisateur actuel immédiatement (si déjà connecté)
+      const currentUser = authService.getCurrentUser();
+      if (currentUser) {
+        const supabaseUser = {
+          id: currentUser.id,
+          email: currentUser.email || '',
+          email_confirmed_at: currentUser.email_verified ? new Date().toISOString() : null,
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        } as User;
+        this.currentUserSubject.next(supabaseUser);
+      }
+      
+      // S'abonner aux changements futurs
       authService.currentUser$.subscribe((user: CustomUser | null) => {
         // Convertir CustomUser en User de Supabase pour compatibilité
         if (user) {
@@ -111,27 +140,9 @@ export class AuthCoreService {
   }
 
   getCurrentUser(): User | null {
-    // Si l'authentification personnalisée est activée, utiliser getAuthService
-    if (environment.customAuthEnabled) {
-      try {
-        const authService = getAuthService();
-        const user = authService.getCurrentUser();
-        if (user) {
-          // Convertir CustomUser en User de Supabase pour compatibilité
-          return {
-            id: user.id,
-            email: user.email || '',
-            email_confirmed_at: user.email_verified ? new Date().toISOString() : null,
-            app_metadata: {},
-            user_metadata: {},
-            aud: 'authenticated',
-            created_at: new Date().toISOString(),
-          } as User;
-        }
-      } catch (error) {
-        console.warn('[AuthCoreService] Erreur lors de la récupération de l\'utilisateur:', error);
-      }
-    }
+    // Pour l'authentification personnalisée, utiliser directement le BehaviorSubject
+    // qui est mis à jour via l'observable dans initializeCustomAuth()
+    // Cela évite d'appeler getAuthService() qui utilise inject() en dehors d'un contexte d'injection
     return this.currentUserSubject.value;
   }
 

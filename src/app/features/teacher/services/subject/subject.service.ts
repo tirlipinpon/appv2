@@ -1,17 +1,36 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { SupabaseService } from '../../../../shared/services/supabase/supabase.service';
+import { CustomAuthService } from '../../../../shared/services/auth/custom-auth.service';
+import { AuthService } from '../../../../shared/services/auth/auth.service';
+import { environment } from '../../../../../environments/environment';
 import type { Subject } from '../../types/subject';
 import type { PostgrestError } from '@supabase/supabase-js';
 import type { Child } from '../../../child/types/child';
+import type { IAuthService } from '../../../../shared/services/auth/auth-service.factory';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SubjectService {
   private readonly supabaseService = inject(SupabaseService);
+  private readonly injector = inject(Injector);
   private static readonly DEBUG = true;
+
+  private getAuthService(): IAuthService | null {
+    try {
+      // Utiliser l'injector directement pour obtenir le bon service selon l'environnement
+      if (environment.customAuthEnabled) {
+        return this.injector.get(CustomAuthService, null);
+      } else {
+        return this.injector.get(AuthService, null);
+      }
+    } catch (error) {
+      console.warn('[SubjectService] Impossible d\'obtenir le service d\'authentification:', error);
+      return null;
+    }
+  }
 
   /**
    * Récupère toutes les matières
@@ -81,6 +100,50 @@ export class SubjectService {
    * Crée une nouvelle matière
    */
   createSubject(subjectData: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): Observable<{ subject: Subject | null; error: PostgrestError | null }> {
+    // Si l'authentification personnalisée est activée, utiliser la fonction RPC
+    // qui accepte l'user_id en paramètre (évite le problème des variables de session)
+    if (environment.customAuthEnabled) {
+      const authService = this.getAuthService();
+      if (!authService) {
+        return from(Promise.resolve({
+          subject: null,
+          error: { message: 'Service d\'authentification non disponible', code: 'AUTH_SERVICE_UNAVAILABLE' } as PostgrestError,
+        }));
+      }
+
+      const user = authService.getCurrentUser();
+      if (!user) {
+        return from(Promise.resolve({
+          subject: null,
+          error: { message: 'Utilisateur non authentifié', code: 'UNAUTHORIZED' } as PostgrestError,
+        }));
+      }
+
+      return from(
+        this.supabaseService.client.rpc('create_subject_with_auth', {
+          user_id_param: user.id,
+          name_param: subjectData.name,
+          type_param: subjectData.type,
+          description_param: subjectData.description || null,
+          default_age_range_param: subjectData.default_age_range || null,
+          metadata_param: subjectData.metadata || null,
+        })
+      ).pipe(
+        map(({ data, error }) => {
+          if (error) {
+            return { subject: null, error: error || null };
+          }
+          // La fonction RPC retourne un tableau avec un seul élément
+          const subjects = (data as Subject[]) || [];
+          return {
+            subject: subjects[0] || null,
+            error: subjects.length === 0 ? ({ message: 'Aucune matière créée' } as PostgrestError) : null,
+          };
+        })
+      );
+    }
+
+    // Sinon, utiliser la méthode normale (pour compatibilité avec Supabase Auth)
     return from(
       this.supabaseService.client
         .from('subjects')
