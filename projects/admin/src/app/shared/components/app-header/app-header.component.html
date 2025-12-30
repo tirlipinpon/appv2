@@ -1,0 +1,65 @@
+<header class="app-header" role="banner">
+  <div class="header-container">
+    <div class="header-brand">
+      <a [routerLink]="displayBrandRoute()" class="brand-link" aria-label="Retour au tableau de bord">
+        <h1 class="brand-title">
+          {{ displayBrandTitle() }}
+          <span class="brand-version">v{{ appVersionDisplay() }}</span>
+        </h1>
+      </a>
+    </div>
+
+    <nav class="header-nav" [class.menu-open]="isMenuOpen()" role="navigation" aria-label="Navigation principale">
+      <button 
+        class="menu-toggle" 
+        (click)="toggleMenu()"
+        [attr.aria-expanded]="isMenuOpen()"
+        aria-label="Ouvrir le menu"
+        aria-controls="main-menu">
+        <span class="hamburger-icon"></span>
+      </button>
+
+      <ul class="nav-list" id="main-menu" [class.menu-open]="isMenuOpen()">
+        @for (item of visibleNavItems(); track item.label) {
+          <li class="nav-item">
+            <a 
+              [routerLink]="item.route" 
+              [queryParams]="item.queryParams"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{exact: item.exact ?? false}"
+              class="nav-link"
+              (click)="closeMenu()">
+              @if (item.icon) {
+                <span class="nav-icon">{{ item.icon }}</span>
+              }
+              <span class="nav-label">{{ item.label }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    </nav>
+
+    <div class="header-actions">
+      @if (isAuthenticated()) {
+        @if (showUserInfo && (config?.showUserInfo !== false)) {
+          <div class="user-info">
+            <span class="user-name" aria-label="Utilisateur connecté">{{ displayName() }}</span>
+            @if (activeRole() && (showRoleBadge && (config?.showRoleBadge !== false))) {
+              <span class="user-role active-role" [attr.aria-label]="'Rôle actif: ' + activeRoleLabel()">
+                Rôle actif: {{ activeRoleLabel() }}
+              </span>
+            }
+          </div>
+        }
+        <button 
+          class="btn-logout" 
+          (click)="logout()"
+          aria-label="Se déconnecter">
+          Déconnexion
+        </button>
+      } @else {
+        <a routerLink="/login" class="btn-login">Connexion</a>
+      }
+    </div>
+  </div>
+</header>
