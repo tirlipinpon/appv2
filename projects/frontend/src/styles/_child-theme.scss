@@ -1,0 +1,23 @@
+/* Base styles for the child application */
+:root {
+  --theme-primary-color: #4CAF50; /* Green */
+  --theme-accent-color: #FFC107; /* Amber */
+  --theme-warn-color: #F44336; /* Red */
+  --theme-background-color: #F0F4F8; /* Light blue-gray */
+  --theme-text-color: #333333;
+  --theme-header-bg: #673AB7; /* Deep Purple */
+  --theme-header-text: #FFFFFF;
+  --theme-star-color: gold;
+  --theme-empty-star-color: gray;
+  --theme-border-radius: 12px;
+  --theme-spacing-unit: 8px;
+}
+
+body {
+  font-family: 'Nunito', sans-serif; /* Example font */
+  color: var(--theme-text-color);
+  background-color: var(--theme-background-color);
+}
+
+/* Other global child-friendly styles */
+
