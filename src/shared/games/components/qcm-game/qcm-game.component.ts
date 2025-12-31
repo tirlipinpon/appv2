@@ -19,12 +19,18 @@ export class QcmGameComponent implements OnInit {
   @Input({ required: true }) qcmData!: QcmData;
   @Input() showResult = false; // Pour afficher les résultats après validation
   @Input() disabled = false; // Pour désactiver l'interaction
+  @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() instructions: string | null = null; // Instructions pour le jeu
+  @Input() question: string | null = null; // Question pour le jeu
   
   @Output() answerSelected = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
 
   // Propositions mélangées avec leur lettre (A, B, C...)
   shuffledPropositions = signal<ShuffledProposition[]>([]);
+  
+  // État pour afficher/masquer les aides
+  showAides = signal<boolean>(false);
   
   // Réponses sélectionnées (par lettre: A, B, C...)
   selectedLetters = signal<Set<string>>(new Set());
@@ -148,6 +154,13 @@ export class QcmGameComponent implements OnInit {
    */
   canValidate(): boolean {
     return !this.isSubmitted() && this.selectedLetters().size > 0;
+  }
+
+  /**
+   * Toggle l'affichage des aides
+   */
+  toggleAides(): void {
+    this.showAides.update((v: boolean) => !v);
   }
 }
 

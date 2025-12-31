@@ -15,7 +15,7 @@
     <div class="game-header-info">
       <h4>{{ game.name }}</h4>
       <span class="game-type-badge">{{ currentGameTypeName() }}</span>
-      <div class="game-header-actions" (click)="$event.stopPropagation()">
+      <div class="game-header-actions" (click)="$event.stopPropagation()" tabindex="0" (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()">
         <button class="btn btn-info btn-sm" (click)="openPreview(); $event.stopPropagation()" [disabled]="isEditing() && !gameSpecificValid()">
           👁️ Prévisualiser
         </button>
@@ -49,13 +49,26 @@
         </div>
 
         @if (game.aides && game.aides.length > 0) {
-          <div class="game-aides">
-            <strong>Aides ({{ game.aides.length }}):</strong>
-            <ul>
-              @for (aide of game.aides; track aide) {
-                <li>{{ aide }}</li>
-              }
-            </ul>
+          <div class="game-aides-toggle-container">
+            <button 
+              type="button"
+              class="aides-toggle-btn"
+              (click)="toggleAides()"
+              [attr.aria-expanded]="showAides()"
+              [attr.aria-label]="showAides() ? 'Masquer aide' : 'Afficher aide'">
+              <span class="toggle-icon">{{ showAides() ? '−' : '+' }}</span>
+              <span class="toggle-text">{{ showAides() ? 'Masquer aide' : 'Afficher aide' }}</span>
+            </button>
+            @if (showAides()) {
+              <div class="game-aides">
+                <strong>Aides ({{ game.aides.length }}):</strong>
+                <ul>
+                  @for (aide of game.aides; track aide) {
+                    <li>{{ aide }}</li>
+                  }
+                </ul>
+              </div>
+            }
           </div>
         }
       </div>
@@ -72,7 +85,7 @@
 
   <!-- Mode édition - Toujours affiché -->
   @if (isEditing()) {
-    <div class="game-edit" (click)="$event.stopPropagation()">
+    <div class="game-edit" (click)="$event.stopPropagation()" tabindex="0" (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()">
       <div class="edit-notice">
         ⚠️ Mode édition - Utilisez le formulaire ci-dessous pour modifier le jeu
       </div>

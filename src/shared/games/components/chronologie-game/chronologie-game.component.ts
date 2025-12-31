@@ -14,6 +14,9 @@ export class ChronologieGameComponent implements OnInit {
   @Input({ required: true }) chronologieData!: ChronologieData;
   @Input() showResult = false; // Pour afficher les résultats après validation
   @Input() disabled = false; // Pour désactiver l'interaction
+  @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() instructions: string | null = null; // Instructions pour le jeu
+  @Input() question: string | null = null; // Question pour le jeu
   
   @Output() orderChanged = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
@@ -24,6 +27,9 @@ export class ChronologieGameComponent implements OnInit {
   // État de validation
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
+  
+  // État pour afficher/masquer les aides
+  showAides = signal<boolean>(false);
 
   ngOnInit(): void {
     this.shuffleMots();
@@ -94,6 +100,10 @@ export class ChronologieGameComponent implements OnInit {
     const currentOrder = this.currentOrder();
     const correctOrder = this.chronologieData.ordre_correct;
     return currentOrder[index] === correctOrder[index];
+  }
+
+  toggleAides(): void {
+    this.showAides.update(v => !v);
   }
 }
 

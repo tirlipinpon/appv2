@@ -70,6 +70,9 @@ import type { Game } from '../../core/types/game.types';
             [qcmData]="getQcmData()!"
             [showResult]="showFeedback()"
             [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
             (validated)="onGameValidated($event)">
           </app-qcm-game>
         } @else if (isChronologieGame() && getChronologieData()) {
@@ -77,6 +80,9 @@ import type { Game } from '../../core/types/game.types';
             [chronologieData]="getChronologieData()!"
             [showResult]="showFeedback()"
             [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
             (validated)="onGameValidated($event)">
           </app-chronologie-game>
         } @else if (isMemoryGame() && getMemoryData()) {
@@ -84,6 +90,9 @@ import type { Game } from '../../core/types/game.types';
             [memoryData]="getMemoryData()!"
             [showResult]="showFeedback()"
             [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
             (validated)="onGameValidated($event)">
           </app-memory-game>
         } @else if (isSimonGame() && getSimonData()) {
@@ -91,6 +100,9 @@ import type { Game } from '../../core/types/game.types';
             [simonData]="getSimonData()!"
             [showResult]="showFeedback()"
             [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
             (validated)="onGameValidated($event)">
           </app-simon-game>
         } @else if (isImageInteractiveGame() && getImageInteractiveData()) {
@@ -98,6 +110,9 @@ import type { Game } from '../../core/types/game.types';
             [imageData]="getImageInteractiveData()!"
             [showResult]="showFeedback()"
             [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
             (validated)="onGameValidated($event)">
           </app-image-interactive-game>
         } @else if (isCaseVideGame() && getCaseVideData()) {
@@ -107,6 +122,9 @@ import type { Game } from '../../core/types/game.types';
             [caseVideData]="getCaseVideData()!"
             [showResult]="showFeedback()"
             [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
             (validated)="onCaseVideValidated($event)">
           </app-case-vide-game>
         } @else if (isLiensGame() && getLiensData()) {
@@ -116,6 +134,9 @@ import type { Game } from '../../core/types/game.types';
             [liensData]="getLiensData()!"
             [showResult]="showFeedback()"
             [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
             (validated)="onLiensValidated($event)">
           </app-liens-game>
         } @else if (isVraiFauxGame() && getVraiFauxData()) {
@@ -125,6 +146,9 @@ import type { Game } from '../../core/types/game.types';
             [vraiFauxData]="getVraiFauxData()!"
             [showResult]="showFeedback()"
             [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
             (validated)="onVraiFauxValidated($event)">
           </app-vrai-faux-game>
         } @else if (gameType() === 'reponse_libre' && gameData()) {
@@ -134,13 +158,26 @@ import type { Game } from '../../core/types/game.types';
               {{ application.getCurrentGame()()?.question || application.getCurrentGame()()?.instructions || 'Répondez à la question' }}
             </h2>
             @if (application.getCurrentGame()()?.aides && application.getCurrentGame()()!.aides!.length > 0) {
-              <div class="aides-container">
-                <strong>Aide :</strong>
-                <ul>
-                  @for (aide of application.getCurrentGame()()!.aides!; track $index) {
-                    <li>{{ aide }}</li>
-                  }
-                </ul>
+              <div class="aides-toggle-container">
+                <button 
+                  type="button"
+                  class="aides-toggle-btn"
+                  (click)="toggleAides()"
+                  [attr.aria-expanded]="showAides()"
+                  [attr.aria-label]="showAides() ? 'Masquer aide' : 'Afficher aide'">
+                  <span class="toggle-icon">{{ showAides() ? '−' : '+' }}</span>
+                  <span class="toggle-text">{{ showAides() ? 'Masquer aide' : 'Afficher aide' }}</span>
+                </button>
+                @if (showAides()) {
+                  <div class="aides-container">
+                    <strong>Aide :</strong>
+                    <ul>
+                      @for (aide of application.getCurrentGame()()!.aides!; track $index) {
+                        <li>{{ aide }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -171,13 +208,26 @@ import type { Game } from '../../core/types/game.types';
               {{ application.getCurrentQuestion()()?.question }}
             </h2>
             @if (application.getCurrentGame()()?.aides && application.getCurrentGame()()!.aides!.length > 0) {
-              <div class="aides-container">
-                <strong>Aide :</strong>
-                <ul>
-                  @for (aide of application.getCurrentGame()()!.aides!; track $index) {
-                    <li>{{ aide }}</li>
-                  }
-                </ul>
+              <div class="aides-toggle-container">
+                <button 
+                  type="button"
+                  class="aides-toggle-btn"
+                  (click)="toggleAides()"
+                  [attr.aria-expanded]="showAides()"
+                  [attr.aria-label]="showAides() ? 'Masquer aide' : 'Afficher aide'">
+                  <span class="toggle-icon">{{ showAides() ? '−' : '+' }}</span>
+                  <span class="toggle-text">{{ showAides() ? 'Masquer aide' : 'Afficher aide' }}</span>
+                </button>
+                @if (showAides()) {
+                  <div class="aides-container">
+                    <strong>Aide :</strong>
+                    <ul>
+                      @for (aide of application.getCurrentGame()()!.aides!; track $index) {
+                        <li>{{ aide }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -487,6 +537,13 @@ export class GameComponent implements OnInit {
   finalScore = signal<number>(0);
   completionMessage = signal<string>('');
   showCompletionScreen = signal<boolean>(false);
+  
+  // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
+  showAides = signal<boolean>(false);
+
+  toggleAides(): void {
+    this.showAides.update(v => !v);
+  }
 
   // Références aux composants de jeux
   @ViewChild('caseVideGame', { static: false }) caseVideGameComponent?: CaseVideGameComponent;
@@ -828,6 +885,7 @@ export class GameComponent implements OnInit {
       this.showFeedback.set(false);
       this.feedback.set(null);
       this.correctAnswer.set(null);
+      this.showAides.set(false); // Réinitialiser le toggle des aides
     }
   }
 
@@ -1059,6 +1117,7 @@ export class GameComponent implements OnInit {
       this.reponseLibreInput.set('');
       this.finalScore.set(0);
       this.completionMessage.set('');
+      this.showAides.set(false); // Réinitialiser le toggle des aides
       
       // Réinitialiser les jeux spécifiques si nécessaire
       if (this.isCaseVideGame() && this.caseVideGameComponent) {

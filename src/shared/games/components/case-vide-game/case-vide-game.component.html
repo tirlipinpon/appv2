@@ -1,4 +1,37 @@
 <div class="case-vide-game">
+  @if (instructions) {
+    <div class="game-instructions">
+      <p>{{ instructions }}</p>
+    </div>
+  }
+  @if (question) {
+    <div class="game-question">
+      <h2>{{ question }}</h2>
+    </div>
+  }
+  @if (aides && aides.length > 0) {
+    <div class="aides-toggle-container">
+      <button 
+        type="button"
+        class="aides-toggle-btn"
+        (click)="toggleAides()"
+        [attr.aria-expanded]="showAides()"
+        [attr.aria-label]="showAides() ? 'Masquer aide' : 'Afficher aide'">
+        <span class="toggle-icon">{{ showAides() ? '−' : '+' }}</span>
+        <span class="toggle-text">{{ showAides() ? 'Masquer aide' : 'Afficher aide' }}</span>
+      </button>
+      @if (showAides()) {
+        <div class="aides-container">
+          <strong>Aide :</strong>
+          <ul>
+            @for (aide of aides; track $index) {
+              <li>{{ aide }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  }
   @if (caseVideData.texte && caseVideData.banque_mots) {
     <!-- Nouveau format : Drag and Drop -->
     @if ((showResult || isSubmitted()) && isCorrect() !== null) {

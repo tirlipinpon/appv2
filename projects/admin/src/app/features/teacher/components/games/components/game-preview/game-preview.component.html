@@ -51,6 +51,9 @@
               [qcmData]="qcmData"
               [showResult]="isSubmitted()"
               [disabled]="false"
+              [aides]="globalFields?.aides || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
               (answerSelected)="onQcmAnswerSelected($event)"
               (validated)="onQcmValidated($event)">
             </app-qcm-game>
@@ -65,6 +68,9 @@
               [caseVideData]="caseVideData"
               [showResult]="isSubmitted()"
               [disabled]="false"
+              [aides]="globalFields?.aides || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
               (validated)="onCaseVideValidated($event)">
             </app-case-vide-game>
             @if (!isSubmitted()) {
@@ -187,6 +193,9 @@
               [chronologieData]="chronologieData"
               [showResult]="isSubmitted()"
               [disabled]="false"
+              [aides]="globalFields?.aides || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
               (orderChanged)="onChronologieOrderChanged($event)"
               (validated)="onChronologieValidated($event)">
             </app-chronologie-game>
@@ -265,6 +274,9 @@
               [memoryData]="memoryData"
               [showResult]="isSubmitted()"
               [disabled]="false"
+              [aides]="globalFields?.aides || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
               (validated)="onMemoryValidated($event)">
             </app-memory-game>
             @if (isSubmitted()) {
@@ -280,6 +292,9 @@
               [simonData]="simonData"
               [showResult]="isSubmitted()"
               [disabled]="false"
+              [aides]="globalFields?.aides || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
               (validated)="onSimonValidated($event)">
             </app-simon-game>
           </div>
@@ -292,6 +307,9 @@
               [imageData]="imageInteractiveData"
               [showResult]="isSubmitted()"
               [disabled]="false"
+              [aides]="globalFields?.aides || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
               (validated)="onImageInteractiveValidated($event)">
             </app-image-interactive-game>
           </div>

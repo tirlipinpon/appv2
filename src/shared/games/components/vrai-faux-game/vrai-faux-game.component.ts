@@ -13,6 +13,9 @@ export class VraiFauxGameComponent implements OnInit {
   @Input({ required: true }) vraiFauxData!: VraiFauxData;
   @Input() showResult = false;
   @Input() disabled = false;
+  @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() instructions: string | null = null; // Instructions pour le jeu
+  @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
 
@@ -25,6 +28,9 @@ export class VraiFauxGameComponent implements OnInit {
   // État de validation
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
+  
+  // État pour afficher/masquer les aides
+  showAides = signal<boolean>(false);
 
   constructor() {
     // Effet pour réinitialiser quand showResult change
@@ -114,6 +120,10 @@ export class VraiFauxGameComponent implements OnInit {
 
   canSubmit(): boolean {
     return this.userAnswers().size === this.getVraiFauxEnonces().length;
+  }
+
+  toggleAides(): void {
+    this.showAides.update(v => !v);
   }
 }
 

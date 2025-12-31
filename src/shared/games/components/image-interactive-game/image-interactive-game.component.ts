@@ -13,6 +13,9 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
   @Input({ required: true }) imageData!: ImageInteractiveData;
   @Input() showResult = false; // Pour afficher les résultats après validation
   @Input() disabled = false; // Pour désactiver l'interaction
+  @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() instructions: string | null = null; // Instructions pour le jeu
+  @Input() question: string | null = null; // Question pour le jeu
 
   @Output() answerSelected = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
@@ -32,6 +35,9 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
   // État de validation
   readonly isSubmitted = signal<boolean>(false);
   readonly isCorrect = signal<boolean | null>(null);
+  
+  // État pour afficher/masquer les aides
+  showAides = signal<boolean>(false);
 
   // ResizeObserver pour détecter les changements de taille
   private resizeObserver?: ResizeObserver;
@@ -330,6 +336,10 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
       return '';
     }
     return points.map(p => `${p.x},${p.y}`).join(' ');
+  }
+
+  toggleAides(): void {
+    this.showAides.update(v => !v);
   }
 }
 

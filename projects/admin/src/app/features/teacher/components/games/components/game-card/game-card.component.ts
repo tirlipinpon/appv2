@@ -56,6 +56,7 @@ export class GameCardComponent implements OnInit, OnChanges {
 
   readonly isEditing = signal<boolean>(false); // Mode lecture par défaut
   readonly isExpanded = signal<boolean>(false); // État du toggle (fermé par défaut)
+  readonly showAides = signal<boolean>(false); // État pour afficher/masquer les aides
 
   ngOnInit(): void {
     // Ne pas initialiser le mode édition au démarrage, laisser en mode lecture
@@ -67,6 +68,7 @@ export class GameCardComponent implements OnInit, OnChanges {
       // Réinitialiser à l'état fermé
       this.isEditing.set(false);
       this.isExpanded.set(false);
+      this.showAides.set(false); // Réinitialiser le toggle des aides
       // Ne pas initialiser le mode édition automatiquement
     }
   }
@@ -159,6 +161,10 @@ export class GameCardComponent implements OnInit, OnChanges {
       // Sortir du mode édition
       this.isEditing.set(false);
     }
+  }
+
+  toggleAides(): void {
+    this.showAides.update(v => !v);
   }
 
   private initializeEditMode(): void {

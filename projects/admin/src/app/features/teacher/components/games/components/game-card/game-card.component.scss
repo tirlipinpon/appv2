@@ -399,8 +399,43 @@
       }
     }
 
-    .game-aides {
+    .game-aides-toggle-container {
       margin-top: 1rem;
+    }
+
+    .aides-toggle-btn {
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #333;
+    }
+
+    .aides-toggle-btn:hover {
+      border-color: #667eea;
+      background-color: rgba(102, 126, 234, 0.05);
+    }
+
+    .aides-toggle-btn .toggle-icon {
+      font-weight: bold;
+      font-size: 1.2rem;
+      line-height: 1;
+      width: 1.2rem;
+      text-align: center;
+    }
+
+    .aides-toggle-btn .toggle-text {
+      font-size: 0.9rem;
+    }
+
+    .game-aides {
+      margin-top: 0.5rem;
 
       strong {
         display: block;

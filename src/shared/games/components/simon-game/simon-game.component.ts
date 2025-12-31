@@ -20,6 +20,9 @@ export class SimonGameComponent implements OnInit, OnDestroy {
   @Input({ required: true }) simonData!: SimonData;
   @Input() showResult = false;
   @Input() disabled = false;
+  @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() instructions: string | null = null; // Instructions pour le jeu
+  @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
 
@@ -44,6 +47,9 @@ export class SimonGameComponent implements OnInit, OnDestroy {
   
   // Élément actuellement illuminé (pour l'animation)
   highlightedElement = signal<number | null>(null);
+  
+  // État pour afficher/masquer les aides
+  showAides = signal<boolean>(false);
   
   private animationTimeouts: number[] = [];
 
@@ -379,6 +385,10 @@ export class SimonGameComponent implements OnInit, OnDestroy {
    */
   isColorMode(): boolean {
     return this.simonData.type_elements === 'couleurs';
+  }
+
+  toggleAides(): void {
+    this.showAides.update((v: boolean) => !v);
   }
 }
 

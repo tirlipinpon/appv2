@@ -19,6 +19,9 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
   @Input({ required: true }) liensData!: LiensData;
   @Input() showResult = false;
   @Input() disabled = false;
+  @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() instructions: string | null = null; // Instructions pour le jeu
+  @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
 
@@ -41,6 +44,9 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
   // État de validation
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
+  
+  // État pour afficher/masquer les aides
+  showAides = signal<boolean>(false);
 
   private resizeObserver?: ResizeObserver;
   private updateLinksTimeout?: number;
@@ -286,6 +292,10 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
 
   canSubmit(): boolean {
     return this.userLinks().size > 0;
+  }
+
+  toggleAides(): void {
+    this.showAides.update(v => !v);
   }
 }
 

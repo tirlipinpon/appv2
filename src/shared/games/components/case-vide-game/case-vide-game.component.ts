@@ -14,6 +14,9 @@ export class CaseVideGameComponent implements OnInit {
   @Input({ required: true }) caseVideData!: CaseVideData;
   @Input() showResult = false;
   @Input() disabled = false;
+  @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() instructions: string | null = null; // Instructions pour le jeu
+  @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
 
@@ -27,6 +30,9 @@ export class CaseVideGameComponent implements OnInit {
   caseVideUserAnswer = signal<string>(''); // Pour l'ancien format
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
+  
+  // État pour afficher/masquer les aides
+  showAides = signal<boolean>(false);
 
   constructor() {
     // Effet pour réinitialiser quand showResult change
@@ -310,6 +316,10 @@ export class CaseVideGameComponent implements OnInit {
       return this.caseVideUserAnswer().trim().length > 0;
     }
     return false;
+  }
+
+  toggleAides(): void {
+    this.showAides.update(v => !v);
   }
 }
 
