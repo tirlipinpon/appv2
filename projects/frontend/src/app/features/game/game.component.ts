@@ -526,14 +526,17 @@ export class GameComponent implements OnInit {
   isChronologieGame = computed(() => this.gameType() === 'chronologie');
   isMemoryGame = computed(() => this.gameType() === 'memory');
   isSimonGame = computed(() => this.gameType() === 'simon');
-  isImageInteractiveGame = computed(() => this.gameType() === 'image_interactive');
+  isImageInteractiveGame = computed(() => {
+    const type = this.gameType();
+    return type === 'image_interactive' || type === 'click';
+  });
   isCaseVideGame = computed(() => {
     const type = this.gameType();
     return type === 'case_vide' || type === 'case vide';
   });
   isGenericGame = computed(() => {
     const type = this.gameType();
-    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive', 'case_vide', 'case vide'].includes(type);
+    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive', 'click', 'case_vide', 'case vide'].includes(type);
   });
 
   // Getters typés pour les données de jeu

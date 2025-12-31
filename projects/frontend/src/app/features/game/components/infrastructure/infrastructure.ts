@@ -24,7 +24,12 @@ export class GameInfrastructure {
     
     // Normaliser les données : convertir la structure ancienne en nouvelle si nécessaire
     const game = data as any;
-    const gameTypeName = (game.game_types?.name || '').toLowerCase().replace(/\s+/g, '_');
+    let gameTypeName = (game.game_types?.name || '').toLowerCase().replace(/\s+/g, '_');
+    
+    // Normaliser "click" vers "image_interactive"
+    if (gameTypeName === 'click') {
+      gameTypeName = 'image_interactive';
+    }
     
     // La table games n'a pas de colonne game_data_json, donc on doit toujours convertir
     // depuis metadata, question, reponses, aides
@@ -111,6 +116,21 @@ export class GameInfrastructure {
       } else if (game.reponses) {
         gameDataJson = game.reponses;
       } else if (game.game_data_json) {
+        gameDataJson = game.game_data_json;
+      }
+    } else if (gameTypeName === 'image_interactive') {
+      // Image interactive (click) : convertir depuis metadata
+      if (game.metadata) {
+        gameDataJson = {
+          image_url: game.metadata.image_url || '',
+          image_width: game.metadata.image_width || 0,
+          image_height: game.metadata.image_height || 0,
+          zones: game.metadata.zones || [],
+          require_all_correct_zones: game.metadata.require_all_correct_zones !== undefined 
+            ? game.metadata.require_all_correct_zones 
+            : true
+        };
+      } else if (game.game_data_json && Object.keys(game.game_data_json).length > 0) {
         gameDataJson = game.game_data_json;
       }
     } else if (game.reponses) {
