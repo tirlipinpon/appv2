@@ -13,6 +13,7 @@ interface SubjectsState {
   categories: SubjectCategoryWithProgress[];
   loading: boolean;
   error: string | null;
+  childId: string | null;
 }
 
 const initialState: SubjectsState = {
@@ -21,6 +22,7 @@ const initialState: SubjectsState = {
   categories: [],
   loading: false,
   error: null,
+  childId: null,
 };
 
 export const SubjectsStore = signalStore(
@@ -36,10 +38,14 @@ export const SubjectsStore = signalStore(
     hasCategories: () => state.categories().length > 0,
   })),
   withMethods((store, infrastructure = inject(SubjectsInfrastructure)) => ({
+    setChildId(childId: string | null): void {
+      patchState(store, { childId });
+    },
     async loadSubjects(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
-        const subjects = await infrastructure.loadSubjects();
+        const childId = store.childId();
+        const subjects = await infrastructure.loadSubjects(childId);
         patchState(store, { subjects, loading: false });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Erreur lors du chargement des matières';

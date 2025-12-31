@@ -10,6 +10,10 @@ export class SubjectsApplication {
   private readonly authService = inject(ChildAuthService);
 
   async initialize(): Promise<void> {
+    const child = this.authService.getCurrentChild();
+    if (child) {
+      this.store.setChildId(child.child_id);
+    }
     await this.store.loadSubjects();
   }
 

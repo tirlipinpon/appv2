@@ -11,16 +11,61 @@ export class SubjectsInfrastructure {
   private readonly supabase = inject(SupabaseService);
   private readonly cache = inject(CacheService);
 
-  async loadSubjects(): Promise<Subject[]> {
-    const cacheKey = 'subjects:all';
+  async loadSubjects(childId: string | null = null): Promise<Subject[]> {
+    if (!childId) {
+      // Si pas de childId, retourner tous les sujets (comportement par défaut)
+      const cacheKey = 'subjects:all';
+      const cached = this.cache.get<Subject[]>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
+      const { data, error } = await this.supabase.client
+        .from('subjects')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      const subjects = data || [];
+      this.cache.set(cacheKey, subjects, 10 * 60 * 1000); // Cache 10 minutes
+      return subjects;
+    }
+
+    // Filtrer les sujets par childId via la table child_subject_enrollments (comme l'admin)
+    // L'admin utilise child_subject_enrollments avec selected=true pour déterminer les matières activées
+    const cacheKey = `subjects:child:${childId}`;
     const cached = this.cache.get<Subject[]>(cacheKey);
     if (cached) {
       return cached;
     }
 
+    // Récupérer les enrollments où selected = true (comme l'admin)
+    const { data: enrollments, error: enrollmentsError } = await this.supabase.client
+      .from('child_subject_enrollments')
+      .select('subject_id')
+      .eq('child_id', childId)
+      .eq('selected', true);
+
+    if (enrollmentsError) throw enrollmentsError;
+
+    if (!enrollments || enrollments.length === 0) {
+      return [];
+    }
+
+    // Extraire les IDs de sujets
+    const subjectIds = enrollments
+      .map((e: { subject_id: string }) => e.subject_id)
+      .filter((id: string | undefined): id is string => id !== undefined);
+
+    if (subjectIds.length === 0) {
+      return [];
+    }
+
+    // Récupérer les sujets correspondants
     const { data, error } = await this.supabase.client
       .from('subjects')
       .select('*')
+      .in('id', subjectIds)
       .order('name');
 
     if (error) throw error;
