@@ -9,6 +9,8 @@ import { FeedbackData } from './services/feedback.service';
 import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent } from '@shared/games';
 import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
+import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
+import type { Game } from '../../core/types/game.types';
 
 @Component({
   selector: 'app-game',
@@ -448,6 +450,7 @@ export class GameComponent implements OnInit {
   protected readonly application = inject(GameApplication);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly subjectsInfrastructure = inject(SubjectsInfrastructure);
 
   selectedAnswer = signal<number | null>(null);
   reponseLibreInput = signal<string>('');
@@ -458,18 +461,37 @@ export class GameComponent implements OnInit {
   completionMessage = signal<string>('');
   showCompletionScreen = signal<boolean>(false);
 
-  completionActions = computed<CompletionModalAction[]>(() => [
-    {
-      label: 'Retour aux matières',
-      variant: 'primary',
-      action: () => this.goToSubjects()
-    },
-    {
-      label: 'Rejouer',
-      variant: 'secondary',
-      action: () => this.restartGame()
+  nextGameId = signal<string | null>(null);
+  hasNextGame = signal<boolean>(false);
+
+  completionActions = computed<CompletionModalAction[]>(() => {
+    const actions: CompletionModalAction[] = [];
+    
+    // Ajouter le bouton "Continuer" si un prochain jeu existe
+    if (this.hasNextGame()) {
+      actions.push({
+        label: 'Continuer',
+        variant: 'primary',
+        action: () => this.goToNextGame()
+      });
     }
-  ]);
+    
+    // Ajouter les autres actions
+    actions.push(
+      {
+        label: 'Retour aux matières',
+        variant: this.hasNextGame() ? 'secondary' : 'primary',
+        action: () => this.goToSubjects()
+      },
+      {
+        label: 'Rejouer',
+        variant: 'secondary',
+        action: () => this.restartGame()
+      }
+    );
+    
+    return actions;
+  });
 
   // Computed pour déterminer le type de jeu et les données
   gameType = computed(() => {
@@ -537,6 +559,9 @@ export class GameComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
+      // Réinitialiser les signaux pour le prochain jeu
+      this.hasNextGame.set(false);
+      this.nextGameId.set(null);
       await this.application.initializeGame(gameId);
     } else {
       // Si pas de gameId, essayer de charger depuis categoryId
@@ -650,7 +675,126 @@ export class GameComponent implements OnInit {
         this.completionMessage.set(`Continue ! ${score}/${totalQuestions} bonnes réponses. Tu peux réessayer ! 💪`);
       }
     }
+    
+    // Chercher le prochain jeu dans la même catégorie
+    await this.findNextGame();
+    
     this.showCompletionScreen.set(true);
+  }
+
+  async findNextGame(): Promise<void> {
+    const currentGame = this.application.getCurrentGame()();
+    if (!currentGame) {
+      this.hasNextGame.set(false);
+      this.nextGameId.set(null);
+      return;
+    }
+
+    try {
+      let games: Game[] = [];
+      
+      // Si le jeu est lié à une catégorie, charger les jeux de cette catégorie
+      if (currentGame.subject_category_id) {
+        games = await this.subjectsInfrastructure.loadGamesByCategory(currentGame.subject_category_id);
+      } 
+      // Sinon, si le jeu est lié directement à une matière, charger les jeux de cette matière
+      else if (currentGame.subject_id) {
+        // Charger les jeux directement liés à la matière (sans catégorie)
+        const { data, error } = await this.subjectsInfrastructure['supabase'].client
+          .from('games')
+          .select(`
+            *,
+            game_types!inner(name)
+          `)
+          .eq('subject_id', currentGame.subject_id)
+          .is('subject_category_id', null)
+          .order('name');
+        
+        if (error) throw error;
+        if (data) {
+          // Normaliser les jeux comme dans loadGamesByCategory
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          games = data.map((game: any) => {
+            const gameTypeName = (game.game_types?.name || '').toLowerCase().replace(/\s+/g, '_');
+            let gameDataJson: Record<string, unknown> = {};
+            
+            // Même logique de normalisation que dans SubjectsInfrastructure.loadGamesByCategory
+            if (gameTypeName === 'reponse_libre') {
+              gameDataJson = { reponse_valide: game.metadata?.reponse_valide || '' };
+            } else if (gameTypeName === 'memory' && game.metadata?.paires) {
+              gameDataJson = {
+                paires: game.metadata.paires.map((paire: { question?: string; reponse?: string }) => ({
+                  question: paire.question || '',
+                  reponse: paire.reponse || ''
+                }))
+              };
+            } else if (gameTypeName === 'qcm') {
+              if (game.metadata?.propositions || game.reponses?.propositions) {
+                gameDataJson = {
+                  propositions: game.metadata?.propositions || game.reponses?.propositions || [],
+                  reponses_valides: game.metadata?.reponses_valides || game.reponses?.reponses_valides || []
+                };
+              } else if (game.reponses) {
+                gameDataJson = game.reponses;
+              }
+            } else if (game.reponses) {
+              gameDataJson = game.reponses;
+            } else if (game.game_data_json) {
+              gameDataJson = game.game_data_json;
+            }
+            
+            return {
+              ...game,
+              game_type: gameTypeName || game.game_type || 'generic',
+              game_data_json: gameDataJson,
+              question: game.question,
+              reponses: game.reponses,
+              aides: game.aides,
+              metadata: game.metadata
+            } as Game;
+          });
+        }
+      }
+      
+      if (games.length === 0) {
+        this.hasNextGame.set(false);
+        this.nextGameId.set(null);
+        return;
+      }
+      
+      const currentGameIndex = games.findIndex(g => g.id === currentGame.id);
+      
+      if (currentGameIndex !== -1 && currentGameIndex < games.length - 1) {
+        // Il y a un prochain jeu
+        const nextGame = games[currentGameIndex + 1];
+        this.nextGameId.set(nextGame.id);
+        this.hasNextGame.set(true);
+      } else {
+        // Pas de prochain jeu dans cette catégorie/matière
+        this.hasNextGame.set(false);
+        this.nextGameId.set(null);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la recherche du prochain jeu:', error);
+      this.hasNextGame.set(false);
+      this.nextGameId.set(null);
+    }
+  }
+
+  async goToNextGame(): Promise<void> {
+    const nextId = this.nextGameId();
+    if (nextId) {
+      // Réinitialiser l'état du jeu actuel
+      this.selectedAnswer.set(null);
+      this.showFeedback.set(false);
+      this.feedback.set(null);
+      this.correctAnswer.set(null);
+      this.showCompletionScreen.set(false);
+      this.reponseLibreInput.set('');
+      
+      // Naviguer vers le prochain jeu
+      this.router.navigate(['/game', nextId]);
+    }
   }
 
   isGameCompleted(): boolean {
