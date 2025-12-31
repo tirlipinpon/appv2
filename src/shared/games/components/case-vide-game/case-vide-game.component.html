@@ -1,0 +1,95 @@
+<div class="case-vide-game">
+  @if (caseVideData.texte && caseVideData.banque_mots) {
+    <!-- Nouveau format : Drag and Drop -->
+    @if ((showResult || isSubmitted()) && isCorrect() !== null) {
+      <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+        @if (isCorrect()) {
+          ✅ Toutes les réponses sont correctes !
+        } @else {
+          ❌ Certaines réponses sont incorrectes.
+        }
+      </div>
+    }
+
+    <!-- Banque de mots -->
+    <div class="banque-mots-container">
+      <h4>Banque de mots</h4>
+      <div 
+        cdkDropList
+        id="banque-mots"
+        class="banque-mots-list"
+        [cdkDropListData]="getAvailableWords()"
+        [cdkDropListConnectedTo]="connectedDropListIds()">
+        @for (word of getAvailableWords(); track word) {
+          <div 
+            class="word-tag"
+            cdkDrag
+            [cdkDragData]="word"
+            [class.used]="isWordUsed(word)">
+            {{ word }}
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Texte avec cases vides -->
+    <div class="texte-with-cases">
+      @for (part of parseTexteWithCasesParts(); track $index) {
+        @if (part.type === 'text') {
+          <span class="texte-part">{{ part.content }}</span>
+        } @else if (part.type === 'case' && part.index) {
+          <span 
+            cdkDropList
+            [id]="'case-' + part.index"
+            class="case-vide-drop"
+            [cdkDropListData]="getCaseDropListData(part.index)"
+            [cdkDropListConnectedTo]="connectedDropListIds()"
+            (cdkDropListDropped)="onWordDrop($event, part.index)"
+            [class.filled]="getWordInCase(part.index)"
+            [class.correct]="isCaseCorrect(part.index) === true"
+            [class.incorrect]="isCaseCorrect(part.index) === false">
+            @if (getWordInCase(part.index)) {
+              <span class="case-word" cdkDrag [cdkDragData]="getWordInCase(part.index)">
+                {{ getWordInCase(part.index) }}
+                @if (!isSubmitted() && !disabled) {
+                  <button 
+                    type="button" 
+                    class="btn-remove-word"
+                    (click)="removeWordFromCase(part.index); $event.stopPropagation()"
+                    title="Retirer ce mot">
+                    ×
+                  </button>
+                }
+              </span>
+            } @else {
+              <span class="case-placeholder">{{ part.content }}</span>
+            }
+          </span>
+        }
+      }
+    </div>
+  } @else {
+    <!-- Ancien format : Input texte simple -->
+    @if ((showResult || isSubmitted()) && isCorrect() !== null) {
+      <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+        @if (isCorrect()) {
+          ✅ Bonne réponse !
+        } @else {
+          ❌ Mauvaise réponse. La bonne réponse était : "{{ getCaseVideReponseValide() }}"
+        }
+      </div>
+    }
+    <div class="case-vide-sentence">
+      <span>{{ caseVideData.debut_phrase }}</span>
+      <input 
+        type="text" 
+        [value]="caseVideUserAnswer()"
+        (input)="caseVideUserAnswer.set($any($event.target).value)"
+        [disabled]="disabled || isSubmitted()"
+        placeholder="?"
+        class="case-vide-input">
+      <span>{{ caseVideData.fin_phrase }}</span>
+    </div>
+  }
+</div>
+

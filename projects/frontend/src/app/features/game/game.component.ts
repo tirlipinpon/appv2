@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GameApplication } from './components/application/application';
@@ -6,8 +6,8 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent } from '@shared/games';
-import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData } from '@shared/games';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent } from '@shared/games';
+import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
 import type { Game } from '../../core/types/game.types';
@@ -15,7 +15,7 @@ import type { Game } from '../../core/types/game.types';
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LetterByLetterInputComponent],
   template: `
     <div class="game-container">
       <div *ngIf="application.isLoading()()" class="loading">
@@ -100,6 +100,15 @@ import type { Game } from '../../core/types/game.types';
             [disabled]="showFeedback()"
             (validated)="onGameValidated($event)">
           </app-image-interactive-game>
+        } @else if (isCaseVideGame() && getCaseVideData()) {
+          <!-- Jeu Case Vide -->
+          <app-case-vide-game
+            #caseVideGame
+            [caseVideData]="getCaseVideData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            (validated)="onCaseVideValidated($event)">
+          </app-case-vide-game>
         } @else if (gameType() === 'reponse_libre' && gameData()) {
           <!-- Jeu réponse libre -->
           <div class="question-container">
@@ -182,8 +191,8 @@ import type { Game } from '../../core/types/game.types';
         <!-- Boutons d'action -->
         <div class="actions-container">
           <app-child-button
-            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (gameType() === 'reponse_libre' && reponseLibreInput().trim().length > 0))"
-            (buttonClick)="submitAnswer()"
+            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (gameType() === 'reponse_libre' && reponseLibreInput().trim().length > 0) || (isCaseVideGame() && canSubmitCaseVide()))"
+            (buttonClick)="isCaseVideGame() ? submitCaseVide() : submitAnswer()"
             variant="primary"
             size="large">
             Valider
@@ -461,6 +470,9 @@ export class GameComponent implements OnInit {
   completionMessage = signal<string>('');
   showCompletionScreen = signal<boolean>(false);
 
+  // Référence au composant Case Vide
+  @ViewChild('caseVideGame', { static: false }) caseVideGameComponent?: CaseVideGameComponent;
+
   nextGameId = signal<string | null>(null);
   hasNextGame = signal<boolean>(false);
 
@@ -515,9 +527,13 @@ export class GameComponent implements OnInit {
   isMemoryGame = computed(() => this.gameType() === 'memory');
   isSimonGame = computed(() => this.gameType() === 'simon');
   isImageInteractiveGame = computed(() => this.gameType() === 'image_interactive');
+  isCaseVideGame = computed(() => {
+    const type = this.gameType();
+    return type === 'case_vide' || type === 'case vide';
+  });
   isGenericGame = computed(() => {
     const type = this.gameType();
-    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive'].includes(type);
+    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive', 'case_vide', 'case vide'].includes(type);
   });
 
   // Getters typés pour les données de jeu
@@ -556,6 +572,11 @@ export class GameComponent implements OnInit {
     return reponseLibreData?.reponse_valide || '';
   }
 
+  getCaseVideData(): CaseVideData | null {
+    const data = this.gameData();
+    return data && this.isCaseVideGame() ? (data as unknown as CaseVideData) : null;
+  }
+
   async ngOnInit(): Promise<void> {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
@@ -570,6 +591,54 @@ export class GameComponent implements OnInit {
         // TODO: Charger le premier jeu de la catégorie
       }
     }
+  }
+
+  // Méthodes pour Case Vide - délégation au composant partagé
+  canSubmitCaseVide(): boolean {
+    if (this.caseVideGameComponent) {
+      return this.caseVideGameComponent.canSubmit();
+    }
+    return false;
+  }
+
+  submitCaseVide(): void {
+    if (this.caseVideGameComponent) {
+      this.caseVideGameComponent.submitCaseVide();
+    }
+  }
+
+  onCaseVideValidated(isValid: boolean): void {
+    this.showFeedback.set(true);
+    const caseVideData = this.getCaseVideData();
+    let message = '';
+    let explanation = '';
+    
+    if (caseVideData?.texte && caseVideData.cases_vides) {
+      // Nouveau format
+      message = isValid ? 'Bravo ! Toutes les réponses sont correctes ! ✅' : 'Certaines réponses sont incorrectes. ❌';
+      if (!isValid && caseVideData.cases_vides) {
+        explanation = `Les bonnes réponses étaient : ${caseVideData.cases_vides.map(c => c.reponse_correcte).join(', ')}`;
+      }
+    } else if (caseVideData?.debut_phrase && caseVideData.fin_phrase && caseVideData.reponse_valide) {
+      // Ancien format
+      message = isValid ? 'Bravo ! Bonne réponse ! ✅' : 'Ce n\'est pas la bonne réponse. ❌';
+      if (!isValid) {
+        explanation = `La bonne réponse était : "${caseVideData.reponse_valide}"`;
+      }
+    }
+    
+    const feedbackData: FeedbackData = {
+      isCorrect: isValid,
+      message,
+      explanation
+    };
+    this.feedback.set(feedbackData);
+    
+    setTimeout(() => {
+      if (isValid) {
+        this.completeGame();
+      }
+    }, 2000);
   }
 
   selectAnswer(index: number): void {
@@ -885,6 +954,11 @@ export class GameComponent implements OnInit {
       this.reponseLibreInput.set('');
       this.finalScore.set(0);
       this.completionMessage.set('');
+      
+      // Réinitialiser Case Vide si nécessaire
+      if (this.isCaseVideGame() && this.caseVideGameComponent) {
+        this.caseVideGameComponent.reset();
+      }
     }
   }
 }

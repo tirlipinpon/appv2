@@ -3,13 +3,13 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent } from '@shared/games';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LetterByLetterInputComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
@@ -24,6 +24,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   @ViewChild('liensGrid', { static: false }) liensGridRef?: ElementRef<HTMLDivElement>;
   @ViewChild('linksSvg', { static: false }) linksSvgRef?: ElementRef<SVGSVGElement>;
+  @ViewChild('caseVideGame', { static: false }) caseVideGameComponent?: CaseVideGameComponent;
 
   private resizeObserver?: ResizeObserver;
   private updateLinksTimeout?: number;
@@ -32,22 +33,6 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   // Pour Case Vide et Réponse Libre - réponse saisie (ancien format)
   userAnswer = signal<string>('');
 
-  // Pour Case Vide (nouveau format drag and drop) - réponses par index de case
-  userCaseVideAnswers = signal<Map<number, string>>(new Map());
-  // Banque de mots mélangée pour Case Vide
-  shuffledBanqueMots = signal<string[]>([]);
-  // Mots disponibles dans la banque (mutable pour CDK drag-drop)
-  availableWords = signal<string[]>([]);
-  // Tableaux mutables pour chaque case vide (pour CDK drag-drop)
-  caseDropLists = signal<Map<number, string[]>>(new Map());
-  
-  // Flag pour éviter les initialisations multiples
-  private caseVideInitialized = signal<boolean>(false);
-  // Mots utilisés (retirés de la banque)
-  usedWords = signal<Set<string>>(new Set());
-
-  // Texte parsé avec cases (computed pour réactivité)
-  parsedTexteParts = signal<{ type: 'text' | 'case'; content: string; index?: number }[]>([]);
 
   // Pour Liens - associations faites par l'utilisateur (mot -> reponse)
   userLinks = signal<Map<string, string>>(new Map());
@@ -109,41 +94,11 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
       }
     });
 
-    // Effet pour parser le texte quand les données changent
-    effect(() => {
-      const data = this.caseVideData;
-      if (data && data.texte) {
-        this.parsedTexteParts.set(this.parseTexteWithCasesInternal(data.texte));
-      } else {
-        this.parsedTexteParts.set([]);
-      }
-    });
-
-    // Effet pour initialiser Case Vide quand la modal s'ouvre ET que les données sont disponibles
-    effect(() => {
-      const isOpen = this.isOpen();
-      const data = this.caseVideData;
-      const alreadyInitialized = this.caseVideInitialized();
-      
-      // Si la modal est fermée, réinitialiser le flag
-      if (!isOpen) {
-        this.caseVideInitialized.set(false);
-        return;
-      }
-      
-      // Si la modal est ouverte et que les données sont disponibles et pas encore initialisé
-      if (isOpen && data && data.texte && data.banque_mots && !alreadyInitialized) {
-        // Initialiser immédiatement (sans délai pour éviter les problèmes d'affichage)
-        this.initializeCaseVide();
-        this.caseVideInitialized.set(true);
-      }
-    });
   }
 
   close(): void {
     this.closed.emit();
     this.reset();
-    this.caseVideInitialized.set(false);
   }
 
   reset(): void {
@@ -152,18 +107,15 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     this.userLinks.set(new Map());
     this.selectedMotForLink.set(null);
     this.userVraiFauxAnswers.set(new Map());
-    this.userCaseVideAnswers.set(new Map());
-    this.usedWords.set(new Set());
-    this.caseDropLists.set(new Map());
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
     // Remélanger les mots et réponses
     this.shuffleLiensData();
     // Remélanger les énoncés Vrai/Faux
     this.shuffleVraiFauxData();
-    // Remélanger la banque de mots Case Vide
-    if (this.caseVideData && this.caseVideData.banque_mots) {
-      this.shuffleBanqueMots();
+    // Case Vide se réinitialise automatiquement via son propre reset()
+    if (this.caseVideGameComponent) {
+      this.caseVideGameComponent.reset();
     }
     // Memory se réinitialise automatiquement via son propre reset()
   }
@@ -186,35 +138,21 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   // Méthodes pour Case Vide
   submitCaseVide(): void {
-    if (this.isSubmitted()) return;
-    const caseVideData = this.caseVideData;
-    if (!caseVideData) return;
-
-    // Vérifier si c'est le nouveau format (drag and drop) ou l'ancien format
-    if (caseVideData.texte && caseVideData.cases_vides) {
-      // Nouveau format : valider toutes les cases vides
-      const allFilled = caseVideData.cases_vides.every(caseVide => 
-        this.userCaseVideAnswers().has(caseVide.index)
-      );
-      
-      if (!allFilled) {
-        // Toutes les cases doivent être remplies
-        return;
-      }
-
-      const allCorrect = caseVideData.cases_vides.every(caseVide => {
-        const userAnswer = this.userCaseVideAnswers().get(caseVide.index);
-        return userAnswer?.toLowerCase().trim() === caseVide.reponse_correcte.toLowerCase().trim();
-      });
-
-      this.isSubmitted.set(true);
-      this.isCorrect.set(allCorrect);
-    } else if (caseVideData.debut_phrase && caseVideData.fin_phrase && caseVideData.reponse_valide) {
-      // Ancien format : validation simple
-      const isValid = this.userAnswer().trim().toLowerCase() === caseVideData.reponse_valide.trim().toLowerCase();
-      this.isSubmitted.set(true);
-      this.isCorrect.set(isValid);
+    if (this.caseVideGameComponent) {
+      this.caseVideGameComponent.submitCaseVide();
     }
+  }
+
+  canSubmitCaseVide(): boolean {
+    if (this.caseVideGameComponent) {
+      return this.caseVideGameComponent.canSubmit();
+    }
+    return false;
+  }
+
+  onCaseVideValidated(isValid: boolean): void {
+    this.isSubmitted.set(true);
+    this.isCorrect.set(isValid);
   }
 
   // Méthodes pour Réponse Libre
@@ -616,282 +554,5 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     return userAnswer === enonce.reponse_correcte;
   }
 
-  // Méthode pour initialiser complètement Case Vide
-  private initializeCaseVide(): void {
-    const caseVideData = this.caseVideData;
-    if (!caseVideData) return;
-    
-    // Parser le texte avec cases
-    if (caseVideData.texte) {
-      this.parsedTexteParts.set(this.parseTexteWithCasesInternal(caseVideData.texte));
-    }
-    
-    // Réinitialiser l'état utilisateur AVANT de mélanger
-    this.userCaseVideAnswers.set(new Map());
-    this.usedWords.set(new Set());
-    this.isSubmitted.set(false);
-    this.isCorrect.set(null);
-    
-    // Mélanger la banque de mots (cela initialise aussi les caseDropLists)
-    if (caseVideData.banque_mots) {
-      this.shuffleBanqueMots();
-    } else {
-      // Si pas de banque de mots, initialiser quand même les caseDropLists
-      const caseLists = new Map<number, string[]>();
-      if (caseVideData.cases_vides) {
-        caseVideData.cases_vides.forEach(caseVide => {
-          caseLists.set(caseVide.index, []);
-        });
-      }
-      this.caseDropLists.set(caseLists);
-    }
-    
-    // Réinitialiser les mots disponibles avec tous les mots mélangés
-    const shuffled = this.shuffledBanqueMots();
-    if (shuffled.length > 0) {
-      this.availableWords.set([...shuffled]);
-    }
-  }
-
-  // Méthodes pour Case Vide (nouveau format drag and drop)
-  shuffleBanqueMots(): void {
-    const caseVideData = this.caseVideData;
-    if (caseVideData && caseVideData.banque_mots) {
-      const shuffled = this.shuffleArray([...caseVideData.banque_mots]);
-      this.shuffledBanqueMots.set(shuffled);
-      // Initialiser les mots disponibles avec tous les mots
-      this.availableWords.set([...shuffled]);
-      this.usedWords.set(new Set());
-      
-      // Initialiser les listes de drop pour toutes les cases vides
-      const caseLists = new Map<number, string[]>();
-      if (caseVideData.cases_vides) {
-        caseVideData.cases_vides.forEach(caseVide => {
-          caseLists.set(caseVide.index, []);
-        });
-      }
-      this.caseDropLists.set(caseLists);
-    }
-  }
-
-  getAvailableWords(): string[] {
-    return this.availableWords();
-  }
-
-  updateAvailableWords(): void {
-    const shuffled = this.shuffledBanqueMots();
-    const used = this.usedWords();
-    const available = shuffled.filter(word => !used.has(word));
-    this.availableWords.set(available);
-  }
-
-  parseTexteWithCases(): { type: 'text' | 'case'; content: string; index?: number }[] {
-    return this.parsedTexteParts();
-  }
-
-  private parseTexteWithCasesInternal(texte: string): { type: 'text' | 'case'; content: string; index?: number }[] {
-    if (!texte) {
-      return [];
-    }
-
-    const parts: { type: 'text' | 'case'; content: string; index?: number }[] = [];
-    const placeholderRegex = /\[(\d+)\]/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = placeholderRegex.exec(texte)) !== null) {
-      // Ajouter le texte avant le placeholder
-      if (match.index > lastIndex) {
-        parts.push({
-          type: 'text',
-          content: texte.substring(lastIndex, match.index),
-        });
-      }
-      // Ajouter la case vide
-      const caseIndex = parseInt(match[1], 10);
-      parts.push({
-        type: 'case',
-        content: match[0],
-        index: caseIndex,
-      });
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Ajouter le texte restant
-    if (lastIndex < texte.length) {
-      parts.push({
-        type: 'text',
-        content: texte.substring(lastIndex),
-      });
-    }
-
-    // Si aucun placeholder n'a été trouvé, retourner le texte entier
-    if (parts.length === 0) {
-      parts.push({
-        type: 'text',
-        content: texte,
-      });
-    }
-
-    return parts;
-  }
-
-  onWordDrop(event: CdkDragDrop<string[]>, caseIndex: number): void {
-    if (this.isSubmitted()) return;
-
-    // Utiliser transferArrayItem pour que CDK fasse le transfert visuel
-    transferArrayItem(
-      event.previousContainer.data,
-      event.container.data,
-      event.previousIndex,
-      event.currentIndex >= 0 ? event.currentIndex : 0
-    );
-
-    // Maintenant synchroniser nos états avec les arrays modifiés par CDK
-    const answers = new Map(this.userCaseVideAnswers());
-    const used = new Set(this.usedWords());
-    const available = [...this.availableWords()];
-    const caseLists = new Map(this.caseDropLists());
-
-    // Si on drop depuis la banque vers une case
-    if (event.previousContainer.id === 'banque-mots') {
-      const word = event.container.data[0]; // Le mot qui vient d'être déposé
-      if (!word) return;
-      
-      // Si cette case avait déjà un mot, le remettre dans la banque
-      const previousWord = answers.get(caseIndex);
-      if (previousWord && previousWord !== word) {
-        used.delete(previousWord);
-        available.push(previousWord);
-        answers.delete(caseIndex);
-      }
-
-      // Mettre à jour avec le nouveau mot
-      answers.set(caseIndex, word);
-      used.add(word);
-      
-      // Retirer le mot de la banque disponible
-      const wordIndex = available.indexOf(word);
-      if (wordIndex > -1) {
-        available.splice(wordIndex, 1);
-      }
-
-      // Mettre à jour les listes de drop pour cette case
-      caseLists.set(caseIndex, [word]);
-
-      // Mettre à jour tous les signals
-      this.userCaseVideAnswers.set(answers);
-      this.usedWords.set(used);
-      this.availableWords.set(available);
-      this.caseDropLists.set(caseLists);
-    }
-    // Si on drop depuis une case vers une autre case (échange)
-    else if (event.previousContainer.id.startsWith('case-')) {
-      const previousCaseIndex = parseInt(event.previousContainer.id.replace('case-', ''), 10);
-      const wordFromPrevious = event.container.data[0];
-      const wordInNewCase = event.previousContainer.data[0]; // L'autre mot (s'il existe)
-      
-      if (wordFromPrevious) {
-        // Échanger les mots entre les deux cases
-        if (wordInNewCase) {
-          answers.set(previousCaseIndex, wordInNewCase);
-          caseLists.set(previousCaseIndex, [wordInNewCase]);
-        } else {
-          answers.delete(previousCaseIndex);
-          caseLists.set(previousCaseIndex, []);
-        }
-        
-        answers.set(caseIndex, wordFromPrevious);
-        caseLists.set(caseIndex, [wordFromPrevious]);
-        
-        this.userCaseVideAnswers.set(answers);
-        this.caseDropLists.set(caseLists);
-      }
-    }
-  }
-
-  removeWordFromCase(caseIndex: number): void {
-    if (this.isSubmitted()) return;
-
-    const answers = new Map(this.userCaseVideAnswers());
-    const used = new Set(this.usedWords());
-    const caseLists = new Map(this.caseDropLists());
-
-    const word = answers.get(caseIndex);
-    if (word) {
-      answers.delete(caseIndex);
-      used.delete(word);
-      caseLists.set(caseIndex, []);
-      
-      // Remettre le mot dans la banque
-      const available = [...this.availableWords()];
-      available.push(word);
-      this.availableWords.set(available);
-      
-      this.userCaseVideAnswers.set(answers);
-      this.usedWords.set(used);
-      this.caseDropLists.set(caseLists);
-    }
-  }
-
-  getWordInCase(caseIndex: number): string | undefined {
-    return this.userCaseVideAnswers().get(caseIndex);
-  }
-
-  getCaseDropListData(caseIndex: number): string[] {
-    const caseLists = this.caseDropLists();
-    
-    // Retourner la liste existante (même référence pour CDK)
-    // Si la liste n'existe pas, retourner un tableau vide
-    // L'initialisation se fait dans initializeCaseVide(), pas ici
-    return caseLists.get(caseIndex) || [];
-  }
-
-  // Computed signal pour tous les IDs des drop lists (banque + toutes les cases)
-  readonly connectedDropListIds = computed(() => {
-    const caseVideData = this.caseVideData;
-    const ids: string[] = ['banque-mots'];
-    
-    if (caseVideData && caseVideData.cases_vides) {
-      caseVideData.cases_vides.forEach(caseVide => {
-        ids.push(`case-${caseVide.index}`);
-      });
-    }
-    
-    return ids;
-  });
-
-  isWordUsed(word: string): boolean {
-    return this.usedWords().has(word);
-  }
-
-  isCaseCorrect(caseIndex: number): boolean | null {
-    if (!this.isSubmitted()) return null;
-    const caseVideData = this.caseVideData;
-    if (!caseVideData || !caseVideData.cases_vides) return null;
-
-    const caseVide = caseVideData.cases_vides.find(c => c.index === caseIndex);
-    if (!caseVide) return null;
-
-    const userAnswer = this.userCaseVideAnswers().get(caseIndex);
-    return userAnswer?.toLowerCase().trim() === caseVide.reponse_correcte.toLowerCase().trim();
-  }
-
-  getCaseVideReponseValide(): string {
-    const caseVideData = this.caseVideData;
-    if (!caseVideData) return '';
-    
-    // Ancien format
-    if (caseVideData.reponse_valide) {
-      return caseVideData.reponse_valide;
-    }
-    
-    // Nouveau format - retourner toutes les réponses correctes
-    if (caseVideData.cases_vides) {
-      return caseVideData.cases_vides.map(c => c.reponse_correcte).join(', ');
-    }
-    
-    return '';
-  }
 }
 
