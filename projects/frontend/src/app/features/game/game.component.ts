@@ -882,6 +882,9 @@ export class GameComponent implements OnInit {
       this.feedback.set(null);
       this.correctAnswer.set(null);
       this.showCompletionScreen.set(false);
+      this.reponseLibreInput.set('');
+      this.finalScore.set(0);
+      this.completionMessage.set('');
     }
   }
 }
