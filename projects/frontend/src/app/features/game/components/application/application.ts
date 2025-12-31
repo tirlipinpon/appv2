@@ -1,12 +1,11 @@
 import { inject, Injectable } from '@angular/core';
 import { GameStore } from '../../store/index';
 import { GameEngineService } from '../../services/game-engine.service';
-import { FeedbackService } from '../../services/feedback.service';
+import { FeedbackService, FeedbackData } from '../../services/feedback.service';
 import { ProgressionService } from '../../../../core/services/progression/progression.service';
 import { CollectionService } from '../../../../core/services/collection/collection.service';
 import { CheckpointService } from '../../../../core/services/save/checkpoint.service';
 import { ChildAuthService } from '../../../../core/auth/child-auth.service';
-import { GameState } from '../../types/game.types';
 
 @Injectable({
   providedIn: 'root',
@@ -29,7 +28,7 @@ export class GameApplication {
     }
   }
 
-  async submitAnswer(answerIndex: number): Promise<{ isCorrect: boolean; feedback: any }> {
+  async submitAnswer(answerIndex: number): Promise<{ isCorrect: boolean; feedback: FeedbackData }> {
     const gameState = this.store.gameState();
     if (!gameState) {
       throw new Error('Aucun jeu en cours');
@@ -68,7 +67,7 @@ export class GameApplication {
     const isSuccess = finalScore >= 60;
 
     // Afficher le feedback final
-    const feedback = this.feedback.showGameCompleteFeedback(
+    this.feedback.showGameCompleteFeedback(
       gameState.score,
       gameState.questions.length
     );
@@ -85,7 +84,7 @@ export class GameApplication {
       score: finalScore,
       duration_ms: duration,
       responses_json: {
-        questions: gameState.questions.map((q, i) => ({
+        questions: gameState.questions.map((q) => ({
           questionId: q.id,
           selectedAnswer: gameState.selectedAnswer,
         })),
