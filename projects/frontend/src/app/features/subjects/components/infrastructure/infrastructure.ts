@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '../../../../core/services/supabase/supabase.service';
 import { CacheService } from '../../../../core/services/cache/cache.service';
-import { Subject, SubjectCategory, SubjectCategoryWithProgress } from '../../types/subject.types';
-import { SubjectCategoryProgress } from '../../../../core/types/game.types';
+import { Subject, SubjectCategory } from '../../types/subject.types';
+import { SubjectCategoryProgress, Game } from '../../../../core/types/game.types';
 
 @Injectable({
   providedIn: 'root',
@@ -57,7 +57,7 @@ export class SubjectsInfrastructure {
     return this.loadSubjectCategories(subjectId);
   }
 
-  async loadGamesByCategory(categoryId: string): Promise<any[]> {
+  async loadGamesByCategory(categoryId: string): Promise<Game[]> {
     const { data, error } = await this.supabase.client
       .from('games')
       .select('*')
