@@ -50,5 +50,9 @@ export class SubjectsApplication {
   getError() {
     return this.store.error;
   }
+
+  resetSelection(): void {
+    this.store.resetSelection();
+  }
 }
 

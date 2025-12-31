@@ -104,6 +104,9 @@ export const SubjectsStore = signalStore(
         })
       )
     ),
+    resetSelection(): void {
+      patchState(store, { selectedSubjectId: null, categories: [] });
+    },
   }))
 );
 

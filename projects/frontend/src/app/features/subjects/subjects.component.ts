@@ -312,10 +312,14 @@ export class SubjectsComponent implements OnInit {
 
   goBack(): void {
     if (this.selectedCategoryId()) {
+      // Retour depuis les jeux vers les catégories
       this.selectedCategoryId.set(null);
       this.categoryGames.set([]);
     } else {
+      // Retour depuis les catégories vers les matières
+      // Réinitialiser à la fois le signal local et le store
       this.selectedSubjectId.set(null);
+      this.application.resetSelection();
     }
   }
 
