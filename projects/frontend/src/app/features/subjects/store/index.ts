@@ -35,25 +35,15 @@ export const SubjectsStore = signalStore(
     hasCategories: () => state.categories().length > 0,
   })),
   withMethods((store, infrastructure = inject(SubjectsInfrastructure)) => ({
-    loadSubjects: rxMethod<void>(
-      pipe(
-        tap(() => patchState(store, { loading: true, error: null })),
-        switchMap(() =>
-          infrastructure.loadSubjects().then(
-            (subjects) => {
-              patchState(store, { subjects, loading: false });
-            },
-            (error) => {
-              patchState(store, { error: error.message, loading: false });
-            }
-          )
-        ),
-        catchError((error) => {
-          patchState(store, { error: error.message, loading: false });
-          return of(null);
-        })
-      )
-    ),
+    async loadSubjects(): Promise<void> {
+      patchState(store, { loading: true, error: null });
+      try {
+        const subjects = await infrastructure.loadSubjects();
+        patchState(store, { subjects, loading: false });
+      } catch (error: any) {
+        patchState(store, { error: error.message || 'Erreur lors du chargement des matières', loading: false });
+      }
+    },
     selectSubject: rxMethod<string>(
       pipe(
         tap((subjectId) => patchState(store, { selectedSubjectId: subjectId, loading: true, error: null })),

@@ -55,7 +55,7 @@ export class ChildAuthService {
       this.saveSession(session);
 
       return session;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur lors de la connexion:', error);
       if (error instanceof Error) {
         throw error;

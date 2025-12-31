@@ -7,12 +7,12 @@ import { Injectable } from '@angular/core';
   providedIn: 'root',
 })
 export class CacheService {
-  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
 
   /**
    * Stocke une valeur dans le cache
    */
-  set(key: string, data: any, ttl: number = 5 * 60 * 1000): void {
+  set<T>(key: string, data: T, ttl: number = 5 * 60 * 1000): void {
     // ttl en millisecondes, par défaut 5 minutes
     this.cache.set(key, {
       data,
@@ -36,7 +36,7 @@ export class CacheService {
       return null;
     }
 
-    return cached.data as T;
+    return cached.data as T | null;
   }
 
   /**
