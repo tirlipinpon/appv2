@@ -1,0 +1,63 @@
+<div class="liens-game">
+  @if ((showResult || isSubmitted()) && isCorrect() !== null) {
+    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+      @if (isCorrect()) {
+        ✅ Tous les liens sont corrects !
+      } @else {
+        ❌ Certains liens sont incorrects.
+      }
+    </div>
+  }
+
+  <div class="liens-grid-container">
+    <div class="liens-grid" #liensGrid>
+      <svg #linksSvg class="links-svg" xmlns="http://www.w3.org/2000/svg">
+        @for (linkPath of getLinkPaths(); track linkPath.mot + linkPath.reponse) {
+          <path 
+            [attr.d]="linkPath.path" 
+            class="link-line"
+            [class.correct]="isSubmitted() && isCorrect()"
+            [class.incorrect]="isSubmitted() && !isCorrect()"
+            fill="none"
+            stroke-width="2"
+            stroke-linecap="round">
+          </path>
+        }
+      </svg>
+      <div class="mots-column">
+        <h4>Mots</h4>
+        @for (mot of getLiensMots(); track mot) {
+          <div 
+            class="mot-item"
+            [attr.data-mot]="mot"
+            [class.selected]="isMotSelected(mot)"
+            [class.linked]="getReponseForMot(mot)"
+            (click)="selectMot(mot)"
+            [class.disabled]="disabled || isSubmitted()">
+            <span class="mot-text">{{ mot }}</span>
+            <span class="link-circle"></span>
+          </div>
+        }
+      </div>
+      <div class="reponses-column">
+        <h4>Réponses</h4>
+        @for (reponse of getLiensReponses(); track reponse) {
+          <div 
+            class="reponse-item"
+            [attr.data-reponse]="reponse"
+            [class.selected]="findMotForReponse(reponse) && isLinkSelected(findMotForReponse(reponse), reponse)"
+            (click)="selectReponse(reponse)"
+            [class.disabled]="disabled || isSubmitted()">
+            <span class="link-circle"></span>
+            <span class="reponse-text">{{ reponse }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (selectedMotForLink()) {
+    <p class="hint">Sélectionnez une réponse pour lier avec "{{ selectedMotForLink() }}"</p>
+  }
+</div>
+

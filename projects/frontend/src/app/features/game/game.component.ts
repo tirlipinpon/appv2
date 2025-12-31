@@ -6,8 +6,8 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent } from '@shared/games';
-import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData } from '@shared/games';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent } from '@shared/games';
+import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
 import type { Game } from '../../core/types/game.types';
@@ -15,7 +15,7 @@ import type { Game } from '../../core/types/game.types';
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, LetterByLetterInputComponent],
   template: `
     <div class="game-container">
       <div *ngIf="application.isLoading()()" class="loading">
@@ -109,6 +109,15 @@ import type { Game } from '../../core/types/game.types';
             [disabled]="showFeedback()"
             (validated)="onCaseVideValidated($event)">
           </app-case-vide-game>
+        } @else if (isLiensGame() && getLiensData()) {
+          <!-- Jeu Liens -->
+          <app-liens-game
+            #liensGame
+            [liensData]="getLiensData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            (validated)="onLiensValidated($event)">
+          </app-liens-game>
         } @else if (gameType() === 'reponse_libre' && gameData()) {
           <!-- Jeu réponse libre -->
           <div class="question-container">
@@ -191,8 +200,8 @@ import type { Game } from '../../core/types/game.types';
         <!-- Boutons d'action -->
         <div class="actions-container">
           <app-child-button
-            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (gameType() === 'reponse_libre' && reponseLibreInput().trim().length > 0) || (isCaseVideGame() && canSubmitCaseVide()))"
-            (buttonClick)="isCaseVideGame() ? submitCaseVide() : submitAnswer()"
+            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (gameType() === 'reponse_libre' && reponseLibreInput().trim().length > 0) || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()))"
+            (buttonClick)="isCaseVideGame() ? submitCaseVide() : (isLiensGame() ? submitLiens() : submitAnswer())"
             variant="primary"
             size="large">
             Valider
@@ -470,8 +479,9 @@ export class GameComponent implements OnInit {
   completionMessage = signal<string>('');
   showCompletionScreen = signal<boolean>(false);
 
-  // Référence au composant Case Vide
+  // Références aux composants de jeux
   @ViewChild('caseVideGame', { static: false }) caseVideGameComponent?: CaseVideGameComponent;
+  @ViewChild('liensGame', { static: false }) liensGameComponent?: LiensGameComponent;
 
   nextGameId = signal<string | null>(null);
   hasNextGame = signal<boolean>(false);
@@ -534,9 +544,13 @@ export class GameComponent implements OnInit {
     const type = this.gameType();
     return type === 'case_vide' || type === 'case vide';
   });
+  isLiensGame = computed(() => {
+    const type = this.gameType();
+    return type === 'liens' || type === 'lien';
+  });
   isGenericGame = computed(() => {
     const type = this.gameType();
-    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive', 'click', 'case_vide', 'case vide'].includes(type);
+    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive', 'click', 'case_vide', 'case vide', 'liens', 'lien'].includes(type);
   });
 
   // Getters typés pour les données de jeu
@@ -580,6 +594,11 @@ export class GameComponent implements OnInit {
     return data && this.isCaseVideGame() ? (data as unknown as CaseVideData) : null;
   }
 
+  getLiensData(): LiensData | null {
+    const data = this.gameData();
+    return data && this.isLiensGame() ? (data as unknown as LiensData) : null;
+  }
+
   async ngOnInit(): Promise<void> {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
@@ -610,6 +629,20 @@ export class GameComponent implements OnInit {
     }
   }
 
+  // Méthodes pour Liens - délégation au composant partagé
+  canSubmitLiens(): boolean {
+    if (this.liensGameComponent) {
+      return this.liensGameComponent.canSubmit();
+    }
+    return false;
+  }
+
+  submitLiens(): void {
+    if (this.liensGameComponent) {
+      this.liensGameComponent.submitLiens();
+    }
+  }
+
   onCaseVideValidated(isValid: boolean): void {
     this.showFeedback.set(true);
     const caseVideData = this.getCaseVideData();
@@ -634,6 +667,24 @@ export class GameComponent implements OnInit {
       isCorrect: isValid,
       message,
       explanation
+    };
+    this.feedback.set(feedbackData);
+    
+    setTimeout(() => {
+      if (isValid) {
+        this.completeGame();
+      }
+    }, 2000);
+  }
+
+  onLiensValidated(isValid: boolean): void {
+    this.showFeedback.set(true);
+    const message = isValid ? 'Bravo ! Tous les liens sont corrects ! ✅' : 'Certains liens sont incorrects. ❌';
+    
+    const feedbackData: FeedbackData = {
+      isCorrect: isValid,
+      message,
+      explanation: ''
     };
     this.feedback.set(feedbackData);
     
@@ -958,9 +1009,12 @@ export class GameComponent implements OnInit {
       this.finalScore.set(0);
       this.completionMessage.set('');
       
-      // Réinitialiser Case Vide si nécessaire
+      // Réinitialiser les jeux spécifiques si nécessaire
       if (this.isCaseVideGame() && this.caseVideGameComponent) {
         this.caseVideGameComponent.reset();
+      }
+      if (this.isLiensGame() && this.liensGameComponent) {
+        this.liensGameComponent.reset();
       }
     }
   }
