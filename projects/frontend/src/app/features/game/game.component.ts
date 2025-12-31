@@ -126,6 +126,14 @@ import { LetterByLetterInputComponent } from '@shared/components/letter-by-lette
           </div>
         } @else if (isGenericGame() && application.getCurrentQuestion()()) {
           <!-- Jeux génériques avec questions/réponses -->
+          <div class="game-info-container" *ngIf="application.getCurrentGame()()">
+            @if (application.getCurrentGame()()!.name) {
+              <h1 class="game-name">{{ application.getCurrentGame()()!.name }}</h1>
+            }
+            @if (application.getCurrentGame()()!.instructions) {
+              <p class="game-instructions">{{ application.getCurrentGame()()!.instructions }}</p>
+            }
+          </div>
           <div class="question-container">
             <div class="question-number">
               Question {{ (application.getGameState()()?.currentQuestionIndex ?? 0) + 1 }} / {{ (application.getGameState()()?.questions?.length ?? 0) }}
@@ -133,6 +141,16 @@ import { LetterByLetterInputComponent } from '@shared/components/letter-by-lette
             <h2 class="question-text">
               {{ application.getCurrentQuestion()()?.question }}
             </h2>
+            @if (application.getCurrentGame()()?.aides && application.getCurrentGame()()!.aides!.length > 0) {
+              <div class="aides-container">
+                <strong>Aide :</strong>
+                <ul>
+                  @for (aide of application.getCurrentGame()()!.aides!; track $index) {
+                    <li>{{ aide }}</li>
+                  }
+                </ul>
+              </div>
+            }
           </div>
 
           <div class="answers-container">
@@ -270,6 +288,28 @@ import { LetterByLetterInputComponent } from '@shared/components/letter-by-lette
         order: 3;
         text-align: center;
       }
+    }
+
+    .game-info-container {
+      background: white;
+      border-radius: var(--theme-border-radius, 12px);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .game-name {
+      margin: 0 0 0.5rem 0;
+      color: var(--theme-primary-color, #4CAF50);
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .game-instructions {
+      margin: 0;
+      color: var(--theme-text-color, #666);
+      font-size: 1rem;
+      line-height: 1.5;
     }
 
     .question-container {

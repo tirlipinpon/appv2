@@ -127,7 +127,7 @@ export class LoginComponent {
       ).then(session => {
         this.isLoading = false;
         if (session) {
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/subjects']);
         }
       }).catch(error => {
         this.isLoading = false;
