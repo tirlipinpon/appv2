@@ -8,7 +8,11 @@
     "baseUrl": "../../",
     "paths": {
       "@shared/games": ["src/shared/games"],
-      "@shared/games/*": ["src/shared/games/*"]
+      "@shared/games/*": ["src/shared/games/*"],
+      "@shared/components": ["src/shared/components"],
+      "@shared/components/*": ["src/shared/components/*"],
+      "@shared/utils": ["src/shared/utils"],
+      "@shared/utils/*": ["src/shared/utils/*"]
     }
   },
   "include": [

@@ -7,12 +7,13 @@ import { ProgressBarComponent } from '../../shared/components/progress-bar/progr
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
 import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent } from '@shared/games';
-import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
+import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData } from '@shared/games';
+import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, LetterByLetterInputComponent],
   template: `
     <div class="game-container">
       <div *ngIf="application.isLoading()()" class="loading">
@@ -38,14 +39,26 @@ import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveD
       <div *ngIf="!application.isLoading()() && !application.getError()() && application.getCurrentGame()() && (gameData() || isGenericGame())" class="game-content">
         <!-- En-tête avec progression -->
         <div class="game-header">
-          <app-progress-bar
-            [value]="application.getProgress()()"
-            [max]="100"
-            [label]="'Progression'"
-            variant="primary">
-          </app-progress-bar>
-          <div class="score-display">
-            Score: {{ application.getGameState()()?.score || 0 }}
+          <div class="header-left">
+            <app-child-button
+              (buttonClick)="goBack()"
+              variant="secondary"
+              size="small">
+              ← Retour
+            </app-child-button>
+          </div>
+          <div class="header-center">
+            <app-progress-bar
+              [value]="application.getProgress()()"
+              [max]="100"
+              [label]="'Progression'"
+              variant="primary">
+            </app-progress-bar>
+          </div>
+          <div class="header-right">
+            <div class="score-display">
+              Score: {{ application.getGameState()()?.score || 0 }}
+            </div>
           </div>
         </div>
 
@@ -103,13 +116,13 @@ import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveD
             }
           </div>
           <div class="reponse-libre-container">
-            <input
-              type="text"
-              class="reponse-input"
-              [value]="reponseLibreInput()"
-              (input)="onReponseLibreInput($event)"
-              placeholder="Tapez votre réponse ici..."
-              [disabled]="showFeedback()">
+            <app-letter-by-letter-input
+              [targetWord]="getReponseLibreReponseValide()"
+              [allowHyphen]="true"
+              [disabled]="showFeedback()"
+              (wordChange)="onReponseLibreWordChange($event)"
+              (wordComplete)="onReponseLibreWordComplete()">
+            </app-letter-by-letter-input>
           </div>
         } @else if (isGenericGame() && application.getCurrentQuestion()()) {
           <!-- Jeux génériques avec questions/réponses -->
@@ -212,6 +225,22 @@ import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveD
       justify-content: space-between;
       align-items: center;
       gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .header-left {
+      flex: 0 0 auto;
+    }
+
+    .header-center {
+      flex: 1 1 auto;
+      min-width: 200px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .header-right {
+      flex: 0 0 auto;
     }
 
     .score-display {
@@ -219,6 +248,28 @@ import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveD
       font-weight: 700;
       color: var(--theme-primary-color, #4CAF50);
       white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+      .game-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .header-left {
+        order: 1;
+        margin-bottom: 1rem;
+      }
+
+      .header-center {
+        order: 2;
+        margin-bottom: 1rem;
+      }
+
+      .header-right {
+        order: 3;
+        text-align: center;
+      }
     }
 
     .question-container {
@@ -351,27 +402,6 @@ import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveD
     .reponse-libre-container {
       margin-bottom: 2rem;
     }
-
-    .reponse-input {
-      width: 100%;
-      padding: 1rem;
-      font-size: 1.125rem;
-      border: 2px solid #e0e0e0;
-      border-radius: var(--theme-border-radius, 12px);
-      transition: all 0.2s ease;
-    }
-
-    .reponse-input:focus {
-      outline: none;
-      border-color: var(--theme-primary-color, #4CAF50);
-      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-    }
-
-    .reponse-input:disabled {
-      cursor: not-allowed;
-      opacity: 0.8;
-      background-color: #f5f5f5;
-    }
   `]
 })
 export class GameComponent implements OnInit {
@@ -454,6 +484,16 @@ export class GameComponent implements OnInit {
     return data && this.isImageInteractiveGame() ? (data as unknown as ImageInteractiveData) : null;
   }
 
+  getReponseLibreData(): ReponseLibreData | null {
+    const data = this.gameData();
+    return data && this.gameType() === 'reponse_libre' ? (data as unknown as ReponseLibreData) : null;
+  }
+
+  getReponseLibreReponseValide(): string {
+    const reponseLibreData = this.getReponseLibreData();
+    return reponseLibreData?.reponse_valide || '';
+  }
+
   async ngOnInit(): Promise<void> {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
@@ -472,9 +512,13 @@ export class GameComponent implements OnInit {
     this.selectedAnswer.set(index);
   }
 
-  onReponseLibreInput(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.reponseLibreInput.set(target.value);
+  onReponseLibreWordChange(word: string): void {
+    this.reponseLibreInput.set(word);
+  }
+
+  onReponseLibreWordComplete(): void {
+    // Le mot est complet et correct, on peut soumettre automatiquement
+    this.submitAnswer();
   }
 
   onGameValidated(isCorrect: boolean): void {
@@ -578,6 +622,10 @@ export class GameComponent implements OnInit {
   }
 
   goToSubjects(): void {
+    this.router.navigate(['/subjects']);
+  }
+
+  goBack(): void {
     this.router.navigate(['/subjects']);
   }
 

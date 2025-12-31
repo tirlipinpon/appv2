@@ -8,7 +8,8 @@ export * from './components/app-header/app-header.component';
 export * from './components/confirmation-dialog/confirmation-dialog.component';
 export * from './components/form-field/form-field.component';
 export * from './components/games-stats-display/games-stats-display.component';
-export * from './components/letter-by-letter-input/letter-by-letter-input.component';
+// LetterByLetterInputComponent is now in src/shared/components/letter-by-letter-input
+// Import it from '@shared/components/letter-by-letter-input/letter-by-letter-input.component'
 export * from './components/school-level-select/school-level-select.component';
 export * from './components/scroll-to-top/scroll-to-top.component';
 export * from './components/toast/toast.component';
@@ -42,7 +43,8 @@ export { ChildStore } from '../features/child/store/index';
 // Utils
 export * from './utils/store-error-helper';
 export * from './utils/track-by.util';
-export * from './utils/word-validation.util';
+// WordValidationUtil is now in src/shared/utils/word-validation.util
+// Import it from '@shared/utils/word-validation.util'
 
 // Decorators
 export * from './decorators/catch-error.decorator';
