@@ -1,26 +1,27 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GameApplication } from './components/application/application';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
+import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent],
   template: `
     <div class="game-container">
-      <div *ngIf="application.isLoading()" class="loading">
+      <div *ngIf="application.isLoading()()" class="loading">
         Chargement du jeu...
       </div>
 
-      <div *ngIf="application.getError()" class="error">
-        {{ application.getError() }}
+      <div *ngIf="application.getError()()" class="error">
+        {{ application.getError()() }}
       </div>
 
-      <div *ngIf="!application.isLoading() && !application.getError() && application.getCurrentQuestion()()" class="game-content">
+      <div *ngIf="!application.isLoading()() && !application.getError()() && application.getCurrentQuestion()()" class="game-content">
         <!-- En-tête avec progression -->
         <div class="game-header">
           <app-progress-bar
@@ -94,31 +95,16 @@ import { FeedbackData } from './services/feedback.service';
         </div>
       </div>
 
-      <!-- Écran de fin -->
-      <div *ngIf="isGameCompleted() && showCompletionScreen()" class="completion-screen">
-        <h1>🎉 Jeu terminé !</h1>
-        <div class="final-score">
-          <div class="score-value">{{ finalScore() }}%</div>
-          <div class="score-label">Score final</div>
-        </div>
-        <div class="completion-message">
-          {{ completionMessage() }}
-        </div>
-        <div class="completion-actions">
-          <app-child-button
-            (buttonClick)="goToSubjects()"
-            variant="primary"
-            size="large">
-            Retour aux matières
-          </app-child-button>
-          <app-child-button
-            (buttonClick)="restartGame()"
-            variant="secondary"
-            size="large">
-            Rejouer
-          </app-child-button>
-        </div>
-      </div>
+      <!-- Modal de fin de jeu -->
+      <app-completion-modal
+        [visible]="isGameCompleted() && showCompletionScreen()"
+        [title]="'🎉 Jeu terminé !'"
+        [score]="finalScore()"
+        [scoreLabel]="'Score final'"
+        [message]="completionMessage()"
+        [actions]="completionActions()"
+        (overlayClick)="goToSubjects()">
+      </app-completion-modal>
     </div>
   `,
   styles: [`
@@ -271,49 +257,6 @@ import { FeedbackData } from './services/feedback.service';
       justify-content: center;
       gap: 1rem;
     }
-
-    .completion-screen {
-      text-align: center;
-      padding: 4rem 2rem;
-      background: white;
-      border-radius: var(--theme-border-radius, 12px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .completion-screen h1 {
-      margin-bottom: 2rem;
-      color: var(--theme-text-color, #333);
-    }
-
-    .final-score {
-      margin: 2rem 0;
-    }
-
-    .score-value {
-      font-size: 4rem;
-      font-weight: 700;
-      color: var(--theme-primary-color, #4CAF50);
-      margin-bottom: 0.5rem;
-    }
-
-    .score-label {
-      font-size: 1.25rem;
-      color: #666;
-    }
-
-    .completion-message {
-      font-size: 1.25rem;
-      margin: 2rem 0;
-      color: var(--theme-text-color, #333);
-    }
-
-    .completion-actions {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-top: 2rem;
-      flex-wrap: wrap;
-    }
   `]
 })
 export class GameComponent implements OnInit {
@@ -328,6 +271,19 @@ export class GameComponent implements OnInit {
   finalScore = signal<number>(0);
   completionMessage = signal<string>('');
   showCompletionScreen = signal<boolean>(false);
+
+  completionActions = computed<CompletionModalAction[]>(() => [
+    {
+      label: 'Retour aux matières',
+      variant: 'primary',
+      action: () => this.goToSubjects()
+    },
+    {
+      label: 'Rejouer',
+      variant: 'secondary',
+      action: () => this.restartGame()
+    }
+  ]);
 
   async ngOnInit(): Promise<void> {
     const gameId = this.route.snapshot.paramMap.get('id');
