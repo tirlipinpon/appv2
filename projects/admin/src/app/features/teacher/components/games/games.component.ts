@@ -28,6 +28,7 @@ import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
 import type { Subject } from '../../types/subject';
 import type { SubjectCategory } from '../../types/subject';
+import type { School } from '../../types/school';
 import { Infrastructure } from '../infrastructure/infrastructure';
 import { normalizeGameData } from '../../utils/game-data-mapper';
 import { SCHOOL_LEVELS } from '../../utils/school-levels.util';
@@ -105,14 +106,46 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   // Computed pour les écoles disponibles depuis les assignments du professeur
+  // Inclut aussi l'école du jeu actuel si elle existe
   readonly availableSchoolsForTeacher = computed(() => {
     const assignments = this.subjectsStore.assignments();
     const schools = this.subjectsStore.schools();
-    const schoolIds = new Set(assignments.map(a => a.school_id).filter(Boolean));
+    const currentAssignment = this.currentAssignment();
     
-    return schools
+    // Récupérer les IDs d'écoles depuis les assignments (filtrer les null)
+    const schoolIds = new Set<string>(
+      assignments
+        .map(a => a.school_id)
+        .filter((id): id is string => id !== null && id !== undefined)
+    );
+    
+    // Ajouter l'école du jeu actuel si elle existe
+    if (currentAssignment?.school_id) {
+      schoolIds.add(currentAssignment.school_id);
+    }
+    
+    // Créer un Map pour faciliter la recherche
+    const schoolsMap = new Map(schools.map(s => [s.id, s]));
+    
+    // Filtrer et trier les écoles chargées
+    const loadedSchools = schools
       .filter(school => schoolIds.has(school.id))
       .sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Ajouter les écoles non encore chargées avec des noms temporaires
+    const missingSchoolIds = Array.from(schoolIds).filter(id => !schoolsMap.has(id));
+    const missingSchools: School[] = missingSchoolIds.map(id => ({
+      id,
+      name: `École ${id.substring(0, 8)}...`,
+      address: null,
+      city: null,
+      country: null,
+      metadata: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
+    
+    return [...loadedSchools, ...missingSchools].sort((a, b) => a.name.localeCompare(b.name));
   });
 
   // Fonction pour obtenir les niveaux disponibles selon l'école sélectionnée
@@ -254,6 +287,18 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // Mettre à jour la longueur précédente
       this.previousGeneratedGamesLength = currentLength;
+    });
+
+    // Effect pour charger les écoles quand le dialogue de duplication s'ouvre
+    effect(() => {
+      const isOpen = this.duplicateDialogOpen();
+      const schools = this.subjectsStore.schools();
+      const assignments = this.subjectsStore.assignments();
+      
+      if (isOpen && schools.length === 0 && assignments.length > 0) {
+        // Charger les écoles si elles ne sont pas déjà chargées et qu'on a des assignments
+        this.subjectsStore.loadSchools();
+      }
     });
   }
 
@@ -732,10 +777,16 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     
     // Trouver l'assignment correspondant au jeu parmi les assignments du professeur
+    // Si plusieurs assignments existent pour cette matière, prendre le premier
     const assignments = this.subjectsStore.assignments();
     const assignment = subjectId 
       ? assignments.find(a => a.subject_id === subjectId)
       : null;
+    
+    // Charger les écoles si elles ne sont pas déjà chargées
+    if (this.subjectsStore.schools().length === 0) {
+      this.subjectsStore.loadSchools();
+    }
     
     this.gameToDuplicate.set(game);
     this.currentAssignment.set(assignment || null);
