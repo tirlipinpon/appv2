@@ -1,5 +1,6 @@
 import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { withDevtools } from "@angular-architects/ngrx-toolkit";
 import { inject } from '@angular/core';
 import { pipe, switchMap, catchError, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -22,6 +23,7 @@ const initialState: DashboardState = {
 
 export const DashboardStore = signalStore(
   { providedIn: 'root' },
+  withDevtools('dashboard'),
   withState(initialState),
   withComputed((state) => ({
     hasStatistics: () => state.statistics() !== null,
