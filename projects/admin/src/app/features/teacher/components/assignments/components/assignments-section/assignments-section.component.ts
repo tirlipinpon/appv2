@@ -185,6 +185,18 @@ export class AssignmentsSectionComponent {
     this.selectedLevel.set(null); // Réinitialiser
   });
 
+  // Effect pour charger les écoles si elles ne sont pas déjà chargées
+  private readonly loadSchoolsEffect = effect(() => {
+    const assignments = this.filteredAssignments();
+    if (assignments.length === 0) return;
+    
+    const schools = this.schoolsStore.schools();
+    if (schools.length === 0) {
+      // Charger les écoles si elles ne sont pas déjà chargées
+      this.schoolsStore.loadSchools();
+    }
+  });
+
   // Effect pour charger le nombre d'enfants pour chaque affectation
   private readonly loadStudentCountsEffect = effect(() => {
     const assignments = this.filteredAssignments();
@@ -396,7 +408,16 @@ export class AssignmentsSectionComponent {
   }
 
   // Méthodes utilitaires
-  getSchoolName(schoolId: string): string {
+  getSchoolName(schoolId: string, assignment?: TeacherAssignment | TeacherAssignmentWithJoins): string {
+    // D'abord vérifier si l'affectation a une relation school jointe
+    if (assignment) {
+      const assignmentWithJoins = assignment as TeacherAssignmentWithJoins;
+      if (assignmentWithJoins.school && assignmentWithJoins.school.name) {
+        return assignmentWithJoins.school.name;
+      }
+    }
+    
+    // Sinon, chercher dans le store
     const schools = this.schoolsStore.schools();
     const school = schools.find(s => s.id === schoolId);
     return school ? school.name : 'École inconnue';

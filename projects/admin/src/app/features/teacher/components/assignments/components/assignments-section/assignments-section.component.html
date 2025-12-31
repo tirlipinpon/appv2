@@ -63,7 +63,7 @@
             {{ isAssignmentExpanded(assignment.id) ? '📂' : '📁' }}
           </button>
         </div>
-        <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id) }}</p>
+        <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id, assignment) }}</p>
         <p *ngIf="assignment.school_year_id">📅 Année: {{ getSchoolYearLabel(assignment.school_year_id) }}</p>
         <p *ngIf="assignment.school_level">🎓 Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
         <p>
