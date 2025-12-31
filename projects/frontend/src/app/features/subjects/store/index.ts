@@ -5,7 +5,6 @@ import { pipe, switchMap, catchError, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { SubjectsInfrastructure } from '../components/infrastructure/infrastructure';
 import { Subject, SubjectCategoryWithProgress } from '../types/subject.types';
-import { SubjectCategoryProgress } from '../../../core/types/game.types';
 
 interface SubjectsState {
   subjects: Subject[];
@@ -40,8 +39,9 @@ export const SubjectsStore = signalStore(
       try {
         const subjects = await infrastructure.loadSubjects();
         patchState(store, { subjects, loading: false });
-      } catch (error: any) {
-        patchState(store, { error: error.message || 'Erreur lors du chargement des matières', loading: false });
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Erreur lors du chargement des matières';
+        patchState(store, { error: errorMessage, loading: false });
       }
     },
     selectSubject: rxMethod<string>(

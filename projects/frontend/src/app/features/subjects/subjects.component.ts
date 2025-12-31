@@ -7,6 +7,7 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { StarRatingComponent } from '../../shared/components/star-rating/star-rating.component';
+import { Game } from '../../core/types/game.types';
 
 @Component({
   selector: 'app-subjects',
@@ -35,7 +36,10 @@ import { StarRatingComponent } from '../../shared/components/star-rating/star-ra
         <div
           *ngFor="let subject of application.getSubjects()()"
           class="subject-card"
-          (click)="selectSubject(subject.id)">
+          (click)="selectSubject(subject.id)"
+          (keydown.enter)="selectSubject(subject.id)"
+          tabindex="0"
+          role="button">
           <h2>{{ subject.name }}</h2>
           <p *ngIf="subject.description">{{ subject.description }}</p>
         </div>
@@ -53,7 +57,10 @@ import { StarRatingComponent } from '../../shared/components/star-rating/star-ra
           <div
             *ngFor="let category of application.getCategories()()"
             class="category-card"
-            (click)="selectCategory(category.id)">
+            (click)="selectCategory(category.id)"
+            (keydown.enter)="selectCategory(category.id)"
+            tabindex="0"
+            role="button">
             <h3>{{ category.name }}</h3>
             <p *ngIf="category.description">{{ category.description }}</p>
             <div *ngIf="category.progress" class="category-progress">
@@ -278,7 +285,7 @@ export class SubjectsComponent implements OnInit {
 
   selectedSubjectId = signal<string | null>(null);
   selectedCategoryId = signal<string | null>(null);
-  categoryGames = signal<any[]>([]);
+  categoryGames = signal<Game[]>([]);
   loadingGames = signal<boolean>(false);
 
   constructor() {
