@@ -1,4 +1,4 @@
-import { Component, input, EventEmitter } from '@angular/core';
+import { Component, input, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
       [class]="'child-button ' + (variant() || 'primary') + ' ' + (size() || 'medium')"
       [disabled]="disabled()"
       [type]="type() || 'button'"
-      (click)="onClick.emit($event)">
+      (click)="buttonClick.emit($event)">
       <ng-content></ng-content>
     </button>
   `,
@@ -80,6 +80,6 @@ export class ChildButtonComponent {
   size = input<'small' | 'medium' | 'large'>('medium');
   disabled = input<boolean>(false);
   type = input<'button' | 'submit' | 'reset'>('button');
-  onClick = new EventEmitter<MouseEvent>();
+  @Output() buttonClick = new EventEmitter<MouseEvent>();
 }
 

@@ -51,19 +51,19 @@ import { ProgressBarComponent } from '../../shared/components/progress-bar/progr
         <!-- Filtres -->
         <div class="filters">
           <app-child-button
-            (onClick)="setFilter('all')"
+            (buttonClick)="setFilter('all')"
             [variant]="application.getFilter()() === 'all' ? 'primary' : 'secondary'"
             size="small">
             Tous
           </app-child-button>
           <app-child-button
-            (onClick)="setFilter('unlocked')"
+            (buttonClick)="setFilter('unlocked')"
             [variant]="application.getFilter()() === 'unlocked' ? 'primary' : 'secondary'"
             size="small">
             Débloqués
           </app-child-button>
           <app-child-button
-            (onClick)="setFilter('locked')"
+            (buttonClick)="setFilter('locked')"
             [variant]="application.getFilter()() === 'locked' ? 'primary' : 'secondary'"
             size="small">
             Verrouillés

@@ -72,21 +72,21 @@ import { FeedbackData } from './services/feedback.service';
         <div class="actions-container">
           <app-child-button
             *ngIf="!showFeedback() && selectedAnswer() !== null"
-            (onClick)="submitAnswer()"
+            (buttonClick)="submitAnswer()"
             variant="primary"
             size="large">
             Valider
           </app-child-button>
           <app-child-button
             *ngIf="showFeedback() && !isGameCompleted()"
-            (onClick)="goToNextQuestion()"
+            (buttonClick)="goToNextQuestion()"
             variant="primary"
             size="large">
             Question suivante
           </app-child-button>
           <app-child-button
             *ngIf="isGameCompleted()"
-            (onClick)="finishGame()"
+            (buttonClick)="finishGame()"
             variant="primary"
             size="large">
             Terminer
@@ -106,13 +106,13 @@ import { FeedbackData } from './services/feedback.service';
         </div>
         <div class="completion-actions">
           <app-child-button
-            (onClick)="goToSubjects()"
+            (buttonClick)="goToSubjects()"
             variant="primary"
             size="large">
             Retour aux matières
           </app-child-button>
           <app-child-button
-            (onClick)="restartGame()"
+            (buttonClick)="restartGame()"
             variant="secondary"
             size="large">
             Rejouer

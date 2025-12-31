@@ -48,7 +48,7 @@ import { Game } from '../../core/types/game.types';
       <!-- Sous-matières d'une matière sélectionnée -->
       <div *ngIf="selectedSubjectId() && selectedSubject() && !selectedCategoryId()" class="categories-view">
         <div class="back-button">
-          <app-child-button (onClick)="goBack()" variant="secondary" size="small">
+          <app-child-button (buttonClick)="goBack()" variant="secondary" size="small">
             ← Retour
           </app-child-button>
         </div>
@@ -89,7 +89,7 @@ import { Game } from '../../core/types/game.types';
       <!-- Jeux d'une sous-matière sélectionnée -->
       <div *ngIf="selectedCategoryId()" class="games-view">
         <div class="back-button">
-          <app-child-button (onClick)="goBack()" variant="secondary" size="small">
+          <app-child-button (buttonClick)="goBack()" variant="secondary" size="small">
             ← Retour
           </app-child-button>
         </div>

@@ -64,7 +64,7 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
               </div>
               <app-child-button
                 *ngIf="game.isUnlocked"
-                (onClick)="playGame(game.id)"
+                (buttonClick)="playGame(game.id)"
                 variant="primary"
                 size="medium">
                 Jouer
