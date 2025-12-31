@@ -44,8 +44,8 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   shuffledMots = signal<string[]>([]);
   shuffledReponses = signal<string[]>([]);
 
-  // Pour Vrai/Faux - réponses de l'utilisateur (énoncé → réponse)
-  userVraiFauxAnswers = signal<Map<string, boolean>>(new Map());
+  // Pour Vrai/Faux - réponses de l'utilisateur (index → réponse)
+  userVraiFauxAnswers = signal<Map<number, boolean>>(new Map());
   
   // Ordre mélangé pour les énoncés Vrai/Faux
   shuffledEnonces = signal<{ texte: string; reponse_correcte: boolean }[]>([]);
@@ -490,29 +490,28 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   }
 
   // Méthodes pour Vrai/Faux
-  selectVraiFauxAnswer(texte: string, reponse: boolean): void {
+  selectVraiFauxAnswer(index: number, reponse: boolean): void {
     if (this.isSubmitted()) return;
     const answers = new Map(this.userVraiFauxAnswers());
-    answers.set(texte, reponse);
+    answers.set(index, reponse);
     this.userVraiFauxAnswers.set(answers);
   }
 
   submitVraiFaux(): void {
     if (this.isSubmitted()) return;
-    const vraiFauxData = this.vraiFauxData;
-    if (!vraiFauxData) return;
+    const enonces = this.getVraiFauxEnonces();
+    if (enonces.length === 0) return;
 
     const userAnswers = this.userVraiFauxAnswers();
-    const allEnonces = vraiFauxData.enonces;
     
     // Vérifier que tous les énoncés ont une réponse
-    if (userAnswers.size !== allEnonces.length) {
+    if (userAnswers.size !== enonces.length) {
       return;
     }
 
     // Vérifier si toutes les réponses sont correctes
-    const isValid = allEnonces.every(enonce => {
-      const userAnswer = userAnswers.get(enonce.texte);
+    const isValid = enonces.every((enonce, index) => {
+      const userAnswer = userAnswers.get(index);
       return userAnswer === enonce.reponse_correcte;
     });
 
@@ -535,21 +534,17 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     }
   }
 
-  isVraiFauxAnswerSelected(texte: string, reponse: boolean): boolean {
-    return this.userVraiFauxAnswers().get(texte) === reponse;
+  isVraiFauxAnswerSelected(index: number, reponse: boolean): boolean {
+    return this.userVraiFauxAnswers().get(index) === reponse;
   }
 
-  getVraiFauxUserAnswer(texte: string): boolean | null {
-    return this.userVraiFauxAnswers().get(texte) ?? null;
-  }
-
-  isVraiFauxCorrect(texte: string): boolean | null {
+  isVraiFauxCorrect(index: number): boolean | null {
     if (!this.isSubmitted()) return null;
-    const vraiFauxData = this.vraiFauxData;
-    if (!vraiFauxData) return null;
-    const enonce = vraiFauxData.enonces.find(e => e.texte === texte);
+    const enonces = this.getVraiFauxEnonces();
+    if (index < 0 || index >= enonces.length) return null;
+    const enonce = enonces[index];
     if (!enonce) return null;
-    const userAnswer = this.userVraiFauxAnswers().get(texte);
+    const userAnswer = this.userVraiFauxAnswers().get(index);
     if (userAnswer === undefined) return null;
     return userAnswer === enonce.reponse_correcte;
   }

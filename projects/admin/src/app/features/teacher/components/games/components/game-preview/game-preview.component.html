@@ -211,15 +211,15 @@
                 <div class="header-column enonce-column"></div>
                 <div class="header-column faux-column">Faux</div>
               </div>
-              @for (enonce of getVraiFauxEnonces(); track enonce.texte) {
+              @for (enonce of getVraiFauxEnonces(); track $index) {
                 <div class="vrai-faux-row">
                   <button
                     type="button"
                     class="vrai-button"
-                    [class.selected]="isVraiFauxAnswerSelected(enonce.texte, true)"
-                    [class.correct]="isSubmitted() && isVraiFauxCorrect(enonce.texte) === true && isVraiFauxAnswerSelected(enonce.texte, true)"
-                    [class.incorrect]="isSubmitted() && isVraiFauxCorrect(enonce.texte) === false && isVraiFauxAnswerSelected(enonce.texte, true)"
-                    (click)="selectVraiFauxAnswer(enonce.texte, true)"
+                    [class.selected]="isVraiFauxAnswerSelected($index, true)"
+                    [class.correct]="isSubmitted() && isVraiFauxCorrect($index) === true && isVraiFauxAnswerSelected($index, true)"
+                    [class.incorrect]="isSubmitted() && isVraiFauxCorrect($index) === false && isVraiFauxAnswerSelected($index, true)"
+                    (click)="selectVraiFauxAnswer($index, true)"
                     [disabled]="isSubmitted()">
                     <span class="circle"></span>
                   </button>
@@ -227,10 +227,10 @@
                   <button
                     type="button"
                     class="faux-button"
-                    [class.selected]="isVraiFauxAnswerSelected(enonce.texte, false)"
-                    [class.correct]="isSubmitted() && isVraiFauxCorrect(enonce.texte) === true && isVraiFauxAnswerSelected(enonce.texte, false)"
-                    [class.incorrect]="isSubmitted() && isVraiFauxCorrect(enonce.texte) === false && isVraiFauxAnswerSelected(enonce.texte, false)"
-                    (click)="selectVraiFauxAnswer(enonce.texte, false)"
+                    [class.selected]="isVraiFauxAnswerSelected($index, false)"
+                    [class.correct]="isSubmitted() && isVraiFauxCorrect($index) === true && isVraiFauxAnswerSelected($index, false)"
+                    [class.incorrect]="isSubmitted() && isVraiFauxCorrect($index) === false && isVraiFauxAnswerSelected($index, false)"
+                    (click)="selectVraiFauxAnswer($index, false)"
                     [disabled]="isSubmitted()">
                     <span class="circle"></span>
                   </button>

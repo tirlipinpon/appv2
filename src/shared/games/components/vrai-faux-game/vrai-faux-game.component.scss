@@ -1,0 +1,139 @@
+.vrai-faux-game {
+  .result-message {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+
+    &.correct {
+      background: rgba(76, 175, 80, 0.1);
+      color: #4CAF50;
+      border: 2px solid #4CAF50;
+    }
+
+    &.incorrect {
+      background: rgba(244, 67, 54, 0.1);
+      color: #F44336;
+      border: 2px solid #F44336;
+    }
+  }
+
+  .vrai-faux-grid {
+    margin-bottom: 2rem;
+  }
+
+  .vrai-faux-header {
+    display: grid;
+    grid-template-columns: 80px 1fr 80px;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e0e0e0;
+
+    .header-column {
+      text-align: center;
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--theme-text-color, #333);
+    }
+
+    .vrai-column {
+      color: #4CAF50;
+    }
+
+    .faux-column {
+      color: #F44336;
+    }
+
+    .enonce-column {
+      // Colonne vide pour l'alignement
+    }
+  }
+
+  .vrai-faux-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 80px;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: #eeeeee;
+    }
+  }
+
+  .vrai-button,
+  .faux-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid #e0e0e0;
+    background: #f5f5f5;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin: 0 auto;
+
+    &:hover:not(:disabled) {
+      border-color: var(--theme-primary-color, #4CAF50);
+      background: #eeeeee;
+    }
+
+    &.selected {
+      border-color: var(--theme-primary-color, #4CAF50);
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    &.correct {
+      border-color: #4CAF50;
+      background: #4CAF50;
+    }
+
+    &.incorrect {
+      border-color: #F44336;
+      background: #F44336;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    .circle {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #bdbdbd;
+      transition: all 0.2s;
+    }
+
+    &.selected .circle {
+      background: var(--theme-primary-color, #4CAF50);
+    }
+
+    &.correct .circle {
+      background: white;
+    }
+
+    &.incorrect .circle {
+      background: white;
+    }
+  }
+
+  .enonce-text {
+    padding: 0.5rem;
+    font-size: 1rem;
+    color: var(--theme-text-color, #333);
+    text-align: center;
+    word-wrap: break-word;
+  }
+}
+

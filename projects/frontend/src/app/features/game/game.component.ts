@@ -6,8 +6,8 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent } from '@shared/games';
-import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData } from '@shared/games';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent } from '@shared/games';
+import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData, VraiFauxData } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
 import type { Game } from '../../core/types/game.types';
@@ -15,7 +15,7 @@ import type { Game } from '../../core/types/game.types';
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, LetterByLetterInputComponent],
   template: `
     <div class="game-container">
       <div *ngIf="application.isLoading()()" class="loading">
@@ -118,6 +118,15 @@ import type { Game } from '../../core/types/game.types';
             [disabled]="showFeedback()"
             (validated)="onLiensValidated($event)">
           </app-liens-game>
+        } @else if (isVraiFauxGame() && getVraiFauxData()) {
+          <!-- Jeu Vrai/Faux -->
+          <app-vrai-faux-game
+            #vraiFauxGame
+            [vraiFauxData]="getVraiFauxData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            (validated)="onVraiFauxValidated($event)">
+          </app-vrai-faux-game>
         } @else if (gameType() === 'reponse_libre' && gameData()) {
           <!-- Jeu réponse libre -->
           <div class="question-container">
@@ -200,8 +209,8 @@ import type { Game } from '../../core/types/game.types';
         <!-- Boutons d'action -->
         <div class="actions-container">
           <app-child-button
-            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (gameType() === 'reponse_libre' && reponseLibreInput().trim().length > 0) || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()))"
-            (buttonClick)="isCaseVideGame() ? submitCaseVide() : (isLiensGame() ? submitLiens() : submitAnswer())"
+            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (gameType() === 'reponse_libre' && reponseLibreInput().trim().length > 0) || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()) || (isVraiFauxGame() && canSubmitVraiFaux()))"
+            (buttonClick)="isCaseVideGame() ? submitCaseVide() : (isLiensGame() ? submitLiens() : (isVraiFauxGame() ? submitVraiFaux() : submitAnswer()))"
             variant="primary"
             size="large">
             Valider
@@ -482,6 +491,7 @@ export class GameComponent implements OnInit {
   // Références aux composants de jeux
   @ViewChild('caseVideGame', { static: false }) caseVideGameComponent?: CaseVideGameComponent;
   @ViewChild('liensGame', { static: false }) liensGameComponent?: LiensGameComponent;
+  @ViewChild('vraiFauxGame', { static: false }) vraiFauxGameComponent?: VraiFauxGameComponent;
 
   nextGameId = signal<string | null>(null);
   hasNextGame = signal<boolean>(false);
@@ -548,9 +558,13 @@ export class GameComponent implements OnInit {
     const type = this.gameType();
     return type === 'liens' || type === 'lien';
   });
+  isVraiFauxGame = computed(() => {
+    const type = this.gameType();
+    return type === 'vrai_faux' || type === 'vrai/faux' || type === 'vrai faux' || type === 'vrais faux';
+  });
   isGenericGame = computed(() => {
     const type = this.gameType();
-    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive', 'click', 'case_vide', 'case vide', 'liens', 'lien'].includes(type);
+    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive', 'click', 'case_vide', 'case vide', 'liens', 'lien', 'vrai_faux', 'vrai/faux', 'vrai faux', 'vrais faux'].includes(type);
   });
 
   // Getters typés pour les données de jeu
@@ -599,6 +613,11 @@ export class GameComponent implements OnInit {
     return data && this.isLiensGame() ? (data as unknown as LiensData) : null;
   }
 
+  getVraiFauxData(): VraiFauxData | null {
+    const data = this.gameData();
+    return data && this.isVraiFauxGame() ? (data as unknown as VraiFauxData) : null;
+  }
+
   async ngOnInit(): Promise<void> {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
@@ -643,6 +662,20 @@ export class GameComponent implements OnInit {
     }
   }
 
+  // Méthodes pour Vrai/Faux - délégation au composant partagé
+  canSubmitVraiFaux(): boolean {
+    if (this.vraiFauxGameComponent) {
+      return this.vraiFauxGameComponent.canSubmit();
+    }
+    return false;
+  }
+
+  submitVraiFaux(): void {
+    if (this.vraiFauxGameComponent) {
+      this.vraiFauxGameComponent.submitVraiFaux();
+    }
+  }
+
   onCaseVideValidated(isValid: boolean): void {
     this.showFeedback.set(true);
     const caseVideData = this.getCaseVideData();
@@ -680,6 +713,24 @@ export class GameComponent implements OnInit {
   onLiensValidated(isValid: boolean): void {
     this.showFeedback.set(true);
     const message = isValid ? 'Bravo ! Tous les liens sont corrects ! ✅' : 'Certains liens sont incorrects. ❌';
+    
+    const feedbackData: FeedbackData = {
+      isCorrect: isValid,
+      message,
+      explanation: ''
+    };
+    this.feedback.set(feedbackData);
+    
+    setTimeout(() => {
+      if (isValid) {
+        this.completeGame();
+      }
+    }, 2000);
+  }
+
+  onVraiFauxValidated(isValid: boolean): void {
+    this.showFeedback.set(true);
+    const message = isValid ? 'Bravo ! Toutes les réponses sont correctes ! ✅' : 'Certaines réponses sont incorrectes. ❌';
     
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
@@ -1015,6 +1066,9 @@ export class GameComponent implements OnInit {
       }
       if (this.isLiensGame() && this.liensGameComponent) {
         this.liensGameComponent.reset();
+      }
+      if (this.isVraiFauxGame() && this.vraiFauxGameComponent) {
+        this.vraiFauxGameComponent.reset();
       }
     }
   }

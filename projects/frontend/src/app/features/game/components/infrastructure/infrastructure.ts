@@ -70,7 +70,7 @@ export class GameInfrastructure {
       } else if (game.reponses) {
         gameDataJson = game.reponses;
       }
-    } else if (gameTypeName === 'vrai_faux' || gameTypeName === 'vrai/faux') {
+    } else if (gameTypeName === 'vrai_faux' || gameTypeName === 'vrai/faux' || gameTypeName === 'vrai faux' || gameTypeName === 'vrais faux') {
       // Vrai/Faux : convertir depuis metadata.enonces
       if (game.metadata?.enonces && Array.isArray(game.metadata.enonces)) {
         gameDataJson = {

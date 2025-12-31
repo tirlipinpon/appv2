@@ -1,0 +1,45 @@
+<div class="vrai-faux-game">
+  @if ((showResult || isSubmitted()) && isCorrect() !== null) {
+    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+      @if (isCorrect()) {
+        ✅ Toutes les réponses sont correctes !
+      } @else {
+        ❌ Certaines réponses sont incorrectes.
+      }
+    </div>
+  }
+
+  <div class="vrai-faux-grid">
+    <div class="vrai-faux-header">
+      <div class="header-column vrai-column">Vrai</div>
+      <div class="header-column enonce-column"></div>
+      <div class="header-column faux-column">Faux</div>
+    </div>
+    @for (enonce of getVraiFauxEnonces(); track $index) {
+      <div class="vrai-faux-row">
+        <button
+          type="button"
+          class="vrai-button"
+          [class.selected]="isAnswerSelected($index, true)"
+          [class.correct]="isSubmitted() && isCorrectAnswer($index) === true && isAnswerSelected($index, true)"
+          [class.incorrect]="isSubmitted() && isCorrectAnswer($index) === false && isAnswerSelected($index, true)"
+          (click)="selectAnswer($index, true)"
+          [disabled]="disabled || isSubmitted()">
+          <span class="circle"></span>
+        </button>
+        <div class="enonce-text">{{ enonce.texte }}</div>
+        <button
+          type="button"
+          class="faux-button"
+          [class.selected]="isAnswerSelected($index, false)"
+          [class.correct]="isSubmitted() && isCorrectAnswer($index) === true && isAnswerSelected($index, false)"
+          [class.incorrect]="isSubmitted() && isCorrectAnswer($index) === false && isAnswerSelected($index, false)"
+          (click)="selectAnswer($index, false)"
+          [disabled]="disabled || isSubmitted()">
+          <span class="circle"></span>
+        </button>
+      </div>
+    }
+  </div>
+</div>
+
