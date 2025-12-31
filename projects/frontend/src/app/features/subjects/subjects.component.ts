@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, effect, signal } from '@angular/core';
+import { Component, inject, OnInit, effect, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { SubjectsApplication } from './components/application/application';
@@ -23,18 +23,18 @@ import { Game } from '../../core/types/game.types';
     <div class="subjects-container">
       <h1>Choisis une matière</h1>
 
-      <div *ngIf="application.isLoading()" class="loading">
+      <div *ngIf="isLoading()" class="loading">
         Chargement...
       </div>
 
-      <div *ngIf="application.getError()" class="error">
-        {{ application.getError() }}
+      <div *ngIf="error()" class="error">
+        {{ error() }}
       </div>
 
       <!-- Liste des matières -->
-      <div class="subjects-grid" *ngIf="!application.isLoading() && !selectedSubjectId()">
+      <div class="subjects-grid" *ngIf="!isLoading() && !selectedSubjectId()">
         <div
-          *ngFor="let subject of application.getSubjects()()"
+          *ngFor="let subject of subjects()"
           class="subject-card"
           (click)="selectSubject(subject.id)"
           (keydown.enter)="selectSubject(subject.id)"
@@ -46,16 +46,16 @@ import { Game } from '../../core/types/game.types';
       </div>
 
       <!-- Sous-matières d'une matière sélectionnée -->
-      <div *ngIf="selectedSubjectId() && selectedSubject()() && !selectedCategoryId()" class="categories-view">
+      <div *ngIf="selectedSubjectId() && selectedSubject() && !selectedCategoryId()" class="categories-view">
         <div class="back-button">
           <app-child-button (onClick)="goBack()" variant="secondary" size="small">
             ← Retour
           </app-child-button>
         </div>
-        <h2>{{ selectedSubject()()?.name }}</h2>
+        <h2>{{ selectedSubject()?.name }}</h2>
         <div class="categories-grid">
           <div
-            *ngFor="let category of application.getCategories()()"
+            *ngFor="let category of categories()"
             class="category-card"
             (click)="selectCategory(category.id)"
             (keydown.enter)="selectCategory(category.id)"
@@ -288,10 +288,17 @@ export class SubjectsComponent implements OnInit {
   categoryGames = signal<Game[]>([]);
   loadingGames = signal<boolean>(false);
 
+  // Exposer les signals directement pour le template
+  subjects = computed(() => this.application.getSubjects()());
+  categories = computed(() => this.application.getCategories()());
+  isLoading = computed(() => this.application.isLoading()());
+  error = computed(() => this.application.getError()());
+  selectedSubject = computed(() => this.application.getSelectedSubject()());
+
   constructor() {
     effect(() => {
-      const subject = this.application.getSelectedSubject();
-      this.selectedSubjectId.set(subject()?.id || null);
+      const subject = this.selectedSubject();
+      this.selectedSubjectId.set(subject?.id || null);
     });
   }
 
@@ -312,9 +319,6 @@ export class SubjectsComponent implements OnInit {
     }
   }
 
-  selectedSubject() {
-    return this.application.getSelectedSubject();
-  }
 
   async selectCategory(categoryId: string): Promise<void> {
     this.selectedCategoryId.set(categoryId);
