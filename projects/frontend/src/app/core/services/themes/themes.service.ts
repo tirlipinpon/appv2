@@ -17,12 +17,15 @@ export class ThemesService {
       .select('*')
       .eq('is_active', true);
 
-    // Filtrer par niveau scolaire si spécifié
+    // Filtrer par niveau scolaire si spécifié et valide
     if (schoolLevel) {
       const level = parseInt(schoolLevel, 10);
-      query = query.or(
-        `school_level_min.is.null,school_level_min.lte.${level},school_level_max.is.null,school_level_max.gte.${level}`
-      );
+      // Vérifier que le niveau est un nombre valide
+      if (!isNaN(level) && level > 0) {
+        query = query.or(
+          `school_level_min.is.null,school_level_min.lte.${level},school_level_max.is.null,school_level_max.gte.${level}`
+        );
+      }
     }
 
     const { data, error } = await query.order('display_order', { ascending: true });
@@ -60,9 +63,10 @@ export class ThemesService {
       .select('*')
       .eq('child_id', childId)
       .eq('is_selected', true)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single() to handle no results gracefully
 
-    if (error || !data) {
+    if (error) {
+      console.error('Erreur lors de la récupération du thème sélectionné:', error);
       return null;
     }
 

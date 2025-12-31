@@ -52,7 +52,7 @@ export class DynamicStylesService {
   /**
    * Applique les styles du thème aux CSS variables
    */
-  private applyThemeStyles(shapesColors: Record<string, unknown>): void {
+  applyThemeStyles(shapesColors: Record<string, unknown>): void {
     const root = this.document.documentElement;
 
     // Appliquer les couleurs

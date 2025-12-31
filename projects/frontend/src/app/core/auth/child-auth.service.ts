@@ -20,33 +20,48 @@ export class ChildAuthService {
    * Authentifie un enfant via prénom + code PIN
    */
   async login(firstname: string, pin: string): Promise<ChildSession> {
-    const { data, error } = await this.supabase.client
-      .from('children')
-      .select('id, firstname, school_level, parent_id, school_id, avatar_url, avatar_seed, avatar_style')
-      .eq('firstname', firstname)
-      .eq('login_pin', pin)
-      .eq('is_active', true)
-      .single();
+    try {
+      // Note: Les RLS policies peuvent bloquer l'accès si l'utilisateur n'est pas authentifié via Supabase Auth
+      // On utilise l'anon key qui devrait permettre la lecture selon les policies
+      const { data, error } = await this.supabase.client
+        .from('children')
+        .select('id, firstname, school_level, parent_id, school_id, avatar_url, avatar_seed, avatar_style')
+        .eq('firstname', firstname)
+        .eq('login_pin', pin)
+        .eq('is_active', true)
+        .maybeSingle();
 
-    if (error || !data) {
-      throw new Error('Prénom ou code PIN incorrect');
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        throw new Error(`Erreur de connexion: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('Prénom ou code PIN incorrect. Vérifie tes informations.');
+      }
+
+      const session: ChildSession = {
+        child_id: data.id,
+        firstname: data.firstname,
+        school_level: data.school_level,
+        parent_id: data.parent_id,
+        school_id: data.school_id,
+        avatar_url: data.avatar_url,
+        avatar_seed: data.avatar_seed,
+        avatar_style: data.avatar_style,
+      };
+
+      this.currentSession = session;
+      this.saveSession(session);
+
+      return session;
+    } catch (error: any) {
+      console.error('Erreur lors de la connexion:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erreur lors de la connexion. Réessaye plus tard.');
     }
-
-    const session: ChildSession = {
-      child_id: data.id,
-      firstname: data.firstname,
-      school_level: data.school_level,
-      parent_id: data.parent_id,
-      school_id: data.school_id,
-      avatar_url: data.avatar_url,
-      avatar_seed: data.avatar_seed,
-      avatar_style: data.avatar_style,
-    };
-
-    this.currentSession = session;
-    this.saveSession(session);
-
-    return session;
   }
 
   /**

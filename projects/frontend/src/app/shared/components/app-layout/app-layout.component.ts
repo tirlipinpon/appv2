@@ -41,19 +41,39 @@ import { ChildAuthService } from '../../../core/auth/child-auth.service';
     nav {
       display: flex;
       gap: 1rem;
+      flex-wrap: wrap;
     }
     nav a {
       color: var(--theme-header-text);
       text-decoration: none;
       padding: 0.5rem 1rem;
       border-radius: 4px;
+      font-size: 0.875rem;
     }
     nav a.active {
       background-color: rgba(255, 255, 255, 0.2);
     }
     .app-main {
       flex: 1;
-      padding: 2rem;
+      padding: 1rem;
+    }
+    @media (min-width: 768px) {
+      .app-main {
+        padding: 2rem;
+      }
+      nav a {
+        font-size: 1rem;
+      }
+    }
+    @media (max-width: 767px) {
+      .app-header {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      nav {
+        justify-content: center;
+        width: 100%;
+      }
     }
     button {
       padding: 0.5rem 1rem;

@@ -106,5 +106,31 @@ export class CollectionService {
     // Ajouter d'autres conditions selon les besoins
     return false;
   }
+
+  /**
+   * Vérifie et débloque les collectibles pour une sous-matière complétée
+   */
+  async checkAndUnlockCollectibles(childId: string, subjectCategoryId: string): Promise<void> {
+    // Récupérer tous les collectibles liés à cette sous-matière
+    const { data: collectibles } = await this.supabase.client
+      .from('frontend_collectibles')
+      .select('*')
+      .eq('subject_category_id', subjectCategoryId)
+      .eq('is_active', true);
+
+    if (!collectibles || collectibles.length === 0) return;
+
+    // Vérifier chaque collectible
+    for (const collectible of collectibles) {
+      const canUnlock = await this.checkUnlockCondition(childId, collectible);
+      if (canUnlock) {
+        // Vérifier si déjà débloqué
+        const isUnlocked = await this.isCollectibleUnlocked(childId, collectible.id);
+        if (!isUnlocked) {
+          await this.unlockCollectible(childId, collectible.id);
+        }
+      }
+    }
+  }
 }
 

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,7 +11,7 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
   template: `
     <div class="login-container">
       <h1>Connexion</h1>
-      <form (ngSubmit)="onLogin()">
+      <form>
         <div class="form-group">
           <label for="firstname">Prénom</label>
           <input
@@ -19,6 +19,7 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
             type="text"
             [formControl]="firstnameControl"
             placeholder="Ton prénom"
+            [disabled]="isLoading"
           />
         </div>
         <div class="form-group">
@@ -29,13 +30,18 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
             [formControl]="pinControl"
             placeholder="1234"
             maxlength="4"
+            [disabled]="isLoading"
           />
           <div *ngIf="pinInvalid" class="error-message">
             {{ pinErrorMessage }}
           </div>
         </div>
-        <button type="submit" [disabled]="!firstnameControl.valid || !pinControl.valid">
-          Se connecter
+        <div *ngIf="errorMessage" class="error-message global-error">
+          {{ errorMessage }}
+        </div>
+        <button type="submit" (click)="onLogin($event)" [disabled]="!firstnameControl.valid || !pinControl.valid || isLoading">
+          <span *ngIf="!isLoading">Se connecter</span>
+          <span *ngIf="isLoading">Connexion...</span>
         </button>
       </form>
     </div>
@@ -47,7 +53,12 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      padding: 2rem;
+      padding: 1rem;
+    }
+    @media (min-width: 768px) {
+      .login-container {
+        padding: 2rem;
+      }
     }
     .form-group {
       margin-bottom: 1rem;
@@ -75,9 +86,24 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
       font-size: 0.875rem;
       margin-top: 0.25rem;
     }
+    .global-error {
+      background-color: #ffebee;
+      border: 1px solid var(--theme-warn-color);
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   `]
 })
 export class LoginComponent {
+  private readonly authService = inject(ChildAuthService);
+  private readonly router = inject(Router);
+
   firstnameControl = new FormControl('', Validators.required);
   pinControl = new FormControl('', [
     Validators.required,
@@ -86,20 +112,27 @@ export class LoginComponent {
     Validators.maxLength(4),
   ]);
 
-  constructor(
-    private authService: ChildAuthService,
-    private router: Router
-  ) {}
+  errorMessage = '';
+  isLoading = false;
 
-  onLogin(): void {
+  onLogin(event?: Event): void {
+    event?.preventDefault();
     if (this.firstnameControl.valid && this.pinControl.valid) {
+      this.isLoading = true;
+      this.errorMessage = '';
+      
       this.authService.login(
         this.firstnameControl.value!,
         this.pinControl.value!
       ).then(session => {
+        this.isLoading = false;
         if (session) {
           this.router.navigate(['/dashboard']);
         }
+      }).catch(error => {
+        this.isLoading = false;
+        this.errorMessage = error.message || 'Erreur lors de la connexion. Vérifie ton prénom et ton code PIN.';
+        console.error('Erreur de connexion:', error);
       });
     }
   }

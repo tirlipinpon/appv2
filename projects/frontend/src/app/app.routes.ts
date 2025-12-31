@@ -28,6 +28,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent),
       },
       {
+        path: 'bonus-games',
+        loadComponent: () => import('./features/bonus-games/bonus-games.component').then(m => m.BonusGamesComponent),
+      },
+      {
+        path: 'game/:id',
+        loadComponent: () => import('./features/game/game.component').then(m => m.GameComponent),
+      },
+      {
         path: '',
         redirectTo: '/dashboard',
         pathMatch: 'full',
