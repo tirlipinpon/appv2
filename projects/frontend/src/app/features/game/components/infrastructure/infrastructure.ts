@@ -100,6 +100,19 @@ export class GameInfrastructure {
       } else if (game.reponses) {
         gameDataJson = game.reponses;
       }
+    } else if (gameTypeName === 'simon') {
+      // Simon : convertir depuis metadata
+      if (game.metadata) {
+        gameDataJson = {
+          nombre_elements: game.metadata.nombre_elements || 4,
+          type_elements: game.metadata.type_elements || 'couleurs',
+          elements: game.metadata.elements || []
+        };
+      } else if (game.reponses) {
+        gameDataJson = game.reponses;
+      } else if (game.game_data_json) {
+        gameDataJson = game.game_data_json;
+      }
     } else if (game.reponses) {
       // Pour les autres types, utiliser reponses si disponible
       gameDataJson = game.reponses;

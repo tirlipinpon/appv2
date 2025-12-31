@@ -720,22 +720,80 @@ export class GameComponent implements OnInit {
             
             // Même logique de normalisation que dans SubjectsInfrastructure.loadGamesByCategory
             if (gameTypeName === 'reponse_libre') {
-              gameDataJson = { reponse_valide: game.metadata?.reponse_valide || '' };
-            } else if (gameTypeName === 'memory' && game.metadata?.paires) {
               gameDataJson = {
-                paires: game.metadata.paires.map((paire: { question?: string; reponse?: string }) => ({
-                  question: paire.question || '',
-                  reponse: paire.reponse || ''
-                }))
+                reponse_valide: game.metadata?.reponse_valide || ''
               };
+            } else if (gameTypeName === 'memory') {
+              if (game.metadata?.paires && Array.isArray(game.metadata.paires)) {
+                gameDataJson = {
+                  paires: game.metadata.paires.map((paire: { question?: string; reponse?: string }) => ({
+                    question: paire.question || '',
+                    reponse: paire.reponse || ''
+                  }))
+                };
+              }
             } else if (gameTypeName === 'qcm') {
               if (game.metadata?.propositions || game.reponses?.propositions) {
                 gameDataJson = {
                   propositions: game.metadata?.propositions || game.reponses?.propositions || [],
-                  reponses_valides: game.metadata?.reponses_valides || game.reponses?.reponses_valides || []
+                  reponses_valides: game.metadata?.reponses_valides || game.reponses?.reponses_valides || (game.reponses?.reponse_valide ? [game.reponses.reponse_valide] : [])
                 };
               } else if (game.reponses) {
                 gameDataJson = game.reponses;
+              }
+            } else if (gameTypeName === 'chronologie') {
+              if (game.metadata?.mots || game.metadata?.ordre_correct) {
+                gameDataJson = {
+                  mots: game.metadata.mots || [],
+                  ordre_correct: game.metadata.ordre_correct || []
+                };
+              } else if (game.reponses) {
+                gameDataJson = game.reponses;
+              }
+            } else if (gameTypeName === 'vrai_faux' || gameTypeName === 'vrai/faux') {
+              if (game.metadata?.enonces && Array.isArray(game.metadata.enonces)) {
+                gameDataJson = {
+                  enonces: game.metadata.enonces.map((enonce: { texte?: string; reponse_correcte?: boolean }) => ({
+                    texte: enonce.texte || '',
+                    reponse_correcte: enonce.reponse_correcte ?? false
+                  }))
+                };
+              } else if (game.reponses) {
+                gameDataJson = game.reponses;
+              }
+            } else if (gameTypeName === 'liens') {
+              if (game.metadata?.mots || game.metadata?.reponses || game.metadata?.liens) {
+                gameDataJson = {
+                  mots: game.metadata.mots || [],
+                  reponses: game.metadata.reponses || [],
+                  liens: game.metadata.liens || []
+                };
+              } else if (game.reponses) {
+                gameDataJson = game.reponses;
+              }
+            } else if (gameTypeName === 'case_vide' || gameTypeName === 'case vide') {
+              if (game.metadata) {
+                gameDataJson = {
+                  texte: game.metadata.texte || '',
+                  cases_vides: game.metadata.cases_vides || [],
+                  banque_mots: game.metadata.banque_mots || [],
+                  mots_leurres: game.metadata.mots_leurres || []
+                };
+              } else if (game.reponses) {
+                gameDataJson = game.reponses;
+              }
+            } else if (gameTypeName === 'simon') {
+              // Simon : convertir depuis metadata
+              if (game.metadata) {
+                gameDataJson = {
+                  nombre_elements: game.metadata.nombre_elements || 4,
+                  type_elements: game.metadata.type_elements || 'couleurs',
+                  elements: game.metadata.elements || []
+                };
+              } else if (game.reponses) {
+                gameDataJson = game.reponses;
+              } else if (game.game_data_json) {
+                gameDataJson = game.game_data_json;
               }
             } else if (game.reponses) {
               gameDataJson = game.reponses;
@@ -791,6 +849,8 @@ export class GameComponent implements OnInit {
       this.correctAnswer.set(null);
       this.showCompletionScreen.set(false);
       this.reponseLibreInput.set('');
+      this.finalScore.set(0);
+      this.completionMessage.set('');
       
       // Naviguer vers le prochain jeu
       this.router.navigate(['/game', nextId]);
