@@ -103,7 +103,7 @@ import { Game } from '../../core/types/game.types';
             <h3>{{ game.name }}</h3>
             <p *ngIf="game.description">{{ game.description }}</p>
             <div class="game-type">
-              Type: {{ game.game_type }}
+              Type: {{ getGameTypeLabel(game.game_type) }}
             </div>
           </div>
         </div>
@@ -335,5 +335,38 @@ export class SubjectsComponent implements OnInit {
     } finally {
       this.loadingGames.set(false);
     }
+  }
+
+  /**
+   * Formate le type de jeu pour l'affichage
+   */
+  getGameTypeLabel(gameType: string | undefined): string {
+    if (!gameType) return 'Non défini';
+    
+    // Mapping des types de jeux vers leurs labels
+    const typeLabels: Record<string, string> = {
+      'qcm': 'QCM',
+      'memory': 'Memory',
+      'chronologie': 'Chronologie',
+      'simon': 'Simon',
+      'image_interactive': 'Image interactive',
+      'reponse_libre': 'Réponse libre',
+      'vrai_faux': 'Vrai/Faux',
+      'liens': 'Liens',
+      'case_vide': 'Case vide',
+      'click': 'Click'
+    };
+    
+    // Si le type existe dans le mapping, l'utiliser
+    if (typeLabels[gameType]) {
+      return typeLabels[gameType];
+    }
+    
+    // Sinon, formater le type : remplacer les underscores par des espaces et capitaliser
+    return gameType
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 }

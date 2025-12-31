@@ -23,7 +23,7 @@ import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './componen
 import { GameCardComponent } from './components/game-card/game-card.component';
 import { DuplicateGameDialogComponent } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
 import type { Subject } from '../../types/subject';
@@ -398,7 +398,9 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       const { imageFile, oldImageUrl, ...dataWithoutFile } = data as ImageInteractiveDataWithFile;
       this.gameSpecificData.set(dataWithoutFile as ImageInteractiveData);
     } else {
-      this.gameSpecificData.set(data);
+      // Dans le bloc else, data ne peut pas être ImageInteractiveDataWithFile
+      const gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null = data as Exclude<typeof data, ImageInteractiveDataWithFile>;
+      this.gameSpecificData.set(gameData);
       this.imageInteractiveDataWithFile.set(null); // Réinitialiser si ce n'est pas ImageInteractive
     }
   }
@@ -456,12 +458,17 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
           }
 
           // Mettre à jour les données avec la nouvelle URL en copiant toutes les propriétés
+          // imageDataWithFile est garanti d'être non-null ici car on a vérifié imageFile
+          // Extraire les propriétés de ImageInteractiveData depuis ImageInteractiveDataWithFile
+          const { imageFile, oldImageUrl, ...imageData } = imageDataWithFile as ImageInteractiveDataWithFile;
+          // Typer explicitement imageData comme ImageInteractiveData pour que TypeScript reconnaisse les propriétés
+          const imageDataTyped = imageData as ImageInteractiveData;
           const updatedImageData: ImageInteractiveData = {
             image_url: result.url,
             image_width: result.width,
             image_height: result.height,
-            zones: imageDataWithFile.zones,
-            require_all_correct_zones: imageDataWithFile.require_all_correct_zones,
+            zones: imageDataTyped.zones,
+            require_all_correct_zones: imageDataTyped.require_all_correct_zones,
           };
 
           // Créer le jeu avec la nouvelle URL

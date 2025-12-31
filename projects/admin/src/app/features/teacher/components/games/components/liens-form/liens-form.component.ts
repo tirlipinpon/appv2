@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, FormControl, Validators } from '@angular/forms';
-import type { LiensData } from '../../../../types/game-data';
+import type { LiensData } from '@shared/games';
 
 @Component({
   selector: 'app-liens-form',

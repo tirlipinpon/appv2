@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, OnIni
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { DragDropModule, CdkDragMove, CdkDragEnd } from '@angular/cdk/drag-drop';
-import type { ImageInteractiveData, ImageInteractiveZone } from '../../../../types/game-data';
+import type { ImageInteractiveData, ImageInteractiveZone } from '@shared/games';
 
 interface ZoneInEdit {
   id: string;

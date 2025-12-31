@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import type { QcmData } from '@shared/games';
+import type { QcmData } from '../../types/game-data';
 
 interface ShuffledProposition {
   originalIndex: number;

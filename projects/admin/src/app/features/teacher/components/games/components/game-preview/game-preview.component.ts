@@ -1,13 +1,9 @@
 import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
-import { QcmGameComponent } from '../qcm-game/qcm-game.component';
-import { ChronologieGameComponent } from '../chronologie-game/chronologie-game.component';
-import { MemoryGameComponent } from '../memory-game/memory-game.component';
-import { SimonGameComponent } from '../simon-game/simon-game.component';
-import { ImageInteractiveGameComponent } from '../image-interactive-game/image-interactive-game.component';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent } from '@shared/games';
 import { LetterByLetterInputComponent } from '../../../../../../shared';
 
 @Component({

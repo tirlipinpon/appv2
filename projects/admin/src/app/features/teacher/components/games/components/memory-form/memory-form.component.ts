@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
-import type { MemoryData } from '../../../../types/game-data';
+import type { MemoryData } from '@shared/games';
 
 @Component({
   selector: 'app-memory-form',

@@ -1,0 +1,41 @@
+<div class="memory-game">
+  @if (isSubmitted() && isCorrect()) {
+    <div class="result-message correct">
+      ✅ Bravo ! Toutes les paires ont été trouvées !
+    </div>
+  }
+
+  <div class="progress-info">
+    Paires trouvées : {{ getProgress() }} / {{ getTotalPairs() }}
+  </div>
+
+  <div class="memory-grid" [class.disabled]="disabled || isSubmitted()">
+    @for (card of cards(); track card.id) {
+      <div 
+        [class]="getCardClass(card)"
+        (click)="flipCard(card.id)"
+        [attr.aria-label]="card.isFlipped ? (card.type === 'question' ? 'Question: ' + card.content : 'Réponse: ' + card.content) : 'Carte retournée'"
+        [attr.aria-pressed]="card.isFlipped"
+        role="button"
+        tabindex="0"
+        (keydown.enter)="flipCard(card.id)"
+        (keydown.space)="flipCard(card.id); $event.preventDefault()">
+        <div class="card-inner">
+          <div class="card-front">
+            <span class="card-mark">?</span>
+          </div>
+          <div class="card-back" [class.question-card]="card.type === 'question'" [class.reponse-card]="card.type === 'reponse'">
+            <div class="card-content">
+              {{ card.content }}
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (isSubmitted()) {
+    <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
+  }
+</div>
+

@@ -10,7 +10,7 @@ import { Infrastructure } from '../components/infrastructure/infrastructure';
 import { GeneratedGameWithState, AIGameGenerationRequest, AIRawResponse } from '../types/ai-game-generation';
 import { ErrorSnackbarService, setStoreError } from '../../../shared';
 import { ImageUploadService } from '../components/games/services/image-upload/image-upload.service';
-import type { ImageInteractiveData } from '../types/game-data';
+import type { ImageInteractiveData } from '@shared/games';
 
 export interface GamesState {
   games: Game[];

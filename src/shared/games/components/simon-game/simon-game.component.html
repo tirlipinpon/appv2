@@ -1,0 +1,58 @@
+<div class="simon-game">
+  <!-- Message de résultat -->
+  @if (isGameOver()) {
+    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+      @if (isCorrect()) {
+        ✅ Bravo ! Vous avez réussi le niveau {{ currentLevel() }} !
+      } @else {
+        ❌ Erreur ! Vous avez atteint le niveau {{ currentLevel() }}.
+      }
+    </div>
+  }
+
+  <!-- Informations du jeu -->
+  <div class="game-info">
+    <div class="level-info">
+      <strong>Niveau :</strong> {{ currentLevel() }}
+    </div>
+    @if (isAnimating()) {
+      <div class="status-message">
+        👀 Regardez la séquence...
+      </div>
+    } @else if (isPlaying() && !isGameOver()) {
+      <div class="status-message">
+        👆 Reproduisez la séquence
+      </div>
+    }
+  </div>
+
+  <!-- Grille des éléments -->
+  <div class="simon-grid" [class.animating]="isAnimating()" [class.disabled]="isAnimating() || isGameOver()">
+    @for (element of availableElements(); track element.id) {
+      <button
+        type="button"
+        [class]="getElementClass(element.id)"
+        [style]="getElementStyle(element)"
+        (click)="onElementClick(element.id)"
+        [disabled]="isAnimating() || isGameOver() || !isPlaying()"
+        [attr.aria-label]="'Élément ' + element.displayValue">
+        @if (!isColorMode()) {
+          <span class="element-content">{{ element.displayValue }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  <!-- Progression -->
+  @if (isPlaying() && !isAnimating() && !isGameOver()) {
+    <div class="progress-info">
+      Séquence : {{ userSequence().length }} / {{ sequence().length }}
+    </div>
+  }
+
+  <!-- Bouton de réinitialisation -->
+  @if (isGameOver()) {
+    <button class="btn btn-secondary" (click)="reset()">🔄 Recommencer</button>
+  }
+</div>
+

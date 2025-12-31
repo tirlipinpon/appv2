@@ -10,7 +10,7 @@ import { MemoryFormComponent } from '../memory-form/memory-form.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import type { GeneratedGameWithState } from '../../../../types/ai-game-generation';
 import type { GameType } from '../../../../types/game-type';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData } from '@shared/games';
 
 @Component({
   selector: 'app-ai-generated-preview',

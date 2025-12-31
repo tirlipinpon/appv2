@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChange
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, FormControl, Validators } from '@angular/forms';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
-import type { ChronologieData } from '../../../../types/game-data';
+import type { ChronologieData } from '@shared/games';
 
 @Component({
   selector: 'app-chronologie-form',

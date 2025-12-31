@@ -1,0 +1,48 @@
+<div class="qcm-game">
+  <div class="propositions-list">
+    @for (prop of shuffledPropositions(); track prop.letter) {
+      <div 
+        class="proposition-item"
+        [class.selected]="isSelected(prop.letter)"
+        [class.correct]="isPropositionCorrect(prop.letter) && showResult"
+        [class.incorrect]="isSelected(prop.letter) && isSubmitted() && !isPropositionCorrect(prop.letter) && showResult"
+        [class.disabled]="disabled || isSubmitted()"
+        (click)="toggleSelection(prop.letter)">
+        
+        <div class="letter-circle">{{ prop.letter }}</div>
+        <span class="proposition-text">{{ prop.text }}</span>
+        
+        @if (isSubmitted() && showResult && isPropositionCorrect(prop.letter)) {
+          <span class="correct-indicator">✓</span>
+        }
+      </div>
+    }
+  </div>
+
+  @if (!isSubmitted()) {
+    <div class="actions">
+      <button 
+        class="btn btn-primary" 
+        (click)="validate()" 
+        [disabled]="!canValidate() || disabled">
+        Valider
+      </button>
+    </div>
+  }
+
+  @if (isSubmitted() && showResult) {
+    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+      @if (isCorrect()) {
+        ✅ Bonne réponse !
+      } @else {
+        ❌ Mauvaise réponse. Les bonnes réponses étaient : {{ qcmData.reponses_valides.join(', ') }}
+      }
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" (click)="reset()" [disabled]="disabled">
+        Réessayer
+      </button>
+    </div>
+  }
+</div>
+

@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, FormControl, Validators } from '@angular/forms';
-import type { VraiFauxData } from '../../../../types/game-data';
+import type { VraiFauxData } from '@shared/games';
 
 @Component({
   selector: 'app-vrai-faux-form',
@@ -79,7 +79,7 @@ export class VraiFauxFormComponent implements OnInit, OnChanges {
 
     if (this.initialData && this.initialData.enonces && this.initialData.enonces.length > 0) {
       // Charger les données initiales
-      this.initialData.enonces.forEach(enonce => {
+      this.initialData.enonces.forEach((enonce: { texte: string; reponse_correcte: boolean }) => {
         const enonceGroup = this.fb.group({
           texte: new FormControl<string>(enonce.texte, { nonNullable: true, validators: [Validators.required] }),
           reponse_correcte: new FormControl<boolean>(enonce.reponse_correcte, { nonNullable: true }),

@@ -1,0 +1,183 @@
+.simon-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+
+  .result-message {
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-align: center;
+    font-size: 1.25rem;
+    width: 100%;
+    animation: slideIn 0.3s ease-out;
+
+    &.correct {
+      background-color: #d4edda;
+      color: #155724;
+      border: 2px solid #c3e6cb;
+    }
+
+    &.incorrect {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 2px solid #f5c6cb;
+    }
+  }
+
+  .game-info {
+    text-align: center;
+    width: 100%;
+
+    .level-info {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--theme-primary-color, #4CAF50);
+      margin-bottom: 0.5rem;
+    }
+
+    .status-message {
+      font-size: 1.25rem;
+      color: #666;
+      font-weight: 500;
+    }
+  }
+
+  .simon-grid {
+    display: grid;
+    gap: 1rem;
+    width: fit-content;
+    margin: 1.5rem auto;
+    justify-content: center;
+
+    // Grille carrée : 2 colonnes pour regrouper les éléments
+    grid-template-columns: repeat(2, 1fr);
+
+    &.animating {
+      pointer-events: none;
+    }
+
+    &.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      gap: 0.5rem;
+    }
+
+    @media (max-width: 480px) {
+      gap: 0.25rem;
+    }
+  }
+
+  .simon-element {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    border: 4px solid;
+    background-color: #e0e0e0;
+    border-color: #bdbdbd;
+    color: white;
+    font-size: 4rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    width: 180px;
+    height: 180px;
+
+    &.highlighted {
+      // Bordure noire épaisse + agrandissement + ombre pour bien voir l'élément
+      border: 6px solid #000000;
+      transform: scale(1.1);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+    }
+
+    &.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    // Même effet au clic utilisateur
+    &:active:not(.disabled):not(.highlighted) {
+      border: 6px solid #000000;
+      transform: scale(1.1);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 0, 0, 0.4);
+    }
+
+    @media (max-width: 768px) {
+      width: 180px;
+      height: 180px;
+      font-size: 3.5rem;
+    }
+
+    @media (max-width: 480px) {
+      width: 160px;
+      height: 160px;
+      font-size: 3rem;
+    }
+
+    .element-content {
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .progress-info {
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--theme-text-color, #333);
+    padding: 0.5rem 1rem;
+    background: #f5f5f5;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .btn {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    margin-top: 1rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.btn-secondary {
+      background-color: #e0e0e0;
+      color: var(--theme-text-color, #333);
+
+      &:hover:not(:disabled) {
+        background-color: #d0d0d0;
+      }
+    }
+  }
+}
+
+// Pas d'animations complexes - effet simple d'éclaircissement comme le vrai Simon
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

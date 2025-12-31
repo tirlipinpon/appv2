@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import type { SimonData } from '@shared/games';
+import type { SimonData } from '../../types/game-data';
 
 interface SimonElement {
   id: number;

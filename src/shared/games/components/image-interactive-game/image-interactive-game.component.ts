@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import type { ImageInteractiveData, ImageInteractiveZone } from '@shared/games';
+import type { ImageInteractiveData, ImageInteractiveZone } from '../../types/game-data';
 
 @Component({
   selector: 'app-image-interactive-game',

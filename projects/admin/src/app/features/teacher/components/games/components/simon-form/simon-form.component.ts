@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, FormControl, Validators } from '@angular/forms';
-import type { SimonData } from '../../../../types/game-data';
+import type { SimonData } from '@shared/games';
 
 @Component({
   selector: 'app-simon-form',
@@ -149,7 +149,7 @@ export class SimonFormComponent implements OnChanges {
           this.elementsArray.clear();
           if (this.initialData.elements && this.initialData.elements.length > 0) {
             // Charger les éléments existants
-            this.initialData.elements.forEach(el => {
+            this.initialData.elements.forEach((el: string) => {
               this.elementsArray.push(new FormControl<string>(el, { nonNullable: true, validators: [Validators.required] }));
             });
             // Ajuster à 4 éléments si nécessaire (après le setTimeout pour éviter les conflits)

@@ -1,0 +1,62 @@
+<div class="chronologie-game">
+  <div 
+    class="words-list"
+    cdkDropList
+    (cdkDropListDropped)="drop($event)"
+    [cdkDropListDisabled]="disabled || isSubmitted()">
+    
+    @for (mot of currentOrder(); track mot; let i = $index) {
+      <div 
+        class="word-item"
+        cdkDrag
+        [class.correct]="isWordCorrect(i) && showResult"
+        [class.incorrect]="!isWordCorrect(i) && isSubmitted() && showResult"
+        [class.disabled]="disabled || isSubmitted()">
+        
+        <div class="drag-handle" cdkDragHandle>
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="3" cy="4" r="1.5" fill="currentColor"/>
+            <circle cx="3" cy="10" r="1.5" fill="currentColor"/>
+            <circle cx="3" cy="16" r="1.5" fill="currentColor"/>
+            <circle cx="9" cy="4" r="1.5" fill="currentColor"/>
+            <circle cx="9" cy="10" r="1.5" fill="currentColor"/>
+            <circle cx="9" cy="16" r="1.5" fill="currentColor"/>
+          </svg>
+        </div>
+        
+        <span class="word-text">{{ mot }}</span>
+        
+        @if (isSubmitted() && showResult && isWordCorrect(i)) {
+          <span class="correct-indicator">✓</span>
+        }
+      </div>
+    }
+  </div>
+
+  @if (!isSubmitted()) {
+    <div class="actions">
+      <button 
+        class="btn btn-primary" 
+        (click)="validate()" 
+        [disabled]="disabled">
+        Valider
+      </button>
+    </div>
+  }
+
+  @if (isSubmitted() && showResult) {
+    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
+      @if (isCorrect()) {
+        ✅ Ordre correct !
+      } @else {
+        ❌ Ordre incorrect. L'ordre correct était : {{ chronologieData.ordre_correct.join(' → ') }}
+      }
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" (click)="reset()" [disabled]="disabled">
+        Réessayer
+      </button>
+    </div>
+  }
+</div>
+

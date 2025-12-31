@@ -1,7 +1,7 @@
 // Mapper pour convertir les anciennes structures de données (avec index) vers les nouvelles (avec contenu)
 // Permet la rétrocompatibilité avec les jeux existants
 
-import type { LiensData, ChronologieData } from '../types/game-data';
+import type { LiensData, ChronologieData } from '@shared/games';
 
 // Anciennes structures (pour référence)
 interface OldLiensData {

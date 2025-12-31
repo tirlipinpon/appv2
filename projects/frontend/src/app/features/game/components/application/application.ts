@@ -144,5 +144,9 @@ export class GameApplication {
   getError() {
     return this.store.error;
   }
+
+  getCurrentGame() {
+    return this.store.currentGame;
+  }
 }
 

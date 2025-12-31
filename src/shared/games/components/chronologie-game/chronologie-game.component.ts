@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
-import type { ChronologieData } from '@shared/games';
+import type { ChronologieData } from '../../types/game-data';
 
 @Component({
   selector: 'app-chronologie-game',

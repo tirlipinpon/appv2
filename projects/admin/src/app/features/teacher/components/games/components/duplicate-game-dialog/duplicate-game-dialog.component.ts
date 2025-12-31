@@ -7,7 +7,7 @@ import type { TeacherAssignment } from '../../../../types/teacher-assignment';
 import type { School } from '../../../../types/school';
 import type { Subject } from '../../../../types/subject';
 import type { SubjectCategory } from '../../../../types/subject';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData } from '../../../../types/game-data';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData } from '@shared/games';
 import { Infrastructure } from '../../../../components/infrastructure/infrastructure';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';

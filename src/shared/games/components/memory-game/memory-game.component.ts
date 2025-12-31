@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import type { MemoryData } from '@shared/games';
+import type { MemoryData } from '../../types/game-data';
 
 interface MemoryCard {
   id: number;

@@ -11,6 +11,12 @@ export interface Game {
   image_url?: string;
   created_at: string;
   updated_at: string;
+  // Champs pour la structure ancienne (rétrocompatibilité)
+  question?: string;
+  instructions?: string;
+  reponses?: Record<string, unknown>;
+  aides?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface GameAttempt {

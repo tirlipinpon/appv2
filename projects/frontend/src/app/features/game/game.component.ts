@@ -6,11 +6,13 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent } from '@shared/games';
+import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent],
   template: `
     <div class="game-container">
       <div *ngIf="application.isLoading()()" class="loading">
@@ -21,7 +23,19 @@ import { FeedbackData } from './services/feedback.service';
         {{ application.getError()() }}
       </div>
 
-      <div *ngIf="!application.isLoading()() && !application.getError()() && application.getCurrentQuestion()()" class="game-content">
+      <!-- Debug: Afficher les infos du jeu si chargé mais pas de contenu -->
+      <div *ngIf="!application.isLoading()() && !application.getError()() && application.getCurrentGame()() && !gameData() && !isGenericGame()" class="error">
+        <p>Jeu chargé mais données manquantes.</p>
+        <p>Type de jeu: {{ gameType() || 'non défini' }}</p>
+        <p>Jeu: {{ application.getCurrentGame()()?.name || 'sans nom' }}</p>
+        <p>game_data_json: {{ application.getCurrentGame()()?.game_data_json ? 'présent mais vide/null' : 'absent' }}</p>
+        <details>
+          <summary>Détails du jeu (cliquez pour voir)</summary>
+          <pre>{{ application.getCurrentGame()() | json }}</pre>
+        </details>
+      </div>
+
+      <div *ngIf="!application.isLoading()() && !application.getError()() && application.getCurrentGame()() && (gameData() || isGenericGame())" class="game-content">
         <!-- En-tête avec progression -->
         <div class="game-header">
           <app-progress-bar
@@ -35,29 +49,92 @@ import { FeedbackData } from './services/feedback.service';
           </div>
         </div>
 
-        <!-- Question actuelle -->
-        <div class="question-container">
-          <div class="question-number">
-            Question {{ (application.getGameState()()?.currentQuestionIndex ?? 0) + 1 }} / {{ (application.getGameState()()?.questions?.length ?? 0) }}
-          </div>
-          <h2 class="question-text">
-            {{ application.getCurrentQuestion()()?.question }}
-          </h2>
-        </div>
-
-        <!-- Réponses -->
-        <div class="answers-container">
-          <button
-            *ngFor="let answer of application.getCurrentQuestion()()?.answers; let i = index"
-            class="answer-button"
-            [class.selected]="selectedAnswer() === i"
-            [class.correct]="showFeedback() && feedback()?.isCorrect && correctAnswer() === i"
-            [class.incorrect]="showFeedback() && !feedback()?.isCorrect && selectedAnswer() === i"
+        <!-- Jeux spécifiques -->
+        @if (isQcmGame() && getQcmData()) {
+          <app-qcm-game
+            [qcmData]="getQcmData()!"
+            [showResult]="showFeedback()"
             [disabled]="showFeedback()"
-            (click)="selectAnswer(i)">
-            {{ answer }}
-          </button>
-        </div>
+            (validated)="onGameValidated($event)">
+          </app-qcm-game>
+        } @else if (isChronologieGame() && getChronologieData()) {
+          <app-chronologie-game
+            [chronologieData]="getChronologieData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            (validated)="onGameValidated($event)">
+          </app-chronologie-game>
+        } @else if (isMemoryGame() && getMemoryData()) {
+          <app-memory-game
+            [memoryData]="getMemoryData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            (validated)="onGameValidated($event)">
+          </app-memory-game>
+        } @else if (isSimonGame() && getSimonData()) {
+          <app-simon-game
+            [simonData]="getSimonData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            (validated)="onGameValidated($event)">
+          </app-simon-game>
+        } @else if (isImageInteractiveGame() && getImageInteractiveData()) {
+          <app-image-interactive-game
+            [imageData]="getImageInteractiveData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            (validated)="onGameValidated($event)">
+          </app-image-interactive-game>
+        } @else if (gameType() === 'reponse_libre' && gameData()) {
+          <!-- Jeu réponse libre -->
+          <div class="question-container">
+            <h2 class="question-text">
+              {{ application.getCurrentGame()()?.question || application.getCurrentGame()()?.instructions || 'Répondez à la question' }}
+            </h2>
+            @if (application.getCurrentGame()()?.aides && application.getCurrentGame()()!.aides!.length > 0) {
+              <div class="aides-container">
+                <strong>Aide :</strong>
+                <ul>
+                  @for (aide of application.getCurrentGame()()!.aides!; track $index) {
+                    <li>{{ aide }}</li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+          <div class="reponse-libre-container">
+            <input
+              type="text"
+              class="reponse-input"
+              [value]="reponseLibreInput()"
+              (input)="onReponseLibreInput($event)"
+              placeholder="Tapez votre réponse ici..."
+              [disabled]="showFeedback()">
+          </div>
+        } @else if (isGenericGame() && application.getCurrentQuestion()()) {
+          <!-- Jeux génériques avec questions/réponses -->
+          <div class="question-container">
+            <div class="question-number">
+              Question {{ (application.getGameState()()?.currentQuestionIndex ?? 0) + 1 }} / {{ (application.getGameState()()?.questions?.length ?? 0) }}
+            </div>
+            <h2 class="question-text">
+              {{ application.getCurrentQuestion()()?.question }}
+            </h2>
+          </div>
+
+          <div class="answers-container">
+            <button
+              *ngFor="let answer of application.getCurrentQuestion()()?.answers; let i = index"
+              class="answer-button"
+              [class.selected]="selectedAnswer() === i"
+              [class.correct]="showFeedback() && feedback()?.isCorrect && correctAnswer() === i"
+              [class.incorrect]="showFeedback() && !feedback()?.isCorrect && selectedAnswer() === i"
+              [disabled]="showFeedback()"
+              (click)="selectAnswer(i)">
+              {{ answer }}
+            </button>
+          </div>
+        }
 
         <!-- Feedback -->
         <div *ngIf="showFeedback() && feedback()" class="feedback-container" [class.correct]="feedback()?.isCorrect" [class.incorrect]="!feedback()?.isCorrect">
@@ -72,7 +149,7 @@ import { FeedbackData } from './services/feedback.service';
         <!-- Boutons d'action -->
         <div class="actions-container">
           <app-child-button
-            *ngIf="!showFeedback() && selectedAnswer() !== null"
+            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (gameType() === 'reponse_libre' && reponseLibreInput().trim().length > 0))"
             (buttonClick)="submitAnswer()"
             variant="primary"
             size="large">
@@ -257,6 +334,44 @@ import { FeedbackData } from './services/feedback.service';
       justify-content: center;
       gap: 1rem;
     }
+
+    .aides-container {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f0f0f0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .aides-container ul {
+      margin: 0.5rem 0 0 1.5rem;
+      padding: 0;
+    }
+
+    .reponse-libre-container {
+      margin-bottom: 2rem;
+    }
+
+    .reponse-input {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.125rem;
+      border: 2px solid #e0e0e0;
+      border-radius: var(--theme-border-radius, 12px);
+      transition: all 0.2s ease;
+    }
+
+    .reponse-input:focus {
+      outline: none;
+      border-color: var(--theme-primary-color, #4CAF50);
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+    }
+
+    .reponse-input:disabled {
+      cursor: not-allowed;
+      opacity: 0.8;
+      background-color: #f5f5f5;
+    }
   `]
 })
 export class GameComponent implements OnInit {
@@ -265,6 +380,7 @@ export class GameComponent implements OnInit {
   private readonly router = inject(Router);
 
   selectedAnswer = signal<number | null>(null);
+  reponseLibreInput = signal<string>('');
   showFeedback = signal<boolean>(false);
   feedback = signal<FeedbackData | null>(null);
   correctAnswer = signal<number | null>(null);
@@ -285,6 +401,59 @@ export class GameComponent implements OnInit {
     }
   ]);
 
+  // Computed pour déterminer le type de jeu et les données
+  gameType = computed(() => {
+    const game = this.application.getCurrentGame()();
+    return game?.game_type || null;
+  });
+
+  gameData = computed(() => {
+    const game = this.application.getCurrentGame()();
+    const data = game?.game_data_json;
+    // Vérifier si les données existent et ne sont pas un objet vide
+    if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+      return null;
+    }
+    return data;
+  });
+
+  // Helpers pour déterminer quel composant afficher
+  isQcmGame = computed(() => this.gameType() === 'qcm');
+  isChronologieGame = computed(() => this.gameType() === 'chronologie');
+  isMemoryGame = computed(() => this.gameType() === 'memory');
+  isSimonGame = computed(() => this.gameType() === 'simon');
+  isImageInteractiveGame = computed(() => this.gameType() === 'image_interactive');
+  isGenericGame = computed(() => {
+    const type = this.gameType();
+    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive'].includes(type);
+  });
+
+  // Getters typés pour les données de jeu
+  getQcmData(): QcmData | null {
+    const data = this.gameData();
+    return data && this.isQcmGame() ? (data as unknown as QcmData) : null;
+  }
+
+  getChronologieData(): ChronologieData | null {
+    const data = this.gameData();
+    return data && this.isChronologieGame() ? (data as unknown as ChronologieData) : null;
+  }
+
+  getMemoryData(): MemoryData | null {
+    const data = this.gameData();
+    return data && this.isMemoryGame() ? (data as unknown as MemoryData) : null;
+  }
+
+  getSimonData(): SimonData | null {
+    const data = this.gameData();
+    return data && this.isSimonGame() ? (data as unknown as SimonData) : null;
+  }
+
+  getImageInteractiveData(): ImageInteractiveData | null {
+    const data = this.gameData();
+    return data && this.isImageInteractiveGame() ? (data as unknown as ImageInteractiveData) : null;
+  }
+
   async ngOnInit(): Promise<void> {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
@@ -303,7 +472,59 @@ export class GameComponent implements OnInit {
     this.selectedAnswer.set(index);
   }
 
+  onReponseLibreInput(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.reponseLibreInput.set(target.value);
+  }
+
+  onGameValidated(isCorrect: boolean): void {
+    // Gérer la validation des jeux spécifiques
+    this.showFeedback.set(true);
+    const feedbackData: FeedbackData = {
+      isCorrect,
+      message: isCorrect ? 'Bravo ! Bonne réponse ! ✅' : 'Ce n\'est pas la bonne réponse. Réessaye ! ❌',
+      explanation: ''
+    };
+    this.feedback.set(feedbackData);
+    
+    // Pour les jeux spécifiques, on considère qu'il n'y a qu'une seule "question"
+    // donc on passe directement à la fin du jeu après un court délai
+    setTimeout(() => {
+      if (isCorrect) {
+        this.completeGame();
+      }
+    }, 2000);
+  }
+
   async submitAnswer(): Promise<void> {
+    // Gérer les réponses libres
+    if (this.gameType() === 'reponse_libre') {
+      const game = this.application.getCurrentGame()();
+      const gameData = this.gameData();
+      if (!game || !gameData) return;
+
+      const reponseValide = (gameData as { reponse_valide?: string }).reponse_valide || '';
+      const userReponse = this.reponseLibreInput().trim().toLowerCase();
+      const isCorrect = userReponse === reponseValide.toLowerCase();
+
+      this.showFeedback.set(true);
+      const feedbackData: FeedbackData = {
+        isCorrect,
+        message: isCorrect ? 'Bravo ! Bonne réponse ! ✅' : 'Ce n\'est pas la bonne réponse. Réessaye ! ❌',
+        explanation: isCorrect ? '' : `La bonne réponse était : "${reponseValide}"`
+      };
+      this.feedback.set(feedbackData);
+
+      // Pour les réponses libres, on considère qu'il n'y a qu'une seule question
+      setTimeout(() => {
+        if (isCorrect) {
+          this.completeGame();
+        }
+      }, 2000);
+      return;
+    }
+
+    // Gérer les réponses à choix multiples
     if (this.selectedAnswer() === null) return;
 
     const question = this.application.getCurrentQuestion()();
