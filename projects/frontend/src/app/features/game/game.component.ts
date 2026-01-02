@@ -9,6 +9,7 @@ import { ProgressBarComponent } from '../../shared/components/progress-bar/progr
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
 import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent } from '@shared/games';
+import { GameErrorActionsComponent } from '@shared/games';
 import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData, VraiFauxData } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
@@ -20,7 +21,7 @@ import type { Game } from '../../core/types/game.types';
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, LetterByLetterInputComponent, BreadcrumbComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, LetterByLetterInputComponent, BreadcrumbComponent, GameErrorActionsComponent],
   template: `
     <div class="game-container">
       <!-- Breadcrumb -->
@@ -214,6 +215,14 @@ import type { Game } from '../../core/types/game.types';
               (wordComplete)="onReponseLibreWordComplete()">
             </app-letter-by-letter-input>
           </div>
+          
+          <!-- Actions pour le jeu réponse libre en cas d'erreur -->
+          <app-game-error-actions
+            [isSubmitted]="showFeedback()"
+            [isCorrect]="feedback()?.isCorrect ?? null"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
+          </app-game-error-actions>
         } @else if (isGenericGame() && application.getCurrentQuestion()()) {
           <!-- Jeux génériques avec questions/réponses -->
           <div class="game-info-container" *ngIf="application.getCurrentGame()()">

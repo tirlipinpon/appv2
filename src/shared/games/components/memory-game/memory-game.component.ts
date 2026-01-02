@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, OnInit, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { MemoryData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
@@ -38,6 +38,25 @@ export class MemoryGameComponent implements OnInit {
   
   // État pour afficher/masquer les aides
   showAides = signal<boolean>(false);
+
+  // Calcul du nombre de colonnes optimal pour l'affichage (responsive)
+  gridColumns = computed(() => {
+    const totalCards = this.cards().length;
+    if (totalCards === 0) return 2;
+    
+    // Calculer le nombre optimal de colonnes pour avoir environ 2-3 lignes
+    // Pour 4 cartes (2 paires) : 2 colonnes = 2 lignes de 2
+    // Pour 6 cartes (3 paires) : 3 colonnes = 2 lignes de 3
+    // Pour 8 cartes (4 paires) : 4 colonnes = 2 lignes de 4
+    // Pour 12 cartes (6 paires) : 4 colonnes = 3 lignes de 4
+    if (totalCards <= 4) return 2;
+    if (totalCards <= 6) return 3;
+    if (totalCards <= 8) return 4;
+    if (totalCards <= 12) return 4;
+    if (totalCards <= 16) return 4;
+    return 4;
+  });
+
 
   constructor() {
     // Effet pour gérer le retournement de 2 cartes

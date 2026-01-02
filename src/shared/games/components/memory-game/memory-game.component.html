@@ -42,7 +42,7 @@
     Paires trouvées : {{ getProgress() }} / {{ getTotalPairs() }}
   </div>
 
-  <div class="memory-grid" [class.disabled]="disabled || isSubmitted()">
+  <div class="memory-grid" [class.disabled]="disabled || isSubmitted()" [style.grid-template-columns]="'repeat(' + gridColumns() + ', 1fr)'">
     @for (card of cards(); track card.id) {
       <div 
         [class]="getCardClass(card)"

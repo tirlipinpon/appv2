@@ -50,10 +50,14 @@
 
   .memory-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 1rem;
+    gap: 0.5rem;
+    row-gap: 1rem;
     margin-bottom: 1.5rem;
     max-width: 100%;
+    justify-items: center;
+    justify-content: center;
+    align-items: start;
+    grid-auto-rows: min-content;
 
     &.disabled {
       pointer-events: none;
@@ -61,24 +65,38 @@
     }
 
     @media (max-width: 768px) {
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 0.5rem;
+      gap: 0.4rem;
+      row-gap: 0.8rem;
     }
 
     @media (max-width: 480px) {
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 0.3rem;
+      row-gap: 0.6rem;
     }
   }
 
   .memory-card {
-    aspect-ratio: 3/4;
     perspective: 1000px;
     cursor: pointer;
     user-select: none;
+    width: 100px;
+    height: 75px;
+
+    @media (max-width: 768px) {
+      width: 80px;
+      height: 60px;
+    }
+
+    @media (max-width: 480px) {
+      width: 70px;
+      height: 52px;
+    }
 
     &:hover:not(.flipped):not(.matched) {
-      .card-front {
+      .card-inner {
         transform: scale(1.05);
+      }
+      .card-front {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       }
     }
@@ -97,28 +115,31 @@
     }
 
     &.flipped .card-inner {
-      transform: rotateY(180deg);
+      transform: rotateY(180deg) !important;
     }
 
     .card-front,
     .card-back {
       position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
       backface-visibility: hidden;
-      border-radius: 8px;
+      -webkit-backface-visibility: hidden;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
+      padding: 0.5rem;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      transition: all 0.2s ease;
+      box-sizing: border-box;
     }
 
     .card-front {
       background: linear-gradient(135deg, var(--theme-primary-color, #4CAF50) 0%, #45a049 100%);
       color: white;
-      font-size: 3rem;
+      font-size: 1.5rem;
       font-weight: 700;
 
       .card-mark {
@@ -148,12 +169,15 @@
     }
 
     .card-content {
-      font-size: 0.875rem;
+      font-size: 0.75rem;
       color: var(--theme-text-color, #333);
       word-wrap: break-word;
       overflow-wrap: break-word;
       hyphens: auto;
-      line-height: 1.4;
+      line-height: 1.3;
+      width: 100%;
+      padding: 0.25rem;
+      text-align: center;
     }
 
     &:focus-visible {
