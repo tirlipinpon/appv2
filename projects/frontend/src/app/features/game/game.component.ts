@@ -1061,7 +1061,7 @@ export class GameComponent implements OnInit, OnDestroy {
       const feedbackData: FeedbackData = {
         isCorrect,
         message: isCorrect ? 'Bravo ! Bonne réponse ! ✅' : 'Ce n\'est pas la bonne réponse. Réessaye ! ❌',
-        explanation: isCorrect ? '' : `La bonne réponse était : "${reponseValide}"`
+        explanation: '' // Ne pas afficher la bonne réponse pour le jeu réponse libre
       };
       this.feedback.set(feedbackData);
 
@@ -1283,8 +1283,9 @@ export class GameComponent implements OnInit, OnDestroy {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
       // Réinitialiser l'état du composant parent
-      this.selectedAnswer.set(null);
+      // IMPORTANT: showFeedback doit être réinitialisé en premier pour que disabled soit false
       this.showFeedback.set(false);
+      this.selectedAnswer.set(null);
       this.feedback.set(null);
       this.correctAnswer.set(null);
       this.showCompletionScreen.set(false);
@@ -1295,10 +1296,8 @@ export class GameComponent implements OnInit, OnDestroy {
       this.showAides.set(false);
       
       // Recharger le jeu depuis la base de données
+      // Les composants enfants seront réinitialisés via l'événement resetRequested
       await this.application.initializeGame(gameId);
-      
-      // Les composants de jeux seront réinitialisés automatiquement car leurs inputs changent
-      // grâce au rechargement depuis la base de données
     }
   }
 

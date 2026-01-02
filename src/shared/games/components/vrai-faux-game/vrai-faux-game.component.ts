@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { VraiFauxData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
@@ -20,6 +20,7 @@ export class VraiFauxGameComponent implements OnInit {
   
   @Output() validated = new EventEmitter<boolean>();
   @Output() nextRequested = new EventEmitter<void>();
+  @Output() resetRequested = new EventEmitter<void>();
 
   // Énoncés mélangés
   shuffledEnonces = signal<{ texte: string; reponse_correcte: boolean }[]>([]);
@@ -33,15 +34,6 @@ export class VraiFauxGameComponent implements OnInit {
   
   // État pour afficher/masquer les aides
   showAides = signal<boolean>(false);
-
-  constructor() {
-    // Effet pour réinitialiser quand showResult change
-    effect(() => {
-      if (this.showResult) {
-        this.isSubmitted.set(true);
-      }
-    });
-  }
 
   ngOnInit(): void {
     this.shuffleVraiFauxData();
@@ -118,6 +110,13 @@ export class VraiFauxGameComponent implements OnInit {
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
     this.shuffleVraiFauxData();
+  }
+
+  onResetRequested(): void {
+    // Réinitialiser l'état interne du composant
+    this.reset();
+    // Émettre l'événement vers le parent pour qu'il puisse aussi réinitialiser son état
+    this.resetRequested.emit();
   }
 
   canSubmit(): boolean {

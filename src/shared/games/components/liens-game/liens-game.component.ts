@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, AfterViewInit, AfterViewChecked, OnDestroy, ViewChild, ElementRef, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, AfterViewInit, AfterViewChecked, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { LiensData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
@@ -26,6 +26,7 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
   
   @Output() validated = new EventEmitter<boolean>();
   @Output() nextRequested = new EventEmitter<void>();
+  @Output() resetRequested = new EventEmitter<void>();
 
   @ViewChild('liensGrid', { static: false }) liensGridRef?: ElementRef<HTMLDivElement>;
   @ViewChild('linksSvg', { static: false }) linksSvgRef?: ElementRef<SVGElement>;
@@ -52,15 +53,6 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
 
   private resizeObserver?: ResizeObserver;
   private updateLinksTimeout?: number;
-
-  constructor() {
-    // Effet pour réinitialiser quand showResult change
-    effect(() => {
-      if (this.showResult) {
-        this.isSubmitted.set(true);
-      }
-    });
-  }
 
   ngOnInit(): void {
     this.shuffleLiensData();
@@ -290,6 +282,13 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
     this.shuffleLiensData();
+  }
+
+  onResetRequested(): void {
+    // Réinitialiser l'état interne du composant
+    this.reset();
+    // Émettre l'événement vers le parent pour qu'il puisse aussi réinitialiser son état
+    this.resetRequested.emit();
   }
 
   canSubmit(): boolean {

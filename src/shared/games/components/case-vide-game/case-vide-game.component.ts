@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData } from '../../types/game-data';
@@ -21,6 +21,7 @@ export class CaseVideGameComponent implements OnInit {
   
   @Output() validated = new EventEmitter<boolean>();
   @Output() nextRequested = new EventEmitter<void>();
+  @Output() resetRequested = new EventEmitter<void>();
 
   // Signaux pour Case Vide
   userCaseVideAnswers = signal<Map<number, string>>(new Map());
@@ -35,15 +36,6 @@ export class CaseVideGameComponent implements OnInit {
   
   // État pour afficher/masquer les aides
   showAides = signal<boolean>(false);
-
-  constructor() {
-    // Effet pour réinitialiser quand showResult change
-    effect(() => {
-      if (this.showResult) {
-        this.isSubmitted.set(true);
-      }
-    });
-  }
 
   ngOnInit(): void {
     this.initializeCaseVide();
@@ -341,6 +333,13 @@ export class CaseVideGameComponent implements OnInit {
 
   reset(): void {
     this.initializeCaseVide();
+  }
+
+  onResetRequested(): void {
+    // Réinitialiser l'état interne du composant
+    this.reset();
+    // Émettre l'événement vers le parent pour qu'il puisse aussi réinitialiser son état
+    this.resetRequested.emit();
   }
 
   canSubmit(): boolean {

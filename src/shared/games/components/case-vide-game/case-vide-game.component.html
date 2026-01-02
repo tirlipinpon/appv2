@@ -133,7 +133,7 @@
   <app-game-error-actions
     [isSubmitted]="isSubmitted()"
     [isCorrect]="isCorrect()"
-    (resetRequested)="reset()"
+    (resetRequested)="onResetRequested()"
     (nextRequested)="nextRequested.emit()">
   </app-game-error-actions>
 </div>
