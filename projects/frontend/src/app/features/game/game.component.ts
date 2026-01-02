@@ -13,6 +13,7 @@ import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveD
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
+import { ChildAuthService } from '../../core/auth/child-auth.service';
 import type { Game } from '../../core/types/game.types';
 
 @Component({
@@ -534,6 +535,7 @@ export class GameComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly subjectsInfrastructure = inject(SubjectsInfrastructure);
+  private readonly childAuthService = inject(ChildAuthService);
   private routeSubscription?: Subscription;
 
   selectedAnswer = signal<number | null>(null);
@@ -1035,17 +1037,52 @@ export class GameComponent implements OnInit, OnDestroy {
     // Marquer le jeu comme complété
     this.gameCompleted.set(true);
     
+    // #region agent log
+    const gameBefore = this.application.getCurrentGame()();
+    const gameStateBefore = this.application.getGameState()();
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1038',message:'completeGame entry',data:{gameId:gameBefore?.id,gameType:gameBefore?.game_type,gameStateExists:!!gameStateBefore,gameStateQuestionsLength:gameStateBefore?.questions?.length,gameStateScore:gameStateBefore?.score},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A,B'})}).catch(()=>{});
+    // #endregion
+    
     await this.application.completeGame();
     const gameState = this.application.getGameState()();
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1045',message:'gameState after completeGame',data:{gameStateExists:!!gameState,gameStateType:typeof gameState,gameStateKeys:gameState?Object.keys(gameState):[],questionsLength:gameState?.questions?.length,gameStateScore:gameState?.score},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B,D'})}).catch(()=>{});
+    // #endregion
     
     // Chercher le prochain jeu dans la même catégorie AVANT de calculer le score
     await this.findNextGame();
     
-    if (gameState && gameState.questions && gameState.questions.length > 0) {
+    // Fonction helper pour normaliser le type de jeu (identique à application.ts)
+    const normalizeGameType = (gameType: string | undefined): string => {
+      if (!gameType) return '';
+      return gameType.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_');
+    };
+    
+    // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
+    const specificGameTypes = ['case_vide', 'case vide', 'liens', 'vrai_faux', 'vrai/faux', 'image_interactive', 'memory', 'simon', 'qcm', 'chronologie', 'click', 'reponse_libre'];
+    const normalizedGameType = normalizeGameType(gameBefore?.game_type);
+    const isSpecificGame = specificGameTypes.some(type => normalizeGameType(type) === normalizedGameType);
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1055',message:'score calculation check',data:{gameType:gameBefore?.game_type,normalizedGameType,isSpecificGame,hasGameState:!!gameState,questionsLength:gameState?.questions?.length,gameStateScore:gameState?.score},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A,B'})}).catch(()=>{});
+    // #endregion
+    
+    if (isSpecificGame) {
+      // Pour les jeux spécifiques, on considère que c'est réussi à 100% si terminé
+      // (ces jeux appellent completeGame() seulement si isCorrect === true)
+      this.finalScore.set(100);
+      this.completionMessage.set('Bravo ! Jeu terminé ! 🎉');
+    } else if (gameState && gameState.questions && gameState.questions.length > 0) {
       // Pour les jeux avec questions (jeux génériques)
       const totalQuestions = gameState.questions.length;
       const score = gameState.score;
-      this.finalScore.set(Math.round((score / totalQuestions) * 100));
+      const calculatedScore = Math.round((score / totalQuestions) * 100);
+      this.finalScore.set(calculatedScore);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1065',message:'score calculated in component',data:{calculatedScore,score,totalQuestions},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'B,D'})}).catch(()=>{});
+      // #endregion
       
       if (this.finalScore() === 100) {
         this.completionMessage.set('Parfait ! Tu as tout réussi ! 🏆');
@@ -1057,7 +1094,7 @@ export class GameComponent implements OnInit, OnDestroy {
         this.completionMessage.set(`Continue ! ${score}/${totalQuestions} bonnes réponses. Tu peux réessayer ! 💪`);
       }
     } else {
-      // Pour les jeux spécifiques (sans questions), on considère que c'est réussi
+      // Pour les jeux sans gameState ni questions, on considère que c'est réussi
       this.finalScore.set(100);
       this.completionMessage.set('Bravo ! Jeu terminé ! 🎉');
     }
@@ -1074,147 +1111,43 @@ export class GameComponent implements OnInit, OnDestroy {
     }
 
     try {
+      // Récupérer le childId pour le filtrage
+      const child = this.childAuthService.getCurrentChild();
+      const childId = child?.child_id;
+      
       let games: Game[] = [];
       
       // Si le jeu est lié à une catégorie, charger les jeux de cette catégorie
       if (currentGame.subject_category_id) {
-        games = await this.subjectsInfrastructure.loadGamesByCategory(currentGame.subject_category_id);
+        games = await this.subjectsInfrastructure.loadGamesByCategory(currentGame.subject_category_id, childId);
       } 
       // Sinon, si le jeu est lié directement à une matière, charger les jeux de cette matière
       else if (currentGame.subject_id) {
-        // Charger les jeux directement liés à la matière (sans catégorie)
-        const { data, error } = await this.subjectsInfrastructure['supabase'].client
-          .from('games')
-          .select(`
-            *,
-            game_types!inner(name)
-          `)
-          .eq('subject_id', currentGame.subject_id)
-          .is('subject_category_id', null)
-          .order('name');
-        
-        if (error) throw error;
-        if (data) {
-          // Normaliser les jeux comme dans loadGamesByCategory
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          games = data.map((game: any) => {
-            const gameTypeName = (game.game_types?.name || '').toLowerCase().replace(/\s+/g, '_');
-            let gameDataJson: Record<string, unknown> = {};
-            
-            // Même logique de normalisation que dans SubjectsInfrastructure.loadGamesByCategory
-            if (gameTypeName === 'reponse_libre') {
-              gameDataJson = {
-                reponse_valide: game.metadata?.reponse_valide || ''
-              };
-            } else if (gameTypeName === 'memory') {
-              if (game.metadata?.paires && Array.isArray(game.metadata.paires)) {
-                gameDataJson = {
-                  paires: game.metadata.paires.map((paire: { question?: string; reponse?: string }) => ({
-                    question: paire.question || '',
-                    reponse: paire.reponse || ''
-                  }))
-                };
-              }
-            } else if (gameTypeName === 'qcm') {
-              if (game.metadata?.propositions || game.reponses?.propositions) {
-                gameDataJson = {
-                  propositions: game.metadata?.propositions || game.reponses?.propositions || [],
-                  reponses_valides: game.metadata?.reponses_valides || game.reponses?.reponses_valides || (game.reponses?.reponse_valide ? [game.reponses.reponse_valide] : [])
-                };
-              } else if (game.reponses) {
-                gameDataJson = game.reponses;
-              }
-            } else if (gameTypeName === 'chronologie') {
-              if (game.metadata?.mots || game.metadata?.ordre_correct) {
-                gameDataJson = {
-                  mots: game.metadata.mots || [],
-                  ordre_correct: game.metadata.ordre_correct || []
-                };
-              } else if (game.reponses) {
-                gameDataJson = game.reponses;
-              }
-            } else if (gameTypeName === 'vrai_faux' || gameTypeName === 'vrai/faux') {
-              if (game.metadata?.enonces && Array.isArray(game.metadata.enonces)) {
-                gameDataJson = {
-                  enonces: game.metadata.enonces.map((enonce: { texte?: string; reponse_correcte?: boolean }) => ({
-                    texte: enonce.texte || '',
-                    reponse_correcte: enonce.reponse_correcte ?? false
-                  }))
-                };
-              } else if (game.reponses) {
-                gameDataJson = game.reponses;
-              }
-            } else if (gameTypeName === 'liens') {
-              if (game.metadata?.mots || game.metadata?.reponses || game.metadata?.liens) {
-                gameDataJson = {
-                  mots: game.metadata.mots || [],
-                  reponses: game.metadata.reponses || [],
-                  liens: game.metadata.liens || []
-                };
-              } else if (game.reponses) {
-                gameDataJson = game.reponses;
-              }
-            } else if (gameTypeName === 'case_vide' || gameTypeName === 'case vide') {
-              if (game.metadata) {
-                gameDataJson = {
-                  texte: game.metadata.texte || '',
-                  cases_vides: game.metadata.cases_vides || [],
-                  banque_mots: game.metadata.banque_mots || [],
-                  mots_leurres: game.metadata.mots_leurres || []
-                };
-              } else if (game.reponses) {
-                gameDataJson = game.reponses;
-              }
-            } else if (gameTypeName === 'simon') {
-              // Simon : convertir depuis metadata
-              if (game.metadata) {
-                gameDataJson = {
-                  nombre_elements: game.metadata.nombre_elements || 4,
-                  type_elements: game.metadata.type_elements || 'couleurs',
-                  elements: game.metadata.elements || []
-                };
-              } else if (game.reponses) {
-                gameDataJson = game.reponses;
-              } else if (game.game_data_json) {
-                gameDataJson = game.game_data_json;
-              }
-            } else if (game.reponses) {
-              gameDataJson = game.reponses;
-            } else if (game.game_data_json) {
-              gameDataJson = game.game_data_json;
-            }
-            
-            return {
-              ...game,
-              game_type: gameTypeName || game.game_type || 'generic',
-              game_data_json: gameDataJson,
-              question: game.question,
-              reponses: game.reponses,
-              aides: game.aides,
-              metadata: game.metadata
-            } as Game;
-          });
-        }
+        games = await this.subjectsInfrastructure.loadGamesBySubject(currentGame.subject_id, childId);
+      }
+      
+      // Filtrer le jeu actuel et les jeux résolus (score = 100%) de la liste
+      games = games.filter(g => g.id !== currentGame.id);
+      
+      // Récupérer les scores pour exclure les jeux résolus
+      if (childId && games.length > 0) {
+        const gameIds = games.map(g => g.id);
+        const scores = await this.subjectsInfrastructure.getGameScores(childId, gameIds);
+        // Ne garder que les jeux non résolus (score !== 100)
+        games = games.filter(game => scores.get(game.id) !== 100);
       }
       
       if (games.length === 0) {
+        // Tous les jeux sont résolus ou il n'y a plus de jeux
         this.hasNextGame.set(false);
         this.nextGameId.set(null);
         return;
       }
       
-      const currentGameIndex = games.findIndex(g => g.id === currentGame.id);
-      
-      if (currentGameIndex !== -1 && currentGameIndex < games.length - 1) {
-        // Il y a un prochain jeu
-        const nextGame = games[currentGameIndex + 1];
-        this.nextGameId.set(nextGame.id);
-        this.hasNextGame.set(true);
-      } else {
-        // Pas de prochain jeu dans cette catégorie/matière
-        this.hasNextGame.set(false);
-        this.nextGameId.set(null);
-      }
+      // Sélectionner le premier jeu de la liste (qui est déjà mélangée aléatoirement)
+      const nextGame = games[0];
+      this.nextGameId.set(nextGame.id);
+      this.hasNextGame.set(true);
     } catch (error) {
       console.error('Erreur lors de la recherche du prochain jeu:', error);
       this.hasNextGame.set(false);

@@ -6,6 +6,7 @@ import { ProgressionService } from '../../../../core/services/progression/progre
 import { CollectionService } from '../../../../core/services/collection/collection.service';
 import { CheckpointService } from '../../../../core/services/save/checkpoint.service';
 import { ChildAuthService } from '../../../../core/auth/child-auth.service';
+import { GameState } from '../../types/game.types';
 
 @Injectable({
   providedIn: 'root',
@@ -61,37 +62,82 @@ export class GameApplication {
     const game = this.store.currentGame();
     const child = await this.authService.getCurrentChild();
 
-    if (!gameState || !game || !child) return;
+    if (!game || !child) {
+      return;
+    }
 
-    const finalScore = this.gameEngine.calculateFinalScore(gameState);
+    // Fonction helper pour normaliser le type de jeu
+    const normalizeGameType = (gameType: string | undefined): string => {
+      if (!gameType) return '';
+      return gameType.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_');
+    };
+
+    // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
+    // Ces jeux appellent completeGame() seulement si isCorrect === true, donc on leur donne 100% si terminés
+    const specificGameTypes = ['case_vide', 'case vide', 'liens', 'vrai_faux', 'vrai/faux', 'image_interactive', 'memory', 'simon', 'qcm', 'chronologie', 'click', 'reponse_libre'];
+    const normalizedGameType = normalizeGameType(game.game_type);
+    const isSpecificGame = specificGameTypes.some(type => normalizeGameType(type) === normalizedGameType);
+
+    // Si pas de gameState (jeux spécifiques comme image_interactive), créer un gameState minimal
+    let effectiveGameState: GameState;
+    if (!gameState) {
+      if (isSpecificGame) {
+        effectiveGameState = {
+          currentQuestionIndex: 0,
+          questions: [],
+          selectedAnswer: null,
+          score: 0,
+          isCompleted: true,
+          startedAt: new Date(),
+          completedAt: new Date(),
+        };
+      } else {
+        // Pour les jeux non spécifiques sans gameState, on ne peut pas continuer
+        return;
+      }
+    } else {
+      effectiveGameState = gameState;
+    }
+    
+    let finalScore: number;
+    if (isSpecificGame || effectiveGameState.questions.length === 0) {
+      // Jeux spécifiques : considérés comme réussis à 100% si terminés
+      // (ces jeux appellent completeGame() seulement si isCorrect === true)
+      finalScore = 100;
+    } else {
+      // Jeux avec questions : calculer le score normalement
+      finalScore = this.gameEngine.calculateFinalScore(effectiveGameState);
+    }
     const isSuccess = finalScore >= 60;
 
     // Afficher le feedback final
     this.feedback.showGameCompleteFeedback(
-      gameState.score,
-      gameState.questions.length
+      effectiveGameState.score,
+      effectiveGameState.questions.length
     );
 
     // Sauvegarder la tentative
-    const duration = gameState.completedAt
-      ? gameState.completedAt.getTime() - gameState.startedAt.getTime()
+    const duration = effectiveGameState.completedAt && effectiveGameState.startedAt
+      ? effectiveGameState.completedAt.getTime() - effectiveGameState.startedAt.getTime()
       : 0;
 
-    await this.store.saveAttempt({
+    const attemptData = {
       child_id: child.child_id,
       game_id: game.id,
       success: isSuccess,
       score: finalScore,
       duration_ms: duration,
       responses_json: {
-        questions: gameState.questions.map((q) => ({
+        questions: effectiveGameState.questions.map((q) => ({
           questionId: q.id,
-          selectedAnswer: gameState.selectedAnswer,
+          selectedAnswer: effectiveGameState.selectedAnswer,
         })),
       },
       difficulty_level: 1, // TODO: Récupérer depuis le state
-      completed_at: gameState.completedAt?.toISOString(),
-    });
+      completed_at: effectiveGameState.completedAt?.toISOString(),
+    };
+
+    await this.store.saveAttempt(attemptData);
 
     // Mettre à jour la progression
     if (game.subject_category_id) {

@@ -86,13 +86,26 @@ import { Game } from '../../core/types/game.types';
 
       <!-- Jeux d'une sous-matière sélectionnée -->
       <div *ngIf="selectedCategoryId()" class="games-view">
+        <div class="games-header" *ngIf="!loadingGames() && categoryGames().length > 0">
+          <h2>Jeux disponibles</h2>
+          <div class="games-counter">
+            {{ getRemainingGamesCount() }}/{{ categoryGames().length }} jeux restants
+          </div>
+        </div>
         <div *ngIf="loadingGames()" class="loading">Chargement des jeux...</div>
         <div class="games-grid" *ngIf="!loadingGames()">
           <div
             *ngFor="let game of categoryGames()"
             class="game-card"
+            [class.completed]="isGameCompleted(game.id)"
             [routerLink]="['/game', game.id]">
-            <h3>{{ game.name }}</h3>
+            <div class="game-card-header">
+              <h3>{{ game.name }}</h3>
+              <div *ngIf="isGameCompleted(game.id)" class="completed-badge">
+                <span class="check-icon">✓</span>
+                <span class="score-text">{{ getGameScore(game.id) }}%</span>
+              </div>
+            </div>
             <p *ngIf="game.description">{{ game.description }}</p>
             <div class="game-type-badge" [style.background-color]="getGameTypeStyle(game.game_type).bgColor" [style.color]="getGameTypeStyle(game.game_type).color">
               <span class="game-type-icon">{{ getGameTypeStyle(game.game_type).icon }}</span>
@@ -232,6 +245,29 @@ import { Game } from '../../core/types/game.types';
       margin-top: 2rem;
     }
 
+    .games-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .games-header h2 {
+      margin: 0;
+      color: var(--theme-text-color, #333);
+    }
+
+    .games-counter {
+      background: var(--theme-primary-color, #4CAF50);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
     .games-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -249,6 +285,12 @@ import { Game } from '../../core/types/game.types';
       text-decoration: none;
       color: inherit;
       display: block;
+      position: relative;
+    }
+
+    .game-card.completed {
+      opacity: 0.85;
+      border: 2px solid #4CAF50;
     }
 
     .game-card:hover {
@@ -256,9 +298,43 @@ import { Game } from '../../core/types/game.types';
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
+    .game-card.completed:hover {
+      opacity: 1;
+    }
+
+    .game-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
     .game-card h3 {
-      margin: 0 0 0.5rem 0;
+      margin: 0;
       color: var(--theme-primary-color, #4CAF50);
+      flex: 1;
+    }
+
+    .completed-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: #4CAF50;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .check-icon {
+      font-size: 0.875rem;
+    }
+
+    .score-text {
+      font-size: 0.75rem;
     }
 
     .game-type-badge {
@@ -299,6 +375,7 @@ export class SubjectsComponent implements OnInit {
   selectedSubjectId = signal<string | null>(null);
   selectedCategoryId = signal<string | null>(null);
   categoryGames = signal<Game[]>([]);
+  gameScores = signal<Map<string, number>>(new Map());
   loadingGames = signal<boolean>(false);
 
   // Exposer les signals directement pour le template
@@ -425,8 +502,19 @@ export class SubjectsComponent implements OnInit {
     this.selectedCategoryId.set(categoryId);
     this.loadingGames.set(true);
     try {
-      const games = await this.infrastructure.loadGamesByCategory(categoryId);
+      const child = this.authService.getCurrentChild();
+      const childId = child?.child_id;
+      const games = await this.infrastructure.loadGamesByCategory(categoryId, childId);
       this.categoryGames.set(games);
+      
+      // Charger les scores des jeux si l'enfant est connecté
+      if (childId && games.length > 0) {
+        const gameIds = games.map(g => g.id);
+        const scores = await this.infrastructure.getGameScores(childId, gameIds);
+        this.gameScores.set(scores);
+      } else {
+        this.gameScores.set(new Map());
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des jeux:', error);
     } finally {
@@ -500,5 +588,29 @@ export class SubjectsComponent implements OnInit {
       .join(' ');
     
     return { label: formattedLabel, icon: '🎯', color: '#666', bgColor: '#f5f5f5' };
+  }
+
+  /**
+   * Vérifie si un jeu est complété (score = 100%)
+   */
+  isGameCompleted(gameId: string): boolean {
+    const score = this.gameScores().get(gameId);
+    return score === 100;
+  }
+
+  /**
+   * Récupère le score d'un jeu
+   */
+  getGameScore(gameId: string): number {
+    return this.gameScores().get(gameId) || 0;
+  }
+
+  /**
+   * Calcule le nombre de jeux restants (non complétés)
+   */
+  getRemainingGamesCount(): number {
+    const games = this.categoryGames();
+    const scores = this.gameScores();
+    return games.filter(game => scores.get(game.id) !== 100).length;
   }
 }
