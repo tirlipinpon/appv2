@@ -79,10 +79,15 @@
             [cdkDropListConnectedTo]="connectedDropListIds()"
             (cdkDropListDropped)="onWordDrop($event, part.index)"
             [class.filled]="getWordInCase(part.index)"
-            [class.correct]="isCaseCorrect(part.index) === true"
+            [class.correct]="isCaseCorrect(part.index) === true && isCorrect() === true"
             [class.incorrect]="isCaseCorrect(part.index) === false">
             @if (getWordInCase(part.index)) {
-              <span class="case-word" cdkDrag [cdkDragData]="getWordInCase(part.index)">
+              <span 
+                class="case-word" 
+                [class.correct-word]="isCaseCorrect(part.index) === true && isCorrect() === true"
+                [class.incorrect-word]="isCaseCorrect(part.index) === false"
+                cdkDrag 
+                [cdkDragData]="getWordInCase(part.index)">
                 {{ getWordInCase(part.index) }}
                 @if (!isSubmitted() && !disabled) {
                   <button 

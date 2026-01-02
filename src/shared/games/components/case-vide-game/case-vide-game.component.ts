@@ -169,7 +169,19 @@ export class CaseVideGameComponent implements OnInit {
     const caseVide = caseVideData.cases_vides.find(c => c.index === caseIndex);
     if (!caseVide) return null;
     const userAnswer = this.userCaseVideAnswers().get(caseIndex);
-    return userAnswer?.toLowerCase().trim() === caseVide.reponse_correcte.toLowerCase().trim();
+    const isUserAnswerCorrect = userAnswer?.toLowerCase().trim() === caseVide.reponse_correcte.toLowerCase().trim();
+    
+    // Si la réponse globale est incorrecte, ne pas révéler AUCUN feedback (ni vert ni rouge)
+    // pour éviter que l'utilisateur déduise les bonnes réponses
+    const globalIsCorrect = this.isCorrect();
+    if (globalIsCorrect === false || globalIsCorrect === null) {
+      // Si la réponse globale est incorrecte, retourner null pour toutes les cases
+      // pour ne pas afficher de feedback visuel (ni correct ni incorrect)
+      return null;
+    }
+    
+    // Seulement si la réponse globale est correcte, on peut révéler les bonnes et mauvaises réponses
+    return isUserAnswerCorrect;
   }
 
   onWordDrop(event: CdkDragDrop<string[]>, caseIndex: number): void {

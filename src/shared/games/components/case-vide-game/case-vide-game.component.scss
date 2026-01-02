@@ -141,18 +141,24 @@
 
     &.filled {
       border-style: solid;
-      border-color: var(--theme-primary-color, #4CAF50);
+      border-color: #ccc;
       background: white;
     }
 
     &.correct {
-      border-color: var(--theme-primary-color, #4CAF50);
-      background: rgba(76, 175, 80, 0.1);
+      border-color: var(--theme-primary-color, #4CAF50) !important;
+      background: rgba(76, 175, 80, 0.1) !important;
     }
 
     &.incorrect {
-      border-color: var(--theme-warn-color, #F44336);
-      background: rgba(244, 67, 54, 0.1);
+      border-color: var(--theme-warn-color, #F44336) !important;
+      background: rgba(244, 67, 54, 0.1) !important;
+    }
+    
+    // Si la case est remplie mais ni correcte ni incorrecte (réponse globale incorrecte), garder la bordure grise
+    &.filled:not(.correct):not(.incorrect) {
+      border-color: #ccc !important;
+      background: white !important;
     }
   }
 
@@ -167,13 +173,23 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem 0.5rem;
-    background: var(--theme-primary-color, #4CAF50);
-    color: white;
+    background: #e0e0e0;
+    color: #333;
     border-radius: 8px;
     font-weight: 500;
     white-space: nowrap;
     cursor: move;
     position: relative;
+
+    &.correct-word {
+      background: var(--theme-primary-color, #4CAF50);
+      color: white;
+    }
+
+    &.incorrect-word {
+      background: var(--theme-warn-color, #F44336);
+      color: white;
+    }
   }
 
   .btn-remove-word {
