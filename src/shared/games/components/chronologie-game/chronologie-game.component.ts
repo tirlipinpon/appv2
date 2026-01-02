@@ -94,9 +94,10 @@ export class ChronologieGameComponent implements OnInit {
 
   /**
    * Vérifie si un mot est à la bonne position (après validation)
+   * Ne retourne true que si la réponse globale est correcte
    */
   isWordCorrect(index: number): boolean {
-    if (!this.isSubmitted() || !this.showResult) return false;
+    if (!this.isSubmitted() || !this.showResult || !this.isCorrect()) return false;
     const currentOrder = this.currentOrder();
     const correctOrder = this.chronologieData.ordre_correct;
     return currentOrder[index] === correctOrder[index];

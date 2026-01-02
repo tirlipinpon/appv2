@@ -42,8 +42,8 @@
       <div 
         class="word-item"
         cdkDrag
-        [class.correct]="isWordCorrect(i) && showResult"
-        [class.incorrect]="!isWordCorrect(i) && isSubmitted() && showResult"
+        [class.correct]="isWordCorrect(i) && showResult && isCorrect()"
+        [class.incorrect]="!isWordCorrect(i) && isSubmitted() && showResult && isCorrect()"
         [class.disabled]="disabled || isSubmitted()">
         
         <div class="drag-handle" cdkDragHandle>
@@ -59,7 +59,7 @@
         
         <span class="word-text">{{ mot }}</span>
         
-        @if (isSubmitted() && showResult && isWordCorrect(i)) {
+        @if (isSubmitted() && showResult && isWordCorrect(i) && isCorrect()) {
           <span class="correct-indicator">✓</span>
         }
       </div>
@@ -78,13 +78,11 @@
   }
 
   @if (isSubmitted() && showResult) {
-    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-      @if (isCorrect()) {
+    @if (isCorrect()) {
+      <div class="result-message correct">
         ✅ Ordre correct !
-      } @else {
-        ❌ Ordre incorrect. L'ordre correct était : {{ chronologieData.ordre_correct.join(' → ') }}
-      }
-    </div>
+      </div>
+    }
     <div class="actions">
       <button class="btn btn-secondary" (click)="reset()" [disabled]="disabled">
         Réessayer
