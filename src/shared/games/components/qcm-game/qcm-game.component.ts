@@ -25,6 +25,7 @@ export class QcmGameComponent implements OnInit {
   
   @Output() answerSelected = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
+  @Output() resetRequested = new EventEmitter<void>();
 
   // Propositions mélangées avec leur lettre (A, B, C...)
   shuffledPropositions = signal<ShuffledProposition[]>([]);
@@ -129,6 +130,7 @@ export class QcmGameComponent implements OnInit {
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
     this.shufflePropositions(); // Remélange pour un nouvel essai
+    this.resetRequested.emit(); // Notifier le parent pour réinitialiser son état
   }
 
   /**

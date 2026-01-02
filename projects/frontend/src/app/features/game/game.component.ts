@@ -81,7 +81,8 @@ import type { Game } from '../../core/types/game.types';
             [aides]="application.getCurrentGame()()?.aides || null"
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
-            (validated)="onGameValidated($event)">
+            (validated)="onGameValidated($event)"
+            (resetRequested)="resetGameState()">
           </app-qcm-game>
         } @else if (isChronologieGame() && getChronologieData()) {
           <app-chronologie-game
@@ -1282,26 +1283,34 @@ export class GameComponent implements OnInit, OnDestroy {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
       await this.application.initializeGame(gameId);
-      this.selectedAnswer.set(null);
-      this.showFeedback.set(false);
-      this.feedback.set(null);
-      this.correctAnswer.set(null);
-      this.showCompletionScreen.set(false);
-      this.reponseLibreInput.set('');
-      this.finalScore.set(0);
-      this.completionMessage.set('');
-      this.showAides.set(false); // Réinitialiser le toggle des aides
-      
-      // Réinitialiser les jeux spécifiques si nécessaire
-      if (this.isCaseVideGame() && this.caseVideGameComponent) {
-        this.caseVideGameComponent.reset();
-      }
-      if (this.isLiensGame() && this.liensGameComponent) {
-        this.liensGameComponent.reset();
-      }
-      if (this.isVraiFauxGame() && this.vraiFauxGameComponent) {
-        this.vraiFauxGameComponent.reset();
-      }
+      this.resetGameState();
+    }
+  }
+
+  /**
+   * Réinitialise l'état du jeu sans recharger depuis la base de données
+   */
+  resetGameState(): void {
+    this.selectedAnswer.set(null);
+    this.showFeedback.set(false);
+    this.feedback.set(null);
+    this.correctAnswer.set(null);
+    this.showCompletionScreen.set(false);
+    this.gameCompleted.set(false);
+    this.reponseLibreInput.set('');
+    this.finalScore.set(0);
+    this.completionMessage.set('');
+    this.showAides.set(false); // Réinitialiser le toggle des aides
+    
+    // Réinitialiser les jeux spécifiques si nécessaire
+    if (this.isCaseVideGame() && this.caseVideGameComponent) {
+      this.caseVideGameComponent.reset();
+    }
+    if (this.isLiensGame() && this.liensGameComponent) {
+      this.liensGameComponent.reset();
+    }
+    if (this.isVraiFauxGame() && this.vraiFauxGameComponent) {
+      this.vraiFauxGameComponent.reset();
     }
   }
 }
