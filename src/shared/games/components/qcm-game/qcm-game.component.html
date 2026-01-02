@@ -63,16 +63,16 @@
     </div>
   }
 
-  @if (isSubmitted() && showResult) {
-    @if (isCorrect()) {
-      <div class="result-message correct">
-        ✅ Bonne réponse !
-      </div>
-    }
-    <div class="actions">
-      <button class="btn btn-secondary" (click)="reset()" [disabled]="disabled">
-        Réessayer
-      </button>
+  @if (isSubmitted() && showResult && isCorrect()) {
+    <div class="result-message correct">
+      ✅ Bonne réponse !
     </div>
   }
+
+  <app-game-error-actions
+    [isSubmitted]="isSubmitted()"
+    [isCorrect]="isCorrect()"
+    (resetRequested)="reset()"
+    (nextRequested)="nextRequested.emit()">
+  </app-game-error-actions>
 </div>

@@ -129,5 +129,12 @@
       <span>{{ caseVideData.fin_phrase }}</span>
     </div>
   }
+
+  <app-game-error-actions
+    [isSubmitted]="isSubmitted()"
+    [isCorrect]="isCorrect()"
+    (resetRequested)="reset()"
+    (nextRequested)="nextRequested.emit()">
+  </app-game-error-actions>
 </div>
 

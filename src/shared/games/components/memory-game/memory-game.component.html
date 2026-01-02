@@ -67,8 +67,11 @@
     }
   </div>
 
-  @if (isSubmitted()) {
-    <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
-  }
+  <app-game-error-actions
+    [isSubmitted]="isSubmitted()"
+    [isCorrect]="isCorrect()"
+    (resetRequested)="reset()"
+    (nextRequested)="nextRequested.emit()">
+  </app-game-error-actions>
 </div>
 

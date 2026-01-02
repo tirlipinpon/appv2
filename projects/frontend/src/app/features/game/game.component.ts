@@ -82,7 +82,8 @@ import type { Game } from '../../core/types/game.types';
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
             (validated)="onGameValidated($event)"
-            (resetRequested)="resetGameState()">
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
           </app-qcm-game>
         } @else if (isChronologieGame() && getChronologieData()) {
           <app-chronologie-game
@@ -92,7 +93,9 @@ import type { Game } from '../../core/types/game.types';
             [aides]="application.getCurrentGame()()?.aides || null"
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
-            (validated)="onGameValidated($event)">
+            (validated)="onGameValidated($event)"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
           </app-chronologie-game>
         } @else if (isMemoryGame() && getMemoryData()) {
           <app-memory-game
@@ -102,7 +105,9 @@ import type { Game } from '../../core/types/game.types';
             [aides]="application.getCurrentGame()()?.aides || null"
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
-            (validated)="onGameValidated($event)">
+            (validated)="onGameValidated($event)"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
           </app-memory-game>
         } @else if (isSimonGame() && getSimonData()) {
           <app-simon-game
@@ -112,7 +117,9 @@ import type { Game } from '../../core/types/game.types';
             [aides]="application.getCurrentGame()()?.aides || null"
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
-            (validated)="onGameValidated($event)">
+            (validated)="onGameValidated($event)"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
           </app-simon-game>
         } @else if (isImageInteractiveGame() && getImageInteractiveData()) {
           <app-image-interactive-game
@@ -122,7 +129,9 @@ import type { Game } from '../../core/types/game.types';
             [aides]="application.getCurrentGame()()?.aides || null"
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
-            (validated)="onGameValidated($event)">
+            (validated)="onGameValidated($event)"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
           </app-image-interactive-game>
         } @else if (isCaseVideGame() && getCaseVideData()) {
           <!-- Jeu Case Vide -->
@@ -134,7 +143,9 @@ import type { Game } from '../../core/types/game.types';
             [aides]="application.getCurrentGame()()?.aides || null"
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
-            (validated)="onCaseVideValidated($event)">
+            (validated)="onCaseVideValidated($event)"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
           </app-case-vide-game>
         } @else if (isLiensGame() && getLiensData()) {
           <!-- Jeu Liens -->
@@ -146,7 +157,9 @@ import type { Game } from '../../core/types/game.types';
             [aides]="application.getCurrentGame()()?.aides || null"
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
-            (validated)="onLiensValidated($event)">
+            (validated)="onLiensValidated($event)"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
           </app-liens-game>
         } @else if (isVraiFauxGame() && getVraiFauxData()) {
           <!-- Jeu Vrai/Faux -->
@@ -158,7 +171,9 @@ import type { Game } from '../../core/types/game.types';
             [aides]="application.getCurrentGame()()?.aides || null"
             [instructions]="application.getCurrentGame()()?.instructions || null"
             [question]="application.getCurrentGame()()?.question || null"
-            (validated)="onVraiFauxValidated($event)">
+            (validated)="onVraiFauxValidated($event)"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
           </app-vrai-faux-game>
         } @else if (gameType() === 'reponse_libre' && gameData()) {
           <!-- Jeu réponse libre -->
@@ -274,29 +289,14 @@ import type { Game } from '../../core/types/game.types';
             size="large">
             Valider
           </app-child-button>
-          <!-- Bouton "Réessayer" pour les jeux spécifiques avec réponse incorrecte -->
-          <app-child-button
-            *ngIf="showFeedback() && !feedback()?.isCorrect && (isLiensGame() || isCaseVideGame() || isVraiFauxGame())"
-            (buttonClick)="restartGame()"
-            variant="secondary"
-            size="large">
-            Réessayer
-          </app-child-button>
+          <!-- Bouton "Réessayer" pour les jeux spécifiques avec réponse incorrecte - masqué car géré par game-error-actions -->
           <!-- Bouton "Question suivante" pour les jeux génériques -->
           <app-child-button
-            *ngIf="showFeedback() && !isGameCompleted() && !isLiensGame() && !isCaseVideGame() && !isVraiFauxGame()"
+            *ngIf="showFeedback() && !isGameCompleted() && isGenericGame()"
             (buttonClick)="goToNextQuestion()"
             variant="primary"
             size="large">
             Question suivante
-          </app-child-button>
-          <!-- Bouton "Suivant" pour les jeux spécifiques - uniquement si la réponse est correcte (mais le modal masquera les boutons) -->
-          <app-child-button
-            *ngIf="showFeedback() && feedback()?.isCorrect && (isLiensGame() || isCaseVideGame() || isVraiFauxGame()) && !isGameCompleted()"
-            (buttonClick)="onNextButtonClick()"
-            variant="primary"
-            size="large">
-            Suivant
           </app-child-button>
         </div>
       </div>
@@ -1282,13 +1282,29 @@ export class GameComponent implements OnInit, OnDestroy {
   async restartGame(): Promise<void> {
     const gameId = this.route.snapshot.paramMap.get('id');
     if (gameId) {
+      // Réinitialiser l'état du composant parent
+      this.selectedAnswer.set(null);
+      this.showFeedback.set(false);
+      this.feedback.set(null);
+      this.correctAnswer.set(null);
+      this.showCompletionScreen.set(false);
+      this.gameCompleted.set(false);
+      this.reponseLibreInput.set('');
+      this.finalScore.set(0);
+      this.completionMessage.set('');
+      this.showAides.set(false);
+      
+      // Recharger le jeu depuis la base de données
       await this.application.initializeGame(gameId);
-      this.resetGameState();
+      
+      // Les composants de jeux seront réinitialisés automatiquement car leurs inputs changent
+      // grâce au rechargement depuis la base de données
     }
   }
 
   /**
    * Réinitialise l'état du jeu sans recharger depuis la base de données
+   * Note: restartGame() doit être utilisé à la place pour recharger le jeu depuis la base
    */
   resetGameState(): void {
     this.selectedAnswer.set(null);
@@ -1301,17 +1317,6 @@ export class GameComponent implements OnInit, OnDestroy {
     this.finalScore.set(0);
     this.completionMessage.set('');
     this.showAides.set(false); // Réinitialiser le toggle des aides
-    
-    // Réinitialiser les jeux spécifiques si nécessaire
-    if (this.isCaseVideGame() && this.caseVideGameComponent) {
-      this.caseVideGameComponent.reset();
-    }
-    if (this.isLiensGame() && this.liensGameComponent) {
-      this.liensGameComponent.reset();
-    }
-    if (this.isVraiFauxGame() && this.vraiFauxGameComponent) {
-      this.vraiFauxGameComponent.reset();
-    }
   }
 }
 

@@ -1,0 +1,14 @@
+@if (shouldShowActions()) {
+  <div class="actions">
+    <button 
+      class="btn btn-secondary" 
+      (click)="onReset()">
+      Réessayer
+    </button>
+    <button 
+      class="btn btn-primary" 
+      (click)="onNext()">
+      Passer au suivant
+    </button>
+  </div>
+}

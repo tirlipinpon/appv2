@@ -1,11 +1,12 @@
 import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { ImageInteractiveData, ImageInteractiveZone } from '../../types/game-data';
+import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
 @Component({
   selector: 'app-image-interactive-game',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, GameErrorActionsComponent],
   templateUrl: './image-interactive-game.component.html',
   styleUrl: './image-interactive-game.component.scss',
 })
@@ -19,6 +20,7 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
 
   @Output() answerSelected = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
+  @Output() nextRequested = new EventEmitter<void>();
 
   @ViewChild('imageContainer', { static: false }) imageContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('imageElement', { static: false }) imageElement!: ElementRef<HTMLImageElement>;

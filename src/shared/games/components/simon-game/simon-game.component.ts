@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { SimonData } from '../../types/game-data';
+import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
 interface SimonElement {
   id: number;
@@ -12,7 +13,7 @@ interface SimonElement {
 @Component({
   selector: 'app-simon-game',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, GameErrorActionsComponent],
   templateUrl: './simon-game.component.html',
   styleUrl: './simon-game.component.scss',
 })
@@ -25,6 +26,7 @@ export class SimonGameComponent implements OnInit, OnDestroy {
   @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
+  @Output() nextRequested = new EventEmitter<void>();
 
   // Éléments disponibles selon le type
   availableElements = signal<SimonElement[]>([]);

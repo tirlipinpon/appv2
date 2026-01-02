@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { QcmData } from '../../types/game-data';
+import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
 interface ShuffledProposition {
   originalIndex: number;
@@ -11,7 +12,7 @@ interface ShuffledProposition {
 @Component({
   selector: 'app-qcm-game',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, GameErrorActionsComponent],
   templateUrl: './qcm-game.component.html',
   styleUrl: './qcm-game.component.scss',
 })
@@ -26,6 +27,7 @@ export class QcmGameComponent implements OnInit {
   @Output() answerSelected = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
   @Output() resetRequested = new EventEmitter<void>();
+  @Output() nextRequested = new EventEmitter<void>();
 
   // Propositions mélangées avec leur lettre (A, B, C...)
   shuffledPropositions = signal<ShuffledProposition[]>([]);

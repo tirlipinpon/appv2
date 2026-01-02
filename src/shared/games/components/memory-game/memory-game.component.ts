@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { MemoryData } from '../../types/game-data';
+import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
 interface MemoryCard {
   id: number;
@@ -14,7 +15,7 @@ interface MemoryCard {
 @Component({
   selector: 'app-memory-game',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, GameErrorActionsComponent],
   templateUrl: './memory-game.component.html',
   styleUrl: './memory-game.component.scss',
 })
@@ -27,6 +28,7 @@ export class MemoryGameComponent implements OnInit {
   @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
+  @Output() nextRequested = new EventEmitter<void>();
 
   cards = signal<MemoryCard[]>([]);
   flippedCards = signal<number[]>([]); // IDs des cartes actuellement retournées (max 2)

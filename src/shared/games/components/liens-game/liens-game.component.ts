@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, computed, OnInit, AfterViewInit, AfterViewChecked, OnDestroy, ViewChild, ElementRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { LiensData } from '../../types/game-data';
+import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
 interface LinkPath {
   mot: string;
@@ -11,7 +12,7 @@ interface LinkPath {
 @Component({
   selector: 'app-liens-game',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, GameErrorActionsComponent],
   templateUrl: './liens-game.component.html',
   styleUrl: './liens-game.component.scss',
 })
@@ -24,6 +25,7 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
   @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
+  @Output() nextRequested = new EventEmitter<void>();
 
   @ViewChild('liensGrid', { static: false }) liensGridRef?: ElementRef<HTMLDivElement>;
   @ViewChild('linksSvg', { static: false }) linksSvgRef?: ElementRef<SVGElement>;

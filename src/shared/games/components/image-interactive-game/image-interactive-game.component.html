@@ -119,25 +119,25 @@
   }
 
   <!-- Actions -->
-  <div class="actions">
-    <button
-      type="button"
-      class="btn btn-primary"
-      [disabled]="!canValidate() || disabled"
-      (click)="validate()"
-    >
-      Valider
-    </button>
-    @if (isSubmitted()) {
+  @if (!isSubmitted()) {
+    <div class="actions">
       <button
         type="button"
-        class="btn btn-secondary"
-        (click)="reset()"
+        class="btn btn-primary"
+        [disabled]="!canValidate() || disabled"
+        (click)="validate()"
       >
-        Réessayer
+        Valider
       </button>
-    }
-  </div>
+    </div>
+  }
+
+  <app-game-error-actions
+    [isSubmitted]="isSubmitted()"
+    [isCorrect]="isCorrect()"
+    (resetRequested)="reset()"
+    (nextRequested)="nextRequested.emit()">
+  </app-game-error-actions>
 
   <!-- Indicateur de zones cliquées -->
   <div class="zones-indicator">

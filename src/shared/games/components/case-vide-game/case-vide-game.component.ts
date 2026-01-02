@@ -2,11 +2,12 @@ import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effec
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData } from '../../types/game-data';
+import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
 @Component({
   selector: 'app-case-vide-game',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [CommonModule, DragDropModule, GameErrorActionsComponent],
   templateUrl: './case-vide-game.component.html',
   styleUrl: './case-vide-game.component.scss',
 })
@@ -19,6 +20,7 @@ export class CaseVideGameComponent implements OnInit {
   @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
+  @Output() nextRequested = new EventEmitter<void>();
 
   // Signaux pour Case Vide
   userCaseVideAnswers = signal<Map<number, string>>(new Map());

@@ -1,11 +1,12 @@
 import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { VraiFauxData } from '../../types/game-data';
+import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
 @Component({
   selector: 'app-vrai-faux-game',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, GameErrorActionsComponent],
   templateUrl: './vrai-faux-game.component.html',
   styleUrl: './vrai-faux-game.component.scss',
 })
@@ -18,6 +19,7 @@ export class VraiFauxGameComponent implements OnInit {
   @Input() question: string | null = null; // Question pour le jeu
   
   @Output() validated = new EventEmitter<boolean>();
+  @Output() nextRequested = new EventEmitter<void>();
 
   // Énoncés mélangés
   shuffledEnonces = signal<{ texte: string; reponse_correcte: boolean }[]>([]);

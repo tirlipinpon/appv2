@@ -92,5 +92,12 @@
   @if (selectedMotForLink()) {
     <p class="hint">Sélectionnez une réponse pour lier avec "{{ selectedMotForLink() }}"</p>
   }
+
+  <app-game-error-actions
+    [isSubmitted]="isSubmitted()"
+    [isCorrect]="isCorrect()"
+    (resetRequested)="reset()"
+    (nextRequested)="nextRequested.emit()">
+  </app-game-error-actions>
 </div>
 

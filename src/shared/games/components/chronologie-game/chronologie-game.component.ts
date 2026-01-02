@@ -2,11 +2,12 @@ import { Component, Input, Output, EventEmitter, signal, OnInit } from '@angular
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import type { ChronologieData } from '../../types/game-data';
+import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
 @Component({
   selector: 'app-chronologie-game',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [CommonModule, DragDropModule, GameErrorActionsComponent],
   templateUrl: './chronologie-game.component.html',
   styleUrl: './chronologie-game.component.scss',
 })
@@ -20,6 +21,7 @@ export class ChronologieGameComponent implements OnInit {
   
   @Output() orderChanged = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
+  @Output() nextRequested = new EventEmitter<void>();
 
   // Mots dans l'ordre actuel (mélangés initialement)
   currentOrder = signal<string[]>([]);
