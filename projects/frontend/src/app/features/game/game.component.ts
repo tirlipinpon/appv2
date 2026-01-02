@@ -9,15 +9,19 @@ import { FeedbackData } from './services/feedback.service';
 import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent } from '@shared/games';
 import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData, VraiFauxData } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
 import type { Game } from '../../core/types/game.types';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, LetterByLetterInputComponent, BreadcrumbComponent],
   template: `
     <div class="game-container">
+      <!-- Breadcrumb -->
+      <app-breadcrumb [items]="breadcrumbItems()" />
+      
       <div *ngIf="application.isLoading()()" class="loading">
         Chargement du jeu...
       </div>
@@ -545,6 +549,51 @@ export class GameComponent implements OnInit {
     this.showAides.update(v => !v);
   }
 
+  // État pour le breadcrumb
+  currentSubject = signal<{ id: string; name: string } | null>(null);
+  currentCategory = signal<{ id: string; name: string } | null>(null);
+
+  // Breadcrumb items
+  breadcrumbItems = computed<BreadcrumbItem[]>(() => {
+    const items: BreadcrumbItem[] = [];
+    const game = this.application.getCurrentGame()();
+    
+    if (!game) return items;
+    
+    items.push({
+      label: 'Matières',
+      action: () => this.goToSubjects()
+    });
+    
+    if (this.currentSubject()) {
+      items.push({
+        label: this.currentSubject()!.name,
+        action: this.currentCategory() ? () => this.goToCategory() : undefined,
+        isActive: !this.currentCategory()
+      });
+    }
+    
+    if (this.currentCategory()) {
+      items.push({
+        label: this.currentCategory()!.name,
+        action: () => this.goToCategory(),
+        isActive: false
+      });
+      items.push({
+        label: 'Jeux',
+        action: () => this.goToGames(),
+        isActive: false
+      });
+    }
+    
+    items.push({
+      label: game.name,
+      isActive: true
+    });
+    
+    return items;
+  });
+
   // Références aux composants de jeux
   @ViewChild('caseVideGame', { static: false }) caseVideGameComponent?: CaseVideGameComponent;
   @ViewChild('liensGame', { static: false }) liensGameComponent?: LiensGameComponent;
@@ -682,12 +731,74 @@ export class GameComponent implements OnInit {
       this.hasNextGame.set(false);
       this.nextGameId.set(null);
       await this.application.initializeGame(gameId);
+      // Charger les informations de subject et category pour le breadcrumb
+      await this.loadBreadcrumbData();
     } else {
       // Si pas de gameId, essayer de charger depuis categoryId
       const categoryId = this.route.snapshot.paramMap.get('categoryId');
       if (categoryId) {
         // TODO: Charger le premier jeu de la catégorie
       }
+    }
+  }
+
+  async loadBreadcrumbData(): Promise<void> {
+    const game = this.application.getCurrentGame()();
+    if (!game) return;
+
+    try {
+      // Charger le subject si présent
+      if (game.subject_id) {
+        const { data: subjectData, error: subjectError } = await this.subjectsInfrastructure['supabase'].client
+          .from('subjects')
+          .select('id, name')
+          .eq('id', game.subject_id)
+          .single();
+
+        if (!subjectError && subjectData) {
+          this.currentSubject.set({ id: subjectData.id, name: subjectData.name });
+        }
+      }
+
+      // Charger la category si présente
+      if (game.subject_category_id) {
+        const { data: categoryData, error: categoryError } = await this.subjectsInfrastructure['supabase'].client
+          .from('subject_categories')
+          .select('id, name')
+          .eq('id', game.subject_category_id)
+          .single();
+
+        if (!categoryError && categoryData) {
+          this.currentCategory.set({ id: categoryData.id, name: categoryData.name });
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des données du breadcrumb:', error);
+    }
+  }
+
+  goToCategory(): void {
+    // Naviguer vers /subjects avec l'état pour sélectionner le subject
+    const subject = this.currentSubject();
+    if (subject) {
+      this.router.navigate(['/subjects'], {
+        state: { subjectId: subject.id }
+      });
+    } else {
+      this.goToSubjects();
+    }
+  }
+
+  goToGames(): void {
+    // Naviguer vers /subjects avec l'état pour sélectionner la catégorie et afficher les jeux
+    const category = this.currentCategory();
+    const subject = this.currentSubject();
+    if (category && subject) {
+      this.router.navigate(['/subjects'], {
+        state: { subjectId: subject.id, categoryId: category.id }
+      });
+    } else {
+      this.goToSubjects();
     }
   }
 

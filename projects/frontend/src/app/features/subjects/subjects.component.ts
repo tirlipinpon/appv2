@@ -1,12 +1,12 @@
 import { Component, inject, OnInit, effect, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { SubjectsApplication } from './components/application/application';
 import { SubjectsInfrastructure } from './components/infrastructure/infrastructure';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
-import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { StarRatingComponent } from '../../shared/components/star-rating/star-rating.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { Game } from '../../core/types/game.types';
 
 @Component({
@@ -15,13 +15,16 @@ import { Game } from '../../core/types/game.types';
   imports: [
     CommonModule,
     RouterLink,
-    ChildButtonComponent,
     ProgressBarComponent,
     StarRatingComponent,
+    BreadcrumbComponent,
   ],
   template: `
     <div class="subjects-container">
-      <h1>Choisis une matière</h1>
+      <!-- Breadcrumb -->
+      <app-breadcrumb [items]="breadcrumbItems()" />
+      
+      <h1>{{ pageTitle() }}</h1>
 
       <div *ngIf="isLoading()" class="loading">
         Chargement...
@@ -47,11 +50,6 @@ import { Game } from '../../core/types/game.types';
 
       <!-- Sous-matières d'une matière sélectionnée -->
       <div *ngIf="selectedSubjectId() && selectedSubject() && !selectedCategoryId()" class="categories-view">
-        <div class="back-button">
-          <app-child-button (buttonClick)="goBack()" variant="secondary" size="small">
-            ← Retour
-          </app-child-button>
-        </div>
         <h2>{{ selectedSubject()?.name }}</h2>
         <div class="categories-grid">
           <div
@@ -88,12 +86,6 @@ import { Game } from '../../core/types/game.types';
 
       <!-- Jeux d'une sous-matière sélectionnée -->
       <div *ngIf="selectedCategoryId()" class="games-view">
-        <div class="back-button">
-          <app-child-button (buttonClick)="goBack()" variant="secondary" size="small">
-            ← Retour
-          </app-child-button>
-        </div>
-        <h2>Jeux disponibles</h2>
         <div *ngIf="loadingGames()" class="loading">Chargement des jeux...</div>
         <div class="games-grid" *ngIf="!loadingGames()">
           <div
@@ -102,8 +94,9 @@ import { Game } from '../../core/types/game.types';
             [routerLink]="['/game', game.id]">
             <h3>{{ game.name }}</h3>
             <p *ngIf="game.description">{{ game.description }}</p>
-            <div class="game-type">
-              Type: {{ getGameTypeLabel(game.game_type) }}
+            <div class="game-type-badge" [style.background-color]="getGameTypeStyle(game.game_type).bgColor" [style.color]="getGameTypeStyle(game.game_type).color">
+              <span class="game-type-icon">{{ getGameTypeStyle(game.game_type).icon }}</span>
+              <span class="game-type-label">{{ getGameTypeStyle(game.game_type).label }}</span>
             </div>
           </div>
         </div>
@@ -124,6 +117,7 @@ import { Game } from '../../core/types/game.types';
         padding: 2rem;
       }
     }
+
 
     h1 {
       margin-bottom: 2rem;
@@ -174,9 +168,6 @@ import { Game } from '../../core/types/game.types';
       margin-top: 2rem;
     }
 
-    .back-button {
-      margin-bottom: 1rem;
-    }
 
     .categories-grid {
       display: grid;
@@ -270,11 +261,32 @@ import { Game } from '../../core/types/game.types';
       color: var(--theme-primary-color, #4CAF50);
     }
 
-    .game-type {
-      margin-top: 0.5rem;
+    .game-type-badge {
+      margin-top: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 20px;
       font-size: 0.875rem;
-      color: #666;
-      font-style: italic;
+      font-weight: 600;
+      border: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .game-type-badge:hover {
+      transform: scale(1.05);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .game-type-icon {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .game-type-label {
+      font-size: 0.875rem;
+      font-weight: 600;
     }
   `]
 })
@@ -282,6 +294,7 @@ export class SubjectsComponent implements OnInit {
   protected readonly application = inject(SubjectsApplication);
   private readonly authService = inject(ChildAuthService);
   private readonly infrastructure = inject(SubjectsInfrastructure);
+  private readonly router = inject(Router);
 
   selectedSubjectId = signal<string | null>(null);
   selectedCategoryId = signal<string | null>(null);
@@ -294,6 +307,58 @@ export class SubjectsComponent implements OnInit {
   isLoading = computed(() => this.application.isLoading()());
   error = computed(() => this.application.getError()());
   selectedSubject = computed(() => this.application.getSelectedSubject()());
+  
+  // Catégorie sélectionnée pour le breadcrumb
+  selectedCategory = computed(() => {
+    const categoryId = this.selectedCategoryId();
+    if (!categoryId) return null;
+    return this.categories().find((cat: { id: string }) => cat.id === categoryId) || null;
+  });
+  
+  // Titre dynamique selon le contexte
+  pageTitle = computed(() => {
+    if (this.selectedCategoryId()) {
+      return 'Jeux disponibles';
+    }
+    if (this.selectedSubjectId()) {
+      return this.selectedSubject()?.name || 'Sous-matières';
+    }
+    return 'Choisis une matière';
+  });
+
+  // Breadcrumb items
+  breadcrumbItems = computed<BreadcrumbItem[]>(() => {
+    const items: BreadcrumbItem[] = [];
+    
+    if (this.selectedSubjectId() || this.selectedCategoryId()) {
+      items.push({
+        label: 'Matières',
+        action: () => this.goToSubjects()
+      });
+    }
+    
+    if (this.selectedSubjectId()) {
+      items.push({
+        label: this.selectedSubject()?.name || 'Matière',
+        action: this.selectedCategoryId() ? () => this.goToSubject() : undefined,
+        isActive: !this.selectedCategoryId()
+      });
+    }
+    
+    if (this.selectedCategoryId()) {
+      items.push({
+        label: this.selectedCategory()?.name || 'Sous-matière',
+        action: () => this.goToSubject(),
+        isActive: false
+      });
+      items.push({
+        label: 'Jeux',
+        isActive: true
+      });
+    }
+    
+    return items;
+  });
 
   constructor() {
     effect(() => {
@@ -304,6 +369,24 @@ export class SubjectsComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.application.initialize();
+    
+    // Vérifier le state du router pour la navigation automatique
+    const state = history.state as { subjectId?: string; categoryId?: string } | null;
+    
+    if (state?.subjectId) {
+      await this.application.selectSubject(state.subjectId);
+      if (state.categoryId) {
+        // Attendre un peu pour que le subject soit chargé
+        setTimeout(async () => {
+          await this.selectCategory(state.categoryId!);
+          // Nettoyer le state après utilisation
+          history.replaceState({}, '');
+        }, 100);
+      } else {
+        // Nettoyer le state après utilisation
+        history.replaceState({}, '');
+      }
+    }
   }
 
   async selectSubject(subjectId: string): Promise<void> {
@@ -320,6 +403,20 @@ export class SubjectsComponent implements OnInit {
       // Réinitialiser à la fois le signal local et le store
       this.selectedSubjectId.set(null);
       this.application.resetSelection();
+    }
+  }
+
+  goToSubjects(): void {
+    this.selectedSubjectId.set(null);
+    this.selectedCategoryId.set(null);
+    this.categoryGames.set([]);
+    this.application.resetSelection();
+  }
+
+  goToSubject(): void {
+    if (this.selectedCategoryId()) {
+      this.selectedCategoryId.set(null);
+      this.categoryGames.set([]);
     }
   }
 
@@ -368,5 +465,40 @@ export class SubjectsComponent implements OnInit {
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  }
+
+  /**
+   * Retourne les informations de style (couleur, icône) pour un type de jeu
+   */
+  getGameTypeStyle(gameType: string | undefined): { label: string; icon: string; color: string; bgColor: string } {
+    if (!gameType) {
+      return { label: 'Non défini', icon: '❓', color: '#666', bgColor: '#f5f5f5' };
+    }
+
+    const typeStyles: Record<string, { label: string; icon: string; color: string; bgColor: string }> = {
+      'qcm': { label: 'QCM', icon: '📝', color: '#1976d2', bgColor: '#e3f2fd' },
+      'memory': { label: 'Memory', icon: '🧠', color: '#7b1fa2', bgColor: '#f3e5f5' },
+      'chronologie': { label: 'Chronologie', icon: '⏱️', color: '#f57c00', bgColor: '#fff3e0' },
+      'simon': { label: 'Simon', icon: '🎮', color: '#388e3c', bgColor: '#e8f5e9' },
+      'image_interactive': { label: 'Image interactive', icon: '🖼️', color: '#c2185b', bgColor: '#fce4ec' },
+      'reponse_libre': { label: 'Réponse libre', icon: '✍️', color: '#0288d1', bgColor: '#e1f5fe' },
+      'vrai_faux': { label: 'Vrai/Faux', icon: '✓✗', color: '#d32f2f', bgColor: '#ffebee' },
+      'liens': { label: 'Liens', icon: '🔗', color: '#5d4037', bgColor: '#efebe9' },
+      'case_vide': { label: 'Case vide', icon: '📋', color: '#455a64', bgColor: '#eceff1' },
+      'click': { label: 'Click', icon: '👆', color: '#00796b', bgColor: '#e0f2f1' }
+    };
+
+    if (typeStyles[gameType]) {
+      return typeStyles[gameType];
+    }
+
+    // Par défaut, formater le type
+    const formattedLabel = gameType
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    
+    return { label: formattedLabel, icon: '🎯', color: '#666', bgColor: '#f5f5f5' };
   }
 }
