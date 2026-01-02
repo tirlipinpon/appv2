@@ -133,9 +133,10 @@ export class QcmGameComponent implements OnInit {
 
   /**
    * Vérifie si une proposition est correcte (après validation)
+   * Ne retourne true que si la réponse globale est correcte
    */
   isPropositionCorrect(letter: string): boolean {
-    if (!this.isSubmitted() || !this.showResult) return false;
+    if (!this.isSubmitted() || !this.showResult || !this.isCorrect()) return false;
     const shuffled = this.shuffledPropositions();
     const proposition = shuffled.find(p => p.letter === letter);
     if (!proposition) return false;

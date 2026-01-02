@@ -941,15 +941,13 @@ export class GameComponent implements OnInit, OnDestroy {
     if (caseVideData?.texte && caseVideData.cases_vides) {
       // Nouveau format
       message = isValid ? 'Bravo ! Toutes les réponses sont correctes ! ✅' : 'Certaines réponses sont incorrectes. ❌';
-      if (!isValid && caseVideData.cases_vides) {
-        explanation = `Les bonnes réponses étaient : ${caseVideData.cases_vides.map(c => c.reponse_correcte).join(', ')}`;
-      }
+      // Ne pas afficher les bonnes réponses si la réponse est incorrecte
+      explanation = '';
     } else if (caseVideData?.debut_phrase && caseVideData.fin_phrase && caseVideData.reponse_valide) {
       // Ancien format
       message = isValid ? 'Bravo ! Bonne réponse ! ✅' : 'Ce n\'est pas la bonne réponse. ❌';
-      if (!isValid) {
-        explanation = `La bonne réponse était : "${caseVideData.reponse_valide}"`;
-      }
+      // Ne pas afficher les bonnes réponses si la réponse est incorrecte
+      explanation = '';
     }
     
     const feedbackData: FeedbackData = {
