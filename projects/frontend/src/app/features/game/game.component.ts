@@ -1,6 +1,8 @@
-import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription, from } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { GameApplication } from './components/application/application';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
@@ -527,11 +529,12 @@ import type { Game } from '../../core/types/game.types';
     }
   `]
 })
-export class GameComponent implements OnInit {
+export class GameComponent implements OnInit, OnDestroy {
   protected readonly application = inject(GameApplication);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly subjectsInfrastructure = inject(SubjectsInfrastructure);
+  private routeSubscription?: Subscription;
 
   selectedAnswer = signal<number | null>(null);
   reponseLibreInput = signal<string>('');
@@ -541,6 +544,7 @@ export class GameComponent implements OnInit {
   finalScore = signal<number>(0);
   completionMessage = signal<string>('');
   showCompletionScreen = signal<boolean>(false);
+  gameCompleted = signal<boolean>(false);
   
   // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
   showAides = signal<boolean>(false);
@@ -724,22 +728,49 @@ export class GameComponent implements OnInit {
     return data && this.isVraiFauxGame() ? (data as unknown as VraiFauxData) : null;
   }
 
-  async ngOnInit(): Promise<void> {
-    const gameId = this.route.snapshot.paramMap.get('id');
-    if (gameId) {
-      // Réinitialiser les signaux pour le prochain jeu
-      this.hasNextGame.set(false);
-      this.nextGameId.set(null);
-      await this.application.initializeGame(gameId);
-      // Charger les informations de subject et category pour le breadcrumb
-      await this.loadBreadcrumbData();
-    } else {
-      // Si pas de gameId, essayer de charger depuis categoryId
-      const categoryId = this.route.snapshot.paramMap.get('categoryId');
-      if (categoryId) {
-        // TODO: Charger le premier jeu de la catégorie
-      }
+  ngOnInit(): void {
+    // S'abonner aux changements de paramètres de route pour détecter les changements d'ID de jeu
+    this.routeSubscription = this.route.paramMap.pipe(
+      switchMap(params => {
+        const gameId = params.get('id');
+        if (gameId) {
+          return from(this.loadGame(gameId));
+        }
+        // Si pas de gameId, essayer de charger depuis categoryId
+        const categoryId = params.get('categoryId');
+        if (categoryId) {
+          // TODO: Charger le premier jeu de la catégorie
+        }
+        return from(Promise.resolve());
+      })
+    ).subscribe();
+  }
+
+  ngOnDestroy(): void {
+    // Nettoyer l'abonnement pour éviter les fuites mémoire
+    if (this.routeSubscription) {
+      this.routeSubscription.unsubscribe();
     }
+  }
+
+  private async loadGame(gameId: string): Promise<void> {
+    // Réinitialiser les signaux pour le prochain jeu
+    this.hasNextGame.set(false);
+    this.nextGameId.set(null);
+    this.gameCompleted.set(false);
+    this.showCompletionScreen.set(false);
+    this.finalScore.set(0);
+    this.completionMessage.set('');
+    this.selectedAnswer.set(null);
+    this.showFeedback.set(false);
+    this.feedback.set(null);
+    this.correctAnswer.set(null);
+    this.reponseLibreInput.set('');
+    this.showAides.set(false);
+    
+    await this.application.initializeGame(gameId);
+    // Charger les informations de subject et category pour le breadcrumb
+    await this.loadBreadcrumbData();
   }
 
   async loadBreadcrumbData(): Promise<void> {
@@ -1001,9 +1032,17 @@ export class GameComponent implements OnInit {
   }
 
   async completeGame(): Promise<void> {
+    // Marquer le jeu comme complété
+    this.gameCompleted.set(true);
+    
     await this.application.completeGame();
     const gameState = this.application.getGameState()();
-    if (gameState) {
+    
+    // Chercher le prochain jeu dans la même catégorie AVANT de calculer le score
+    await this.findNextGame();
+    
+    if (gameState && gameState.questions && gameState.questions.length > 0) {
+      // Pour les jeux avec questions (jeux génériques)
       const totalQuestions = gameState.questions.length;
       const score = gameState.score;
       this.finalScore.set(Math.round((score / totalQuestions) * 100));
@@ -1017,10 +1056,11 @@ export class GameComponent implements OnInit {
       } else {
         this.completionMessage.set(`Continue ! ${score}/${totalQuestions} bonnes réponses. Tu peux réessayer ! 💪`);
       }
+    } else {
+      // Pour les jeux spécifiques (sans questions), on considère que c'est réussi
+      this.finalScore.set(100);
+      this.completionMessage.set('Bravo ! Jeu terminé ! 🎉');
     }
-    
-    // Chercher le prochain jeu dans la même catégorie
-    await this.findNextGame();
     
     this.showCompletionScreen.set(true);
   }
@@ -1185,23 +1225,30 @@ export class GameComponent implements OnInit {
   async goToNextGame(): Promise<void> {
     const nextId = this.nextGameId();
     if (nextId) {
+      // Sauvegarder l'ID avant de réinitialiser pour éviter une condition de course
+      const targetGameId = nextId;
+      
       // Réinitialiser l'état du jeu actuel
       this.selectedAnswer.set(null);
       this.showFeedback.set(false);
       this.feedback.set(null);
       this.correctAnswer.set(null);
       this.showCompletionScreen.set(false);
+      this.gameCompleted.set(false);
       this.reponseLibreInput.set('');
       this.finalScore.set(0);
       this.completionMessage.set('');
+      this.hasNextGame.set(false);
+      this.nextGameId.set(null);
       
       // Naviguer vers le prochain jeu
-      this.router.navigate(['/game', nextId]);
+      // La subscription à route.paramMap détectera le changement et appellera loadGame()
+      await this.router.navigate(['/game', targetGameId]);
     }
   }
 
   isGameCompleted(): boolean {
-    return this.application.getGameState()()?.isCompleted || false;
+    return this.gameCompleted() || this.application.getGameState()()?.isCompleted || false;
   }
 
   async finishGame(): Promise<void> {

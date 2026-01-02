@@ -175,63 +175,86 @@ export class CaseVideGameComponent implements OnInit {
   onWordDrop(event: CdkDragDrop<string[]>, caseIndex: number): void {
     if (this.disabled || this.isSubmitted()) return;
     
-    transferArrayItem(
-      event.previousContainer.data,
-      event.container.data,
-      event.previousIndex,
-      event.currentIndex >= 0 ? event.currentIndex : 0
-    );
+    // Récupérer le mot qui est déplacé AVANT transferArrayItem
+    const draggedWord = event.previousContainer.data[event.previousIndex];
+    if (!draggedWord) return;
     
     const answers = new Map(this.userCaseVideAnswers());
     const used = new Set(this.usedWords());
     const available = [...this.availableWords()];
     const caseLists = new Map(this.caseDropLists());
     
+    // Récupérer le mot déjà présent dans la case de destination (si existe)
+    const previousWordInCase = caseLists.get(caseIndex)?.[0];
+    
     if (event.previousContainer.id === 'banque-mots') {
-      const word = event.container.data[0];
-      if (!word) return;
+      // Glisser depuis la banque de mots vers une case
       
-      const previousWord = answers.get(caseIndex);
-      if (previousWord && previousWord !== word) {
-        used.delete(previousWord);
-        available.push(previousWord);
+      // Si la case contient déjà un mot, le remettre dans la banque AVANT le transfert
+      if (previousWordInCase) {
+        used.delete(previousWordInCase);
         answers.delete(caseIndex);
+        // Remettre le mot précédent dans la banque
+        const previousWordIndex = available.findIndex(w => w === previousWordInCase);
+        if (previousWordIndex === -1) {
+          available.push(previousWordInCase);
+          // Insérer le mot à la position appropriée dans event.previousContainer.data
+          event.previousContainer.data.push(previousWordInCase);
+        }
       }
       
-      answers.set(caseIndex, word);
-      used.add(word);
-      
-      const wordIndex = available.indexOf(word);
+      // Retirer le nouveau mot de la banque
+      const wordIndex = available.indexOf(draggedWord);
       if (wordIndex > -1) {
         available.splice(wordIndex, 1);
       }
       
-      caseLists.set(caseIndex, [word]);
+      // Ajouter le nouveau mot à la case
+      answers.set(caseIndex, draggedWord);
+      used.add(draggedWord);
+      caseLists.set(caseIndex, [draggedWord]);
       
+      // Effectuer le transfert visuel (doit être fait après la mise à jour des signaux)
+      transferArrayItem(
+        event.previousContainer.data,
+        event.container.data,
+        event.previousIndex,
+        event.currentIndex >= 0 ? event.currentIndex : 0
+      );
+      
+      // Mettre à jour les signaux
       this.userCaseVideAnswers.set(answers);
       this.usedWords.set(used);
       this.availableWords.set(available);
       this.caseDropLists.set(caseLists);
     } else if (event.previousContainer.id.startsWith('case-')) {
+      // Glisser d'une case vers une autre case
       const previousCaseIndex = parseInt(event.previousContainer.id.replace('case-', ''), 10);
-      const wordFromPrevious = event.container.data[0];
-      const wordInNewCase = event.previousContainer.data[0];
       
-      if (wordFromPrevious) {
-        if (wordInNewCase) {
-          answers.set(previousCaseIndex, wordInNewCase);
-          caseLists.set(previousCaseIndex, [wordInNewCase]);
-        } else {
-          answers.delete(previousCaseIndex);
-          caseLists.set(previousCaseIndex, []);
-        }
-        
-        answers.set(caseIndex, wordFromPrevious);
-        caseLists.set(caseIndex, [wordFromPrevious]);
-        
-        this.userCaseVideAnswers.set(answers);
-        this.caseDropLists.set(caseLists);
+      // Retirer le mot de la case source
+      answers.delete(previousCaseIndex);
+      caseLists.set(previousCaseIndex, previousWordInCase ? [previousWordInCase] : []);
+      
+      // Si la case de destination contient déjà un mot, le mettre dans la case source
+      if (previousWordInCase && previousWordInCase !== draggedWord) {
+        answers.set(previousCaseIndex, previousWordInCase);
       }
+      
+      // Mettre le nouveau mot dans la case de destination
+      answers.set(caseIndex, draggedWord);
+      caseLists.set(caseIndex, [draggedWord]);
+      
+      // Effectuer le transfert visuel
+      transferArrayItem(
+        event.previousContainer.data,
+        event.container.data,
+        event.previousIndex,
+        event.currentIndex >= 0 ? event.currentIndex : 0
+      );
+      
+      // Mettre à jour les signaux
+      this.userCaseVideAnswers.set(answers);
+      this.caseDropLists.set(caseLists);
     }
   }
 
