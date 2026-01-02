@@ -89,13 +89,13 @@ import { Game } from '../../core/types/game.types';
         <div class="games-header" *ngIf="!loadingGames() && categoryGames().length > 0">
           <h2>Jeux disponibles</h2>
           <div class="games-counter">
-            {{ getRemainingGamesCount() }}/{{ categoryGames().length }} jeux restants
+            {{ getRemainingGamesCount() }}/{{ getTotalGamesCount() }} jeux restants
           </div>
         </div>
         <div *ngIf="loadingGames()" class="loading">Chargement des jeux...</div>
         <div class="games-grid" *ngIf="!loadingGames()">
           <div
-            *ngFor="let game of categoryGames()"
+            *ngFor="let game of sortedGames()"
             class="game-card"
             [class.completed]="isGameCompleted(game.id)"
             [routerLink]="['/game', game.id]">
@@ -385,6 +385,26 @@ export class SubjectsComponent implements OnInit {
   error = computed(() => this.application.getError()());
   selectedSubject = computed(() => this.application.getSelectedSubject()());
   
+  // Jeux triés : d'abord les non complétés, puis les complétés
+  sortedGames = computed(() => {
+    const games = this.categoryGames();
+    const scores = this.gameScores();
+    
+    // Séparer les jeux complétés et non complétés
+    const incompleteGames = games.filter(game => {
+      const score = scores.get(game.id);
+      return score !== 100;
+    });
+    
+    const completedGames = games.filter(game => {
+      const score = scores.get(game.id);
+      return score === 100;
+    });
+    
+    // Retourner d'abord les non complétés, puis les complétés
+    return [...incompleteGames, ...completedGames];
+  });
+  
   // Catégorie sélectionnée pour le breadcrumb
   selectedCategory = computed(() => {
     const categoryId = this.selectedCategoryId();
@@ -612,5 +632,12 @@ export class SubjectsComponent implements OnInit {
     const games = this.categoryGames();
     const scores = this.gameScores();
     return games.filter(game => scores.get(game.id) !== 100).length;
+  }
+  
+  /**
+   * Retourne le nombre total de jeux
+   */
+  getTotalGamesCount(): number {
+    return this.categoryGames().length;
   }
 }

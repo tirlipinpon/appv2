@@ -141,19 +141,28 @@ export class GameApplication {
 
     // Mettre à jour la progression
     if (game.subject_category_id) {
-      // Calculer les étoiles selon le score
+      // Calculer la progression globale basée sur les jeux résolus / total de jeux
+      const completionPercentage = await this.progression.calculateCategoryCompletionPercentage(
+        child.child_id,
+        game.subject_category_id
+      );
+
+      // Calculer les étoiles selon le score du jeu actuel
       let starsCount = 0;
       if (finalScore >= 90) starsCount = 3;
       else if (finalScore >= 70) starsCount = 2;
       else if (finalScore >= 60) starsCount = 1;
 
+      // La catégorie est complétée si tous les jeux sont résolus (100%)
+      const categoryCompleted = completionPercentage === 100;
+
       await this.progression.updateProgress(
         child.child_id,
         game.subject_category_id,
         {
-          completed: isSuccess,
+          completed: categoryCompleted,
           starsCount,
-          completionPercentage: finalScore,
+          completionPercentage: completionPercentage,
         }
       );
 
@@ -193,6 +202,28 @@ export class GameApplication {
 
   getCurrentGame() {
     return this.store.currentGame;
+  }
+
+  /**
+   * Récupère la progression globale de la catégorie (jeux résolus / total)
+   */
+  async getCategoryProgress(): Promise<number> {
+    const game = this.store.currentGame();
+    const child = await this.authService.getCurrentChild();
+
+    if (!game?.subject_category_id || !child) {
+      return 0;
+    }
+
+    try {
+      return await this.progression.calculateCategoryCompletionPercentage(
+        child.child_id,
+        game.subject_category_id
+      );
+    } catch (error) {
+      console.error('Erreur lors du calcul de la progression:', error);
+      return 0;
+    }
   }
 }
 

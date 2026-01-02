@@ -58,7 +58,7 @@ import type { Game } from '../../core/types/game.types';
           </div>
           <div class="header-center">
             <app-progress-bar
-              [value]="application.getProgress()()"
+              [value]="categoryProgress()"
               [max]="100"
               [label]="'Progression'"
               variant="primary">
@@ -293,8 +293,8 @@ import type { Game } from '../../core/types/game.types';
       <app-completion-modal
         [visible]="isGameCompleted() && showCompletionScreen()"
         [title]="'🎉 Jeu terminé !'"
-        [score]="finalScore()"
-        [scoreLabel]="'Score final'"
+        [score]="categoryProgress()"
+        [scoreLabel]="'Progression'"
         [message]="completionMessage()"
         [actions]="completionActions()"
         (overlayClick)="goToSubjects()">
@@ -547,6 +547,7 @@ export class GameComponent implements OnInit, OnDestroy {
   completionMessage = signal<string>('');
   showCompletionScreen = signal<boolean>(false);
   gameCompleted = signal<boolean>(false);
+  categoryProgress = signal<number>(0); // Progression globale de la catégorie
   
   // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
   showAides = signal<boolean>(false);
@@ -773,6 +774,18 @@ export class GameComponent implements OnInit, OnDestroy {
     await this.application.initializeGame(gameId);
     // Charger les informations de subject et category pour le breadcrumb
     await this.loadBreadcrumbData();
+    // Charger la progression globale de la catégorie
+    await this.loadCategoryProgress();
+  }
+
+  private async loadCategoryProgress(): Promise<void> {
+    try {
+      const progress = await this.application.getCategoryProgress();
+      this.categoryProgress.set(progress);
+    } catch (error) {
+      console.error('Erreur lors du chargement de la progression:', error);
+      this.categoryProgress.set(0);
+    }
   }
 
   async loadBreadcrumbData(): Promise<void> {
@@ -1044,6 +1057,9 @@ export class GameComponent implements OnInit, OnDestroy {
     // Chercher le prochain jeu dans la même catégorie AVANT de calculer le score
     await this.findNextGame();
     
+    // Recharger la progression globale de la catégorie après avoir complété le jeu
+    await this.loadCategoryProgress();
+    
     // Fonction helper pour normaliser le type de jeu (identique à application.ts)
     const normalizeGameType = (gameType: string | undefined): string => {
       if (!gameType) return '';
@@ -1055,31 +1071,33 @@ export class GameComponent implements OnInit, OnDestroy {
     const normalizedGameType = normalizeGameType(game?.game_type);
     const isSpecificGame = specificGameTypes.some(type => normalizeGameType(type) === normalizedGameType);
     
+    // Calculer le score individuel du jeu pour le message
+    let individualScore = 0;
     if (isSpecificGame) {
       // Pour les jeux spécifiques, on considère que c'est réussi à 100% si terminé
-      // (ces jeux appellent completeGame() seulement si isCorrect === true)
-      this.finalScore.set(100);
-      this.completionMessage.set('Bravo ! Jeu terminé ! 🎉');
+      individualScore = 100;
     } else if (gameState && gameState.questions && gameState.questions.length > 0) {
       // Pour les jeux avec questions (jeux génériques)
       const totalQuestions = gameState.questions.length;
       const score = gameState.score;
-      const calculatedScore = Math.round((score / totalQuestions) * 100);
-      this.finalScore.set(calculatedScore);
-      
-      if (this.finalScore() === 100) {
-        this.completionMessage.set('Parfait ! Tu as tout réussi ! 🏆');
-      } else if (this.finalScore() >= 80) {
-        this.completionMessage.set(`Excellent ! ${score}/${totalQuestions} bonnes réponses ! ⭐`);
-      } else if (this.finalScore() >= 60) {
-        this.completionMessage.set(`Bien joué ! ${score}/${totalQuestions} bonnes réponses ! 👍`);
-      } else {
-        this.completionMessage.set(`Continue ! ${score}/${totalQuestions} bonnes réponses. Tu peux réessayer ! 💪`);
-      }
+      individualScore = Math.round((score / totalQuestions) * 100);
     } else {
       // Pour les jeux sans gameState ni questions, on considère que c'est réussi
-      this.finalScore.set(100);
-      this.completionMessage.set('Bravo ! Jeu terminé ! 🎉');
+      individualScore = 100;
+    }
+    
+    this.finalScore.set(individualScore);
+    
+    // Message basé sur la progression globale de la catégorie
+    const globalProgress = this.categoryProgress();
+    if (globalProgress === 100) {
+      this.completionMessage.set('🎉 Félicitations ! Tu as terminé tous les jeux de cette catégorie ! 🏆');
+    } else if (globalProgress >= 80) {
+      this.completionMessage.set(`Excellent ! Tu as complété ${globalProgress}% de cette catégorie ! ⭐`);
+    } else if (globalProgress >= 50) {
+      this.completionMessage.set(`Bien joué ! Tu as complété ${globalProgress}% de cette catégorie ! 👍`);
+    } else {
+      this.completionMessage.set(`Continue ! Tu as complété ${globalProgress}% de cette catégorie. 💪`);
     }
     
     this.showCompletionScreen.set(true);
@@ -1156,6 +1174,7 @@ export class GameComponent implements OnInit, OnDestroy {
       this.completionMessage.set('');
       this.hasNextGame.set(false);
       this.nextGameId.set(null);
+      this.categoryProgress.set(0); // Réinitialiser temporairement, sera rechargé dans loadGame()
       
       // Naviguer vers le prochain jeu
       // La subscription à route.paramMap détectera le changement et appellera loadGame()

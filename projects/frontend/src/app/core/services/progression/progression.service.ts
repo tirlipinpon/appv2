@@ -102,6 +102,7 @@ export class ProgressionService {
 
   /**
    * Calcule le pourcentage de complétion d'une sous-matière
+   * Basé sur le nombre de jeux résolus (score = 100%) par rapport au total de jeux
    */
   calculateCompletionPercentage(
     gamesPlayed: number,
@@ -110,6 +111,55 @@ export class ProgressionService {
   ): number {
     if (totalGames === 0) return 0;
     return Math.round((gamesSucceeded / totalGames) * 100);
+  }
+
+  /**
+   * Calcule le pourcentage de complétion basé sur les jeux résolus dans une catégorie
+   * Un jeu est considéré résolu si son meilleur score = 100%
+   */
+  async calculateCategoryCompletionPercentage(
+    childId: string,
+    subjectCategoryId: string
+  ): Promise<number> {
+    // Récupérer tous les jeux de la catégorie
+    const { data: games, error: gamesError } = await this.supabase.client
+      .from('games')
+      .select('id')
+      .eq('subject_category_id', subjectCategoryId);
+
+    if (gamesError) {
+      throw new Error(`Erreur lors de la récupération des jeux: ${gamesError.message}`);
+    }
+
+    const totalGames = games?.length || 0;
+    if (totalGames === 0) return 0;
+
+    // Récupérer les scores de tous les jeux pour cet enfant
+    const gameIds = games.map(g => g.id);
+    const { data: attempts, error: attemptsError } = await this.supabase.client
+      .from('frontend_game_attempts')
+      .select('game_id, score')
+      .eq('child_id', childId)
+      .in('game_id', gameIds);
+
+    if (attemptsError) {
+      throw new Error(`Erreur lors de la récupération des tentatives: ${attemptsError.message}`);
+    }
+
+    // Compter les jeux résolus (meilleur score = 100%)
+    const gameBestScores = new Map<string, number>();
+    if (attempts) {
+      for (const attempt of attempts) {
+        const currentBest = gameBestScores.get(attempt.game_id) || 0;
+        if (attempt.score > currentBest) {
+          gameBestScores.set(attempt.game_id, attempt.score);
+        }
+      }
+    }
+
+    const completedGames = Array.from(gameBestScores.values()).filter(score => score === 100).length;
+    
+    return Math.round((completedGames / totalGames) * 100);
   }
 
   /**
