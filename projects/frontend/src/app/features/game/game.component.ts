@@ -14,6 +14,7 @@ import { LetterByLetterInputComponent } from '@shared/components/letter-by-lette
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
+import { ProgressionService } from '../../core/services/progression/progression.service';
 import type { Game } from '../../core/types/game.types';
 
 @Component({
@@ -66,7 +67,7 @@ import type { Game } from '../../core/types/game.types';
           </div>
           <div class="header-right">
             <div class="score-display">
-              Score: {{ application.getGameState()()?.score || 0 }}
+              Score: {{ totalScore() }}
             </div>
           </div>
         </div>
@@ -546,6 +547,7 @@ export class GameComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly subjectsInfrastructure = inject(SubjectsInfrastructure);
   private readonly childAuthService = inject(ChildAuthService);
+  private readonly progression = inject(ProgressionService);
   private routeSubscription?: Subscription;
 
   selectedAnswer = signal<number | null>(null);
@@ -558,6 +560,7 @@ export class GameComponent implements OnInit, OnDestroy {
   showCompletionScreen = signal<boolean>(false);
   gameCompleted = signal<boolean>(false);
   categoryProgress = signal<number>(0); // Progression globale de la catégorie
+  totalScore = signal<number>(0); // Score total (nombre de jeux résolus avec score 100%)
   
   // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
   showAides = signal<boolean>(false);
@@ -787,15 +790,43 @@ export class GameComponent implements OnInit, OnDestroy {
     await this.loadBreadcrumbData();
     // Charger la progression globale de la catégorie
     await this.loadCategoryProgress();
+    await this.loadTotalScore();
   }
 
   private async loadCategoryProgress(): Promise<void> {
+    const child = this.childAuthService.getCurrentChild();
+    const childId = child?.child_id;
+    const game = this.application.getCurrentGame()();
+    
+    if (!childId || !game?.subject_category_id) {
+      this.categoryProgress.set(0);
+      return;
+    }
+    
     try {
-      const progress = await this.application.getCategoryProgress();
+      const progress = await this.progression.calculateCategoryCompletionPercentage(childId, game.subject_category_id);
       this.categoryProgress.set(progress);
     } catch (error) {
       console.error('Erreur lors du chargement de la progression:', error);
       this.categoryProgress.set(0);
+    }
+  }
+
+  private async loadTotalScore(): Promise<void> {
+    const child = this.childAuthService.getCurrentChild();
+    const childId = child?.child_id;
+    
+    if (!childId) {
+      this.totalScore.set(0);
+      return;
+    }
+    
+    try {
+      const score = await this.progression.calculateTotalScore(childId);
+      this.totalScore.set(score);
+    } catch (error) {
+      console.error('Erreur lors du chargement du score total:', error);
+      this.totalScore.set(0);
     }
   }
 
@@ -1081,6 +1112,8 @@ export class GameComponent implements OnInit, OnDestroy {
     
     // Recharger la progression globale de la catégorie après avoir complété le jeu
     await this.loadCategoryProgress();
+    // Recharger le score total après avoir complété le jeu
+    await this.loadTotalScore();
     
     // Fonction helper pour normaliser le type de jeu (identique à application.ts)
     const normalizeGameType = (gameType: string | undefined): string => {

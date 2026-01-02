@@ -170,6 +170,40 @@ export class ProgressionService {
   }
 
   /**
+   * Calcule le score total (nombre de jeux résolus avec score 100%) pour toutes les matières et sous-matières
+   * Ne compte que les jeux résolus pour la première fois (meilleur score = 100%)
+   */
+  async calculateTotalScore(childId: string): Promise<number> {
+    // Récupérer toutes les tentatives de jeu pour cet enfant
+    const { data: attempts, error: attemptsError } = await this.supabase.client
+      .from('frontend_game_attempts')
+      .select('game_id, score')
+      .eq('child_id', childId);
+
+    if (attemptsError) {
+      throw new Error(`Erreur lors de la récupération des tentatives: ${attemptsError.message}`);
+    }
+
+    if (!attempts || attempts.length === 0) {
+      return 0;
+    }
+
+    // Calculer le meilleur score pour chaque jeu
+    const gameBestScores = new Map<string, number>();
+    for (const attempt of attempts) {
+      const currentBest = gameBestScores.get(attempt.game_id) || 0;
+      if (attempt.score > currentBest) {
+        gameBestScores.set(attempt.game_id, attempt.score);
+      }
+    }
+
+    // Compter les jeux résolus (meilleur score = 100%)
+    const completedGames = Array.from(gameBestScores.values()).filter(score => score === 100).length;
+    
+    return completedGames;
+  }
+
+  /**
    * Récupère les jeux non réussis pour répétition intelligente
    */
   async getFailedGames(childId: string, subjectCategoryId: string): Promise<string[]> {

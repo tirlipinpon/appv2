@@ -64,13 +64,11 @@
   }
 
   @if (isSubmitted() && showResult) {
-    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-      @if (isCorrect()) {
+    @if (isCorrect()) {
+      <div class="result-message correct">
         ✅ Bonne réponse !
-      } @else {
-        ❌ Mauvaise réponse. Les bonnes réponses étaient : {{ qcmData.reponses_valides.join(', ') }}
-      }
-    </div>
+      </div>
+    }
     <div class="actions">
       <button class="btn btn-secondary" (click)="reset()" [disabled]="disabled">
         Réessayer
