@@ -1037,18 +1037,9 @@ export class GameComponent implements OnInit, OnDestroy {
     // Marquer le jeu comme complété
     this.gameCompleted.set(true);
     
-    // #region agent log
-    const gameBefore = this.application.getCurrentGame()();
-    const gameStateBefore = this.application.getGameState()();
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1038',message:'completeGame entry',data:{gameId:gameBefore?.id,gameType:gameBefore?.game_type,gameStateExists:!!gameStateBefore,gameStateQuestionsLength:gameStateBefore?.questions?.length,gameStateScore:gameStateBefore?.score},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A,B'})}).catch(()=>{});
-    // #endregion
-    
     await this.application.completeGame();
     const gameState = this.application.getGameState()();
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1045',message:'gameState after completeGame',data:{gameStateExists:!!gameState,gameStateType:typeof gameState,gameStateKeys:gameState?Object.keys(gameState):[],questionsLength:gameState?.questions?.length,gameStateScore:gameState?.score},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B,D'})}).catch(()=>{});
-    // #endregion
+    const game = this.application.getCurrentGame()();
     
     // Chercher le prochain jeu dans la même catégorie AVANT de calculer le score
     await this.findNextGame();
@@ -1061,12 +1052,8 @@ export class GameComponent implements OnInit, OnDestroy {
     
     // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
     const specificGameTypes = ['case_vide', 'case vide', 'liens', 'vrai_faux', 'vrai/faux', 'image_interactive', 'memory', 'simon', 'qcm', 'chronologie', 'click', 'reponse_libre'];
-    const normalizedGameType = normalizeGameType(gameBefore?.game_type);
+    const normalizedGameType = normalizeGameType(game?.game_type);
     const isSpecificGame = specificGameTypes.some(type => normalizeGameType(type) === normalizedGameType);
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1055',message:'score calculation check',data:{gameType:gameBefore?.game_type,normalizedGameType,isSpecificGame,hasGameState:!!gameState,questionsLength:gameState?.questions?.length,gameStateScore:gameState?.score},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A,B'})}).catch(()=>{});
-    // #endregion
     
     if (isSpecificGame) {
       // Pour les jeux spécifiques, on considère que c'est réussi à 100% si terminé
@@ -1079,10 +1066,6 @@ export class GameComponent implements OnInit, OnDestroy {
       const score = gameState.score;
       const calculatedScore = Math.round((score / totalQuestions) * 100);
       this.finalScore.set(calculatedScore);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1065',message:'score calculated in component',data:{calculatedScore,score,totalQuestions},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'B,D'})}).catch(()=>{});
-      // #endregion
       
       if (this.finalScore() === 100) {
         this.completionMessage.set('Parfait ! Tu as tout réussi ! 🏆');

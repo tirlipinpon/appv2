@@ -117,10 +117,6 @@ export class SubjectsInfrastructure {
 
     if (error) throw error;
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'infrastructure.ts:116',message:'getGameScores retrieved',data:{childId,gameIdsCount:gameIds.length,dataCount:data?.length,rawData:data?.slice(0,5)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    
     // Créer une Map avec le meilleur score pour chaque jeu
     const scoresMap = new Map<string, number>();
     if (data) {
@@ -131,10 +127,6 @@ export class SubjectsInfrastructure {
         }
       }
     }
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'infrastructure.ts:130',message:'getGameScores result map',data:{scoresMapSize:scoresMap.size,scoresMapEntries:Array.from(scoresMap.entries()).slice(0,5)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     
     return scoresMap;
   }
