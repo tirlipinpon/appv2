@@ -10,11 +10,11 @@ const FTP_HOST = process.env.FTP_HOST;
 const FTP_PORT = parseInt(process.env.FTP_PORT || '21', 10);
 const FTP_USER = process.env.FTP_USER;
 const FTP_PASSWORD = process.env.FTP_PASSWORD;
-// Destination pour l'admin : appv2/admin
-const FTP_DESTINATION = process.env.FTP_DESTINATION_ADMIN || 'appv2/admin';
+// Destination pour le frontend : appv2/frontend
+const FTP_DESTINATION = process.env.FTP_DESTINATION_FRONTEND || 'appv2/frontend';
 
-// Chemin source (dossier dist généré par Angular pour admin)
-const sourceDir = path.join(__dirname, '..', 'dist', 'admin', 'browser');
+// Chemin source (dossier dist généré par Angular pour frontend)
+const sourceDir = path.join(__dirname, '..', 'dist', 'frontend', 'browser');
 
 /**
  * Vérifie que toutes les variables d'environnement sont définies
@@ -36,7 +36,7 @@ function validateEnv() {
 function validateSourceDir() {
   if (!fs.existsSync(sourceDir)) {
     console.error(`❌ Erreur: Le dossier source n'existe pas: ${sourceDir}`);
-    console.error('💡 Assurez-vous d\'avoir exécuté "npm run build:admin" avant de déployer.');
+    console.error('💡 Assurez-vous d\'avoir exécuté "npm run build:frontend" avant de déployer.');
     process.exit(1);
   }
 }
@@ -114,7 +114,7 @@ async function uploadDirectory(client, localDir, remoteDir) {
  * Fonction principale de déploiement
  */
 async function deploy() {
-  console.log('🚀 Démarrage du déploiement FTP pour l\'admin...\n');
+  console.log('🚀 Démarrage du déploiement FTP pour le frontend...\n');
   
   // Valider les variables d'environnement
   validateEnv();
@@ -201,4 +201,3 @@ deploy().catch(error => {
   console.error('❌ Erreur fatale:', error);
   process.exit(1);
 });
-
