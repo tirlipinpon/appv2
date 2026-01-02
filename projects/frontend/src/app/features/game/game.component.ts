@@ -272,12 +272,29 @@ import type { Game } from '../../core/types/game.types';
             size="large">
             Valider
           </app-child-button>
+          <!-- Bouton "Réessayer" pour les jeux spécifiques avec réponse incorrecte -->
           <app-child-button
-            *ngIf="showFeedback() && !isGameCompleted()"
+            *ngIf="showFeedback() && !feedback()?.isCorrect && (isLiensGame() || isCaseVideGame() || isVraiFauxGame())"
+            (buttonClick)="restartGame()"
+            variant="secondary"
+            size="large">
+            Réessayer
+          </app-child-button>
+          <!-- Bouton "Question suivante" pour les jeux génériques -->
+          <app-child-button
+            *ngIf="showFeedback() && !isGameCompleted() && !isLiensGame() && !isCaseVideGame() && !isVraiFauxGame()"
             (buttonClick)="goToNextQuestion()"
             variant="primary"
             size="large">
             Question suivante
+          </app-child-button>
+          <!-- Bouton "Suivant" pour les jeux spécifiques - permet de passer au jeu suivant même si réponse incorrecte -->
+          <app-child-button
+            *ngIf="showFeedback() && (isLiensGame() || isCaseVideGame() || isVraiFauxGame()) && !isGameCompleted()"
+            (buttonClick)="onNextButtonClick()"
+            variant="primary"
+            size="large">
+            Suivant
           </app-child-button>
           <app-child-button
             *ngIf="isGameCompleted()"
@@ -551,6 +568,7 @@ export class GameComponent implements OnInit, OnDestroy {
   
   // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
   showAides = signal<boolean>(false);
+
 
   toggleAides(): void {
     this.showAides.update(v => !v);
@@ -917,14 +935,22 @@ export class GameComponent implements OnInit, OnDestroy {
     };
     this.feedback.set(feedbackData);
     
-    setTimeout(() => {
-      if (isValid) {
+    // Ne compléter le jeu que si la réponse est correcte
+    if (isValid) {
+      setTimeout(() => {
         this.completeGame();
-      }
-    }, 2000);
+      }, 2000);
+    } else {
+      // Si la réponse est incorrecte, ne pas marquer le jeu comme complété
+      this.gameCompleted.set(false);
+      this.showCompletionScreen.set(false);
+    }
   }
 
   onLiensValidated(isValid: boolean): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:927',message:'onLiensValidated called',data:{isValid,gameCompleted:this.gameCompleted(),showFeedback:this.showFeedback()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(() => { /* ignore */ });
+    // #endregion
     this.showFeedback.set(true);
     const message = isValid ? 'Bravo ! Tous les liens sont corrects ! ✅' : 'Certains liens sont incorrects. ❌';
     
@@ -935,11 +961,24 @@ export class GameComponent implements OnInit, OnDestroy {
     };
     this.feedback.set(feedbackData);
     
-    setTimeout(() => {
-      if (isValid) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:940',message:'onLiensValidated after setting feedback',data:{isValid,gameCompleted:this.gameCompleted(),showFeedback:this.showFeedback(),willComplete:isValid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(() => { /* ignore */ });
+    // #endregion
+    
+    // Ne compléter le jeu que si la réponse est correcte
+    if (isValid) {
+      setTimeout(() => {
         this.completeGame();
-      }
-    }, 2000);
+      }, 2000);
+    } else {
+      // Si la réponse est incorrecte, ne pas marquer le jeu comme complété
+      // et ne pas afficher le modal de complétion
+      this.gameCompleted.set(false);
+      this.showCompletionScreen.set(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:950',message:'onLiensValidated invalid response - resetting states',data:{gameCompleted:this.gameCompleted(),showCompletionScreen:this.showCompletionScreen(),showFeedback:this.showFeedback()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(() => { /* ignore */ });
+      // #endregion
+    }
   }
 
   onVraiFauxValidated(isValid: boolean): void {
@@ -953,11 +992,16 @@ export class GameComponent implements OnInit, OnDestroy {
     };
     this.feedback.set(feedbackData);
     
-    setTimeout(() => {
-      if (isValid) {
+    // Ne compléter le jeu que si la réponse est correcte
+    if (isValid) {
+      setTimeout(() => {
         this.completeGame();
-      }
-    }, 2000);
+      }, 2000);
+    } else {
+      // Si la réponse est incorrecte, ne pas marquer le jeu comme complété
+      this.gameCompleted.set(false);
+      this.showCompletionScreen.set(false);
+    }
   }
 
   selectAnswer(index: number): void {
@@ -1034,8 +1078,17 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   async goToNextQuestion(): Promise<void> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1052',message:'goToNextQuestion called',data:{gameCompleted:this.gameCompleted(),showFeedback:this.showFeedback(),feedbackIsCorrect:this.feedback()?.isCorrect,gameType:this.gameType()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(() => { /* ignore */ });
+    // #endregion
     const hasNext = await this.application.nextQuestion();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1055',message:'goToNextQuestion hasNext result',data:{hasNext,gameCompleted:this.gameCompleted(),feedbackIsCorrect:this.feedback()?.isCorrect,willCallCompleteGame:!hasNext},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(() => { /* ignore */ });
+    // #endregion
     if (!hasNext) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1057',message:'goToNextQuestion calling completeGame',data:{gameCompleted:this.gameCompleted(),feedbackIsCorrect:this.feedback()?.isCorrect,gameType:this.gameType()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(() => { /* ignore */ });
+      // #endregion
       await this.completeGame();
     } else {
       this.selectedAnswer.set(null);
@@ -1047,6 +1100,9 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   async completeGame(): Promise<void> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1101',message:'completeGame called',data:{gameCompleted:this.gameCompleted(),feedbackIsCorrect:this.feedback()?.isCorrect,showCompletionScreen:this.showCompletionScreen()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(() => { /* ignore */ });
+    // #endregion
     // Marquer le jeu comme complété
     this.gameCompleted.set(true);
     
@@ -1101,6 +1157,9 @@ export class GameComponent implements OnInit, OnDestroy {
     }
     
     this.showCompletionScreen.set(true);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1145',message:'completeGame finished',data:{gameCompleted:this.gameCompleted(),showCompletionScreen:this.showCompletionScreen(),categoryProgress:this.categoryProgress(),finalScore:this.finalScore()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(() => { /* ignore */ });
+    // #endregion
   }
 
   async findNextGame(): Promise<void> {
@@ -1182,8 +1241,45 @@ export class GameComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Passe au jeu suivant ou retourne aux matières si pas de prochain jeu
+   * Ne marque PAS le jeu actuel comme complété si la réponse est incorrecte
+   */
+  onNextButtonClick(): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1241',message:'onNextButtonClick called',data:{showFeedback:this.showFeedback(),isLiensGame:this.isLiensGame(),isCaseVideGame:this.isCaseVideGame(),isVraiFauxGame:this.isVraiFauxGame(),isGameCompleted:this.isGameCompleted(),feedbackIsCorrect:this.feedback()?.isCorrect},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(() => { /* ignore */ });
+    // #endregion
+    this.goToNextGameOrSubjects();
+  }
+
+  async goToNextGameOrSubjects(): Promise<void> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1250',message:'goToNextGameOrSubjects called',data:{feedbackIsCorrect:this.feedback()?.isCorrect,hasNextGame:this.hasNextGame(),nextGameId:this.nextGameId()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(() => { /* ignore */ });
+    // #endregion
+    
+    // Si la réponse était correcte, on a déjà cherché le prochain jeu dans completeGame()
+    // Sinon, chercher le prochain jeu maintenant
+    if (!this.feedback()?.isCorrect) {
+      await this.findNextGame();
+    }
+    
+    const nextId = this.nextGameId();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.component.ts:1260',message:'goToNextGameOrSubjects after findNextGame',data:{hasNextGame:this.hasNextGame(),nextGameId:nextId,willNavigateToNext:!!nextId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(() => { /* ignore */ });
+    // #endregion
+    
+    if (nextId) {
+      // Naviguer vers le prochain jeu
+      await this.goToNextGame();
+    } else {
+      // Pas de prochain jeu, retourner aux matières
+      this.goToSubjects();
+    }
+  }
+
   isGameCompleted(): boolean {
-    return this.gameCompleted() || this.application.getGameState()()?.isCompleted || false;
+    const result = this.gameCompleted() || this.application.getGameState()()?.isCompleted || false;
+    return result;
   }
 
   async finishGame(): Promise<void> {
