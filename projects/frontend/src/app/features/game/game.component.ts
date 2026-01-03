@@ -17,6 +17,7 @@ import { SubjectsInfrastructure } from '../subjects/components/infrastructure/in
 import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { ProgressionService } from '../../core/services/progression/progression.service';
 import type { Game } from '../../core/types/game.types';
+import { isGameType, isGameTypeOneOf } from '@shared/utils/game-type.util';
 
 @Component({
   selector: 'app-game',

@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '../../../../core/services/supabase/supabase.service';
 import { Game, GameAttempt } from '../../../../core/types/game.types';
+import { isGameTypeOneOf } from '@shared/utils/game-type.util';
 
 @Injectable({
   providedIn: 'root',
