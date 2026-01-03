@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { ImageInteractiveData, ImageInteractiveZone } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
@@ -21,6 +21,7 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
   @Output() answerSelected = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
   @Output() nextRequested = new EventEmitter<void>();
+  @Output() resetRequested = new EventEmitter<void>();
 
   @ViewChild('imageContainer', { static: false }) imageContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('imageElement', { static: false }) imageElement!: ElementRef<HTMLImageElement>;
@@ -52,6 +53,7 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
     // Initialiser les zones cliquées
     this.clickedZoneIds.set(new Set());
   }
+
 
   ngAfterViewInit(): void {
     // Observer les changements de taille du conteneur
@@ -257,6 +259,7 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
     this.clickedZoneIds.set(new Set());
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
+    this.resetRequested.emit(); // Notifier le parent pour réinitialiser son état
   }
 
   /**
