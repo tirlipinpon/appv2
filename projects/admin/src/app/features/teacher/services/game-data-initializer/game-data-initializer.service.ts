@@ -10,6 +10,7 @@ import type {
   SimonData,
   ImageInteractiveData,
 } from '@shared/games';
+import { isGameType, isGameTypeOneOf } from '../../utils/game-type.util';
 
 export type GameDataType =
   | CaseVideData
@@ -40,31 +41,36 @@ export class GameDataInitializerService {
       return null;
     }
 
-    const normalizedType = gameTypeName.toLowerCase().trim();
-
-    switch (normalizedType) {
-      case 'case vide':
-        return this.getInitialDataForCaseVide(data);
-      case 'reponse libre':
-        return this.getInitialDataForReponseLibre(data);
-      case 'liens':
-        return this.getInitialDataForLiens(data);
-      case 'chronologie':
-        return this.getInitialDataForChronologie(data);
-      case 'qcm':
-        return this.getInitialDataForQcm(data);
-      case 'vrai/faux':
-        return this.getInitialDataForVraiFaux(data);
-      case 'memory':
-        return this.getInitialDataForMemory(data);
-      case 'simon':
-        return this.getInitialDataForSimon(data);
-      case 'click':
-      case 'image interactive':
-        return this.getInitialDataForImageInteractive(data);
-      default:
-        return null;
+    // Utiliser les fonctions de comparaison normalisées
+    if (isGameType(gameTypeName, 'case vide')) {
+      return this.getInitialDataForCaseVide(data);
     }
+    if (isGameType(gameTypeName, 'reponse libre')) {
+      return this.getInitialDataForReponseLibre(data);
+    }
+    if (isGameType(gameTypeName, 'liens')) {
+      return this.getInitialDataForLiens(data);
+    }
+    if (isGameType(gameTypeName, 'chronologie')) {
+      return this.getInitialDataForChronologie(data);
+    }
+    if (isGameType(gameTypeName, 'qcm')) {
+      return this.getInitialDataForQcm(data);
+    }
+    if (isGameType(gameTypeName, 'vrai/faux')) {
+      return this.getInitialDataForVraiFaux(data);
+    }
+    if (isGameType(gameTypeName, 'memory')) {
+      return this.getInitialDataForMemory(data);
+    }
+    if (isGameType(gameTypeName, 'simon')) {
+      return this.getInitialDataForSimon(data);
+    }
+    if (isGameTypeOneOf(gameTypeName, 'click', 'image interactive')) {
+      return this.getInitialDataForImageInteractive(data);
+    }
+
+    return null;
   }
 
   getInitialDataForCaseVide(data: unknown): CaseVideData | null {

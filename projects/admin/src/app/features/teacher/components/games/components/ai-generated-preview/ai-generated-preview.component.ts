@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ConfirmationDialogService } from '../../../../../../shared';
+import { isGameType, isGameTypeOneOf, normalizeGameTypeName } from '../../../../utils/game-type.util';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
 import { LiensFormComponent } from '../liens-form/liens-form.component';
@@ -32,6 +33,10 @@ import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmDat
 })
 export class AIGeneratedPreviewComponent {
   private readonly confirmationDialog = inject(ConfirmationDialogService);
+  
+  // Exposer les fonctions utilitaires pour le template
+  readonly isGameType = isGameType;
+  readonly normalizeGameTypeName = normalizeGameTypeName;
 
   @Input() generatedGames: GeneratedGameWithState[] = [];
   @Input() gameTypes: GameType[] = [];
@@ -98,7 +103,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForCaseVide(game: GeneratedGameWithState): CaseVideData | null {
     const typeName = this.getGameTypeName(game);
-    if (typeName.toLowerCase() === 'case vide' && game.metadata) {
+    if (isGameType(typeName, 'case vide') && game.metadata) {
       // Accepter le nouveau format (texte + cases_vides) ou l'ancien format (debut_phrase)
       if (('texte' in game.metadata && 'cases_vides' in game.metadata) || 'debut_phrase' in game.metadata) {
         return game.metadata as unknown as CaseVideData;
@@ -109,7 +114,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForReponseLibre(game: GeneratedGameWithState): ReponseLibreData | null {
     const typeName = this.getGameTypeName(game);
-    if (typeName.toLowerCase() === 'reponse libre' && game.metadata && 'reponse_valide' in game.metadata && !('debut_phrase' in game.metadata)) {
+    if (isGameType(typeName, 'reponse libre') && game.metadata && 'reponse_valide' in game.metadata && !('debut_phrase' in game.metadata)) {
       return game.metadata as unknown as ReponseLibreData;
     }
     return null;
@@ -117,7 +122,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForLiens(game: GeneratedGameWithState): LiensData | null {
     const typeName = this.getGameTypeName(game);
-    if (typeName.toLowerCase() === 'liens' && game.metadata && 'mots' in game.metadata && 'reponses' in game.metadata && 'liens' in game.metadata) {
+    if (isGameType(typeName, 'liens') && game.metadata && 'mots' in game.metadata && 'reponses' in game.metadata && 'liens' in game.metadata) {
       return game.metadata as unknown as LiensData;
     }
     return null;
@@ -125,7 +130,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForChronologie(game: GeneratedGameWithState): ChronologieData | null {
     const typeName = this.getGameTypeName(game);
-    if (typeName.toLowerCase() === 'chronologie' && game.metadata && 'mots' in game.metadata && 'ordre_correct' in game.metadata && !('reponses' in game.metadata)) {
+    if (isGameType(typeName, 'chronologie') && game.metadata && 'mots' in game.metadata && 'ordre_correct' in game.metadata && !('reponses' in game.metadata)) {
       return game.metadata as unknown as ChronologieData;
     }
     return null;
@@ -133,7 +138,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForQcm(game: GeneratedGameWithState): QcmData | null {
     const typeName = this.getGameTypeName(game);
-    if (typeName.toLowerCase() === 'qcm' && game.metadata && 'propositions' in game.metadata && 'reponses_valides' in game.metadata) {
+    if (isGameType(typeName, 'qcm') && game.metadata && 'propositions' in game.metadata && 'reponses_valides' in game.metadata) {
       return game.metadata as unknown as QcmData;
     }
     return null;
@@ -144,7 +149,7 @@ export class AIGeneratedPreviewComponent {
     // Normaliser le nom du type (peut être "vrai/faux", "vrai faux", etc.)
     const normalizedTypeName = typeName.replace(/\s+/g, '/').toLowerCase();
     
-    if ((normalizedTypeName === 'vrai/faux' || normalizedTypeName === 'vrai-faux') && game.metadata) {
+    if (isGameTypeOneOf(typeName, 'vrai/faux', 'vrai-faux') && game.metadata) {
       const metadata = game.metadata as any;
       
       // Vérifier si les métadonnées contiennent des énoncés
@@ -176,14 +181,14 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForMemory(game: GeneratedGameWithState): MemoryData | null {
     const typeName = this.getGameTypeName(game);
-    if (typeName.toLowerCase() === 'memory' && game.metadata && 'paires' in game.metadata) {
+    if (isGameType(typeName, 'memory') && game.metadata && 'paires' in game.metadata) {
       return game.metadata as unknown as MemoryData;
     }
     return null;
   }
 
   formatMetadataForDisplay(game: GeneratedGameWithState): string {
-    const typeName = this.getGameTypeName(game).toLowerCase();
+    const typeName = normalizeGameTypeName(this.getGameTypeName(game));
     const metadata = game.metadata;
 
     if (!metadata) return 'Pas de métadonnées';

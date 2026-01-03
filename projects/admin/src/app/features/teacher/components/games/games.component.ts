@@ -38,6 +38,7 @@ import { GameDataInitializerService } from '../../services/game-data-initializer
 import { GameCreationService } from '../../services/game-creation/game-creation.service';
 import { AssignmentFilterService } from '../../services/assignment-filter/assignment-filter.service';
 import { tap } from 'rxjs/operators';
+import { normalizeGameTypeName, isGameType, isGameTypeOneOf } from '../../utils/game-type.util';
 
 @Component({
   selector: 'app-games',
@@ -208,7 +209,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     const currentType = this.selectedGameTypeName();
     
     // Vérifier que le type correspond (peut être "click" ou "Click")
-    if (currentType && currentType.toLowerCase() === 'click' && data) {
+    if (currentType && isGameTypeOneOf(currentType, 'click', 'image interactive') && data) {
       // Vérifier que les propriétés requises existent
       if (
         'image_url' in data && 
@@ -399,13 +400,10 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     return gameType?.name || null;
   }
 
-  /**
-   * Normalise le nom du type de jeu pour la comparaison (minuscules, trim, sans accents)
-   */
-  normalizeGameTypeName(name: string | null | undefined): string {
-    if (!name) return '';
-    return name.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  }
+  // Exposer les fonctions utilitaires pour le template
+  readonly normalizeGameTypeName = normalizeGameTypeName;
+  readonly isGameType = isGameType;
+  readonly isGameTypeOneOf = isGameTypeOneOf;
 
   onGameTypeChange(): void {
     const gameTypeId = this.gameForm.get('game_type_id')?.value;

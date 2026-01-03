@@ -679,29 +679,36 @@ export class GameComponent implements OnInit, OnDestroy {
   });
 
   // Helpers pour déterminer quel composant afficher
-  isQcmGame = computed(() => this.gameType() === 'qcm');
-  isChronologieGame = computed(() => this.gameType() === 'chronologie');
-  isMemoryGame = computed(() => this.gameType() === 'memory');
-  isSimonGame = computed(() => this.gameType() === 'simon');
+  // Utiliser les fonctions de comparaison normalisées pour gérer les variations depuis la DB
+  isQcmGame = computed(() => isGameType(this.gameType(), 'qcm'));
+  isChronologieGame = computed(() => isGameType(this.gameType(), 'chronologie'));
+  isMemoryGame = computed(() => isGameType(this.gameType(), 'memory'));
+  isSimonGame = computed(() => isGameType(this.gameType(), 'simon'));
   isImageInteractiveGame = computed(() => {
-    const type = this.gameType();
-    return type === 'image_interactive' || type === 'click';
+    return isGameTypeOneOf(this.gameType(), 'image_interactive', 'image interactive', 'click');
   });
   isCaseVideGame = computed(() => {
-    const type = this.gameType();
-    return type === 'case_vide' || type === 'case vide';
+    return isGameTypeOneOf(this.gameType(), 'case_vide', 'case vide');
   });
   isLiensGame = computed(() => {
-    const type = this.gameType();
-    return type === 'liens' || type === 'lien';
+    return isGameTypeOneOf(this.gameType(), 'liens', 'lien');
   });
   isVraiFauxGame = computed(() => {
-    const type = this.gameType();
-    return type === 'vrai_faux' || type === 'vrai/faux' || type === 'vrai faux' || type === 'vrais faux';
+    return isGameTypeOneOf(this.gameType(), 'vrai_faux', 'vrai/faux', 'vrai faux', 'vrais faux', 'vrai-faux');
   });
   isGenericGame = computed(() => {
     const type = this.gameType();
-    return type && !['qcm', 'chronologie', 'memory', 'simon', 'image_interactive', 'click', 'case_vide', 'case vide', 'liens', 'lien', 'vrai_faux', 'vrai/faux', 'vrai faux', 'vrais faux'].includes(type);
+    if (!type) return false;
+    // Vérifier si le type n'est pas un des types spécifiques connus
+    return !isGameTypeOneOf(
+      type,
+      'qcm', 'chronologie', 'memory', 'simon',
+      'image_interactive', 'image interactive', 'click',
+      'case_vide', 'case vide',
+      'liens', 'lien',
+      'vrai_faux', 'vrai/faux', 'vrai faux', 'vrais faux', 'vrai-faux',
+      'reponse_libre', 'reponse libre'
+    );
   });
 
   // Getters typés pour les données de jeu

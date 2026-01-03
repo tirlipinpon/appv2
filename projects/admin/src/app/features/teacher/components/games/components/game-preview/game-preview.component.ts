@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
+import { isGameType, isGameTypeOneOf } from '../../../../utils/game-type.util';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
@@ -255,39 +256,39 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   // Getters pour éviter les castings dans le template
   get qcmData(): QcmData | null {
-    return this.gameTypeName.toLowerCase() === 'qcm' && this.gameData ? this.gameData as QcmData : null;
+    return isGameType(this.gameTypeName, 'qcm') && this.gameData ? this.gameData as QcmData : null;
   }
 
   get caseVideData(): CaseVideData | null {
-    return this.gameTypeName.toLowerCase() === 'case vide' && this.gameData ? this.gameData as CaseVideData : null;
+    return isGameType(this.gameTypeName, 'case vide') && this.gameData ? this.gameData as CaseVideData : null;
   }
 
   get reponseLibreData(): ReponseLibreData | null {
-    return this.gameTypeName.toLowerCase() === 'reponse libre' && this.gameData ? this.gameData as ReponseLibreData : null;
+    return isGameType(this.gameTypeName, 'reponse libre') && this.gameData ? this.gameData as ReponseLibreData : null;
   }
 
   get liensData(): LiensData | null {
-    return this.gameTypeName.toLowerCase() === 'liens' && this.gameData ? this.gameData as LiensData : null;
+    return isGameType(this.gameTypeName, 'liens') && this.gameData ? this.gameData as LiensData : null;
   }
 
   get chronologieData(): ChronologieData | null {
-    return this.gameTypeName.toLowerCase() === 'chronologie' && this.gameData ? this.gameData as ChronologieData : null;
+    return isGameType(this.gameTypeName, 'chronologie') && this.gameData ? this.gameData as ChronologieData : null;
   }
 
   get vraiFauxData(): VraiFauxData | null {
-    return this.gameTypeName.toLowerCase() === 'vrai/faux' && this.gameData ? this.gameData as VraiFauxData : null;
+    return isGameType(this.gameTypeName, 'vrai/faux') && this.gameData ? this.gameData as VraiFauxData : null;
   }
 
   get memoryData(): MemoryData | null {
-    return this.gameTypeName.toLowerCase() === 'memory' && this.gameData ? this.gameData as MemoryData : null;
+    return isGameType(this.gameTypeName, 'memory') && this.gameData ? this.gameData as MemoryData : null;
   }
 
   get simonData(): SimonData | null {
-    return this.gameTypeName.toLowerCase() === 'simon' && this.gameData ? this.gameData as SimonData : null;
+    return isGameType(this.gameTypeName, 'simon') && this.gameData ? this.gameData as SimonData : null;
   }
 
   get imageInteractiveData(): ImageInteractiveData | null {
-    return this.gameTypeName.toLowerCase() === 'click' && this.gameData ? this.gameData as ImageInteractiveData : null;
+    return isGameTypeOneOf(this.gameTypeName, 'click', 'image interactive') && this.gameData ? this.gameData as ImageInteractiveData : null;
   }
 
   // Méthodes helper pour les liens

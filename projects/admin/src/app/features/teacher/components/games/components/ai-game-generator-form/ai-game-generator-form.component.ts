@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import type { AIGameGenerationRequest } from '../../../../types/ai-game-generation';
 import type { GameType } from '../../../../types/game-type';
 import { getSchoolLevelsForSelect } from '../../../../utils/school-levels.util';
+import { isGameType } from '../../../../utils/game-type.util';
 
 @Component({
   selector: 'app-ai-game-generator-form',
@@ -14,6 +15,8 @@ import { getSchoolLevelsForSelect } from '../../../../utils/school-levels.util';
   styleUrls: ['./ai-game-generator-form.component.scss'],
 })
 export class AIGameGeneratorFormComponent {
+  // Exposer la fonction utilitaire pour le template
+  readonly isGameType = isGameType;
   private readonly fb = inject(FormBuilder);
 
   @Input() subjectId!: string;

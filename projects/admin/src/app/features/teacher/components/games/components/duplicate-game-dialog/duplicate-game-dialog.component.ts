@@ -22,6 +22,7 @@ import { SCHOOL_LEVELS, getSchoolLevelLabel } from '../../../../utils/school-lev
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
 import { GameDataInitializerService } from '../../../../services/game-data-initializer/game-data-initializer.service';
 import { AssignmentFilterService } from '../../../../services/assignment-filter/assignment-filter.service';
+import { isGameType } from '../../../../utils/game-type.util';
 
 export interface DuplicateGameData {
   schoolId: string | null;
@@ -60,6 +61,9 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   private readonly infrastructure = inject(Infrastructure);
   private readonly gameDataInitializer = inject(GameDataInitializerService);
   private readonly assignmentFilter = inject(AssignmentFilterService);
+  
+  // Exposer la fonction utilitaire pour le template
+  readonly isGameType = isGameType;
 
   @Input({ required: true }) game!: Game;
   @Input({ required: true }) currentAssignment!: TeacherAssignment | null;

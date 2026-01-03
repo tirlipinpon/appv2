@@ -57,7 +57,7 @@
         <!-- Formulaires spécifiques pour chaque type -->
         <!-- QCM -->
         <app-qcm-form 
-          *ngIf="getGameTypeName(game).toLowerCase() === 'qcm'"
+          *ngIf="isGameType(getGameTypeName(game), 'qcm')"
           [initialData]="getInitialDataForQcm(game)"
           (dataChange)="onGameDataChange(game, $event)"
           (validityChange)="onGameValidityChange($event)">
@@ -65,7 +65,7 @@
 
         <!-- Case vide -->
         <app-case-vide-form 
-          *ngIf="getGameTypeName(game).toLowerCase() === 'case vide'"
+          *ngIf="isGameType(getGameTypeName(game), 'case vide')"
           [initialData]="getInitialDataForCaseVide(game)"
           (dataChange)="onGameDataChange(game, $event)"
           (validityChange)="onGameValidityChange($event)">
@@ -73,7 +73,7 @@
 
         <!-- Réponse libre -->
         <app-reponse-libre-form 
-          *ngIf="getGameTypeName(game).toLowerCase() === 'reponse libre'"
+          *ngIf="isGameType(getGameTypeName(game), 'reponse libre')"
           [initialData]="getInitialDataForReponseLibre(game)"
           (dataChange)="onGameDataChange(game, $event)"
           (validityChange)="onGameValidityChange($event)">
@@ -81,7 +81,7 @@
 
         <!-- Liens -->
         <app-liens-form 
-          *ngIf="getGameTypeName(game).toLowerCase() === 'liens'"
+          *ngIf="isGameType(getGameTypeName(game), 'liens')"
           [initialData]="getInitialDataForLiens(game)"
           (dataChange)="onGameDataChange(game, $event)"
           (validityChange)="onGameValidityChange($event)">
@@ -89,7 +89,7 @@
 
         <!-- Chronologie -->
         <app-chronologie-form 
-          *ngIf="getGameTypeName(game).toLowerCase() === 'chronologie'"
+          *ngIf="isGameType(getGameTypeName(game), 'chronologie')"
           [initialData]="getInitialDataForChronologie(game)"
           (dataChange)="onGameDataChange(game, $event)"
           (validityChange)="onGameValidityChange($event)">
@@ -97,7 +97,7 @@
 
         <!-- Vrai/Faux -->
         <app-vrai-faux-form 
-          *ngIf="getGameTypeName(game).toLowerCase() === 'vrai/faux'"
+          *ngIf="isGameType(getGameTypeName(game), 'vrai/faux')"
           [initialData]="getInitialDataForVraiFaux(game)"
           (dataChange)="onGameDataChange(game, $event)"
           (validityChange)="onGameValidityChange($event)">
@@ -105,7 +105,7 @@
 
         <!-- Memory -->
         <app-memory-form 
-          *ngIf="getGameTypeName(game).toLowerCase() === 'memory'"
+          *ngIf="isGameType(getGameTypeName(game), 'memory')"
           [initialData]="getInitialDataForMemory(game)"
           (dataChange)="onGameDataChange(game, $event)"
           (validityChange)="onGameValidityChange($event)">

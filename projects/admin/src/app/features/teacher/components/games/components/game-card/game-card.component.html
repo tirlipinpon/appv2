@@ -1,15 +1,15 @@
 <li class="game-item" 
     [class.editing]="isEditing()" 
     [class.expanded]="isExpanded()"
-    [class.game-type-qcm]="currentGameTypeName().toLowerCase() === 'qcm'"
-    [class.game-type-case-vide]="currentGameTypeName().toLowerCase() === 'case vide'"
-    [class.game-type-reponse-libre]="currentGameTypeName().toLowerCase() === 'reponse libre'"
-    [class.game-type-liens]="currentGameTypeName().toLowerCase() === 'liens'"
-    [class.game-type-chronologie]="currentGameTypeName().toLowerCase() === 'chronologie'"
-    [class.game-type-vrai-faux]="currentGameTypeName().toLowerCase() === 'vrai/faux'"
-    [class.game-type-memory]="currentGameTypeName().toLowerCase() === 'memory'"
-    [class.game-type-simon]="currentGameTypeName().toLowerCase() === 'simon'"
-    [class.game-type-click]="currentGameTypeName().toLowerCase() === 'click'">
+    [class.game-type-qcm]="isGameType(currentGameTypeName(), 'qcm')"
+    [class.game-type-case-vide]="isGameType(currentGameTypeName(), 'case vide')"
+    [class.game-type-reponse-libre]="isGameType(currentGameTypeName(), 'reponse libre')"
+    [class.game-type-liens]="isGameType(currentGameTypeName(), 'liens')"
+    [class.game-type-chronologie]="isGameType(currentGameTypeName(), 'chronologie')"
+    [class.game-type-vrai-faux]="isGameType(currentGameTypeName(), 'vrai/faux')"
+    [class.game-type-memory]="isGameType(currentGameTypeName(), 'memory')"
+    [class.game-type-simon]="isGameType(currentGameTypeName(), 'simon')"
+    [class.game-type-click]="isGameTypeOneOf(currentGameTypeName(), 'click', 'image interactive')">
   <!-- Header cliquable pour toggle -->
   <div class="game-header-toggle">
     <div class="game-header-info">
@@ -100,7 +100,7 @@
       <hr class="form-divider">
 
       <!-- Formulaires spécifiques pour chaque type -->
-      @if (currentGameTypeName().toLowerCase() === 'qcm') {
+      @if (isGameType(currentGameTypeName(), 'qcm')) {
         <app-qcm-form 
           [initialData]="getInitialDataForQcm()"
           (dataChange)="onGameDataChange($event)"
@@ -108,7 +108,7 @@
         </app-qcm-form>
       }
 
-      @if (currentGameTypeName().toLowerCase() === 'case vide') {
+      @if (isGameType(currentGameTypeName(), 'case vide')) {
         <app-case-vide-form 
           [initialData]="getInitialDataForCaseVide()"
           (dataChange)="onGameDataChange($event)"
@@ -116,7 +116,7 @@
         </app-case-vide-form>
       }
 
-      @if (currentGameTypeName().toLowerCase() === 'reponse libre') {
+      @if (isGameType(currentGameTypeName(), 'reponse libre')) {
         <app-reponse-libre-form 
           [initialData]="getInitialDataForReponseLibre()"
           (dataChange)="onGameDataChange($event)"
@@ -124,7 +124,7 @@
         </app-reponse-libre-form>
       }
 
-      @if (currentGameTypeName().toLowerCase() === 'liens') {
+      @if (isGameType(currentGameTypeName(), 'liens')) {
         <app-liens-form 
           [initialData]="getInitialDataForLiens()"
           (dataChange)="onGameDataChange($event)"
@@ -132,7 +132,7 @@
         </app-liens-form>
       }
 
-      @if (currentGameTypeName().toLowerCase() === 'chronologie') {
+      @if (isGameType(currentGameTypeName(), 'chronologie')) {
         <app-chronologie-form 
           [initialData]="getInitialDataForChronologie()"
           (dataChange)="onGameDataChange($event)"
@@ -140,7 +140,7 @@
         </app-chronologie-form>
       }
 
-      @if (currentGameTypeName().toLowerCase() === 'vrai/faux') {
+      @if (isGameType(currentGameTypeName(), 'vrai/faux')) {
         <app-vrai-faux-form 
           [initialData]="getInitialDataForVraiFaux()"
           (dataChange)="onGameDataChange($event)"
@@ -148,7 +148,7 @@
         </app-vrai-faux-form>
       }
 
-      @if (currentGameTypeName().toLowerCase() === 'memory') {
+      @if (isGameType(currentGameTypeName(), 'memory')) {
         <app-memory-form 
           [initialData]="getInitialDataForMemory()"
           (dataChange)="onGameDataChange($event)"
@@ -156,7 +156,7 @@
         </app-memory-form>
       }
 
-      @if (currentGameTypeName().toLowerCase() === 'simon') {
+      @if (isGameType(currentGameTypeName(), 'simon')) {
         <app-simon-form 
           [initialData]="getInitialDataForSimon()"
           (dataChange)="onGameDataChange($event)"
@@ -164,7 +164,7 @@
         </app-simon-form>
       }
 
-      @if (currentGameTypeName().toLowerCase() === 'click') {
+      @if (isGameTypeOneOf(currentGameTypeName(), 'click', 'image interactive')) {
         <app-image-interactive-form 
           [initialData]="getInitialDataForImageInteractive()"
           (dataChange)="onGameDataChange($event)"

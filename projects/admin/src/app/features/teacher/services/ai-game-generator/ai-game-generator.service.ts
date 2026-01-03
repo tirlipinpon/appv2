@@ -10,6 +10,7 @@ import type {
   AIRawGameResponse,
 } from '../../types/ai-game-generation';
 import { getAgeFromSchoolYear } from '../../utils/school-levels.util';
+import { isGameType, isGameTypeOneOf, normalizeGameTypeName } from '../../utils/game-type.util';
 
 @Injectable({
   providedIn: 'root',
@@ -200,8 +201,10 @@ ${gameType.description ? `Description: ${gameType.description}\n` : ''}
 `;
 
     // Instructions spécifiques par type
-    switch (typeName) {
-      case 'qcm':
+    // Utiliser les fonctions de comparaison normalisées pour gérer les variations de noms depuis la DB
+    const normalizedTypeName = typeName.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    
+    if (normalizedTypeName === 'qcm') {
         prompt += `INSTRUCTIONS SPÉCIFIQUES - QCM:
 - Crée une question à choix multiples avec 3 à 5 propositions
 - Chaque proposition doit être UNIQUE et DISTINCTE (ne jamais répéter la même réponse)
@@ -223,9 +226,7 @@ FORMAT JSON ATTENDU:
   }]
 }
 `;
-        break;
-
-      case 'case vide':
+    } else if (normalizedTypeName === 'case vide') {
         prompt += `INSTRUCTIONS SPÉCIFIQUES - CASE VIDE:
 - Crée une phrase COMPLÈTE avec 2 à 4 mots à trouver placés entre crochets [mot]
 - Chaque [mot] dans le texte correspond à une case vide à remplir
@@ -251,9 +252,7 @@ FORMAT JSON ATTENDU:
   }]
 }
 `;
-        break;
-
-      case 'memory':
+    } else if (normalizedTypeName === 'memory') {
         prompt += `INSTRUCTIONS SPÉCIFIQUES - MEMORY:
 - Crée EXACTEMENT 4 paires question/réponse (pas plus, pas moins)
 - Chaque paire doit être claire et adaptée au niveau ${ageRange}
@@ -278,10 +277,7 @@ FORMAT JSON ATTENDU:
   }]
 }
 `;
-        break;
-
-      case 'vrai/faux':
-      case 'vrai-faux':
+    } else if (normalizedTypeName === 'vrai/faux' || normalizedTypeName === 'vrai-faux') {
         prompt += `INSTRUCTIONS SPÉCIFIQUES - VRAI/FAUX:
 - Crée 3 à 6 énoncés clairs et testables (vrai ou faux sans ambiguïté)
 - Chaque énoncé doit être adapté au niveau ${ageRange}
@@ -305,9 +301,7 @@ FORMAT JSON ATTENDU:
   }]
 }
 `;
-        break;
-
-      case 'chronologie':
+    } else if (normalizedTypeName === 'chronologie') {
         prompt += `INSTRUCTIONS SPÉCIFIQUES - CHRONOLOGIE:
 - Crée 3 à 8 éléments à ordonner dans le temps ou dans un ordre logique
 - Les éléments doivent être adaptés au niveau ${ageRange}
@@ -328,9 +322,7 @@ FORMAT JSON ATTENDU:
   }]
 }
 `;
-        break;
-
-      case 'liens':
+    } else if (normalizedTypeName === 'liens') {
         prompt += `INSTRUCTIONS SPÉCIFIQUES - LIENS:
 - Crée 3 à 6 paires de mots/concepts à associer
 - Les associations doivent être logiques et adaptées au niveau ${ageRange}
@@ -356,9 +348,7 @@ FORMAT JSON ATTENDU:
   }]
 }
 `;
-        break;
-
-      case 'reponse libre':
+    } else if (normalizedTypeName === 'reponse libre') {
         prompt += `INSTRUCTIONS SPÉCIFIQUES - RÉPONSE LIBRE:
 - Crée une question ouverte nécessitant une réponse textuelle
 - La réponse attendue doit être claire et adaptée au niveau ${ageRange}
@@ -378,9 +368,7 @@ FORMAT JSON ATTENDU:
   }]
 }
 `;
-        break;
-
-      default:
+    } else {
         prompt += `INSTRUCTIONS:
 - Crée un jeu adapté au niveau ${ageRange}
 - Respecte la structure metadata pour le type "${gameType.name}"
@@ -489,9 +477,9 @@ ${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` :
 
       // Normaliser les métadonnées pour corriger les problèmes courants
       let normalizedMetadata = rawGame.metadata;
-      if (rawGame.type_name.toLowerCase() === 'qcm' && rawGame.metadata) {
+      if (isGameType(rawGame.type_name, 'qcm') && rawGame.metadata) {
         normalizedMetadata = this.normalizeQcmMetadata(rawGame.metadata);
-      } else if ((rawGame.type_name.toLowerCase() === 'vrai/faux' || rawGame.type_name.toLowerCase() === 'vrai-faux') && rawGame.metadata) {
+      } else if (isGameTypeOneOf(rawGame.type_name, 'vrai/faux', 'vrai-faux') && rawGame.metadata) {
         normalizedMetadata = this.normalizeVraiFauxMetadata(rawGame.metadata);
       }
 
@@ -606,22 +594,32 @@ ${request.requestHelp ? `- Ajoute une aide pédagogique dans le champ "aides"` :
    * Retourne la description de la structure metadata pour un type de jeu
    */
   private getMetadataStructureDescription(typeName: string): string {
-    const structures: Record<string, string> = {
-      'case vide':
-        '{ texte: string (phrase avec [mot] pour chaque case vide), cases_vides: [{index: number, reponse_correcte: string}], banque_mots: string[] }',
-      'reponse libre': '{ reponse_valide: string }',
-      liens: '{ mots: string[], reponses: string[], liens: {mot: string, reponse: string}[] }',
-      chronologie: '{ mots: string[], ordre_correct: string[] }',
-      qcm: '{ propositions: string[], reponses_valides: string[] }',
-      'vrai/faux': '{ enonces: [{texte: string, reponse_correcte: boolean}[] }',
-      'vrai-faux': '{ enonces: [{texte: string, reponse_correcte: boolean}[] }',
-      memory: '{ paires: {question: string, reponse: string}[] }',
-    };
+    const normalized = normalizeGameTypeName(typeName);
+    
+    // Utiliser les noms normalisés pour la comparaison
+    if (normalized === 'case vide') {
+      return '{ texte: string (phrase avec [mot] pour chaque case vide), cases_vides: [{index: number, reponse_correcte: string}], banque_mots: string[] }';
+    }
+    if (normalized === 'reponse libre') {
+      return '{ reponse_valide: string }';
+    }
+    if (normalized === 'liens') {
+      return '{ mots: string[], reponses: string[], liens: {mot: string, reponse: string}[] }';
+    }
+    if (normalized === 'chronologie') {
+      return '{ mots: string[], ordre_correct: string[] }';
+    }
+    if (normalized === 'qcm') {
+      return '{ propositions: string[], reponses_valides: string[] }';
+    }
+    if (normalized === 'vrai/faux' || normalized === 'vrai-faux') {
+      return '{ enonces: [{texte: string, reponse_correcte: boolean}[] }';
+    }
+    if (normalized === 'memory') {
+      return '{ paires: {question: string, reponse: string}[] }';
+    }
 
-    return (
-      structures[typeName.toLowerCase()] ||
-      '{ structure spécifique au type }'
-    );
+    return '{ structure spécifique au type }';
   }
 
   /**

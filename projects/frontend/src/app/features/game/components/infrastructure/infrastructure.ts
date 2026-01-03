@@ -27,7 +27,8 @@ export class GameInfrastructure {
     let gameTypeName = (game.game_types?.name || '').toLowerCase().replace(/\s+/g, '_');
     
     // Normaliser "click" vers "image_interactive"
-    if (gameTypeName === 'click') {
+    // Utiliser les fonctions de comparaison normalisées pour gérer les variations depuis la DB
+    if (isGameTypeOneOf(gameTypeName, 'click', 'image interactive', 'image_interactive')) {
       gameTypeName = 'image_interactive';
     }
     

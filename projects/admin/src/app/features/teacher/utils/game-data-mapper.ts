@@ -2,6 +2,7 @@
 // Permet la rétrocompatibilité avec les jeux existants
 
 import type { LiensData, ChronologieData } from '@shared/games';
+import { isGameType } from './game-type.util';
 
 // Anciennes structures (pour référence)
 interface OldLiensData {
@@ -72,11 +73,11 @@ export function normalizeGameData(
   if (!metadata) return null;
 
   try {
-    if (gameType === 'liens' && metadata['mots'] && metadata['reponses'] && metadata['liens']) {
+    if (isGameType(gameType, 'liens') && metadata['mots'] && metadata['reponses'] && metadata['liens']) {
       return convertLiensDataFromIndex(metadata as any) as unknown as Record<string, unknown>;
     }
 
-    if (gameType === 'chronologie' && metadata['mots'] && metadata['ordre_correct']) {
+    if (isGameType(gameType, 'chronologie') && metadata['mots'] && metadata['ordre_correct']) {
       return convertChronologieDataFromIndex(metadata as any) as unknown as Record<string, unknown>;
     }
 

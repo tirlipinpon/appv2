@@ -21,6 +21,7 @@ import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
 import { ImageUploadService, type ImageUploadResult } from '../../services/image-upload/image-upload.service';
 import { ErrorSnackbarService } from '../../../../../../shared';
+import { isGameType, isGameTypeOneOf } from '../../../../utils/game-type.util';
 
 @Component({
   selector: 'app-game-card',
@@ -46,6 +47,10 @@ import { ErrorSnackbarService } from '../../../../../../shared';
 export class GameCardComponent implements OnInit, OnChanges {
   private readonly imageUploadService = inject(ImageUploadService);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
+  
+  // Exposer les fonctions utilitaires pour le template
+  readonly isGameType = isGameType;
+  readonly isGameTypeOneOf = isGameTypeOneOf;
 
   @Input({ required: true }) game!: Game;
   @Input({ required: true }) gameTypeName!: string;
@@ -228,8 +233,7 @@ export class GameCardComponent implements OnInit, OnChanges {
 
     // Vérifier si on a un fichier image à uploader (pour ImageInteractive)
     const imageDataWithFile = this.imageInteractiveDataWithFile();
-    const isImageInteractive = this.currentGameTypeName().toLowerCase() === 'click' || 
-                               this.currentGameTypeName().toLowerCase() === 'image interactive';
+    const isImageInteractive = isGameTypeOneOf(this.currentGameTypeName(), 'click', 'image interactive');
 
     if (isImageInteractive && imageDataWithFile?.imageFile) {
       // Uploader l'image avant de sauvegarder
@@ -355,7 +359,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForCaseVide(): CaseVideData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'case vide' && data) {
+    if (isGameType(currentType, 'case vide') && data) {
       // Accepter le nouveau format (texte + cases_vides) ou l'ancien format (debut_phrase)
       if (('texte' in data && 'cases_vides' in data) || 'debut_phrase' in data) {
         return data as CaseVideData;
@@ -367,7 +371,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForReponseLibre(): ReponseLibreData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'reponse libre' && data && 'reponse_valide' in data && !('debut_phrase' in data)) {
+    if (isGameType(currentType, 'reponse libre') && data && 'reponse_valide' in data && !('debut_phrase' in data)) {
       return data as ReponseLibreData;
     }
     return null;
@@ -376,7 +380,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForLiens(): LiensData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'liens' && data && 'mots' in data && 'reponses' in data && 'liens' in data) {
+    if (isGameType(currentType, 'liens') && data && 'mots' in data && 'reponses' in data && 'liens' in data) {
       return data as LiensData;
     }
     return null;
@@ -385,7 +389,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForChronologie(): ChronologieData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'chronologie' && data && 'mots' in data && 'ordre_correct' in data && !('reponses' in data)) {
+    if (isGameType(currentType, 'chronologie') && data && 'mots' in data && 'ordre_correct' in data && !('reponses' in data)) {
       return data as ChronologieData;
     }
     return null;
@@ -394,7 +398,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForQcm(): QcmData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'qcm' && data && 'propositions' in data && 'reponses_valides' in data) {
+    if (isGameType(currentType, 'qcm') && data && 'propositions' in data && 'reponses_valides' in data) {
       return data as QcmData;
     }
     return null;
@@ -403,7 +407,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForVraiFaux(): VraiFauxData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'vrai/faux' && data && 'enonces' in data) {
+    if (isGameType(currentType, 'vrai/faux') && data && 'enonces' in data) {
       return data as VraiFauxData;
     }
     return null;
@@ -412,7 +416,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForMemory(): MemoryData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'memory' && data && 'paires' in data) {
+    if (isGameType(currentType, 'memory') && data && 'paires' in data) {
       return data as MemoryData;
     }
     return null;
@@ -421,7 +425,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForSimon(): SimonData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'simon' && data) {
+    if (isGameType(currentType, 'simon') && data) {
       // Vérifier que les propriétés requises existent
       if ('nombre_elements' in data && 'type_elements' in data) {
         return data as SimonData;
@@ -433,7 +437,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForImageInteractive(): ImageInteractiveData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (currentType && currentType.toLowerCase() === 'click' && data) {
+    if (currentType && isGameTypeOneOf(currentType, 'click', 'image interactive') && data) {
       // Vérifier que les propriétés requises existent
       if (
         'image_url' in data && 
@@ -458,55 +462,53 @@ export class GameCardComponent implements OnInit, OnChanges {
     if (!metadata) return 'Pas de métadonnées';
 
     try {
-      switch (typeName) {
-        case 'qcm': {
-          const qcm = metadata as unknown as QcmData;
-          return `${qcm.propositions?.length || 0} propositions, ${qcm.reponses_valides?.length || 0} bonne(s) réponse(s)`;
-        }
-        
-        case 'case vide': {
-          const caseVide = metadata as unknown as CaseVideData;
-          return `"${caseVide.debut_phrase || ''} ___ ${caseVide.fin_phrase || ''}"`;
-        }
-        
-        case 'reponse libre': {
-          const reponseLibre = metadata as unknown as ReponseLibreData;
-          return `Réponse attendue: "${reponseLibre.reponse_valide || 'N/A'}"`;
-        }
-        
-        case 'liens': {
-          const liens = metadata as unknown as LiensData;
-          return `${liens.mots?.length || 0} mots à relier`;
-        }
-        
-        case 'chronologie': {
-          const chronologie = metadata as unknown as ChronologieData;
-          return `${chronologie.mots?.length || 0} éléments à ordonner`;
-        }
-        
-        case 'vrai/faux': {
-          const vraiFaux = metadata as unknown as VraiFauxData;
-          return `${vraiFaux.enonces?.length || 0} énoncé(s)`;
-        }
-        
-        case 'memory': {
-          const memory = metadata as unknown as MemoryData;
-          return `${memory.paires?.length || 0} paire(s) de cartes`;
-        }
-        
-        case 'simon': {
-          const simon = metadata as unknown as SimonData;
-          return `${simon.nombre_elements || 0} élément(s), type: ${simon.type_elements || 'N/A'}`;
-        }
-        
-        case 'click': {
-          const click = metadata as unknown as ImageInteractiveData;
-          return `Image ${click.image_width || 0}×${click.image_height || 0}px, ${click.zones?.length || 0} zone(s) cliquable(s)`;
-        }
-        
-        default:
-          return JSON.stringify(metadata).substring(0, 100);
+      // Utiliser les fonctions de comparaison normalisées
+      if (isGameType(typeName, 'qcm')) {
+        const qcm = metadata as unknown as QcmData;
+        return `${qcm.propositions?.length || 0} propositions, ${qcm.reponses_valides?.length || 0} bonne(s) réponse(s)`;
       }
+      
+      if (isGameType(typeName, 'case vide')) {
+        const caseVide = metadata as unknown as CaseVideData;
+        return `"${caseVide.debut_phrase || ''} ___ ${caseVide.fin_phrase || ''}"`;
+      }
+      
+      if (isGameType(typeName, 'reponse libre')) {
+        const reponseLibre = metadata as unknown as ReponseLibreData;
+        return `Réponse attendue: "${reponseLibre.reponse_valide || 'N/A'}"`;
+      }
+      
+      if (isGameType(typeName, 'liens')) {
+        const liens = metadata as unknown as LiensData;
+        return `${liens.mots?.length || 0} mots à relier`;
+      }
+      
+      if (isGameType(typeName, 'chronologie')) {
+        const chronologie = metadata as unknown as ChronologieData;
+        return `${chronologie.mots?.length || 0} éléments à ordonner`;
+      }
+      
+      if (isGameType(typeName, 'vrai/faux')) {
+        const vraiFaux = metadata as unknown as VraiFauxData;
+        return `${vraiFaux.enonces?.length || 0} énoncé(s)`;
+      }
+      
+      if (isGameType(typeName, 'memory')) {
+        const memory = metadata as unknown as MemoryData;
+        return `${memory.paires?.length || 0} paire(s) de cartes`;
+      }
+      
+      if (isGameType(typeName, 'simon')) {
+        const simon = metadata as unknown as SimonData;
+        return `${simon.nombre_elements || 0} élément(s), type: ${simon.type_elements || 'N/A'}`;
+      }
+      
+      if (isGameTypeOneOf(typeName, 'click', 'image interactive')) {
+        const click = metadata as unknown as ImageInteractiveData;
+        return `Image ${click.image_width || 0}×${click.image_height || 0}px, ${click.zones?.length || 0} zone(s) cliquable(s)`;
+      }
+      
+      return JSON.stringify(metadata).substring(0, 100);
     } catch {
       return JSON.stringify(metadata).substring(0, 100);
     }
