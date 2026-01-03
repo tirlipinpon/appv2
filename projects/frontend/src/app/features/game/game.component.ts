@@ -299,6 +299,14 @@ import { isGameType, isGameTypeOneOf } from '@shared/utils/game-type.util';
             size="large">
             Valider
           </app-child-button>
+          <!-- Bouton "Passer" pour permettre de passer à la question suivante sans validation -->
+          <app-child-button
+            *ngIf="!showFeedback() && !isGameCompleted()"
+            (buttonClick)="skipQuestion()"
+            variant="secondary"
+            size="large">
+            Passer
+          </app-child-button>
           <!-- Bouton "Réessayer" pour les jeux spécifiques avec réponse incorrecte - masqué car géré par game-error-actions -->
           <!-- Bouton "Question suivante" pour les jeux génériques -->
           <app-child-button
@@ -1276,6 +1284,40 @@ export class GameComponent implements OnInit, OnDestroy {
     } else {
       // Pas de prochain jeu, retourner aux matières
       this.goToSubjects();
+    }
+  }
+
+  /**
+   * Passe à la question suivante ou au jeu suivant sans validation
+   * Permet à l'utilisateur de ne pas rester bloqué sur une question qu'il ne peut pas résoudre
+   */
+  async skipQuestion(): Promise<void> {
+    // Pour les jeux génériques avec questions, passer à la question suivante
+    if (this.isGenericGame()) {
+      const hasNext = await this.application.nextQuestion();
+      if (!hasNext) {
+        // Plus de questions, compléter le jeu
+        await this.completeGame();
+      } else {
+        // Réinitialiser l'état pour la prochaine question
+        this.selectedAnswer.set(null);
+        this.showFeedback.set(false);
+        this.feedback.set(null);
+        this.correctAnswer.set(null);
+        this.showAides.set(false);
+      }
+    } else {
+      // Pour les jeux spécifiques, passer au jeu suivant
+      await this.findNextGame();
+      const nextId = this.nextGameId();
+      
+      if (nextId) {
+        // Naviguer vers le prochain jeu
+        await this.goToNextGame();
+      } else {
+        // Pas de prochain jeu, retourner aux matières
+        this.goToSubjects();
+      }
     }
   }
 
