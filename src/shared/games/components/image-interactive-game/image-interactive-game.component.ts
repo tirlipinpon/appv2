@@ -41,6 +41,10 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
   // État pour afficher/masquer les aides
   showAides = signal<boolean>(false);
 
+  // État de chargement de l'image
+  readonly imageError = signal<boolean>(false);
+  readonly imageLoaded = signal<boolean>(false);
+
   // ResizeObserver pour détecter les changements de taille
   private resizeObserver?: ResizeObserver;
 
@@ -73,6 +77,24 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
   }
 
   /**
+   * Gère le chargement réussi de l'image
+   */
+  onImageLoad(): void {
+    this.imageLoaded.set(true);
+    this.imageError.set(false);
+    this.updateImageDimensions();
+  }
+
+  /**
+   * Gère l'erreur de chargement de l'image
+   */
+  onImageError(): void {
+    this.imageError.set(true);
+    this.imageLoaded.set(false);
+    console.error('Erreur de chargement de l\'image:', this.imageData.image_url);
+  }
+
+  /**
    * Met à jour les dimensions affichées de l'image
    */
   updateImageDimensions(): void {
@@ -85,7 +107,9 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
 
     // Attendre que l'image soit chargée
     if (!img.complete || img.naturalWidth === 0) {
-      img.onload = () => this.updateImageDimensions();
+      if (!this.imageError()) {
+        img.onload = () => this.updateImageDimensions();
+      }
       return;
     }
 

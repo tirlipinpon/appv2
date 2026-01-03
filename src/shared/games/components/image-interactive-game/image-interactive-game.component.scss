@@ -52,6 +52,34 @@
     pointer-events: none;
   }
 
+  .image-error-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    border: 2px solid #ff9800;
+    max-width: 80%;
+    z-index: 10;
+
+    p {
+      margin: 0.5rem 0;
+      color: #333;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .error-details {
+      font-size: 0.875rem;
+      color: #666;
+      font-weight: normal;
+      margin-top: 0.5rem;
+    }
+  }
+
   .zones-overlay {
     position: absolute;
     top: 0;

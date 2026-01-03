@@ -43,8 +43,15 @@
       [src]="imageData.image_url"
       [alt]="'Image interactive'"
       class="game-image"
-      (load)="updateImageDimensions()"
+      (load)="onImageLoad()"
+      (error)="onImageError()"
     />
+    @if (imageError()) {
+      <div class="image-error-message">
+        <p>⚠️ L'image n'a pas pu être chargée</p>
+        <p class="error-details">L'image du jeu est introuvable sur le serveur.</p>
+      </div>
+    }
 
     <!-- Overlay des zones (invisible mais cliquable) -->
     <div class="zones-overlay">
