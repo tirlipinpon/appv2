@@ -1,7 +1,19 @@
 import { Component, Input, Output, EventEmitter, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ConfirmationDialogService } from '../../../../../../shared';
-import { isGameType, isGameTypeOneOf, normalizeGameTypeName } from '../../../../utils/game-type.util';
+import {
+  isGameType,
+  isGameTypeOneOf,
+  normalizeGameTypeName,
+  isGameTypeConstant,
+  GAME_TYPE_LIENS,
+  GAME_TYPE_CHRONOLOGIE,
+  GAME_TYPE_QCM,
+  GAME_TYPE_VRAI_FAUX,
+  GAME_TYPE_MEMORY,
+  GAME_TYPE_CASE_VIDE,
+  GAME_TYPE_REPONSE_LIBRE,
+} from '../../../../utils/game-type.util';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
 import { LiensFormComponent } from '../liens-form/liens-form.component';
@@ -103,7 +115,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForCaseVide(game: GeneratedGameWithState): CaseVideData | null {
     const typeName = this.getGameTypeName(game);
-    if (isGameType(typeName, 'case vide') && game.metadata) {
+    if (isGameTypeConstant(typeName, GAME_TYPE_CASE_VIDE) && game.metadata) {
       // Accepter le nouveau format (texte + cases_vides) ou l'ancien format (debut_phrase)
       if (('texte' in game.metadata && 'cases_vides' in game.metadata) || 'debut_phrase' in game.metadata) {
         return game.metadata as unknown as CaseVideData;
@@ -114,7 +126,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForReponseLibre(game: GeneratedGameWithState): ReponseLibreData | null {
     const typeName = this.getGameTypeName(game);
-    if (isGameType(typeName, 'reponse libre') && game.metadata && 'reponse_valide' in game.metadata && !('debut_phrase' in game.metadata)) {
+    if (isGameTypeConstant(typeName, GAME_TYPE_REPONSE_LIBRE) && game.metadata && 'reponse_valide' in game.metadata && !('debut_phrase' in game.metadata)) {
       return game.metadata as unknown as ReponseLibreData;
     }
     return null;
@@ -122,7 +134,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForLiens(game: GeneratedGameWithState): LiensData | null {
     const typeName = this.getGameTypeName(game);
-    if (isGameType(typeName, 'liens') && game.metadata && 'mots' in game.metadata && 'reponses' in game.metadata && 'liens' in game.metadata) {
+    if (isGameTypeConstant(typeName, GAME_TYPE_LIENS) && game.metadata && 'mots' in game.metadata && 'reponses' in game.metadata && 'liens' in game.metadata) {
       return game.metadata as unknown as LiensData;
     }
     return null;
@@ -130,7 +142,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForChronologie(game: GeneratedGameWithState): ChronologieData | null {
     const typeName = this.getGameTypeName(game);
-    if (isGameType(typeName, 'chronologie') && game.metadata && 'mots' in game.metadata && 'ordre_correct' in game.metadata && !('reponses' in game.metadata)) {
+    if (isGameTypeConstant(typeName, GAME_TYPE_CHRONOLOGIE) && game.metadata && 'mots' in game.metadata && 'ordre_correct' in game.metadata && !('reponses' in game.metadata)) {
       return game.metadata as unknown as ChronologieData;
     }
     return null;
@@ -138,7 +150,7 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForQcm(game: GeneratedGameWithState): QcmData | null {
     const typeName = this.getGameTypeName(game);
-    if (isGameType(typeName, 'qcm') && game.metadata && 'propositions' in game.metadata && 'reponses_valides' in game.metadata) {
+    if (isGameTypeConstant(typeName, GAME_TYPE_QCM) && game.metadata && 'propositions' in game.metadata && 'reponses_valides' in game.metadata) {
       return game.metadata as unknown as QcmData;
     }
     return null;
@@ -149,7 +161,7 @@ export class AIGeneratedPreviewComponent {
     // Normaliser le nom du type (peut être "vrai/faux", "vrai faux", etc.)
     const normalizedTypeName = typeName.replace(/\s+/g, '/').toLowerCase();
     
-    if (isGameTypeOneOf(typeName, 'vrai/faux', 'vrai-faux') && game.metadata) {
+    if (isGameTypeConstant(typeName, GAME_TYPE_VRAI_FAUX) && game.metadata) {
       const metadata = game.metadata as any;
       
       // Vérifier si les métadonnées contiennent des énoncés
@@ -181,50 +193,57 @@ export class AIGeneratedPreviewComponent {
 
   getInitialDataForMemory(game: GeneratedGameWithState): MemoryData | null {
     const typeName = this.getGameTypeName(game);
-    if (isGameType(typeName, 'memory') && game.metadata && 'paires' in game.metadata) {
+    if (isGameTypeConstant(typeName, GAME_TYPE_MEMORY) && game.metadata && 'paires' in game.metadata) {
       return game.metadata as unknown as MemoryData;
     }
     return null;
   }
 
   formatMetadataForDisplay(game: GeneratedGameWithState): string {
-    const typeName = normalizeGameTypeName(this.getGameTypeName(game));
+    const typeName = this.getGameTypeName(game);
+    const normalizedTypeName = normalizeGameTypeName(typeName);
     const metadata = game.metadata;
 
     if (!metadata) return 'Pas de métadonnées';
 
-    switch (typeName) {
-      case 'qcm':
-        const qcm = metadata as unknown as QcmData;
-        return `${qcm.propositions?.length || 0} propositions, ${qcm.reponses_valides?.length || 0} bonne(s) réponse(s)`;
-      
-      case 'case vide':
-        const caseVide = metadata as unknown as CaseVideData;
-        return `"${caseVide.debut_phrase || ''} ___ ${caseVide.fin_phrase || ''}"`;
-      
-      case 'reponse libre':
-        const reponseLibre = metadata as unknown as ReponseLibreData;
-        return `Réponse attendue: "${reponseLibre.reponse_valide || 'N/A'}"`;
-      
-      case 'liens':
-        const liens = metadata as unknown as LiensData;
-        return `${liens.mots?.length || 0} mots à relier`;
-      
-      case 'chronologie':
-        const chronologie = metadata as unknown as ChronologieData;
-        return `${chronologie.mots?.length || 0} éléments à ordonner`;
-      
-      case 'vrai/faux':
-        const vraiFaux = metadata as unknown as VraiFauxData;
-        return `${vraiFaux.enonces?.length || 0} énoncé(s)`;
-      
-      case 'memory':
-        const memory = metadata as unknown as MemoryData;
-        return `${memory.paires?.length || 0} paire(s) de cartes`;
-      
-      default:
-        return JSON.stringify(metadata).substring(0, 100);
+    // Utiliser les constantes pour la comparaison
+    if (isGameTypeConstant(typeName, GAME_TYPE_QCM)) {
+      const qcm = metadata as unknown as QcmData;
+      return `${qcm.propositions?.length || 0} propositions, ${qcm.reponses_valides?.length || 0} bonne(s) réponse(s)`;
     }
+    
+    if (isGameTypeConstant(typeName, GAME_TYPE_CASE_VIDE)) {
+      const caseVide = metadata as unknown as CaseVideData;
+      return `"${caseVide.debut_phrase || ''} ___ ${caseVide.fin_phrase || ''}"`;
+    }
+    
+    if (isGameTypeConstant(typeName, GAME_TYPE_REPONSE_LIBRE)) {
+      const reponseLibre = metadata as unknown as ReponseLibreData;
+      return `Réponse attendue: "${reponseLibre.reponse_valide || 'N/A'}"`;
+    }
+    
+    if (isGameTypeConstant(typeName, GAME_TYPE_LIENS)) {
+      const liens = metadata as unknown as LiensData;
+      return `${liens.mots?.length || 0} mots à relier`;
+    }
+    
+    if (isGameTypeConstant(typeName, GAME_TYPE_CHRONOLOGIE)) {
+      const chronologie = metadata as unknown as ChronologieData;
+      return `${chronologie.mots?.length || 0} éléments à ordonner`;
+    }
+    
+    if (isGameTypeConstant(typeName, GAME_TYPE_VRAI_FAUX)) {
+      const vraiFaux = metadata as unknown as VraiFauxData;
+      return `${vraiFaux.enonces?.length || 0} énoncé(s)`;
+    }
+    
+    if (isGameTypeConstant(typeName, GAME_TYPE_MEMORY)) {
+      const memory = metadata as unknown as MemoryData;
+      return `${memory.paires?.length || 0} paire(s) de cartes`;
+    }
+    
+    // Cas par défaut pour les autres types
+    return JSON.stringify(metadata).substring(0, 100);
   }
 }
 

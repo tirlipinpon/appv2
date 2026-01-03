@@ -17,7 +17,21 @@ import { SubjectsInfrastructure } from '../subjects/components/infrastructure/in
 import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { ProgressionService } from '../../core/services/progression/progression.service';
 import type { Game } from '../../core/types/game.types';
-import { isGameType, isGameTypeOneOf } from '@shared/utils/game-type.util';
+import {
+  isGameType,
+  isGameTypeOneOf,
+  GAME_TYPE_QCM,
+  GAME_TYPE_CHRONOLOGIE,
+  GAME_TYPE_MEMORY,
+  GAME_TYPE_SIMON,
+  GAME_TYPE_IMAGE_INTERACTIVE,
+  GAME_TYPE_CASE_VIDE,
+  GAME_TYPE_LIENS,
+  GAME_TYPE_VRAI_FAUX,
+  GAME_TYPE_REPONSE_LIBRE,
+  SPECIFIC_GAME_TYPES,
+  getGameTypeVariations,
+} from '@shared/utils/game-type.util';
 import { normalizeGameType } from '../../shared/utils/game-normalization.util';
 
 @Component({
@@ -178,7 +192,7 @@ import { normalizeGameType } from '../../shared/utils/game-normalization.util';
             (resetRequested)="restartGame()"
             (nextRequested)="onNextButtonClick()">
           </app-vrai-faux-game>
-        } @else if (gameType() === 'reponse_libre' && gameData()) {
+        } @else if (isReponseLibreGame() && gameData()) {
           <!-- Jeu réponse libre -->
           <div class="question-container">
             <h2 class="question-text">
@@ -294,7 +308,7 @@ import { normalizeGameType } from '../../shared/utils/game-normalization.util';
         <!-- Boutons d'action - Masqués si le jeu est complété (le modal gère la navigation) -->
         <div class="actions-container" *ngIf="!isGameCompleted() || !showCompletionScreen()">
           <app-child-button
-            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (gameType() === 'reponse_libre' && reponseLibreInput().trim().length > 0) || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()) || (isVraiFauxGame() && canSubmitVraiFaux()))"
+            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (isReponseLibreGame() && reponseLibreInput().trim().length > 0) || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()) || (isVraiFauxGame() && canSubmitVraiFaux()))"
             (buttonClick)="isCaseVideGame() ? submitCaseVide() : (isLiensGame() ? submitLiens() : (isVraiFauxGame() ? submitVraiFaux() : submitAnswer()))"
             variant="primary"
             size="large">
@@ -690,35 +704,30 @@ export class GameComponent implements OnInit, OnDestroy {
 
   // Helpers pour déterminer quel composant afficher
   // Utiliser les fonctions de comparaison normalisées pour gérer les variations depuis la DB
-  isQcmGame = computed(() => isGameType(this.gameType(), 'qcm'));
-  isChronologieGame = computed(() => isGameType(this.gameType(), 'chronologie'));
-  isMemoryGame = computed(() => isGameType(this.gameType(), 'memory'));
-  isSimonGame = computed(() => isGameType(this.gameType(), 'simon'));
+  isQcmGame = computed(() => isGameType(this.gameType(), GAME_TYPE_QCM));
+  isChronologieGame = computed(() => isGameType(this.gameType(), GAME_TYPE_CHRONOLOGIE));
+  isMemoryGame = computed(() => isGameType(this.gameType(), GAME_TYPE_MEMORY));
+  isSimonGame = computed(() => isGameType(this.gameType(), GAME_TYPE_SIMON));
   isImageInteractiveGame = computed(() => {
-    return isGameTypeOneOf(this.gameType(), 'image_interactive', 'image interactive', 'click');
+    return isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_IMAGE_INTERACTIVE));
   });
   isCaseVideGame = computed(() => {
-    return isGameTypeOneOf(this.gameType(), 'case_vide', 'case vide');
+    return isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_CASE_VIDE));
   });
   isLiensGame = computed(() => {
-    return isGameTypeOneOf(this.gameType(), 'liens', 'lien');
+    return isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_LIENS));
   });
   isVraiFauxGame = computed(() => {
-    return isGameTypeOneOf(this.gameType(), 'vrai_faux', 'vrai/faux', 'vrai faux', 'vrais faux', 'vrai-faux');
+    return isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_VRAI_FAUX));
+  });
+  isReponseLibreGame = computed(() => {
+    return isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_REPONSE_LIBRE));
   });
   isGenericGame = computed(() => {
     const type = this.gameType();
     if (!type) return false;
     // Vérifier si le type n'est pas un des types spécifiques connus
-    return !isGameTypeOneOf(
-      type,
-      'qcm', 'chronologie', 'memory', 'simon',
-      'image_interactive', 'image interactive', 'click',
-      'case_vide', 'case vide',
-      'liens', 'lien',
-      'vrai_faux', 'vrai/faux', 'vrai faux', 'vrais faux', 'vrai-faux',
-      'reponse_libre', 'reponse libre'
-    );
+    return !isGameTypeOneOf(type, ...SPECIFIC_GAME_TYPES);
   });
 
   // Getters typés pour les données de jeu
@@ -749,7 +758,7 @@ export class GameComponent implements OnInit, OnDestroy {
 
   getReponseLibreData(): ReponseLibreData | null {
     const data = this.gameData();
-    return data && this.gameType() === 'reponse_libre' ? (data as unknown as ReponseLibreData) : null;
+    return data && isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_REPONSE_LIBRE)) ? (data as unknown as ReponseLibreData) : null;
   }
 
   getReponseLibreReponseValide(): string {
@@ -1074,7 +1083,7 @@ export class GameComponent implements OnInit, OnDestroy {
 
   async submitAnswer(): Promise<void> {
     // Gérer les réponses libres
-    if (this.gameType() === 'reponse_libre') {
+    if (isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_REPONSE_LIBRE))) {
       const game = this.application.getCurrentGame()();
       const gameData = this.gameData();
       if (!game || !gameData) return;
@@ -1141,9 +1150,8 @@ export class GameComponent implements OnInit, OnDestroy {
     await this.loadTotalScore();
     
     // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
-    const specificGameTypes = ['case_vide', 'case vide', 'liens', 'vrai_faux', 'vrai/faux', 'image_interactive', 'memory', 'simon', 'qcm', 'chronologie', 'click', 'reponse_libre'];
     const normalizedGameType = normalizeGameType(game?.game_type);
-    const isSpecificGame = specificGameTypes.some(type => normalizeGameType(type) === normalizedGameType);
+    const isSpecificGame = SPECIFIC_GAME_TYPES.some(type => normalizeGameType(type) === normalizedGameType);
     
     // Calculer le score individuel du jeu pour le message
     let individualScore = 0;

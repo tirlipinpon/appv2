@@ -10,7 +10,20 @@ import type {
   SimonData,
   ImageInteractiveData,
 } from '@shared/games';
-import { isGameType, isGameTypeOneOf } from '../../utils/game-type.util';
+import {
+  isGameType,
+  isGameTypeOneOf,
+  isGameTypeConstant,
+  GAME_TYPE_CASE_VIDE,
+  GAME_TYPE_REPONSE_LIBRE,
+  GAME_TYPE_LIENS,
+  GAME_TYPE_CHRONOLOGIE,
+  GAME_TYPE_QCM,
+  GAME_TYPE_VRAI_FAUX,
+  GAME_TYPE_MEMORY,
+  GAME_TYPE_SIMON,
+  GAME_TYPE_IMAGE_INTERACTIVE,
+} from '../../utils/game-type.util';
 
 export type GameDataType =
   | CaseVideData
@@ -42,31 +55,31 @@ export class GameDataInitializerService {
     }
 
     // Utiliser les fonctions de comparaison normalisées
-    if (isGameType(gameTypeName, 'case vide')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_CASE_VIDE)) {
       return this.getInitialDataForCaseVide(data);
     }
-    if (isGameType(gameTypeName, 'reponse libre')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_REPONSE_LIBRE)) {
       return this.getInitialDataForReponseLibre(data);
     }
-    if (isGameType(gameTypeName, 'liens')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_LIENS)) {
       return this.getInitialDataForLiens(data);
     }
-    if (isGameType(gameTypeName, 'chronologie')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_CHRONOLOGIE)) {
       return this.getInitialDataForChronologie(data);
     }
-    if (isGameType(gameTypeName, 'qcm')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_QCM)) {
       return this.getInitialDataForQcm(data);
     }
-    if (isGameType(gameTypeName, 'vrai/faux')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_VRAI_FAUX)) {
       return this.getInitialDataForVraiFaux(data);
     }
-    if (isGameType(gameTypeName, 'memory')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_MEMORY)) {
       return this.getInitialDataForMemory(data);
     }
-    if (isGameType(gameTypeName, 'simon')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_SIMON)) {
       return this.getInitialDataForSimon(data);
     }
-    if (isGameTypeOneOf(gameTypeName, 'click', 'image interactive')) {
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_IMAGE_INTERACTIVE)) {
       return this.getInitialDataForImageInteractive(data);
     }
 

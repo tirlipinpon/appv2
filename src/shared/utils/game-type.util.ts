@@ -4,6 +4,11 @@
  * Utilise les données de la DB comme source de vérité
  */
 
+// Export des constantes de types de jeux
+export * from './game-type.constants';
+
+import { GAME_TYPE_VARIATIONS } from './game-type.constants';
+
 /**
  * Normalise un nom de type de jeu pour la comparaison
  * - Convertit en minuscules
@@ -39,4 +44,16 @@ export function isGameTypeOneOf(
 ): boolean {
   const normalized = normalizeGameTypeName(gameTypeName);
   return targetTypes.some(type => normalizeGameTypeName(type) === normalized);
+}
+
+/**
+ * Vérifie si un type de jeu correspond à un type constant
+ * Usage: isGameTypeConstant(gameType, GAME_TYPE_QCM)
+ */
+export function isGameTypeConstant(
+  gameTypeName: string | null | undefined,
+  constantType: string
+): boolean {
+  const variations = GAME_TYPE_VARIATIONS[constantType] || [];
+  return isGameTypeOneOf(gameTypeName, ...variations);
 }

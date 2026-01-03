@@ -7,7 +7,19 @@
  */
 
 import { Game } from '../../core/types/game.types';
-import { isGameTypeOneOf } from '@shared/utils/game-type.util';
+import {
+  isGameTypeOneOf,
+  GAME_TYPE_IMAGE_INTERACTIVE,
+  GAME_TYPE_REPONSE_LIBRE,
+  GAME_TYPE_MEMORY,
+  GAME_TYPE_QCM,
+  GAME_TYPE_CHRONOLOGIE,
+  GAME_TYPE_VRAI_FAUX,
+  GAME_TYPE_LIENS,
+  GAME_TYPE_CASE_VIDE,
+  GAME_TYPE_SIMON,
+  getGameTypeVariations,
+} from '@shared/utils/game-type.util';
 
 /**
  * Normalise un type de jeu pour la comparaison
@@ -88,8 +100,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
     .replace(/[\u0300-\u036f]/g, '');
   
   // Normaliser "click" vers "image_interactive"
-  if (isGameTypeOneOf(gameTypeName, 'click', 'image interactive', 'image_interactive')) {
-    gameTypeName = 'image_interactive';
+  if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_IMAGE_INTERACTIVE))) {
+    gameTypeName = GAME_TYPE_IMAGE_INTERACTIVE;
   }
   
   // Vérifier d'abord si game_data_json existe déjà dans la base de données
@@ -101,7 +113,7 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
     gameDataJson = rawGame.game_data_json;
   } else {
     // Sinon, convertir depuis metadata, question, reponses, aides (anciens jeux)
-    if (gameTypeName === 'reponse_libre') {
+    if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_REPONSE_LIBRE))) {
       // Réponse libre : convertir depuis metadata.reponse_valide ou reponses.reponse_valide
       if (rawGame.metadata?.['reponse_valide']) {
         gameDataJson = {
@@ -112,7 +124,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
           reponse_valide: rawGame.reponses['reponse_valide']
         };
       }
-    } else if (gameTypeName === 'memory') {
+      gameTypeName = GAME_TYPE_REPONSE_LIBRE;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_MEMORY))) {
       // Memory : convertir metadata.paires en game_data_json.paires
       if (rawGame.metadata?.['paires'] && Array.isArray(rawGame.metadata['paires'])) {
         gameDataJson = {
@@ -122,7 +135,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
           }))
         };
       }
-    } else if (gameTypeName === 'qcm') {
+      gameTypeName = GAME_TYPE_MEMORY;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_QCM))) {
       // QCM : convertir depuis metadata ou reponses
       if (rawGame.metadata?.['propositions'] || rawGame.reponses?.['propositions']) {
         gameDataJson = {
@@ -132,7 +146,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
       } else if (rawGame.reponses) {
         gameDataJson = rawGame.reponses;
       }
-    } else if (gameTypeName === 'chronologie') {
+      gameTypeName = GAME_TYPE_QCM;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_CHRONOLOGIE))) {
       // Chronologie : convertir depuis metadata
       if (rawGame.metadata?.['mots'] || rawGame.metadata?.['ordre_correct']) {
         gameDataJson = {
@@ -142,7 +157,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
       } else if (rawGame.reponses) {
         gameDataJson = rawGame.reponses;
       }
-    } else if (gameTypeName === 'vrai_faux' || gameTypeName === 'vrai/faux' || gameTypeName === 'vrai faux' || gameTypeName === 'vrais faux') {
+      gameTypeName = GAME_TYPE_CHRONOLOGIE;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_VRAI_FAUX))) {
       // Vrai/Faux : convertir depuis metadata.enonces
       if (rawGame.metadata?.['enonces'] && Array.isArray(rawGame.metadata['enonces'])) {
         gameDataJson = {
@@ -154,7 +170,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
       } else if (rawGame.reponses) {
         gameDataJson = rawGame.reponses;
       }
-    } else if (gameTypeName === 'liens') {
+      gameTypeName = GAME_TYPE_VRAI_FAUX;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_LIENS))) {
       // Liens : convertir depuis metadata
       if (rawGame.metadata?.['mots'] || rawGame.metadata?.['reponses'] || rawGame.metadata?.['liens']) {
         gameDataJson = {
@@ -165,7 +182,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
       } else if (rawGame.reponses) {
         gameDataJson = rawGame.reponses;
       }
-    } else if (gameTypeName === 'case_vide' || gameTypeName === 'case vide') {
+      gameTypeName = GAME_TYPE_LIENS;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_CASE_VIDE))) {
       // Case vide : convertir depuis metadata
       if (rawGame.metadata) {
         gameDataJson = {
@@ -177,7 +195,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
       } else if (rawGame.reponses) {
         gameDataJson = rawGame.reponses;
       }
-    } else if (gameTypeName === 'simon') {
+      gameTypeName = GAME_TYPE_CASE_VIDE;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_SIMON))) {
       // Simon : convertir depuis metadata
       if (rawGame.metadata) {
         gameDataJson = {
@@ -188,7 +207,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
       } else if (rawGame.reponses) {
         gameDataJson = rawGame.reponses;
       }
-    } else if (gameTypeName === 'image_interactive') {
+      gameTypeName = GAME_TYPE_SIMON;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_IMAGE_INTERACTIVE))) {
       // Image interactive (click) : convertir depuis metadata
       if (rawGame.metadata) {
         gameDataJson = {
@@ -203,6 +223,7 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
       } else if (rawGame.reponses) {
         gameDataJson = rawGame.reponses;
       }
+      gameTypeName = GAME_TYPE_IMAGE_INTERACTIVE;
     } else if (rawGame.reponses) {
       // Pour les autres types, utiliser reponses si disponible
       gameDataJson = rawGame.reponses;

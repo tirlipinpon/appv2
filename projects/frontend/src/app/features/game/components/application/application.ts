@@ -8,6 +8,7 @@ import { CheckpointService } from '../../../../core/services/save/checkpoint.ser
 import { ChildAuthService } from '../../../../core/auth/child-auth.service';
 import { GameState } from '../../types/game.types';
 import { normalizeGameType } from '../../../../shared/utils/game-normalization.util';
+import { SPECIFIC_GAME_TYPES } from '@shared/utils/game-type.util';
 
 @Injectable({
   providedIn: 'root',
@@ -69,9 +70,8 @@ export class GameApplication {
 
     // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
     // Ces jeux appellent completeGame() seulement si isCorrect === true, donc on leur donne 100% si terminés
-    const specificGameTypes = ['case_vide', 'case vide', 'liens', 'vrai_faux', 'vrai/faux', 'image_interactive', 'memory', 'simon', 'qcm', 'chronologie', 'click', 'reponse_libre'];
     const normalizedGameType = normalizeGameType(game.game_type);
-    const isSpecificGame = specificGameTypes.some(type => normalizeGameType(type) === normalizedGameType);
+    const isSpecificGame = SPECIFIC_GAME_TYPES.some(type => normalizeGameType(type) === normalizedGameType);
 
     // Si pas de gameState (jeux spécifiques comme image_interactive), créer un gameState minimal
     let effectiveGameState: GameState;

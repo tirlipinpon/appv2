@@ -8,6 +8,19 @@ import { ProgressBarComponent } from '../../shared/components/progress-bar/progr
 import { StarRatingComponent } from '../../shared/components/star-rating/star-rating.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { Game } from '../../core/types/game.types';
+import {
+  GAME_TYPE_QCM,
+  GAME_TYPE_MEMORY,
+  GAME_TYPE_SIMON,
+  GAME_TYPE_CHRONOLOGIE,
+  GAME_TYPE_LIENS,
+  GAME_TYPE_VRAI_FAUX,
+  GAME_TYPE_CASE_VIDE,
+  GAME_TYPE_IMAGE_INTERACTIVE,
+  GAME_TYPE_REPONSE_LIBRE,
+  getGameTypeVariations,
+  normalizeGameTypeName,
+} from '@shared/utils/game-type.util';
 
 @Component({
   selector: 'app-subjects',
@@ -548,23 +561,34 @@ export class SubjectsComponent implements OnInit {
   getGameTypeLabel(gameType: string | undefined): string {
     if (!gameType) return 'Non défini';
     
-    // Mapping des types de jeux vers leurs labels
+    // Mapping des types de jeux vers leurs labels (basé sur les constantes)
     const typeLabels: Record<string, string> = {
-      'qcm': 'QCM',
-      'memory': 'Memory',
-      'chronologie': 'Chronologie',
-      'simon': 'Simon',
-      'image_interactive': 'Image interactive',
-      'reponse_libre': 'Réponse libre',
-      'vrai_faux': 'Vrai/Faux',
-      'liens': 'Liens',
-      'case_vide': 'Case vide',
-      'click': 'Click'
+      [GAME_TYPE_QCM]: 'QCM',
+      [GAME_TYPE_MEMORY]: 'Memory',
+      [GAME_TYPE_CHRONOLOGIE]: 'Chronologie',
+      [GAME_TYPE_SIMON]: 'Simon',
+      [GAME_TYPE_IMAGE_INTERACTIVE]: 'Image interactive',
+      [GAME_TYPE_REPONSE_LIBRE]: 'Réponse libre',
+      [GAME_TYPE_VRAI_FAUX]: 'Vrai/Faux',
+      [GAME_TYPE_LIENS]: 'Liens',
+      [GAME_TYPE_CASE_VIDE]: 'Case vide',
     };
     
-    // Si le type existe dans le mapping, l'utiliser
-    if (typeLabels[gameType]) {
-      return typeLabels[gameType];
+    // Normaliser le type pour la comparaison
+    const normalizedType = normalizeGameTypeName(gameType);
+    
+    // Chercher dans les constantes et leurs variations
+    for (const [constantType, label] of Object.entries(typeLabels)) {
+      if (getGameTypeVariations(constantType).some(variation => 
+        normalizeGameTypeName(variation) === normalizedType
+      )) {
+        return label;
+      }
+    }
+    
+    // Vérifier aussi 'click' qui est une variation de image_interactive
+    if (normalizedType === normalizeGameTypeName('click')) {
+      return typeLabels[GAME_TYPE_IMAGE_INTERACTIVE];
     }
     
     // Sinon, formater le type : remplacer les underscores par des espaces et capitaliser
@@ -584,20 +608,32 @@ export class SubjectsComponent implements OnInit {
     }
 
     const typeStyles: Record<string, { label: string; icon: string; color: string; bgColor: string }> = {
-      'qcm': { label: 'QCM', icon: '📝', color: '#1976d2', bgColor: '#e3f2fd' },
-      'memory': { label: 'Memory', icon: '🧠', color: '#7b1fa2', bgColor: '#f3e5f5' },
-      'chronologie': { label: 'Chronologie', icon: '⏱️', color: '#f57c00', bgColor: '#fff3e0' },
-      'simon': { label: 'Simon', icon: '🎮', color: '#388e3c', bgColor: '#e8f5e9' },
-      'image_interactive': { label: 'Image interactive', icon: '🖼️', color: '#c2185b', bgColor: '#fce4ec' },
-      'reponse_libre': { label: 'Réponse libre', icon: '✍️', color: '#0288d1', bgColor: '#e1f5fe' },
-      'vrai_faux': { label: 'Vrai/Faux', icon: '✓✗', color: '#d32f2f', bgColor: '#ffebee' },
-      'liens': { label: 'Liens', icon: '🔗', color: '#5d4037', bgColor: '#efebe9' },
-      'case_vide': { label: 'Case vide', icon: '📋', color: '#455a64', bgColor: '#eceff1' },
-      'click': { label: 'Click', icon: '👆', color: '#00796b', bgColor: '#e0f2f1' }
+      [GAME_TYPE_QCM]: { label: 'QCM', icon: '📝', color: '#1976d2', bgColor: '#e3f2fd' },
+      [GAME_TYPE_MEMORY]: { label: 'Memory', icon: '🧠', color: '#7b1fa2', bgColor: '#f3e5f5' },
+      [GAME_TYPE_CHRONOLOGIE]: { label: 'Chronologie', icon: '⏱️', color: '#f57c00', bgColor: '#fff3e0' },
+      [GAME_TYPE_SIMON]: { label: 'Simon', icon: '🎮', color: '#388e3c', bgColor: '#e8f5e9' },
+      [GAME_TYPE_IMAGE_INTERACTIVE]: { label: 'Image interactive', icon: '🖼️', color: '#c2185b', bgColor: '#fce4ec' },
+      [GAME_TYPE_REPONSE_LIBRE]: { label: 'Réponse libre', icon: '✍️', color: '#0288d1', bgColor: '#e1f5fe' },
+      [GAME_TYPE_VRAI_FAUX]: { label: 'Vrai/Faux', icon: '✓✗', color: '#d32f2f', bgColor: '#ffebee' },
+      [GAME_TYPE_LIENS]: { label: 'Liens', icon: '🔗', color: '#5d4037', bgColor: '#efebe9' },
+      [GAME_TYPE_CASE_VIDE]: { label: 'Case vide', icon: '📋', color: '#455a64', bgColor: '#eceff1' },
     };
 
-    if (typeStyles[gameType]) {
-      return typeStyles[gameType];
+    // Normaliser le type pour la comparaison
+    const normalizedType = normalizeGameTypeName(gameType);
+    
+    // Chercher dans les constantes et leurs variations
+    for (const [constantType, style] of Object.entries(typeStyles)) {
+      if (getGameTypeVariations(constantType).some(variation => 
+        normalizeGameTypeName(variation) === normalizedType
+      )) {
+        return style;
+      }
+    }
+    
+    // Vérifier aussi 'click' qui est une variation de image_interactive
+    if (normalizedType === normalizeGameTypeName('click')) {
+      return typeStyles[GAME_TYPE_IMAGE_INTERACTIVE];
     }
 
     // Par défaut, formater le type

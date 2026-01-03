@@ -21,7 +21,21 @@ import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
 import { ImageUploadService, type ImageUploadResult } from '../../services/image-upload/image-upload.service';
 import { ErrorSnackbarService } from '../../../../../../shared';
-import { isGameType, isGameTypeOneOf } from '../../../../utils/game-type.util';
+import {
+  isGameType,
+  isGameTypeOneOf,
+  isGameTypeConstant,
+  GAME_TYPE_QCM,
+  GAME_TYPE_MEMORY,
+  GAME_TYPE_SIMON,
+  GAME_TYPE_CHRONOLOGIE,
+  GAME_TYPE_LIENS,
+  GAME_TYPE_VRAI_FAUX,
+  GAME_TYPE_CASE_VIDE,
+  GAME_TYPE_IMAGE_INTERACTIVE,
+  GAME_TYPE_REPONSE_LIBRE,
+  getGameTypeVariations,
+} from '../../../../utils/game-type.util';
 
 @Component({
   selector: 'app-game-card',
@@ -359,7 +373,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForCaseVide(): CaseVideData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (isGameType(currentType, 'case vide') && data) {
+    if (isGameTypeConstant(currentType, GAME_TYPE_CASE_VIDE) && data) {
       // Accepter le nouveau format (texte + cases_vides) ou l'ancien format (debut_phrase)
       if (('texte' in data && 'cases_vides' in data) || 'debut_phrase' in data) {
         return data as CaseVideData;
@@ -371,7 +385,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForReponseLibre(): ReponseLibreData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (isGameType(currentType, 'reponse libre') && data && 'reponse_valide' in data && !('debut_phrase' in data)) {
+    if (isGameTypeConstant(currentType, GAME_TYPE_REPONSE_LIBRE) && data && 'reponse_valide' in data && !('debut_phrase' in data)) {
       return data as ReponseLibreData;
     }
     return null;
@@ -380,7 +394,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForLiens(): LiensData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (isGameType(currentType, 'liens') && data && 'mots' in data && 'reponses' in data && 'liens' in data) {
+    if (isGameTypeConstant(currentType, GAME_TYPE_LIENS) && data && 'mots' in data && 'reponses' in data && 'liens' in data) {
       return data as LiensData;
     }
     return null;
@@ -389,7 +403,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForChronologie(): ChronologieData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (isGameType(currentType, 'chronologie') && data && 'mots' in data && 'ordre_correct' in data && !('reponses' in data)) {
+    if (isGameTypeConstant(currentType, GAME_TYPE_CHRONOLOGIE) && data && 'mots' in data && 'ordre_correct' in data && !('reponses' in data)) {
       return data as ChronologieData;
     }
     return null;
@@ -398,7 +412,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForQcm(): QcmData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (isGameType(currentType, 'qcm') && data && 'propositions' in data && 'reponses_valides' in data) {
+    if (isGameTypeConstant(currentType, GAME_TYPE_QCM) && data && 'propositions' in data && 'reponses_valides' in data) {
       return data as QcmData;
     }
     return null;
@@ -407,7 +421,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForVraiFaux(): VraiFauxData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (isGameType(currentType, 'vrai/faux') && data && 'enonces' in data) {
+    if (isGameTypeConstant(currentType, GAME_TYPE_VRAI_FAUX) && data && 'enonces' in data) {
       return data as VraiFauxData;
     }
     return null;
@@ -416,7 +430,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForMemory(): MemoryData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (isGameType(currentType, 'memory') && data && 'paires' in data) {
+    if (isGameTypeConstant(currentType, GAME_TYPE_MEMORY) && data && 'paires' in data) {
       return data as MemoryData;
     }
     return null;
@@ -425,7 +439,7 @@ export class GameCardComponent implements OnInit, OnChanges {
   getInitialDataForSimon(): SimonData | null {
     const data = this.initialGameData();
     const currentType = this.currentGameTypeName();
-    if (isGameType(currentType, 'simon') && data) {
+    if (isGameTypeConstant(currentType, GAME_TYPE_SIMON) && data) {
       // Vérifier que les propriétés requises existent
       if ('nombre_elements' in data && 'type_elements' in data) {
         return data as SimonData;
@@ -463,47 +477,47 @@ export class GameCardComponent implements OnInit, OnChanges {
 
     try {
       // Utiliser les fonctions de comparaison normalisées
-      if (isGameType(typeName, 'qcm')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_QCM)) {
         const qcm = metadata as unknown as QcmData;
         return `${qcm.propositions?.length || 0} propositions, ${qcm.reponses_valides?.length || 0} bonne(s) réponse(s)`;
       }
       
-      if (isGameType(typeName, 'case vide')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_CASE_VIDE)) {
         const caseVide = metadata as unknown as CaseVideData;
         return `"${caseVide.debut_phrase || ''} ___ ${caseVide.fin_phrase || ''}"`;
       }
       
-      if (isGameType(typeName, 'reponse libre')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_REPONSE_LIBRE)) {
         const reponseLibre = metadata as unknown as ReponseLibreData;
         return `Réponse attendue: "${reponseLibre.reponse_valide || 'N/A'}"`;
       }
       
-      if (isGameType(typeName, 'liens')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_LIENS)) {
         const liens = metadata as unknown as LiensData;
         return `${liens.mots?.length || 0} mots à relier`;
       }
       
-      if (isGameType(typeName, 'chronologie')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_CHRONOLOGIE)) {
         const chronologie = metadata as unknown as ChronologieData;
         return `${chronologie.mots?.length || 0} éléments à ordonner`;
       }
       
-      if (isGameType(typeName, 'vrai/faux')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_VRAI_FAUX)) {
         const vraiFaux = metadata as unknown as VraiFauxData;
         return `${vraiFaux.enonces?.length || 0} énoncé(s)`;
       }
       
-      if (isGameType(typeName, 'memory')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_MEMORY)) {
         const memory = metadata as unknown as MemoryData;
         return `${memory.paires?.length || 0} paire(s) de cartes`;
       }
       
-      if (isGameType(typeName, 'simon')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_SIMON)) {
         const simon = metadata as unknown as SimonData;
         return `${simon.nombre_elements || 0} élément(s), type: ${simon.type_elements || 'N/A'}`;
       }
       
-      if (isGameTypeOneOf(typeName, 'click', 'image interactive')) {
+      if (isGameTypeConstant(typeName, GAME_TYPE_IMAGE_INTERACTIVE)) {
         const click = metadata as unknown as ImageInteractiveData;
         return `Image ${click.image_width || 0}×${click.image_height || 0}px, ${click.zones?.length || 0} zone(s) cliquable(s)`;
       }
