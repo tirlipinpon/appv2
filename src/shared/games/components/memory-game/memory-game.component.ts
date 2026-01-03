@@ -29,6 +29,7 @@ export class MemoryGameComponent implements OnInit {
   
   @Output() validated = new EventEmitter<boolean>();
   @Output() nextRequested = new EventEmitter<void>();
+  @Output() resetRequested = new EventEmitter<void>();
 
   cards = signal<MemoryCard[]>([]);
   flippedCards = signal<number[]>([]); // IDs des cartes actuellement retournées (max 2)
@@ -204,6 +205,8 @@ export class MemoryGameComponent implements OnInit {
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
     this.initializeCards();
+    // Émettre l'événement vers le parent pour qu'il réinitialise aussi son état
+    this.resetRequested.emit();
   }
 
   /**

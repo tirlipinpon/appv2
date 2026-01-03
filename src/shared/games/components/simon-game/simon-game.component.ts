@@ -27,6 +27,7 @@ export class SimonGameComponent implements OnInit, OnDestroy {
   
   @Output() validated = new EventEmitter<boolean>();
   @Output() nextRequested = new EventEmitter<void>();
+  @Output() resetRequested = new EventEmitter<void>();
 
   // Éléments disponibles selon le type
   availableElements = signal<SimonElement[]>([]);
@@ -340,6 +341,8 @@ export class SimonGameComponent implements OnInit, OnDestroy {
     this.animationTimeouts = [];
     
     this.startGame();
+    // Émettre l'événement vers le parent pour qu'il réinitialise aussi son état
+    this.resetRequested.emit();
   }
 
   /**

@@ -22,6 +22,7 @@ export class ChronologieGameComponent implements OnInit {
   @Output() orderChanged = new EventEmitter<string[]>();
   @Output() validated = new EventEmitter<boolean>();
   @Output() nextRequested = new EventEmitter<void>();
+  @Output() resetRequested = new EventEmitter<void>();
 
   // Mots dans l'ordre actuel (mélangés initialement)
   currentOrder = signal<string[]>([]);
@@ -92,6 +93,8 @@ export class ChronologieGameComponent implements OnInit {
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
     this.shuffleMots(); // Remélange pour un nouvel essai
+    // Émettre l'événement vers le parent pour qu'il réinitialise aussi son état
+    this.resetRequested.emit();
   }
 
   /**
