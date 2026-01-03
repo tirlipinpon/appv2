@@ -205,6 +205,73 @@ export class ImageUploadService {
   }
 
   /**
+   * Copie une image d'un jeu vers un autre jeu
+   * @param sourceImageUrl URL de l'image source
+   * @param targetGameId ID du jeu de destination
+   * @returns Observable avec la nouvelle URL de l'image
+   */
+  copyImageToGame(sourceImageUrl: string, targetGameId: string): Observable<ImageUploadResult> {
+    try {
+      // Extraire le chemin du fichier depuis l'URL Supabase
+      const url = new URL(sourceImageUrl);
+      const pathParts = url.pathname.split('/');
+      const bucketIndex = pathParts.indexOf(this.bucketName);
+      
+      if (bucketIndex < 0 || bucketIndex >= pathParts.length - 1) {
+        return from([{
+          url: '',
+          width: 0,
+          height: 0,
+          error: 'URL d\'image invalide'
+        }]);
+      }
+
+      // Extraire le chemin du fichier source
+      const sourceFilePath = pathParts.slice(bucketIndex + 1).join('/');
+      const cleanSourcePath = sourceFilePath.split('?')[0];
+
+      // Télécharger l'image source depuis Supabase Storage
+      return from(
+        this.supabaseService.client.storage
+          .from(this.bucketName)
+          .download(cleanSourcePath)
+      ).pipe(
+        switchMap((result) => {
+          if (result.error) {
+            return from([{
+              url: '',
+              width: 0,
+              height: 0,
+              error: result.error.message || 'Erreur lors du téléchargement de l\'image source'
+            }]);
+          }
+
+          // Convertir le Blob en File
+          const blob = result.data;
+          const fileName = cleanSourcePath.split('/').pop() || 'image.webp';
+          const file = new File([blob], fileName, { type: 'image/webp' });
+
+          // Uploader dans le nouveau dossier avec le gameId
+          return this.uploadImage(file, targetGameId);
+        }),
+        catchError((error) => of({
+          url: '',
+          width: 0,
+          height: 0,
+          error: error instanceof Error ? error.message : 'Erreur lors de la copie de l\'image'
+        }))
+      );
+    } catch (error) {
+      return from([{
+        url: '',
+        width: 0,
+        height: 0,
+        error: error instanceof Error ? error.message : 'Erreur lors de l\'extraction du chemin de l\'image'
+      }]);
+    }
+  }
+
+  /**
    * Supprime une image du storage
    */
   deleteImage(imageUrl: string): Observable<{ success: boolean; error: string | null }> {

@@ -1,6 +1,9 @@
 import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { GamesStore } from '../../../store/games.store';
-import type { GameCreate, GameUpdate } from '../../../types/game';
+import { Infrastructure } from '../../infrastructure/infrastructure';
+import type { Game, GameCreate, GameUpdate } from '../../../types/game';
 import type { AIGameGenerationRequest } from '../../../types/ai-game-generation';
 
 @Injectable({
@@ -8,6 +11,7 @@ import type { AIGameGenerationRequest } from '../../../types/ai-game-generation'
 })
 export class GamesApplication {
   private readonly store = inject(GamesStore);
+  private readonly infrastructure = inject(Infrastructure);
 
   loadGameTypes(): void {
     this.store.loadGameTypes();
@@ -17,8 +21,20 @@ export class GamesApplication {
     this.store.loadGamesBySubject({ subjectId, categoryId });
   }
 
-  createGame(gameData: GameCreate): void {
-    this.store.createGame(gameData);
+  createGame(gameData: GameCreate): Observable<Game | null> {
+    // Créer le jeu via l'infrastructure pour obtenir l'ID
+    return this.infrastructure.createGame(gameData).pipe(
+      map((result) => {
+        if (result.error) {
+          // Afficher l'erreur via le store
+          this.store.setError(result.error.message || 'Erreur lors de la création du jeu');
+          return null;
+        }
+        // Mettre à jour le store pour ajouter le jeu à la liste
+        this.store.createGame(gameData);
+        return result.game;
+      })
+    );
   }
 
   updateGame(id: string, updates: GameUpdate): void {

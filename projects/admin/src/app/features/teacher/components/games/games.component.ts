@@ -2,7 +2,7 @@ import { Component, inject, OnInit, OnDestroy, signal, computed, effect, ViewChi
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray, FormControl } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router, NavigationEnd } from '@angular/router';
-import { filter, Subscription } from 'rxjs';
+import { filter, Subscription, Observable } from 'rxjs';
 import { GamesApplication } from './application/application';
 import { GamesStore } from '../../store/games.store';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
@@ -34,8 +34,7 @@ import { normalizeGameData } from '../../utils/game-data-mapper';
 import { SCHOOL_LEVELS } from '../../utils/school-levels.util';
 import type { DuplicateGameData } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 import { ImageUploadService } from './services/image-upload/image-upload.service';
-import { switchMap } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-games',
@@ -440,6 +439,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     if ('imageFile' in data || 'oldImageUrl' in data) {
       this.imageInteractiveDataWithFile.set(data as ImageInteractiveDataWithFile);
       // Stocker aussi les données sans le fichier pour la compatibilité
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { imageFile, oldImageUrl, ...dataWithoutFile } = data as ImageInteractiveDataWithFile;
       this.gameSpecificData.set(dataWithoutFile as ImageInteractiveData);
     } else {
@@ -474,7 +474,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.gameForm.valid || !this.subjectId() || !this.gameSpecificValid()) return;
     const v = this.gameForm.value;
     const subjectId = this.subjectId()!;
-    let gameData = this.gameSpecificData();
+    const gameData = this.gameSpecificData();
     if (!gameData) return;
 
     // Générer un nom automatique
@@ -491,70 +491,97 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
                                this.selectedGameTypeName()?.toLowerCase() === 'image interactive';
 
     if (isImageInteractive && imageDataWithFile?.imageFile) {
-      // Uploader l'image avant de créer le jeu
+      // Pour les jeux click : créer d'abord le jeu, puis uploader l'image dans son dossier
       const file = imageDataWithFile.imageFile;
+      
+      // Extraire les données sans l'image (imageFile et oldImageUrl sont extraits mais non utilisés ici)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { imageFile, oldImageUrl, ...imageData } = imageDataWithFile as ImageInteractiveDataWithFile;
+      const imageDataTyped = imageData as ImageInteractiveData;
+      const gameDataWithoutImage: ImageInteractiveData = {
+        image_url: '',
+        image_width: 0,
+        image_height: 0,
+        zones: imageDataTyped.zones,
+        require_all_correct_zones: imageDataTyped.require_all_correct_zones,
+      };
 
-      this.imageUploadService.uploadImage(file).subscribe({
-        next: (result) => {
-          if (result.error) {
-            console.error('Erreur upload:', result.error);
-            alert(`Erreur lors de l'upload de l'image: ${result.error}`);
+      // Créer le jeu d'abord (sans image)
+      this.createGameWithData(v, subjectId, autoName, aides, gameDataWithoutImage).subscribe({
+        next: (createdGame) => {
+          if (!createdGame) {
+            console.error('Erreur: Le jeu n\'a pas pu être créé');
+            alert('Erreur lors de la création du jeu');
             return;
           }
 
-          // Mettre à jour les données avec la nouvelle URL en copiant toutes les propriétés
-          // imageDataWithFile est garanti d'être non-null ici car on a vérifié imageFile
-          // Extraire les propriétés de ImageInteractiveData depuis ImageInteractiveDataWithFile
-          const { imageFile, oldImageUrl, ...imageData } = imageDataWithFile as ImageInteractiveDataWithFile;
-          // Typer explicitement imageData comme ImageInteractiveData pour que TypeScript reconnaisse les propriétés
-          const imageDataTyped = imageData as ImageInteractiveData;
-          const updatedImageData: ImageInteractiveData = {
-            image_url: result.url,
-            image_width: result.width,
-            image_height: result.height,
-            zones: imageDataTyped.zones,
-            require_all_correct_zones: imageDataTyped.require_all_correct_zones,
-          };
+          // Uploader l'image dans le dossier du jeu créé
+          this.imageUploadService.uploadImage(file, createdGame.id).subscribe({
+            next: (result) => {
+              if (result.error) {
+                console.error('Erreur upload:', result.error);
+                alert(`Erreur lors de l'upload de l'image: ${result.error}`);
+                return;
+              }
 
-          // Créer le jeu avec la nouvelle URL
-          this.createGameWithData(v, subjectId, autoName, aides, updatedImageData);
+              // Mettre à jour le jeu avec l'URL de l'image
+              const updatedImageData: ImageInteractiveData = {
+                image_url: result.url,
+                image_width: result.width,
+                image_height: result.height,
+                zones: imageDataTyped.zones,
+                require_all_correct_zones: imageDataTyped.require_all_correct_zones,
+              };
+
+              this.application.updateGame(createdGame.id, {
+                metadata: updatedImageData as unknown as Record<string, unknown>,
+              });
+            },
+            error: (error) => {
+              console.error('Erreur upload:', error);
+              alert('Erreur lors de l\'upload de l\'image');
+            }
+          });
         },
         error: (error) => {
-          console.error('Erreur upload:', error);
-          alert('Erreur lors de l\'upload de l\'image');
+          console.error('Erreur création:', error);
+          alert('Erreur lors de la création du jeu');
         }
       });
     } else {
       // Pas de nouveau fichier, créer directement
-      this.createGameWithData(v, subjectId, autoName, aides, gameData);
+      this.createGameWithData(v, subjectId, autoName, aides, gameData).subscribe();
     }
   }
 
   private createGameWithData(
-    v: any,
+    v: Record<string, unknown>,
     subjectId: string,
     autoName: string,
     aides: string[],
     gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData
-  ): void {
+  ): Observable<Game | null> {
     // Stocker les données spécifiques dans metadata
     // Si on est en mode "gestion d'une sous-catégorie spécifique", utiliser le categoryId des query params
     const categoryId = this.isCategoryContext() 
       ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
       : this.selectedCategoryId();
-    this.application.createGame({
+    
+    return this.application.createGame({
       subject_id: categoryId ? null : subjectId,
       subject_category_id: categoryId || null,
-      game_type_id: v.game_type_id!,
+      game_type_id: (v['game_type_id'] as string) || '',
       name: autoName,
-      instructions: v.instructions || null,
-      question: v.question?.trim() || null,
+      instructions: (v['instructions'] as string | undefined) || null,
+      question: (typeof v['question'] === 'string' ? v['question'].trim() : null) || null,
       reponses: null, // On utilise metadata pour les données spécifiques
       aides: aides.length > 0 ? aides : null,
       metadata: gameData as unknown as Record<string, unknown>,
-    });
-
-    this.resetForm();
+    }).pipe(
+      tap(() => {
+        this.resetForm();
+      })
+    );
   }
 
   startEdit(game: Game): void {
@@ -612,7 +639,8 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Générer un nom automatique
     const gameTypeName = this.selectedGameTypeName() || 'Jeu';
-    const questionPreview = v.question?.trim() ? v.question.trim().substring(0, 30) : '';
+    const questionValue = typeof v['question'] === 'string' ? v['question'].trim() : '';
+    const questionPreview = questionValue ? questionValue.substring(0, 30) : '';
     const autoName = questionPreview ? `${gameTypeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}` : gameTypeName;
 
     // Construire les aides
@@ -620,12 +648,12 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.application.updateGame(gameId, {
       name: autoName,
-      instructions: v.instructions || null,
-      question: v.question?.trim() || null,
+      instructions: (v['instructions'] as string | undefined) || null,
+      question: questionValue || null,
       reponses: null,
       aides: aides.length > 0 ? aides : null,
       metadata: gameData as unknown as Record<string, unknown>,
-      game_type_id: v.game_type_id!,
+      game_type_id: (v['game_type_id'] as string) || '',
     });
 
     this.cancelEdit();
@@ -830,17 +858,88 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
         : null);
 
-    this.application.createGame({
-      subject_id: categoryId ? null : duplicateData.subjectId,
-      subject_category_id: categoryId || null,
-      game_type_id: game.game_type_id,
-      name: autoName,
-      instructions: duplicateData.gameData.instructions || null,
-      question: duplicateData.gameData.question?.trim() || null,
-      reponses: null,
-      aides: aides,
-      metadata: duplicateData.gameData.metadata || null,
-    });
+    // Vérifier si c'est un jeu "click" avec une image
+    const isClickGame = gameTypeName.toLowerCase() === 'click';
+    const metadata = duplicateData.gameData.metadata || null;
+    const imageUrl = metadata && typeof metadata === 'object' && 'image_url' in metadata
+      ? (metadata as unknown as ImageInteractiveData).image_url
+      : null;
+
+    if (isClickGame && imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0) {
+      // Créer le jeu d'abord sans image
+      const metadataWithoutImage: ImageInteractiveData = {
+        image_url: '',
+        image_width: 0,
+        image_height: 0,
+        zones: (metadata as unknown as ImageInteractiveData)?.zones || [],
+        require_all_correct_zones: (metadata as unknown as ImageInteractiveData)?.require_all_correct_zones ?? true,
+      };
+
+      this.application.createGame({
+        subject_id: categoryId ? null : duplicateData.subjectId,
+        subject_category_id: categoryId || null,
+        game_type_id: game.game_type_id,
+        name: autoName,
+        instructions: duplicateData.gameData.instructions || null,
+        question: duplicateData.gameData.question?.trim() || null,
+        reponses: null,
+        aides: aides,
+        metadata: metadataWithoutImage as unknown as Record<string, unknown>,
+      }).subscribe({
+        next: (createdGame) => {
+          if (!createdGame) {
+            console.error('Erreur: Le jeu n\'a pas pu être créé');
+            this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+            return;
+          }
+
+          // Copier l'image dans le nouveau dossier du jeu
+          this.imageUploadService.copyImageToGame(imageUrl, createdGame.id).subscribe({
+            next: (result) => {
+              if (result.error) {
+                console.error('Erreur copie image:', result.error);
+                this.errorSnackbar.showError(`Erreur lors de la copie de l'image: ${result.error}`);
+                return;
+              }
+
+              // Mettre à jour le jeu avec la nouvelle URL d'image
+              const updatedMetadata: ImageInteractiveData = {
+                image_url: result.url,
+                image_width: result.width,
+                image_height: result.height,
+                zones: metadataWithoutImage.zones,
+                require_all_correct_zones: metadataWithoutImage.require_all_correct_zones,
+              };
+
+              this.application.updateGame(createdGame.id, {
+                metadata: updatedMetadata as unknown as Record<string, unknown>,
+              });
+            },
+            error: (error) => {
+              console.error('Erreur copie image:', error);
+              this.errorSnackbar.showError('Erreur lors de la copie de l\'image');
+            }
+          });
+        },
+        error: (error) => {
+          console.error('Erreur duplication:', error);
+          this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+        }
+      });
+    } else {
+      // Pas un jeu click ou pas d'image, créer directement
+      this.application.createGame({
+        subject_id: categoryId ? null : duplicateData.subjectId,
+        subject_category_id: categoryId || null,
+        game_type_id: game.game_type_id,
+        name: autoName,
+        instructions: duplicateData.gameData.instructions || null,
+        question: duplicateData.gameData.question?.trim() || null,
+        reponses: null,
+        aides: aides,
+        metadata: duplicateData.gameData.metadata || null,
+      }).subscribe();
+    }
 
     this.duplicateDialogOpen.set(false);
     this.gameToDuplicate.set(null);
