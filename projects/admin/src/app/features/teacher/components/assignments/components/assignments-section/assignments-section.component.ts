@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TeacherAssignmentStore } from '../../../../store/assignments.store';
 import { TeacherStore } from '../../../../store/index';
-import { GamesStatsDisplayComponent, GamesStatsService } from '../../../../../../shared';
+import { GamesStatsDisplayComponent, GamesStatsService, ConfirmationDialogService } from '../../../../../../shared';
 import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../transfer-assignment-dialog/transfer-assignment-dialog.component';
 import { ChildrenListModalComponent } from '../children-list-modal/children-list-modal.component';
 import { TeacherInfoModalComponent } from '../teacher-info-modal/teacher-info-modal.component';
@@ -38,6 +38,7 @@ export class AssignmentsSectionComponent {
   readonly teacherStore = inject(TeacherStore);
   private readonly infrastructure = inject(Infrastructure);
   private readonly gamesStatsService = inject(GamesStatsService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly categoriesCacheService = inject(CategoriesCacheService);
   private readonly schoolsStore = inject(SchoolsStore);
 
@@ -581,7 +582,15 @@ export class AssignmentsSectionComponent {
     message += `• Cette action est irréversible\n\n`;
     message += `Êtes-vous sûr de vouloir continuer ?`;
 
-    if (!confirm(message)) return;
+    const confirmed = await this.confirmationDialog.confirm({
+      title: 'Suppression d\'affectation',
+      message,
+      type: 'danger',
+      confirmText: 'Supprimer',
+      cancelText: 'Annuler',
+    });
+
+    if (!confirmed) return;
     this.teacherAssignmentStore.deleteAssignment(assignmentId);
   }
 

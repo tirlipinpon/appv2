@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ParentSubjectService, CategoryEnrollment, Enrollment } from '../../services/subject/parent-subject.service';
 import { SchoolService } from '../../services/school/school.service';
-import { GamesStatsDisplayComponent, GamesStatsService } from '../../../../shared';
+import { GamesStatsDisplayComponent, GamesStatsService, ErrorSnackbarService } from '../../../../shared';
 import { TeacherInfoModalComponent } from '../../../teacher/components/assignments/components/teacher-info-modal/teacher-info-modal.component';
 import type { Subject, SubjectCategory } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
@@ -23,6 +23,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
   private readonly parentSvc = inject(ParentSubjectService);
   private readonly schoolService = inject(SchoolService);
   private readonly gamesStatsService = inject(GamesStatsService);
+  private readonly errorSnackbar = inject(ErrorSnackbarService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -782,7 +783,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
       next: ({ enrollment, error }) => {
         if (error) {
           console.error('❌ Error adding subject:', error);
-          alert(`Erreur lors de l'ajout de la matière: ${error.message || 'Erreur inconnue'}`);
+          this.errorSnackbar.showError(`Erreur lors de l'ajout de la matière: ${error.message || 'Erreur inconnue'}`);
           return;
         }
         
@@ -846,7 +847,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('❌ Error in addSearchedSubject subscription:', err);
-        alert(`Erreur lors de l'ajout de la matière: ${err.message || 'Erreur inconnue'}`);
+        this.errorSnackbar.showError(`Erreur lors de l'ajout de la matière: ${err.message || 'Erreur inconnue'}`);
       }
     });
   }

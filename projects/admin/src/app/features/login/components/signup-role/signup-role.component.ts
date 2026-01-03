@@ -77,14 +77,7 @@ export class SignupRoleComponent {
   }
 
   async onSubmit() {
-    // #region agent log
-    console.log('🔍 [DEBUG-SIGNUP] onSubmit START', { formValid: this.signupForm.valid, formInvalid: this.signupForm.invalid });
-    // #endregion
-
     if (this.signupForm.invalid) {
-      // #region agent log
-      console.log('🔍 [DEBUG-SIGNUP] Form invalid, returning');
-      // #endregion
       return;
     }
 
@@ -93,24 +86,8 @@ export class SignupRoleComponent {
     this.showEmailExistsDialog = false;
 
     const { email, password } = this.signupForm.getRawValue();
-    console.log(`🔵 [SIGNUP-${this.config.roleKey.toUpperCase()}] onSubmit() - Starting signup:`, { email });
 
     const { user, error } = await this.authService.signUp(email, password, [this.config.roleKey]);
-
-    // #region agent log
-    console.log('🔍 [DEBUG-SIGNUP] signUp completed', { hasUser: !!user, hasError: !!error, userId: user?.id });
-    // #endregion
-
-    console.log(`📥 [SIGNUP-${this.config.roleKey.toUpperCase()}] signUp result:`, {
-      hasUser: !!user,
-      hasError: !!error,
-      error: error
-        ? {
-            message: error.message,
-            code: this.extractErrorCode(error),
-          }
-        : null,
-    });
 
     this.isLoading = false;
 
@@ -122,63 +99,33 @@ export class SignupRoleComponent {
     if (user) {
       // Vérifier si l'utilisateur est déjà connecté (session créée automatiquement en développement)
       const currentUser = this.authService.getCurrentUser();
-      // #region agent log
-      console.log('🔍 [DEBUG-SIGNUP] Checking currentUser after signup', { hasCurrentUser: !!currentUser, currentUserId: currentUser?.id, userId: user.id });
-      // #endregion
 
       if (currentUser) {
         // Si déjà connecté, rediriger vers le sélecteur de rôle ou dashboard
         const profile = await this.authService.getProfile();
-        // #region agent log
-        console.log('🔍 [DEBUG-SIGNUP] Profile loaded before navigation', { hasProfile: !!profile, rolesCount: profile?.roles?.length || 0, roles: profile?.roles });
-        // #endregion
 
         if (profile && profile.roles && profile.roles.length > 0) {
           if (profile.roles.length === 1) {
             this.authService.setActiveRole(profile.roles[0]);
-            // #region agent log
-            console.log('🔍 [DEBUG-SIGNUP] BEFORE navigate to dashboard', { target: '/dashboard' });
-            // #endregion
-            const navResult = await this.router.navigate(['/dashboard']);
-            // #region agent log
-            console.log('🔍 [DEBUG-SIGNUP] AFTER navigate to dashboard', { navResult, currentUrl: this.router.url, success: navResult });
-            // #endregion
+            await this.router.navigate(['/dashboard']);
           } else {
-            // #region agent log
-            console.log('🔍 [DEBUG-SIGNUP] BEFORE navigate to select-role', { target: '/select-role' });
-            // #endregion
-            const navResult = await this.router.navigate(['/select-role']);
-            // #region agent log
-            console.log('🔍 [DEBUG-SIGNUP] AFTER navigate to select-role', { navResult, currentUrl: this.router.url, success: navResult });
-            // #endregion
+            await this.router.navigate(['/select-role']);
           }
         } else {
           // Pas encore de profil, rediriger vers login pour confirmation
-          // #region agent log
-          console.log('🔍 [DEBUG-SIGNUP] BEFORE navigate to login (no profile)', { target: '/login' });
-          // #endregion
-          const navResult = await this.router.navigate(['/login'], {
+          await this.router.navigate(['/login'], {
             queryParams: {
               message: 'Veuillez vérifier votre email pour confirmer votre compte',
             },
           });
-          // #region agent log
-          console.log('🔍 [DEBUG-SIGNUP] AFTER navigate to login (no profile)', { navResult, currentUrl: this.router.url, success: navResult });
-          // #endregion
         }
       } else {
         // Pas encore de session, rediriger vers login
-        // #region agent log
-        console.log('🔍 [DEBUG-SIGNUP] BEFORE navigate to login (no session)', { target: '/login' });
-        // #endregion
-        const navResult = await this.router.navigate(['/login'], {
+        await this.router.navigate(['/login'], {
           queryParams: {
             message: 'Veuillez vérifier votre email pour confirmer votre compte',
           },
         });
-        // #region agent log
-        console.log('🔍 [DEBUG-SIGNUP] AFTER navigate to login (no session)', { navResult, currentUrl: this.router.url, success: navResult });
-        // #endregion
       }
     }
   }

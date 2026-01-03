@@ -7,7 +7,7 @@ import { Infrastructure } from '../infrastructure/infrastructure';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import type { Subject } from '../../types/subject';
 import type { SubjectCategory } from '../../types/subject';
-import { ErrorSnackbarService, ToastService, GamesStatsService, SchoolLevelSelectComponent } from '../../../../shared';
+import { ErrorSnackbarService, ToastService, GamesStatsService, SchoolLevelSelectComponent, ConfirmationDialogService } from '../../../../shared';
 import { TransferCategoryDialogComponent, TransferCategoryData } from './components/transfer-category-dialog/transfer-category-dialog.component';
 import { Application } from '../application/application';
 import { TeacherService } from '../../services/teacher/teacher.service';
@@ -28,6 +28,7 @@ export class SubjectsComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly infra = inject(Infrastructure);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly toastService = inject(ToastService);
   private readonly gamesStatsService = inject(GamesStatsService);
   private readonly application = inject(Application);
@@ -534,8 +535,13 @@ export class SubjectsComponent implements OnInit {
     });
   }
 
-  deleteCategory(categoryId: string): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette sous-catégorie ? Les jeux associés seront également supprimés.')) {
+  async deleteCategory(categoryId: string): Promise<void> {
+    const confirmed = await this.confirmationDialog.confirm({
+      message: 'Êtes-vous sûr de vouloir supprimer cette sous-catégorie ? Les jeux associés seront également supprimés.',
+      type: 'danger',
+    });
+
+    if (!confirmed) {
       return;
     }
     const id = this.subjectId();

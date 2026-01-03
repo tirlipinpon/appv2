@@ -1,5 +1,6 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ConfirmationDialogService } from '../../services/confirmation-dialog/confirmation-dialog.service';
 
 @Component({
   selector: 'app-confirmation-dialog',
@@ -9,29 +10,28 @@ import { CommonModule } from '@angular/common';
   styleUrl: './confirmation-dialog.component.scss'
 })
 export class ConfirmationDialogComponent {
-  @Input() title = 'Confirmation';
-  @Input() message = 'Êtes-vous sûr de vouloir effectuer cette action ?';
-  @Input() confirmText = 'Confirmer';
-  @Input() cancelText = 'Annuler';
-  @Input() type: 'danger' | 'warning' | 'info' = 'warning';
-  @Input() isOpen = false;
+  private readonly confirmationService = inject(ConfirmationDialogService);
+
+  readonly isOpen = this.confirmationService.isOpen;
+  readonly options = this.confirmationService.options;
   
-  @Output() confirmed = new EventEmitter<void>();
-  @Output() cancelled = new EventEmitter<void>();
-  @Output() closed = new EventEmitter<void>();
+  readonly title = computed(() => this.options()?.title || 'Confirmation');
+  readonly message = computed(() => this.options()?.message || 'Êtes-vous sûr de vouloir effectuer cette action ?');
+  readonly confirmText = computed(() => this.options()?.confirmText || 'Confirmer');
+  readonly cancelText = computed(() => this.options()?.cancelText || 'Annuler');
+  readonly type = computed(() => this.options()?.type || 'warning');
+  readonly showCancelButton = computed(() => !this.confirmationService.isAlertMode());
 
   confirm(): void {
-    this.confirmed.emit();
-    this.close();
+    this.confirmationService.onConfirm();
   }
 
   cancel(): void {
-    this.cancelled.emit();
-    this.close();
+    this.confirmationService.onCancel();
   }
 
   close(): void {
-    this.closed.emit();
+    this.confirmationService.close();
   }
 
   onBackdropClick(event: MouseEvent): void {

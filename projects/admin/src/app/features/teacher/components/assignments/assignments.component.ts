@@ -4,7 +4,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import { Application } from '../../components/application/application';
 import { TeacherService } from '../../services/teacher/teacher.service';
-import { ErrorSnackbarService, AuthService, ActionLink } from '../../../../shared';
+import { ErrorSnackbarService, AuthService, ActionLink, ConfirmationDialogService } from '../../../../shared';
 import { AssignmentsSectionComponent } from './components/assignments-section/assignments-section.component';
 import { AddAssignmentDialogComponent } from './components/add-assignment-dialog/add-assignment-dialog.component';
 import { TeacherStore } from '../../store/index';
@@ -20,6 +20,7 @@ export class AssignmentsComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly errorSnackbarService = inject(ErrorSnackbarService);
   private readonly authService = inject(AuthService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly application = inject(Application);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly route = inject(ActivatedRoute);
@@ -99,21 +100,26 @@ export class AssignmentsComponent implements OnInit {
       const storeState = this.store as any;
       const pendingConfirmation = storeState.pendingConfirmation?.();
       if (pendingConfirmation) {
-        const confirmed = confirm(pendingConfirmation.message);
-        if (confirmed) {
-          // L'utilisateur a confirmé, procéder avec la création
-          this.store.confirmAndCreateAssignment({
-            assignmentData: pendingConfirmation.assignmentData,
-            conflictingAssignmentIds: pendingConfirmation.conflictingAssignments.map((a: { id: string }) => a.id)
-          });
-          // Recharger les affectations après création
-          if (this.teacherId()) {
-            this.application.loadAssignments(this.teacherId()!);
+        // Utiliser confirmationDialog de manière asynchrone
+        this.confirmationDialog.confirm({
+          message: pendingConfirmation.message,
+          type: 'warning',
+        }).then((confirmed) => {
+          if (confirmed) {
+            // L'utilisateur a confirmé, procéder avec la création
+            this.store.confirmAndCreateAssignment({
+              assignmentData: pendingConfirmation.assignmentData,
+              conflictingAssignmentIds: pendingConfirmation.conflictingAssignments.map((a: { id: string }) => a.id)
+            });
+            // Recharger les affectations après création
+            if (this.teacherId()) {
+              this.application.loadAssignments(this.teacherId()!);
+            }
+          } else {
+            // L'utilisateur a annulé, effacer la demande de confirmation
+            this.store.clearPendingConfirmation();
           }
-        } else {
-          // L'utilisateur a annulé, effacer la demande de confirmation
-          this.store.clearPendingConfirmation();
-        }
+        });
       }
     });
   }

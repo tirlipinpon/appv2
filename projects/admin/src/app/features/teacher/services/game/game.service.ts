@@ -5,6 +5,22 @@ import { SupabaseService } from '../../../../shared';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type { PostgrestError } from '@supabase/supabase-js';
 
+// Types pour les résultats de requêtes Supabase avec jointures
+interface GameWithTypeName {
+  id: string;
+  subject_id?: string | null;
+  subject_category_id?: string | null;
+  game_type: {
+    name: string;
+  } | null | {
+    name: string;
+  }[];
+}
+
+interface TeacherAssignmentWithSubjectId {
+  subject_id: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -156,8 +172,12 @@ export class GameService {
           const stats: Record<string, number> = {};
           let total = 0;
 
-          data.forEach((game: any) => {
-            const typeName = game.game_type?.name || 'Inconnu';
+          data.forEach((game: unknown) => {
+            const gameData = game as GameWithTypeName;
+            const gameType = Array.isArray(gameData.game_type) 
+              ? gameData.game_type[0] 
+              : gameData.game_type;
+            const typeName = gameType?.name || 'Inconnu';
             stats[typeName] = (stats[typeName] || 0) + 1;
             total++;
           });
@@ -185,8 +205,12 @@ export class GameService {
           const stats: Record<string, number> = {};
           let total = 0;
 
-          data.forEach((game: any) => {
-            const typeName = game.game_type?.name || 'Inconnu';
+          data.forEach((game: unknown) => {
+            const gameData = game as GameWithTypeName;
+            const gameType = Array.isArray(gameData.game_type) 
+              ? gameData.game_type[0] 
+              : gameData.game_type;
+            const typeName = gameType?.name || 'Inconnu';
             stats[typeName] = (stats[typeName] || 0) + 1;
             total++;
           });
@@ -227,8 +251,12 @@ export class GameService {
             const stats: Record<string, number> = {};
             let total = 0;
 
-            data.forEach((game: any) => {
-              const typeName = game.game_type?.name || 'Inconnu';
+            data.forEach((game: unknown) => {
+              const gameData = game as GameWithTypeName;
+              const gameType = Array.isArray(gameData.game_type) 
+                ? gameData.game_type[0] 
+                : gameData.game_type;
+              const typeName = gameType?.name || 'Inconnu';
               stats[typeName] = (stats[typeName] || 0) + 1;
               total++;
             });
@@ -275,11 +303,15 @@ export class GameService {
           });
 
           // Grouper et compter
-          data.forEach((game: any) => {
-            const subjectId = game.subject_id;
-            const typeName = game.game_type?.name || 'Inconnu';
+          data.forEach((game: unknown) => {
+            const gameData = game as GameWithTypeName;
+            const subjectId = gameData.subject_id;
+            const gameType = Array.isArray(gameData.game_type) 
+              ? gameData.game_type[0] 
+              : gameData.game_type;
+            const typeName = gameType?.name || 'Inconnu';
             
-            const current = statsBySubject.get(subjectId);
+            const current = statsBySubject.get(subjectId || '');
             if (current) {
               current.stats[typeName] = (current.stats[typeName] || 0) + 1;
               current.total++;
@@ -306,7 +338,7 @@ export class GameService {
 
         // Extraire les subjectIds qui ont des assignments actives
         const subjectIdsWithAssignments = new Set(
-          (assignments || []).map((a: any) => a.subject_id)
+          (assignments || []).map((a: TeacherAssignmentWithSubjectId) => a.subject_id)
         );
 
         if (subjectIdsWithAssignments.size === 0) {
@@ -389,11 +421,15 @@ export class GameService {
         });
 
         // Grouper et compter
-        data.forEach((game: any) => {
-          const categoryId = game.subject_category_id;
-          const typeName = game.game_type?.name || 'Inconnu';
+        data.forEach((game: unknown) => {
+          const gameData = game as GameWithTypeName;
+          const categoryId = gameData.subject_category_id;
+          const gameType = Array.isArray(gameData.game_type) 
+            ? gameData.game_type[0] 
+            : gameData.game_type;
+          const typeName = gameType?.name || 'Inconnu';
           
-          const current = statsByCategory.get(categoryId);
+          const current = statsByCategory.get(categoryId || '');
           if (current) {
             current.stats[typeName] = (current.stats[typeName] || 0) + 1;
             current.total++;

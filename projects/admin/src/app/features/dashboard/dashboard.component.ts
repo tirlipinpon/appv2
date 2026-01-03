@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { AuthService, Profile, ActionLinksComponent, ActionLink } from '../../shared';
+import { AuthService, Profile, ActionLinksComponent, ActionLink, ConfirmationDialogService } from '../../shared';
 import { ChildStore } from '../child/store/index';
 import { ParentStore } from '../parent/store/index';
 import { TeacherStore } from '../teacher/store/index';
@@ -25,6 +25,7 @@ import { Application as TeacherApplication } from '../teacher/components/applica
 export class DashboardComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly parentSubjectService = inject(ParentSubjectService);
   private readonly parentApplication = inject(ParentApplication);
   private readonly childApplication = inject(ChildApplication);
@@ -280,11 +281,17 @@ export class DashboardComponent implements OnInit {
     return child.id;
   }
 
-  setChildActiveStatus(childId: string, isActive: boolean, event: Event): void {
+  async setChildActiveStatus(childId: string, isActive: boolean, event: Event): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
-    if (!isActive && !confirm('Êtes-vous sûr de vouloir désactiver cet enfant ? Vous pourrez le réactiver plus tard.')) {
-      return;
+    if (!isActive) {
+      const confirmed = await this.confirmationDialog.confirm({
+        message: 'Êtes-vous sûr de vouloir désactiver cet enfant ? Vous pourrez le réactiver plus tard.',
+        type: 'warning',
+      });
+      if (!confirmed) {
+        return;
+      }
     }
     this.childStore.setChildActiveStatus({ childId, isActive });
   }

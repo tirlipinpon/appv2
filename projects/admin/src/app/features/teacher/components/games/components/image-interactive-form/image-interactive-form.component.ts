@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, OnIni
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { DragDropModule, CdkDragMove, CdkDragEnd } from '@angular/cdk/drag-drop';
+import { ConfirmationDialogService } from '../../../../../../shared';
 import type { ImageInteractiveData } from '@shared/games';
 
 interface ZoneInEdit {
@@ -32,6 +33,7 @@ export interface ImageInteractiveDataWithFile extends ImageInteractiveData {
 })
 export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   @Input() initialData: ImageInteractiveData | null = null;
   @Output() dataChange = new EventEmitter<ImageInteractiveDataWithFile>();
@@ -426,7 +428,10 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     // Valider le type de fichier
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
-      alert(`Type de fichier non autorisé. Types acceptés : ${allowedTypes.join(', ')}`);
+      this.confirmationDialog.alert(
+        `Type de fichier non autorisé. Types acceptés : ${allowedTypes.join(', ')}`,
+        'Erreur de validation'
+      );
       input.value = ''; // Réinitialiser l'input
       return;
     }
@@ -434,7 +439,10 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     // Valider la taille (10MB)
     const maxFileSize = 10 * 1024 * 1024;
     if (file.size > maxFileSize) {
-      alert(`Fichier trop volumineux. Taille maximale : ${maxFileSize / 1024 / 1024}MB`);
+      this.confirmationDialog.alert(
+        `Fichier trop volumineux. Taille maximale : ${maxFileSize / 1024 / 1024}MB`,
+        'Erreur de validation'
+      );
       input.value = ''; // Réinitialiser l'input
       return;
     }
@@ -470,7 +478,7 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     };
     img.onerror = () => {
       URL.revokeObjectURL(blobUrl);
-      alert('Erreur lors du chargement de l\'image');
+      this.confirmationDialog.alert('Erreur lors du chargement de l\'image', 'Erreur');
       input.value = ''; // Réinitialiser l'input
     };
     img.src = blobUrl;

@@ -1,5 +1,6 @@
-import { Component, Input, Output, EventEmitter, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ConfirmationDialogService } from '../../../../../../shared';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
 import { LiensFormComponent } from '../liens-form/liens-form.component';
@@ -30,6 +31,8 @@ import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmDat
   styleUrls: ['./ai-generated-preview.component.scss'],
 })
 export class AIGeneratedPreviewComponent {
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
+
   @Input() generatedGames: GeneratedGameWithState[] = [];
   @Input() gameTypes: GameType[] = [];
 
@@ -48,8 +51,13 @@ export class AIGeneratedPreviewComponent {
     this.edit.emit(game._tempId);
   }
 
-  onRemove(game: GeneratedGameWithState): void {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce jeu généré ?')) {
+  async onRemove(game: GeneratedGameWithState): Promise<void> {
+    const confirmed = await this.confirmationDialog.confirm({
+      message: 'Êtes-vous sûr de vouloir supprimer ce jeu généré ?',
+      type: 'warning',
+    });
+
+    if (confirmed) {
       this.remove.emit(game._tempId);
     }
   }

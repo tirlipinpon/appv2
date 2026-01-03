@@ -20,6 +20,8 @@ import { MemoryFormComponent } from '../memory-form/memory-form.component';
 import { SimonFormComponent } from '../simon-form/simon-form.component';
 import { SCHOOL_LEVELS, getSchoolLevelLabel } from '../../../../utils/school-levels.util';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
+import { GameDataInitializerService } from '../../../../services/game-data-initializer/game-data-initializer.service';
+import { AssignmentFilterService } from '../../../../services/assignment-filter/assignment-filter.service';
 
 export interface DuplicateGameData {
   schoolId: string | null;
@@ -56,6 +58,8 @@ export interface DuplicateGameData {
 export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   private readonly fb = inject(FormBuilder);
   private readonly infrastructure = inject(Infrastructure);
+  private readonly gameDataInitializer = inject(GameDataInitializerService);
+  private readonly assignmentFilter = inject(AssignmentFilterService);
 
   @Input({ required: true }) game!: Game;
   @Input({ required: true }) currentAssignment!: TeacherAssignment | null;
@@ -89,35 +93,20 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
 
   // Computed pour les niveaux disponibles selon l'école sélectionnée
   readonly availableLevels = computed(() => {
-    const schoolId = this.selectedSchoolId();
-    if (!schoolId) return [];
-
-    const assignments = this.availableAssignments.filter(a => a.school_id === schoolId && a.school_level);
-    const levels = new Set(assignments.map(a => a.school_level!));
-
-    // Trier selon l'ordre de SCHOOL_LEVELS
-    return Array.from(levels).sort((a, b) => {
-      const indexA = SCHOOL_LEVELS.findIndex(l => l.value === a);
-      const indexB = SCHOOL_LEVELS.findIndex(l => l.value === b);
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-      return indexA - indexB;
-    });
+    return this.assignmentFilter.getAvailableLevels(
+      this.availableAssignments,
+      this.selectedSchoolId()
+    );
   });
 
   // Computed pour les matières disponibles selon l'école et le niveau
   readonly availableSubjectsForSelection = computed(() => {
-    const schoolId = this.selectedSchoolId();
-    const level = this.selectedLevel();
-
-    if (!schoolId || !level) return [];
-
-    const assignments = this.availableAssignments.filter(
-      a => a.school_id === schoolId && a.school_level === level
+    return this.assignmentFilter.getAvailableSubjects(
+      this.availableAssignments,
+      this.availableSubjects,
+      this.selectedSchoolId(),
+      this.selectedLevel()
     );
-
-    const subjectIds = new Set(assignments.map(a => a.subject_id));
-    return this.availableSubjects.filter(s => subjectIds.has(s.id));
   });
 
   // Computed pour vérifier si le formulaire est valide
@@ -288,77 +277,59 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
 
   // Méthodes pour obtenir les données initiales selon le type de jeu
   getInitialDataForCaseVide(): CaseVideData | null {
-    const data = this.initialGameData();
-    const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'case vide' && data) {
-      if (('texte' in data && 'cases_vides' in data) || 'debut_phrase' in data) {
-        return data as CaseVideData;
-      }
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.currentGameTypeName(),
+      this.initialGameData()
+    ) as CaseVideData | null;
   }
 
   getInitialDataForReponseLibre(): ReponseLibreData | null {
-    const data = this.initialGameData();
-    const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'reponse libre' && data && 'reponse_valide' in data && !('debut_phrase' in data)) {
-      return data as ReponseLibreData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.currentGameTypeName(),
+      this.initialGameData()
+    ) as ReponseLibreData | null;
   }
 
   getInitialDataForLiens(): LiensData | null {
-    const data = this.initialGameData();
-    const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'liens' && data && 'mots' in data && 'reponses' in data && 'liens' in data) {
-      return data as LiensData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.currentGameTypeName(),
+      this.initialGameData()
+    ) as LiensData | null;
   }
 
   getInitialDataForChronologie(): ChronologieData | null {
-    const data = this.initialGameData();
-    const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'chronologie' && data && 'mots' in data && 'ordre_correct' in data && !('reponses' in data)) {
-      return data as ChronologieData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.currentGameTypeName(),
+      this.initialGameData()
+    ) as ChronologieData | null;
   }
 
   getInitialDataForQcm(): QcmData | null {
-    const data = this.initialGameData();
-    const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'qcm' && data && 'propositions' in data && 'reponses_valides' in data) {
-      return data as QcmData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.currentGameTypeName(),
+      this.initialGameData()
+    ) as QcmData | null;
   }
 
   getInitialDataForVraiFaux(): VraiFauxData | null {
-    const data = this.initialGameData();
-    const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'vrai/faux' && data && 'enonces' in data) {
-      return data as VraiFauxData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.currentGameTypeName(),
+      this.initialGameData()
+    ) as VraiFauxData | null;
   }
 
   getInitialDataForMemory(): MemoryData | null {
-    const data = this.initialGameData();
-    const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'memory' && data && 'paires' in data) {
-      return data as MemoryData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.currentGameTypeName(),
+      this.initialGameData()
+    ) as MemoryData | null;
   }
 
   getInitialDataForSimon(): SimonData | null {
-    const data = this.initialGameData();
-    const currentType = this.currentGameTypeName();
-    if (currentType.toLowerCase() === 'simon' && data && 'nombre_elements' in data && 'type_elements' in data) {
-      return data as SimonData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.currentGameTypeName(),
+      this.initialGameData()
+    ) as SimonData | null;
   }
 
   onCancel(): void {

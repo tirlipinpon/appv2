@@ -6,7 +6,7 @@ import { filter, Subscription, Observable } from 'rxjs';
 import { GamesApplication } from './application/application';
 import { GamesStore } from '../../store/games.store';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
-import { ErrorSnackbarService } from '../../../../shared';
+import { ErrorSnackbarService, ConfirmationDialogService } from '../../../../shared';
 import { TeacherService } from '../../services/teacher/teacher.service';
 import { CaseVideFormComponent } from './components/case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from './components/reponse-libre-form/reponse-libre-form.component';
@@ -34,6 +34,9 @@ import { normalizeGameData } from '../../utils/game-data-mapper';
 import { SCHOOL_LEVELS } from '../../utils/school-levels.util';
 import type { DuplicateGameData } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 import { ImageUploadService } from './services/image-upload/image-upload.service';
+import { GameDataInitializerService } from '../../services/game-data-initializer/game-data-initializer.service';
+import { GameCreationService } from '../../services/game-creation/game-creation.service';
+import { AssignmentFilterService } from '../../services/assignment-filter/assignment-filter.service';
 import { tap } from 'rxjs/operators';
 
 @Component({
@@ -67,9 +70,13 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly application = inject(GamesApplication);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly teacherService = inject(TeacherService);
   private readonly infra = inject(Infrastructure);
   private readonly imageUploadService = inject(ImageUploadService);
+  private readonly gameDataInitializer = inject(GameDataInitializerService);
+  private readonly gameCreationService = inject(GameCreationService);
+  private readonly assignmentFilter = inject(AssignmentFilterService);
   readonly gamesStore = inject(GamesStore);
   readonly subjectsStore = inject(TeacherAssignmentStore);
 
@@ -151,36 +158,20 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Fonction pour obtenir les niveaux disponibles selon l'école sélectionnée
   getAvailableLevelsForSchool(schoolId: string | null): string[] {
-    if (!schoolId) return [];
-    
-    const assignments = this.subjectsStore.assignments();
-    const filtered = assignments.filter(a => a.school_id === schoolId && a.school_level);
-    const levels = new Set(filtered.map(a => a.school_level!));
-    
-    // Trier selon l'ordre de SCHOOL_LEVELS
-    return Array.from(levels).sort((a, b) => {
-      const indexA = SCHOOL_LEVELS.findIndex(l => l.value === a);
-      const indexB = SCHOOL_LEVELS.findIndex(l => l.value === b);
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-      return indexA - indexB;
-    });
+    return this.assignmentFilter.getAvailableLevelsForSchool(
+      this.subjectsStore.assignments(),
+      schoolId
+    );
   }
 
   // Fonction pour obtenir les matières disponibles selon l'école et le niveau
   getAvailableSubjectsForSchoolAndLevel(schoolId: string | null, level: string | null): Subject[] {
-    if (!schoolId || !level) return [];
-    
-    const assignments = this.subjectsStore.assignments();
-    const subjects = this.subjectsStore.subjects();
-    const filtered = assignments.filter(
-      a => a.school_id === schoolId && a.school_level === level
+    return this.assignmentFilter.getAvailableSubjectsForSchoolAndLevel(
+      this.subjectsStore.assignments(),
+      this.subjectsStore.subjects(),
+      schoolId,
+      level
     );
-    const subjectIds = new Set(filtered.map(a => a.subject_id));
-    
-    return subjects
-      .filter(subject => subjectIds.has(subject.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   // Récupération automatique du niveau scolaire depuis school_level
@@ -487,148 +478,35 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Générer un nom automatique
-    const gameTypeName = this.selectedGameTypeName() || 'Jeu';
-    const questionPreview = typeof v['question'] === 'string' && v['question'].trim() ? v['question'].trim().substring(0, 30) : '';
-    const autoName = questionPreview ? `${gameTypeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}` : gameTypeName;
-
-    // Construire les aides
-    const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
-
-    // Vérifier si on a un fichier image à uploader (pour ImageInteractive)
-    const imageDataWithFile = this.imageInteractiveDataWithFile();
-    const isImageInteractive = this.selectedGameTypeName()?.toLowerCase() === 'click' || 
-                               this.selectedGameTypeName()?.toLowerCase() === 'image interactive';
-    
-    // Vérifier si gameData contient déjà une image_url (pour les jeux click)
-    const hasImageUrl = isImageInteractive && 
-                        gameData && 
-                        typeof gameData === 'object' && 
-                        'image_url' in gameData && 
-                        (gameData as ImageInteractiveData).image_url && 
-                        typeof (gameData as ImageInteractiveData).image_url === 'string' &&
-                        (gameData as ImageInteractiveData).image_url.length > 0;
-
-    if (isImageInteractive && imageDataWithFile?.imageFile) {
-      // Pour les jeux click avec un nouveau fichier : créer d'abord le jeu, puis uploader l'image dans son dossier
-      const file = imageDataWithFile.imageFile;
-      
-      // Extraire les données sans l'image (imageFile et oldImageUrl sont extraits mais non utilisés ici)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { imageFile, oldImageUrl, ...imageData } = imageDataWithFile as ImageInteractiveDataWithFile;
-      const imageDataTyped = imageData as ImageInteractiveData;
-      const gameDataWithoutImage: ImageInteractiveData = {
-        image_url: '',
-        image_width: 0,
-        image_height: 0,
-        zones: imageDataTyped.zones,
-        require_all_correct_zones: imageDataTyped.require_all_correct_zones,
-      };
-
-      // Créer le jeu d'abord (sans image)
-      this.createGameWithData(v, subjectId, autoName, aides, gameDataWithoutImage).subscribe({
-        next: (createdGame) => {
-          if (!createdGame) {
-            console.error('Erreur: Le jeu n\'a pas pu être créé');
-            alert('Erreur lors de la création du jeu');
-            this.isCreating = false;
-            return;
-          }
-
-          // Uploader l'image dans le dossier du jeu créé
-          this.imageUploadService.uploadImage(file, createdGame.id).subscribe({
-            next: (result) => {
-              if (result.error) {
-                console.error('Erreur upload:', result.error);
-                alert(`Erreur lors de l'upload de l'image: ${result.error}`);
-                this.isCreating = false;
-                return;
-              }
-
-              // Mettre à jour le jeu avec l'URL de l'image
-              const updatedImageData: ImageInteractiveData = {
-                image_url: result.url,
-                image_width: result.width,
-                image_height: result.height,
-                zones: imageDataTyped.zones,
-                require_all_correct_zones: imageDataTyped.require_all_correct_zones,
-              };
-
-              this.application.updateGame(createdGame.id, {
-                metadata: updatedImageData as unknown as Record<string, unknown>,
-              });
-              
-              this.isCreating = false;
-            },
-            error: (error) => {
-              console.error('Erreur upload:', error);
-              alert('Erreur lors de l\'upload de l\'image');
-              this.isCreating = false;
-            }
-          });
-        },
-        error: (error) => {
-          console.error('Erreur création:', error);
-          alert('Erreur lors de la création du jeu');
-          this.isCreating = false;
-        }
-      });
-    } else if (isImageInteractive && hasImageUrl) {
-      // Pour les jeux click avec une image_url existante (pas de nouveau fichier) : créer directement avec l'image_url
-      this.createGameWithData(v, subjectId, autoName, aides, gameData as ImageInteractiveData).subscribe({
-        next: () => {
-          this.isCreating = false;
-        },
-        error: (error) => {
-          console.error('Erreur création:', error);
-          alert('Erreur lors de la création du jeu');
-          this.isCreating = false;
-        }
-      });
-    } else {
-      // Pas un jeu click ou pas d'image, créer directement
-      this.createGameWithData(v, subjectId, autoName, aides, gameData).subscribe({
-        next: () => {
-          this.isCreating = false;
-        },
-        error: (error) => {
-          console.error('Erreur création:', error);
-          alert('Erreur lors de la création du jeu');
-          this.isCreating = false;
-        }
-      });
-    }
-  }
-
-  private createGameWithData(
-    v: Record<string, unknown>,
-    subjectId: string,
-    autoName: string,
-    aides: string[],
-    gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData
-  ): Observable<Game | null> {
-    // Stocker les données spécifiques dans metadata
-    // Si on est en mode "gestion d'une sous-catégorie spécifique", utiliser le categoryId des query params
+    const gameTypeId = (v['game_type_id'] as string) || '';
+    const gameTypeName = this.selectedGameTypeName();
     const categoryId = this.isCategoryContext() 
       ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
       : this.selectedCategoryId();
-    
-    return this.application.createGame({
-      subject_id: categoryId ? null : subjectId,
-      subject_category_id: categoryId || null,
-      game_type_id: (v['game_type_id'] as string) || '',
-      name: autoName,
+
+    this.gameCreationService.createGameWithImage({
+      gameTypeId,
+      gameTypeName,
+      subjectId,
+      categoryId: categoryId || null,
       instructions: (v['instructions'] as string | undefined) || null,
       question: (typeof v['question'] === 'string' ? v['question'].trim() : null) || null,
-      reponses: null, // On utilise metadata pour les données spécifiques
-      aides: aides.length > 0 ? aides : null,
-      metadata: gameData as unknown as Record<string, unknown>,
-    }).pipe(
-      tap(() => {
+      aides: this.aidesArray.value.filter((a: string) => a && a.trim()),
+      gameData,
+      imageDataWithFile: this.imageInteractiveDataWithFile(),
+    }).subscribe({
+      next: () => {
+        this.isCreating = false;
         this.resetForm();
-      })
-    );
+      },
+      error: (error) => {
+        console.error('Erreur création:', error);
+        this.errorSnackbar.showError('Erreur lors de la création du jeu');
+        this.isCreating = false;
+      }
+    });
   }
+
 
   startEdit(game: Game): void {
     this.editingGameId.set(game.id);
@@ -710,12 +588,18 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.application.updateGame(gameId, updates);
   }
 
-  delete(gameId: string): void {
-    const message = `⚠️ ATTENTION : Cette action est IRRÉVERSIBLE !
+  async delete(gameId: string): Promise<void> {
+    const confirmed = await this.confirmationDialog.confirm({
+      title: 'Confirmation de suppression',
+      message: `⚠️ ATTENTION : Cette action est IRRÉVERSIBLE !
 
-Êtes-vous sûr de vouloir supprimer ce jeu ?`;
+Êtes-vous sûr de vouloir supprimer ce jeu ?`,
+      type: 'danger',
+      confirmText: 'Supprimer',
+      cancelText: 'Annuler',
+    });
 
-    if (confirm(message)) {
+    if (confirmed) {
       this.application.deleteGame(gameId);
     }
   }
@@ -726,81 +610,59 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getInitialDataForCaseVide(): CaseVideData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    if (currentType === 'case vide' && data) {
-      // Accepter le nouveau format (texte + cases_vides) ou l'ancien format (debut_phrase)
-      if (('texte' in data && 'cases_vides' in data) || 'debut_phrase' in data) {
-        return data as CaseVideData;
-      }
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.selectedGameTypeName(),
+      this.initialGameData()
+    ) as CaseVideData | null;
   }
 
   getInitialDataForReponseLibre(): ReponseLibreData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    if (currentType === 'reponse libre' && data && 'reponse_valide' in data && !('debut_phrase' in data)) {
-      return data as ReponseLibreData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.selectedGameTypeName(),
+      this.initialGameData()
+    ) as ReponseLibreData | null;
   }
 
   getInitialDataForLiens(): LiensData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    if (currentType === 'liens' && data && 'mots' in data && 'reponses' in data && 'liens' in data) {
-      return data as LiensData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.selectedGameTypeName(),
+      this.initialGameData()
+    ) as LiensData | null;
   }
 
   getInitialDataForChronologie(): ChronologieData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    if (currentType === 'chronologie' && data && 'mots' in data && 'ordre_correct' in data && !('reponses' in data)) {
-      return data as ChronologieData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.selectedGameTypeName(),
+      this.initialGameData()
+    ) as ChronologieData | null;
   }
 
   getInitialDataForQcm(): QcmData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    if (currentType === 'qcm' && data && 'propositions' in data && 'reponses_valides' in data) {
-      return data as QcmData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.selectedGameTypeName(),
+      this.initialGameData()
+    ) as QcmData | null;
   }
 
   getInitialDataForVraiFaux(): VraiFauxData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    if (currentType?.toLowerCase() === 'vrai/faux' && data && 'enonces' in data) {
-      return data as VraiFauxData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.selectedGameTypeName(),
+      this.initialGameData()
+    ) as VraiFauxData | null;
   }
 
   getInitialDataForMemory(): MemoryData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    if (currentType?.toLowerCase() === 'memory' && data && 'paires' in data) {
-      return data as MemoryData;
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.selectedGameTypeName(),
+      this.initialGameData()
+    ) as MemoryData | null;
   }
 
   getInitialDataForSimon(): SimonData | null {
-    const data = this.initialGameData();
-    const currentType = this.selectedGameTypeName();
-    if (currentType?.toLowerCase() === 'simon' && data) {
-      // Vérifier que les propriétés requises existent
-      if ('nombre_elements' in data && 'type_elements' in data) {
-        return data as SimonData;
-      }
-    }
-    return null;
+    return this.gameDataInitializer.getInitialData(
+      this.selectedGameTypeName(),
+      this.initialGameData()
+    ) as SimonData | null;
   }
 
   getInitialDataForImageInteractive(): ImageInteractiveData | null {
@@ -825,14 +687,24 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.application.updateGeneratedGame(event.tempId, event.updates);
   }
 
-  onSaveAllGeneratedGames(): void {
-    if (confirm(`Êtes-vous sûr de vouloir sauvegarder tous les jeux générés (${this.generatedGames().length}) ?`)) {
+  async onSaveAllGeneratedGames(): Promise<void> {
+    const confirmed = await this.confirmationDialog.confirm({
+      message: `Êtes-vous sûr de vouloir sauvegarder tous les jeux générés (${this.generatedGames().length}) ?`,
+      type: 'info',
+    });
+
+    if (confirmed) {
       this.application.validateGeneratedGames();
     }
   }
 
-  onCancelAllGeneratedGames(): void {
-    if (confirm('Êtes-vous sûr de vouloir annuler la génération ? Tous les jeux générés seront perdus.')) {
+  async onCancelAllGeneratedGames(): Promise<void> {
+    const confirmed = await this.confirmationDialog.confirm({
+      message: 'Êtes-vous sûr de vouloir annuler la génération ? Tous les jeux générés seront perdus.',
+      type: 'warning',
+    });
+
+    if (confirmed) {
       this.application.cancelGeneration();
     }
   }
@@ -890,158 +762,41 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Créer le nouveau jeu avec les données dupliquées
     const gameTypeName = this.getGameTypeName(game.game_type_id);
-    const questionPreview = duplicateData.gameData.question?.trim() 
-      ? duplicateData.gameData.question.trim().substring(0, 30) 
-      : '';
-    const autoName = questionPreview 
-      ? `${gameTypeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}` 
-      : gameTypeName;
-
-    const aides = duplicateData.gameData.aides && duplicateData.gameData.aides.length > 0
-      ? duplicateData.gameData.aides.filter(a => a && a.trim())
-      : null;
-
-    // Utiliser la sous-catégorie sélectionnée dans le dialog, ou celle du contexte si en mode "gestion d'une sous-catégorie spécifique"
     const categoryId = duplicateData.subjectCategoryId 
       ? duplicateData.subjectCategoryId
       : (this.isCategoryContext() 
         ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
         : null);
 
-    // Vérifier si c'est un jeu "click" avec une image
-    const isClickGame = gameTypeName.toLowerCase() === 'click';
     const metadata = duplicateData.gameData.metadata || null;
     const imageUrl = metadata && typeof metadata === 'object' && 'image_url' in metadata
       ? (metadata as unknown as ImageInteractiveData).image_url
       : null;
-    const hasImageUrl = imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0;
 
-    if (isClickGame && hasImageUrl) {
-      // Pour les jeux click avec une image : créer d'abord le jeu sans image, puis copier l'image
-      const metadataWithoutImage: ImageInteractiveData = {
-        image_url: '',
-        image_width: 0,
-        image_height: 0,
-        zones: (metadata as unknown as ImageInteractiveData)?.zones || [],
-        require_all_correct_zones: (metadata as unknown as ImageInteractiveData)?.require_all_correct_zones ?? true,
-      };
-
-      this.application.createGame({
-        subject_id: categoryId ? null : duplicateData.subjectId,
-        subject_category_id: categoryId || null,
-        game_type_id: game.game_type_id,
-        name: autoName,
-        instructions: duplicateData.gameData.instructions || null,
-        question: duplicateData.gameData.question?.trim() || null,
-        reponses: null,
-        aides: aides,
-        metadata: metadataWithoutImage as unknown as Record<string, unknown>,
-      }).subscribe({
-        next: (createdGame) => {
-          if (!createdGame) {
-            console.error('Erreur: Le jeu n\'a pas pu être créé');
-            this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
-            this.isDuplicating = false;
-            return;
-          }
-
-          // Copier l'image dans le nouveau dossier du jeu
-          this.imageUploadService.copyImageToGame(imageUrl, createdGame.id).subscribe({
-            next: (result) => {
-              if (result.error) {
-                console.error('Erreur copie image:', result.error);
-                this.errorSnackbar.showError(`Erreur lors de la copie de l'image: ${result.error}`);
-                this.isDuplicating = false;
-                return;
-              }
-
-              // Mettre à jour le jeu avec la nouvelle URL d'image
-              const updatedMetadata: ImageInteractiveData = {
-                image_url: result.url,
-                image_width: result.width,
-                image_height: result.height,
-                zones: metadataWithoutImage.zones,
-                require_all_correct_zones: metadataWithoutImage.require_all_correct_zones,
-              };
-
-              this.application.updateGame(createdGame.id, {
-                metadata: updatedMetadata as unknown as Record<string, unknown>,
-              });
-              
-              this.isDuplicating = false;
-            },
-            error: (error) => {
-              console.error('Erreur copie image:', error);
-              this.errorSnackbar.showError('Erreur lors de la copie de l\'image');
-              this.isDuplicating = false;
-            }
-          });
-        },
-        error: (error) => {
-          console.error('Erreur duplication:', error);
-          this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
-          this.isDuplicating = false;
-        }
-      });
-    } else if (isClickGame && !hasImageUrl) {
-      // Jeu click sans image_url : créer avec metadata sans image_url
-      const metadataWithoutImage: ImageInteractiveData = {
-        image_url: '',
-        image_width: 0,
-        image_height: 0,
-        zones: (metadata as unknown as ImageInteractiveData)?.zones || [],
-        require_all_correct_zones: (metadata as unknown as ImageInteractiveData)?.require_all_correct_zones ?? true,
-      };
-      
-      this.application.createGame({
-        subject_id: categoryId ? null : duplicateData.subjectId,
-        subject_category_id: categoryId || null,
-        game_type_id: game.game_type_id,
-        name: autoName,
-        instructions: duplicateData.gameData.instructions || null,
-        question: duplicateData.gameData.question?.trim() || null,
-        reponses: null,
-        aides: aides,
-        metadata: metadataWithoutImage as unknown as Record<string, unknown>,
-      }).subscribe({
-        next: () => {
-          this.isDuplicating = false;
-        },
-        error: (error) => {
-          console.error('Erreur duplication:', error);
-          this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
-          this.isDuplicating = false;
-        }
-      });
-    } else {
-      // Pas un jeu click, créer directement avec les métadonnées
-      this.application.createGame({
-        subject_id: categoryId ? null : duplicateData.subjectId,
-        subject_category_id: categoryId || null,
-        game_type_id: game.game_type_id,
-        name: autoName,
-        instructions: duplicateData.gameData.instructions || null,
-        question: duplicateData.gameData.question?.trim() || null,
-        reponses: null,
-        aides: aides,
-        metadata: duplicateData.gameData.metadata || null,
-      }).subscribe({
-        next: () => {
-          this.isDuplicating = false;
-        },
-        error: (error) => {
-          console.error('Erreur duplication:', error);
-          this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
-          this.isDuplicating = false;
-        }
-      });
-    }
-
-    this.duplicateDialogOpen.set(false);
-    this.gameToDuplicate.set(null);
-    this.currentAssignment.set(null);
+    this.gameCreationService.duplicateGameWithImage({
+      gameTypeId: game.game_type_id,
+      gameTypeName,
+      subjectId: duplicateData.subjectId,
+      categoryId: categoryId || null,
+      instructions: duplicateData.gameData.instructions || null,
+      question: duplicateData.gameData.question || null,
+      aides: duplicateData.gameData.aides || null,
+      metadata,
+      sourceImageUrl: imageUrl || null,
+    }).subscribe({
+      next: () => {
+        this.isDuplicating = false;
+        this.duplicateDialogOpen.set(false);
+        this.gameToDuplicate.set(null);
+        this.currentAssignment.set(null);
+      },
+      error: (error) => {
+        console.error('Erreur duplication:', error);
+        this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+        this.isDuplicating = false;
+      }
+    });
   }
 
   onCancelDuplicate(): void {

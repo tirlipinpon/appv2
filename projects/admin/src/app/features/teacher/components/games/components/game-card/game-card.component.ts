@@ -20,6 +20,7 @@ import { GameGlobalFieldsComponent } from '../game-global-fields/game-global-fie
 import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
 import { ImageUploadService, type ImageUploadResult } from '../../services/image-upload/image-upload.service';
+import { ErrorSnackbarService } from '../../../../../../shared';
 
 @Component({
   selector: 'app-game-card',
@@ -44,6 +45,7 @@ import { ImageUploadService, type ImageUploadResult } from '../../services/image
 })
 export class GameCardComponent implements OnInit, OnChanges {
   private readonly imageUploadService = inject(ImageUploadService);
+  private readonly errorSnackbar = inject(ErrorSnackbarService);
 
   @Input({ required: true }) game!: Game;
   @Input({ required: true }) gameTypeName!: string;
@@ -245,7 +247,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         next: (result) => {
           if (result.error) {
             console.error('Erreur upload:', result.error);
-            alert(`Erreur lors de l'upload de l'image: ${result.error}`);
+            this.errorSnackbar.showError(`Erreur lors de l'upload de l'image: ${result.error}`);
             return;
           }
 
@@ -263,7 +265,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         },
         error: (error) => {
           console.error('Erreur upload:', error);
-          alert('Erreur lors de l\'upload de l\'image');
+          this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
         }
       });
     } else {

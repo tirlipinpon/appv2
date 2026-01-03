@@ -196,18 +196,8 @@ export class AuthService {
             exclude_user_id: data.user.id // Exclure l'utilisateur qui vient d'être créé
           });
 
-        console.log('🔍 [AUTH] signUp() - check_email_exists RPC result:', {
-          emailExists,
-          excludeUserId: data.user.id,
-          checkError: checkError ? {
-            message: checkError.message,
-            code: checkError.code
-          } : null
-        });
-
         // Si un AUTRE utilisateur avec le même email existe déjà (et que ce n'est pas une erreur de la fonction RPC)
         if (emailExists === true && !checkError) {
-          console.log('⚠️ [AUTH] signUp() - Another user with same email exists! Supabase created duplicate user.');
           // Un autre utilisateur avec le même email existe déjà, Supabase a créé un doublon
           // On doit proposer d'ajouter le rôle au compte existant
           return {
@@ -228,20 +218,9 @@ export class AuthService {
           .eq('id', data.user.id)
           .maybeSingle();
 
-        console.log('📥 [AUTH] signUp() - Profile check result:', {
-          existingProfile,
-          profileError,
-          existingRoles: existingProfile?.roles
-        });
-
         if (existingProfile && !profileError) {
           // Le profil existe déjà, vérifier si le rôle existe
           const requestedRole = roles[0];
-          console.log('🔍 [AUTH] signUp() - Checking if role exists:', {
-            requestedRole,
-            existingRoles: existingProfile.roles,
-            roleExists: existingProfile.roles?.includes(requestedRole)
-          });
           
           if (existingProfile.roles && existingProfile.roles.includes(requestedRole)) {
             return {
@@ -261,9 +240,6 @@ export class AuthService {
 
       // Si une session est créée automatiquement (en développement), initialiser l'utilisateur
       if (data.session) {
-        // #region agent log
-        console.log('🔍 [DEBUG-AUTH] Session created, setting currentUser', { userId: data.session.user.id, email: data.session.user.email });
-        // #endregion
         this.currentUserSubject.next(data.session.user);
         // Ne pas charger le profil immédiatement car il n'est peut-être pas encore créé
         // Il sera chargé lors de la navigation
@@ -273,13 +249,6 @@ export class AuthService {
       // Le profil sera créé automatiquement par le trigger handle_new_user lors de la confirmation
       // Les rôles seront ajoutés après confirmation d'email dans auth-confirm component
 
-      console.log('✅ [AUTH] signUp() - Success, returning user:', {
-        userId: data.user?.id,
-        email: data.user?.email,
-        hasSession: !!data.session,
-        userMetadata: data.user?.user_metadata
-      });
-      console.groupEnd();
       return { user: data.user, error: null };
     } catch (error) {
       console.error('💥 [AUTH] signUp() - Exception:', error);
@@ -384,14 +353,8 @@ export class AuthService {
       }
 
       if (data.session) {
-        // #region agent log
-        console.log('🔍 [DEBUG-AUTH] SignIn session created, setting currentUser', { userId: data.session.user.id, email: data.session.user.email });
-        // #endregion
         this.currentUserSubject.next(data.session.user);
         await this.loadProfile();
-        // #region agent log
-        console.log('🔍 [DEBUG-AUTH] Profile loaded after signIn', { hasProfile: !!this.currentProfileSubject.value });
-        // #endregion
         
         // Initialiser les données pour le rôle actif si disponible
         // Note: L'initialisation doit être gérée dans l'application admin

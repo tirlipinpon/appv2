@@ -133,9 +133,8 @@ export const SubjectsStore = signalStore(
             return of(null);
           }
 
-          // Pour l'instant, on charge toutes les matières si on a besoin de certaines
-          // TODO: Créer une méthode dans SubjectService pour charger par IDs
-          return subjectService.getSubjects().pipe(
+          // Charger uniquement les matières manquantes par leurs IDs
+          return subjectService.getSubjectsByIds(missingIds).pipe(
             tap((result) => {
               if (result.error) {
                 const errorMessage = result.error.message || 'Erreur lors du chargement des matières';

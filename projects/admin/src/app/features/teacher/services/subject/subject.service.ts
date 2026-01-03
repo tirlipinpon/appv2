@@ -31,6 +31,30 @@ export class SubjectService {
   }
 
   /**
+   * Récupère les matières par leurs IDs
+   * @param subjectIds Liste des IDs de matières à récupérer
+   * @returns Observable avec les matières trouvées et une erreur éventuelle
+   */
+  getSubjectsByIds(subjectIds: string[]): Observable<{ subjects: Subject[]; error: PostgrestError | null }> {
+    if (subjectIds.length === 0) {
+      return from(Promise.resolve({ subjects: [], error: null }));
+    }
+
+    return from(
+      this.supabaseService.client
+        .from('subjects')
+        .select('*')
+        .in('id', subjectIds)
+        .order('name', { ascending: true })
+    ).pipe(
+      map(({ data, error }) => ({
+        subjects: (data as Subject[]) || [],
+        error: error || null,
+      }))
+    );
+  }
+
+  /**
    * Récupère les matières autorisées pour une école et un niveau:
    * - matières explicitement liées à (school_id, school_level)
    * - + matières 'extra' ou 'optionnelle' disponibles globalement
