@@ -141,7 +141,7 @@
       @if (selectedGameTypeName()) {
         <div class="game-specific-form">
           <!-- Case vide -->
-          @if (selectedGameTypeName()?.toLowerCase() === 'case vide') {
+          @if (normalizeGameTypeName(selectedGameTypeName()) === 'case vide') {
             <app-case-vide-form
               [initialData]="getInitialDataForCaseVide()"
               (dataChange)="onGameDataChange($event)"
@@ -150,7 +150,7 @@
           }
 
           <!-- Réponse libre -->
-          @if (selectedGameTypeName()?.toLowerCase() === 'reponse libre') {
+          @if (normalizeGameTypeName(selectedGameTypeName()) === 'reponse libre') {
             <app-reponse-libre-form
               [initialData]="getInitialDataForReponseLibre()"
               (dataChange)="onGameDataChange($event)"
@@ -159,7 +159,7 @@
           }
 
           <!-- Liens -->
-          @if (selectedGameTypeName()?.toLowerCase() === 'liens') {
+          @if (normalizeGameTypeName(selectedGameTypeName()) === 'liens') {
             <app-liens-form
               [initialData]="getInitialDataForLiens()"
               (dataChange)="onGameDataChange($event)"
@@ -168,7 +168,7 @@
           }
 
           <!-- Chronologie -->
-          @if (selectedGameTypeName()?.toLowerCase() === 'chronologie') {
+          @if (normalizeGameTypeName(selectedGameTypeName()) === 'chronologie') {
             <app-chronologie-form
               [initialData]="getInitialDataForChronologie()"
               (dataChange)="onGameDataChange($event)"
@@ -177,7 +177,7 @@
           }
 
           <!-- QCM -->
-          @if (selectedGameTypeName()?.toLowerCase() === 'qcm') {
+          @if (normalizeGameTypeName(selectedGameTypeName()) === 'qcm') {
             <app-qcm-form
               [initialData]="getInitialDataForQcm()"
               (dataChange)="onGameDataChange($event)"

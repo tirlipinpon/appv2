@@ -399,6 +399,14 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     return gameType?.name || null;
   }
 
+  /**
+   * Normalise le nom du type de jeu pour la comparaison (minuscules, trim, sans accents)
+   */
+  normalizeGameTypeName(name: string | null | undefined): string {
+    if (!name) return '';
+    return name.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
   onGameTypeChange(): void {
     const gameTypeId = this.gameForm.get('game_type_id')?.value;
     const gameType = this.gameTypes().find(gt => gt.id === gameTypeId);
