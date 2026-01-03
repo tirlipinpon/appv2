@@ -67,21 +67,29 @@ export class QcmFormComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['initialData'] && this.initialData) {
+    if (changes['initialData']) {
       // Activer le flag pour ignorer les émissions pendant l'initialisation
       this.isInitializing = true;
       this.propositionsArray.clear();
       this.reponsesValidesArray.clear();
 
-      this.initialData.propositions.forEach((proposition, index) => {
-        this.propositionsArray.push(new FormControl<string>(proposition, { nonNullable: true }));
-        const isValide = this.initialData!.reponses_valides.includes(proposition);
-        this.reponsesValidesArray.push(new FormControl<boolean>(isValide, { nonNullable: true }));
-      });
+      if (this.initialData) {
+        // Charger les données existantes (mode édition)
+        this.initialData.propositions.forEach((proposition, index) => {
+          this.propositionsArray.push(new FormControl<string>(proposition, { nonNullable: true }));
+          const isValide = this.initialData!.reponses_valides.includes(proposition);
+          this.reponsesValidesArray.push(new FormControl<boolean>(isValide, { nonNullable: true }));
+        });
+      } else {
+        // Réinitialiser le formulaire (mode création)
+        // Les FormArrays sont déjà vides après clear()
+      }
       
       // Désactiver le flag après le chargement initial
       setTimeout(() => {
         this.isInitializing = false;
+        // Émettre la validité (false car le formulaire est vide en mode création)
+        this.validityChange.emit(this.form.valid);
       }, 0);
     }
   }

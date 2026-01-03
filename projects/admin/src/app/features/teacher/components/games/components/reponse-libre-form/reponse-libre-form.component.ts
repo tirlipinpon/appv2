@@ -33,8 +33,15 @@ export class ReponseLibreFormComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['initialData'] && this.initialData) {
-      this.form.patchValue(this.initialData);
+    if (changes['initialData']) {
+      if (this.initialData) {
+        // Charger les données existantes (mode édition)
+        this.form.patchValue(this.initialData);
+      } else {
+        // Réinitialiser le formulaire (mode création)
+        this.form.patchValue({ reponse_valide: '' });
+        this.validityChange.emit(false);
+      }
     }
   }
 }

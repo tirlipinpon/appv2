@@ -82,23 +82,31 @@ export class LiensFormComponent implements OnChanges {
 
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['initialData'] && this.initialData) {
+    if (changes['initialData']) {
       // Activer le flag pour ignorer les émissions pendant l'initialisation
       this.isInitializing = true;
       this.motsArray.clear();
       this.reponsesArray.clear();
 
-      this.initialData.mots.forEach(mot => {
-        this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
-      });
+      if (this.initialData) {
+        // Charger les données existantes (mode édition)
+        this.initialData.mots.forEach(mot => {
+          this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
+        });
 
-      this.initialData.reponses.forEach(reponse => {
-        this.reponsesArray.push(new FormControl<string>(reponse, { nonNullable: true }));
-      });
+        this.initialData.reponses.forEach(reponse => {
+          this.reponsesArray.push(new FormControl<string>(reponse, { nonNullable: true }));
+        });
+      } else {
+        // Réinitialiser le formulaire (mode création)
+        // Les FormArrays sont déjà vides après clear()
+      }
       
       // Désactiver le flag après le chargement initial
       setTimeout(() => {
         this.isInitializing = false;
+        // Émettre la validité (false car le formulaire est vide en mode création)
+        this.validityChange.emit(false);
       }, 0);
     }
   }

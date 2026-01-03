@@ -87,41 +87,48 @@ export class ChronologieFormComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['initialData'] && this.initialData) {
+    if (changes['initialData']) {
       // Activer le flag pour ignorer les émissions pendant l'initialisation
       this.isInitializing = true;
       this.motsArray.clear();
 
-      // Charger les mots dans l'ordre correct
-      // Si ordre_correct existe, utiliser cet ordre, sinon utiliser l'ordre des mots
-      const ordreCorrect = this.initialData.ordre_correct;
-      if (ordreCorrect && ordreCorrect.length > 0) {
-        // Si ce sont des numbers (ancien format), convertir en strings
-        if (typeof ordreCorrect[0] === 'number') {
-          const ordreAsNumbers = ordreCorrect as unknown as number[];
-          ordreAsNumbers.forEach((index) => {
-            const mot = this.initialData!.mots[index];
-            if (mot) {
+      if (this.initialData) {
+        // Charger les mots dans l'ordre correct (mode édition)
+        // Si ordre_correct existe, utiliser cet ordre, sinon utiliser l'ordre des mots
+        const ordreCorrect = this.initialData.ordre_correct;
+        if (ordreCorrect && ordreCorrect.length > 0) {
+          // Si ce sont des numbers (ancien format), convertir en strings
+          if (typeof ordreCorrect[0] === 'number') {
+            const ordreAsNumbers = ordreCorrect as unknown as number[];
+            ordreAsNumbers.forEach((index) => {
+              const mot = this.initialData!.mots[index];
+              if (mot) {
+                this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
+              }
+            });
+          } else {
+            // Nouveau format : utiliser l'ordre correct pour charger les mots
+            ordreCorrect.forEach((mot) => {
               this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
-            }
-          });
+            });
+          }
         } else {
-          // Nouveau format : utiliser l'ordre correct pour charger les mots
-          ordreCorrect.forEach((mot) => {
+          // Si pas d'ordre défini, utiliser l'ordre des mots
+          this.initialData.mots.forEach((mot) => {
             this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
           });
         }
       } else {
-        // Si pas d'ordre défini, utiliser l'ordre des mots
-        this.initialData.mots.forEach((mot) => {
-          this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
-        });
+        // Réinitialiser le formulaire (mode création)
+        // Le FormArray est déjà vide après clear()
       }
       
       // Désactiver le flag après le chargement initial
       // Utiliser setTimeout pour s'assurer que tous les valueChanges sont ignorés
       setTimeout(() => {
         this.isInitializing = false;
+        // Émettre la validité (false car le formulaire est vide en mode création)
+        this.validityChange.emit(this.motsArray.length > 0);
       }, 0);
     }
   }
