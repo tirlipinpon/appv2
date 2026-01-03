@@ -7,6 +7,7 @@ import { CollectionService } from '../../../../core/services/collection/collecti
 import { CheckpointService } from '../../../../core/services/save/checkpoint.service';
 import { ChildAuthService } from '../../../../core/auth/child-auth.service';
 import { GameState } from '../../types/game.types';
+import { normalizeGameType } from '../../../../shared/utils/game-normalization.util';
 
 @Injectable({
   providedIn: 'root',
@@ -65,12 +66,6 @@ export class GameApplication {
     if (!game || !child) {
       return;
     }
-
-    // Fonction helper pour normaliser le type de jeu
-    const normalizeGameType = (gameType: string | undefined): string => {
-      if (!gameType) return '';
-      return gameType.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_');
-    };
 
     // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
     // Ces jeux appellent completeGame() seulement si isCorrect === true, donc on leur donne 100% si terminés

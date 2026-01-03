@@ -4,7 +4,7 @@ import { withDevtools } from "@angular-architects/ngrx-toolkit";
 import { inject } from '@angular/core';
 import { pipe, switchMap, catchError, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { SettingsInfrastructure } from '../components/infrastructure/infrastructure';
+import { StatisticsService } from '../../../core/services/statistics/statistics.service';
 import { ChildStatistics } from '../../../core/types/game.types';
 
 interface SettingsState {
@@ -26,12 +26,12 @@ export const SettingsStore = signalStore(
   withComputed((state) => ({
     hasStatistics: () => state.statistics() !== null,
   })),
-  withMethods((store, infrastructure = inject(SettingsInfrastructure)) => ({
+  withMethods((store, statisticsService = inject(StatisticsService)) => ({
     loadStatistics: rxMethod<{ childId: string }>(
       pipe(
         tap(() => patchState(store, { loading: true, error: null })),
         switchMap(({ childId }) =>
-          infrastructure.loadChildStatistics(childId).then(
+          statisticsService.loadChildStatistics(childId).then(
             (statistics) => {
               patchState(store, { statistics, loading: false });
             },

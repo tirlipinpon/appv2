@@ -191,6 +191,15 @@
               "projects/frontend/src/styles.scss"
             ]
           }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "projects/frontend/src/**/*.ts",
+              "projects/frontend/src/**/*.html"
+            ]
+          }
         }
       }
     }

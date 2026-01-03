@@ -5,6 +5,7 @@ import { inject } from '@angular/core';
 import { pipe, switchMap, catchError, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { DashboardInfrastructure } from '../components/infrastructure/infrastructure';
+import { StatisticsService } from '../../../core/services/statistics/statistics.service';
 import { ChildStatistics } from '../../../core/types/game.types';
 
 interface DashboardState {
@@ -32,13 +33,13 @@ export const DashboardStore = signalStore(
       return stats ? Math.round(stats.success_rate) : 0;
     },
   })),
-  withMethods((store, infrastructure = inject(DashboardInfrastructure)) => ({
+  withMethods((store, infrastructure = inject(DashboardInfrastructure), statisticsService = inject(StatisticsService)) => ({
     loadDashboard: rxMethod<{ childId: string }>(
       pipe(
         tap(() => patchState(store, { loading: true, error: null })),
         switchMap(({ childId }) =>
           Promise.all([
-            infrastructure.loadChildStatistics(childId),
+            statisticsService.loadChildStatistics(childId),
             infrastructure.loadRecentCollectibles(childId, 5),
           ]).then(
             ([statistics, recentCollectibles]) => {

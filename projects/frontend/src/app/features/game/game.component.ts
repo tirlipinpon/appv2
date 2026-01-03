@@ -18,6 +18,7 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { ProgressionService } from '../../core/services/progression/progression.service';
 import type { Game } from '../../core/types/game.types';
 import { isGameType, isGameTypeOneOf } from '@shared/utils/game-type.util';
+import { normalizeGameType } from '../../shared/utils/game-normalization.util';
 
 @Component({
   selector: 'app-game',
@@ -1138,12 +1139,6 @@ export class GameComponent implements OnInit, OnDestroy {
     await this.loadCategoryProgress();
     // Recharger le score total après avoir complété le jeu
     await this.loadTotalScore();
-    
-    // Fonction helper pour normaliser le type de jeu (identique à application.ts)
-    const normalizeGameType = (gameType: string | undefined): string => {
-      if (!gameType) return '';
-      return gameType.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_');
-    };
     
     // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
     const specificGameTypes = ['case_vide', 'case vide', 'liens', 'vrai_faux', 'vrai/faux', 'image_interactive', 'memory', 'simon', 'qcm', 'chronologie', 'click', 'reponse_libre'];
