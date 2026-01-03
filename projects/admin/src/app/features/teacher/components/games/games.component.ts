@@ -87,6 +87,8 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly duplicateDialogOpen = signal<boolean>(false);
   readonly gameToDuplicate = signal<Game | null>(null);
   readonly currentAssignment = signal<TeacherAssignment | null>(null);
+  private isDuplicating = false;
+  private isCreating = false;
 
   readonly games = computed(() => this.gamesStore.games());
   readonly gameTypes = computed(() => this.gamesStore.gameTypes());
@@ -471,15 +473,23 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   create(): void {
-    if (!this.gameForm.valid || !this.subjectId() || !this.gameSpecificValid()) return;
+    if (!this.gameForm.valid || !this.subjectId() || !this.gameSpecificValid() || this.isCreating) {
+      return;
+    }
+    
+    this.isCreating = true;
+    
     const v = this.gameForm.value;
     const subjectId = this.subjectId()!;
     const gameData = this.gameSpecificData();
-    if (!gameData) return;
+    if (!gameData) {
+      this.isCreating = false;
+      return;
+    }
 
     // Générer un nom automatique
     const gameTypeName = this.selectedGameTypeName() || 'Jeu';
-    const questionPreview = v.question?.trim() ? v.question.trim().substring(0, 30) : '';
+    const questionPreview = typeof v['question'] === 'string' && v['question'].trim() ? v['question'].trim().substring(0, 30) : '';
     const autoName = questionPreview ? `${gameTypeName} - ${questionPreview}${questionPreview.length >= 30 ? '...' : ''}` : gameTypeName;
 
     // Construire les aides
@@ -489,9 +499,18 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     const imageDataWithFile = this.imageInteractiveDataWithFile();
     const isImageInteractive = this.selectedGameTypeName()?.toLowerCase() === 'click' || 
                                this.selectedGameTypeName()?.toLowerCase() === 'image interactive';
+    
+    // Vérifier si gameData contient déjà une image_url (pour les jeux click)
+    const hasImageUrl = isImageInteractive && 
+                        gameData && 
+                        typeof gameData === 'object' && 
+                        'image_url' in gameData && 
+                        (gameData as ImageInteractiveData).image_url && 
+                        typeof (gameData as ImageInteractiveData).image_url === 'string' &&
+                        (gameData as ImageInteractiveData).image_url.length > 0;
 
     if (isImageInteractive && imageDataWithFile?.imageFile) {
-      // Pour les jeux click : créer d'abord le jeu, puis uploader l'image dans son dossier
+      // Pour les jeux click avec un nouveau fichier : créer d'abord le jeu, puis uploader l'image dans son dossier
       const file = imageDataWithFile.imageFile;
       
       // Extraire les données sans l'image (imageFile et oldImageUrl sont extraits mais non utilisés ici)
@@ -512,6 +531,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
           if (!createdGame) {
             console.error('Erreur: Le jeu n\'a pas pu être créé');
             alert('Erreur lors de la création du jeu');
+            this.isCreating = false;
             return;
           }
 
@@ -521,6 +541,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
               if (result.error) {
                 console.error('Erreur upload:', result.error);
                 alert(`Erreur lors de l'upload de l'image: ${result.error}`);
+                this.isCreating = false;
                 return;
               }
 
@@ -536,21 +557,46 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
               this.application.updateGame(createdGame.id, {
                 metadata: updatedImageData as unknown as Record<string, unknown>,
               });
+              
+              this.isCreating = false;
             },
             error: (error) => {
               console.error('Erreur upload:', error);
               alert('Erreur lors de l\'upload de l\'image');
+              this.isCreating = false;
             }
           });
         },
         error: (error) => {
           console.error('Erreur création:', error);
           alert('Erreur lors de la création du jeu');
+          this.isCreating = false;
+        }
+      });
+    } else if (isImageInteractive && hasImageUrl) {
+      // Pour les jeux click avec une image_url existante (pas de nouveau fichier) : créer directement avec l'image_url
+      this.createGameWithData(v, subjectId, autoName, aides, gameData as ImageInteractiveData).subscribe({
+        next: () => {
+          this.isCreating = false;
+        },
+        error: (error) => {
+          console.error('Erreur création:', error);
+          alert('Erreur lors de la création du jeu');
+          this.isCreating = false;
         }
       });
     } else {
-      // Pas de nouveau fichier, créer directement
-      this.createGameWithData(v, subjectId, autoName, aides, gameData).subscribe();
+      // Pas un jeu click ou pas d'image, créer directement
+      this.createGameWithData(v, subjectId, autoName, aides, gameData).subscribe({
+        next: () => {
+          this.isCreating = false;
+        },
+        error: (error) => {
+          console.error('Erreur création:', error);
+          alert('Erreur lors de la création du jeu');
+          this.isCreating = false;
+        }
+      });
     }
   }
 
@@ -618,6 +664,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private resetForm(): void {
+    this.isCreating = false;
     this.gameForm.reset();
     this.aidesArray.clear();
     this.gameForm.patchValue({ game_type_id: '' });
@@ -822,8 +869,12 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onDuplicateGame(duplicateData: DuplicateGameData): void {
+    if (this.isDuplicating) return;
+    
     const game = this.gameToDuplicate();
     if (!game) return;
+
+    this.isDuplicating = true;
 
     // Vérifier que le subject_id sélectionné correspond bien à un assignment du professeur
     const assignments = this.subjectsStore.assignments();
@@ -835,6 +886,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (!assignmentExists) {
       this.errorSnackbar.showError('La matière sélectionnée ne correspond pas à une affectation valide.');
+      this.isDuplicating = false;
       return;
     }
 
@@ -864,9 +916,10 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     const imageUrl = metadata && typeof metadata === 'object' && 'image_url' in metadata
       ? (metadata as unknown as ImageInteractiveData).image_url
       : null;
+    const hasImageUrl = imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0;
 
-    if (isClickGame && imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0) {
-      // Créer le jeu d'abord sans image
+    if (isClickGame && hasImageUrl) {
+      // Pour les jeux click avec une image : créer d'abord le jeu sans image, puis copier l'image
       const metadataWithoutImage: ImageInteractiveData = {
         image_url: '',
         image_width: 0,
@@ -890,6 +943,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
           if (!createdGame) {
             console.error('Erreur: Le jeu n\'a pas pu être créé');
             this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+            this.isDuplicating = false;
             return;
           }
 
@@ -899,6 +953,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
               if (result.error) {
                 console.error('Erreur copie image:', result.error);
                 this.errorSnackbar.showError(`Erreur lors de la copie de l'image: ${result.error}`);
+                this.isDuplicating = false;
                 return;
               }
 
@@ -914,20 +969,54 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
               this.application.updateGame(createdGame.id, {
                 metadata: updatedMetadata as unknown as Record<string, unknown>,
               });
+              
+              this.isDuplicating = false;
             },
             error: (error) => {
               console.error('Erreur copie image:', error);
               this.errorSnackbar.showError('Erreur lors de la copie de l\'image');
+              this.isDuplicating = false;
             }
           });
         },
         error: (error) => {
           console.error('Erreur duplication:', error);
           this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+          this.isDuplicating = false;
+        }
+      });
+    } else if (isClickGame && !hasImageUrl) {
+      // Jeu click sans image_url : créer avec metadata sans image_url
+      const metadataWithoutImage: ImageInteractiveData = {
+        image_url: '',
+        image_width: 0,
+        image_height: 0,
+        zones: (metadata as unknown as ImageInteractiveData)?.zones || [],
+        require_all_correct_zones: (metadata as unknown as ImageInteractiveData)?.require_all_correct_zones ?? true,
+      };
+      
+      this.application.createGame({
+        subject_id: categoryId ? null : duplicateData.subjectId,
+        subject_category_id: categoryId || null,
+        game_type_id: game.game_type_id,
+        name: autoName,
+        instructions: duplicateData.gameData.instructions || null,
+        question: duplicateData.gameData.question?.trim() || null,
+        reponses: null,
+        aides: aides,
+        metadata: metadataWithoutImage as unknown as Record<string, unknown>,
+      }).subscribe({
+        next: () => {
+          this.isDuplicating = false;
+        },
+        error: (error) => {
+          console.error('Erreur duplication:', error);
+          this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+          this.isDuplicating = false;
         }
       });
     } else {
-      // Pas un jeu click ou pas d'image, créer directement
+      // Pas un jeu click, créer directement avec les métadonnées
       this.application.createGame({
         subject_id: categoryId ? null : duplicateData.subjectId,
         subject_category_id: categoryId || null,
@@ -938,7 +1027,16 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         reponses: null,
         aides: aides,
         metadata: duplicateData.gameData.metadata || null,
-      }).subscribe();
+      }).subscribe({
+        next: () => {
+          this.isDuplicating = false;
+        },
+        error: (error) => {
+          console.error('Erreur duplication:', error);
+          this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+          this.isDuplicating = false;
+        }
+      });
     }
 
     this.duplicateDialogOpen.set(false);
@@ -947,6 +1045,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onCancelDuplicate(): void {
+    this.isDuplicating = false;
     this.duplicateDialogOpen.set(false);
     this.gameToDuplicate.set(null);
     this.currentAssignment.set(null);

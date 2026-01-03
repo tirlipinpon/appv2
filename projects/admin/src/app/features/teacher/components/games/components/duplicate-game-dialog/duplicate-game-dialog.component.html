@@ -162,8 +162,12 @@
         type="button" 
         class="btn btn-primary" 
         (click)="onConfirm()"
-        [disabled]="!isFormValid()">
-        Dupliquer
+        [disabled]="!isFormValid() || isProcessing()">
+        @if (isProcessing()) {
+          Duplication en cours...
+        } @else {
+          Dupliquer
+        }
       </button>
     </div>
   </div>

@@ -30,8 +30,12 @@ export class GamesApplication {
           this.store.setError(result.error.message || 'Erreur lors de la création du jeu');
           return null;
         }
-        // Mettre à jour le store pour ajouter le jeu à la liste
-        this.store.createGame(gameData);
+        // Mettre à jour le store pour ajouter le jeu à la liste (sans recréer le jeu)
+        // Ne pas appeler store.createGame() car il recrée le jeu dans la DB
+        // On utilise addGameToStore() qui ajoute simplement le jeu au store sans le recréer
+        if (result.game) {
+          this.store.addGameToStore(result.game);
+        }
         return result.game;
       })
     );

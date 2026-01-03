@@ -143,6 +143,22 @@ export const GamesStore = signalStore(
       )
     ),
 
+    // Méthode pour ajouter un jeu existant au store sans le recréer dans la DB
+    addGameToStore: rxMethod<Game>(
+      pipe(
+        tap((game) => {
+          const currentSubjectId = store.currentSubjectId();
+          const currentCategoryId = store.currentCategoryId();
+          if (game.subject_id === currentSubjectId || game.subject_category_id === currentCategoryId) {
+            patchState(store, {
+              games: [game, ...store.games()],
+              isLoading: false,
+            });
+          }
+        })
+      )
+    ),
+
     updateGame: rxMethod<{ id: string; updates: GameUpdate }>(
       pipe(
         tap(() => patchState(store, { isLoading: true, error: [] })),

@@ -77,6 +77,7 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
   readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | null>(null);
+  readonly isProcessing = signal<boolean>(false);
 
   readonly currentGameTypeName = computed(() => {
     if (this.gameTypes.length > 0) {
@@ -195,6 +196,9 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
 
   private initializeForm(): void {
     if (!this.game) return;
+    
+    // Réinitialiser le flag de traitement
+    this.isProcessing.set(false);
 
     // Si currentAssignment est disponible, l'utiliser pour pré-remplir
     // Sinon, laisser les champs vides pour que l'utilisateur les remplisse
@@ -260,7 +264,9 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   }
 
   onConfirm(): void {
-    if (!this.isFormValid()) return;
+    if (!this.isFormValid() || this.isProcessing()) return;
+
+    this.isProcessing.set(true);
 
     const formValue = this.duplicateForm.value;
     const globalFields = this.globalFieldsData();
@@ -356,6 +362,7 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   }
 
   onCancel(): void {
+    this.isProcessing.set(false);
     this.cancel.emit();
   }
 
