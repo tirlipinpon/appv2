@@ -1,8 +1,8 @@
 import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, OnInit, inject, signal, computed, effect, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { DragDropModule, CdkDragMove, CdkDragEnd } from '@angular/cdk/drag-drop';
-import type { ImageInteractiveData, ImageInteractiveZone } from '@shared/games';
+import type { ImageInteractiveData } from '@shared/games';
 
 interface ZoneInEdit {
   id: string;
@@ -14,7 +14,7 @@ interface ZoneInEdit {
   width?: number;
   height?: number;
   // Format polygone (nouveau)
-  points?: Array<{ x: number; y: number }>;
+  points?: { x: number; y: number }[];
 }
 
 // Interface étendue pour les données en cours d'édition avec le fichier File
@@ -65,7 +65,7 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   readonly drawingCurrent = signal<{ x: number; y: number } | null>(null);
   
   // Polygone en cours de création
-  readonly polygonPoints = signal<Array<{ x: number; y: number }>>([]);
+  readonly polygonPoints = signal<{ x: number; y: number }[]>([]);
   readonly isCreatingPolygon = signal<boolean>(false);
 
   // Déplacement et redimensionnement
@@ -94,14 +94,9 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     const zones = this.zones();
     const displayedWidth = this.displayedImageWidth();
     const displayedHeight = this.displayedImageHeight();
-    const offsetX = this.imageOffsetX();
-    const offsetY = this.imageOffsetY();
-    const nativeWidth = this.imageWidth();
-    const nativeHeight = this.imageHeight();
-    
     
     // Retourner un objet simple avec des points qui incluent un ID unique
-    const cache: Record<string, Array<{ id: string; x: number; y: number }>> = {};
+    const cache: Record<string, { id: string; x: number; y: number }[]> = {};
     
     for (const zone of zones) {
       if (zone.points && zone.points.length > 0) {
@@ -124,7 +119,7 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   
   constructor() {
     this.form = this.fb.group({
-      imageFile: [null],
+      // Note: imageFile n'est pas dans le form car les inputs file ne peuvent pas être liés à FormControl
     });
 
     // Observer les changements de taille du conteneur
@@ -394,8 +389,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     // Utiliser getBoundingClientRect() mais s'assurer que les deux sont dans le même référentiel
     // Le conteneur utilise display: flex avec align-items: center et justify-content: center
     // Donc l'image est centrée dans le conteneur
-    const offsetX = imgRect.left - containerRect.left;
-    const offsetY = imgRect.top - containerRect.top;
     
     // Vérifier la cohérence : si l'image est centrée, offsetX devrait être (containerWidth - imageWidth) / 2
     const containerWidth = containerRect.width;
@@ -531,8 +524,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
       // Comme l'image conserve son ratio d'aspect avec object-fit: contain,
       // les coordonnées relatives par rapport à l'image native sont identiques
       // aux coordonnées relatives par rapport à l'image affichée
-      const nativeWidth = this.imageWidth();
-      const nativeHeight = this.imageHeight();
       
       // Calculer les coordonnées relatives par rapport à l'image native
       // Comme l'image conserve son ratio d'aspect, on peut utiliser directement
@@ -713,7 +704,8 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   /**
    * Gère la fin du dessin d'une zone, du déplacement ou du redimensionnement
    */
-  onMouseUp(event: MouseEvent): void {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onMouseUp(_event: MouseEvent): void { // _event requis par la signature mais non utilisé
     // Fin du déplacement d'un point
     if (this.isDraggingPoint()) {
       this.isDraggingPoint.set(false);
@@ -811,8 +803,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   onCdkDragMoved(event: CdkDragMove, zoneId: string, pointIndex: number): void {
     const displayedWidth = this.displayedImageWidth();
     const displayedHeight = this.displayedImageHeight();
-    const offsetX = this.imageOffsetX();
-    const offsetY = this.imageOffsetY();
     
     // Position actuelle du drag (relative au foreignObject)
     const position = event.source.getFreeDragPosition();
@@ -857,7 +847,8 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   /**
    * Gère la fin du drag d'un point avec CDK Drag
    */
-  onCdkDragEnded(event: CdkDragEnd, zoneId: string, pointIndex: number): void {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onCdkDragEnded(_event: CdkDragEnd, _zoneId: string, _pointIndex: number): void { // Paramètres requis par CDK mais non utilisés
     this.emitData();
   }
 
@@ -879,11 +870,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     const rect = this.imageContainer.nativeElement.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
-    
-    // Convertir en coordonnées relatives pour le stockage
-    const displayedWidth = this.displayedImageWidth();
-    const displayedHeight = this.displayedImageHeight();
-    
     
     this.isDraggingPoint.set(true);
     this.draggingPoint.set({
@@ -1129,7 +1115,7 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
    * Convertit les points relatifs d'un polygone en coordonnées absolues pour l'affichage
    * Utilise le cache computed pour éviter les recalculs excessifs
    */
-  getAbsolutePolygonPoints(zone: ZoneInEdit): Array<{ x: number; y: number }> | null {
+  getAbsolutePolygonPoints(zone: ZoneInEdit): { x: number; y: number }[] | null {
     if (!zone.points || zone.points.length === 0) {
       return null;
     }
@@ -1146,7 +1132,7 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   /**
    * Obtient les points absolus du polygone en cours de création
    */
-  getCurrentPolygonAbsolutePoints(): Array<{ x: number; y: number }> {
+  getCurrentPolygonAbsolutePoints(): { x: number; y: number }[] {
     const relativePoints = this.polygonPoints();
     if (relativePoints.length === 0) {
       return [];
@@ -1154,8 +1140,6 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
     
     const displayedWidth = this.displayedImageWidth();
     const displayedHeight = this.displayedImageHeight();
-    const offsetX = this.imageOffsetX();
-    const offsetY = this.imageOffsetY();
     
     if (displayedWidth === 0 || displayedHeight === 0) {
       return [];
@@ -1171,7 +1155,7 @@ export class ImageInteractiveFormComponent implements OnInit, OnChanges, AfterVi
   /**
    * Formate les points d'un polygone en chaîne pour l'attribut SVG points
    */
-  formatPolygonPoints(points: Array<{ x: number; y: number }> | null): string {
+  formatPolygonPoints(points: { x: number; y: number }[] | null): string {
     if (!points || points.length === 0) {
       return '';
     }

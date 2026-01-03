@@ -9,7 +9,6 @@
       <input
         type="file"
         id="imageFile"
-        formControlName="imageFile"
         accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
         (change)="onFileSelected($event)"
         class="file-input"
@@ -264,7 +263,12 @@
                   [class.selected]="isZoneSelected(zone.id)"
                   [class.correct]="zone.is_correct"
                   [class.incorrect]="!zone.is_correct"
+                  tabindex="0"
+                  role="button"
+                  [attr.aria-label]="'Sélectionner la zone ' + (zone.name || 'sans nom')"
                   (click)="selectZone(zone.id)"
+                  (keydown.enter)="selectZone(zone.id)"
+                  (keydown.space)="selectZone(zone.id); $event.preventDefault()"
                 >
                   <span class="zone-name">{{ zone.name || 'Zone sans nom' }}</span>
                   <span class="zone-status">

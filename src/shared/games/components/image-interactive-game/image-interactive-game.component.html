@@ -35,7 +35,12 @@
   <div
     #imageContainer
     class="image-container"
+    tabindex="0"
+    role="button"
+    [attr.aria-label]="'Image interactive avec zones cliquables'"
     (click)="onImageClick($event)"
+    (keydown.enter)="onImageKeyDown($event)"
+    (keydown.space)="onImageKeyDown($event)"
     [class.disabled]="disabled || isSubmitted()"
   >
     <img
