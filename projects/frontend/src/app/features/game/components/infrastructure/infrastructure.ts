@@ -27,22 +27,40 @@ export class GameInfrastructure {
     const game = data as any;
     let gameTypeName = (game.game_types?.name || '').toLowerCase().replace(/\s+/g, '_');
     
+    // Normaliser les accents (é -> e, è -> e, etc.)
+    gameTypeName = gameTypeName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    
     // Normaliser "click" vers "image_interactive"
     // Utiliser les fonctions de comparaison normalisées pour gérer les variations depuis la DB
     if (isGameTypeOneOf(gameTypeName, 'click', 'image interactive', 'image_interactive')) {
       gameTypeName = 'image_interactive';
     }
     
-    // La table games n'a pas de colonne game_data_json, donc on doit toujours convertir
-    // depuis metadata, question, reponses, aides
+    // Vérifier d'abord si game_data_json existe déjà dans la base de données
+    // Si oui, l'utiliser en priorité (pour les nouveaux jeux)
     let gameDataJson: Record<string, unknown> = {};
     
-    // Convertir selon le type de jeu
-    if (gameTypeName === 'reponse_libre') {
-      gameDataJson = {
-        reponse_valide: game.metadata?.reponse_valide || ''
-      };
-    } else if (gameTypeName === 'memory') {
+    if (game.game_data_json && typeof game.game_data_json === 'object' && Object.keys(game.game_data_json).length > 0) {
+      // Utiliser game_data_json s'il existe et n'est pas vide
+      gameDataJson = game.game_data_json;
+    } else {
+      // Sinon, convertir depuis metadata, question, reponses, aides (anciens jeux)
+      // Convertir selon le type de jeu
+      if (gameTypeName === 'reponse_libre') {
+        // Vérifier si metadata.reponse_valide existe avant de créer gameDataJson
+        if (game.metadata?.reponse_valide) {
+          gameDataJson = {
+            reponse_valide: game.metadata.reponse_valide
+          };
+        } else if (game.reponses?.reponse_valide) {
+          // Fallback vers reponses si metadata n'existe pas
+          gameDataJson = {
+            reponse_valide: game.reponses.reponse_valide
+          };
+        }
+      } else if (gameTypeName === 'memory') {
       // Memory : convertir metadata.paires en game_data_json.paires
       if (game.metadata?.paires && Array.isArray(game.metadata.paires)) {
         gameDataJson = {
@@ -117,8 +135,6 @@ export class GameInfrastructure {
         };
       } else if (game.reponses) {
         gameDataJson = game.reponses;
-      } else if (game.game_data_json) {
-        gameDataJson = game.game_data_json;
       }
     } else if (gameTypeName === 'image_interactive') {
       // Image interactive (click) : convertir depuis metadata
@@ -132,15 +148,13 @@ export class GameInfrastructure {
             ? game.metadata.require_all_correct_zones 
             : true
         };
-      } else if (game.game_data_json && Object.keys(game.game_data_json).length > 0) {
-        gameDataJson = game.game_data_json;
+      } else if (game.reponses) {
+        gameDataJson = game.reponses;
       }
     } else if (game.reponses) {
       // Pour les autres types, utiliser reponses si disponible
       gameDataJson = game.reponses;
-    } else if (game.game_data_json) {
-      // Si game_data_json existe (pour les nouveaux jeux), l'utiliser
-      gameDataJson = game.game_data_json;
+    }
     }
     
     // Retourner le jeu normalisé

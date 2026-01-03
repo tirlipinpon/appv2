@@ -148,16 +148,35 @@ export class SubjectsInfrastructure {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private normalizeGame(game: any): Game {
-    const gameTypeName = (game.game_types?.name || '').toLowerCase().replace(/\s+/g, '_');
+    let gameTypeName = (game.game_types?.name || '').toLowerCase().replace(/\s+/g, '_');
     
-    // Convertir depuis metadata vers game_data_json
+    // Normaliser les accents (é -> e, è -> e, etc.)
+    gameTypeName = gameTypeName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    
+    // Vérifier d'abord si game_data_json existe déjà dans la base de données
+    // Si oui, l'utiliser en priorité (pour les nouveaux jeux)
     let gameDataJson: Record<string, unknown> = {};
     
-    if (gameTypeName === 'reponse_libre') {
-      gameDataJson = {
-        reponse_valide: game.metadata?.reponse_valide || ''
-      };
-    } else if (gameTypeName === 'memory') {
+    if (game.game_data_json && typeof game.game_data_json === 'object' && Object.keys(game.game_data_json).length > 0) {
+      // Utiliser game_data_json s'il existe et n'est pas vide
+      gameDataJson = game.game_data_json;
+    } else {
+      // Sinon, convertir depuis metadata, question, reponses, aides (anciens jeux)
+      if (gameTypeName === 'reponse_libre') {
+        // Vérifier si metadata.reponse_valide existe avant de créer gameDataJson
+        if (game.metadata?.reponse_valide) {
+          gameDataJson = {
+            reponse_valide: game.metadata.reponse_valide
+          };
+        } else if (game.reponses?.reponse_valide) {
+          // Fallback vers reponses si metadata n'existe pas
+          gameDataJson = {
+            reponse_valide: game.reponses.reponse_valide
+          };
+        }
+      } else if (gameTypeName === 'memory') {
       if (game.metadata?.paires && Array.isArray(game.metadata.paires)) {
         gameDataJson = {
           paires: game.metadata.paires.map((paire: { question?: string; reponse?: string }) => ({
@@ -226,13 +245,10 @@ export class SubjectsInfrastructure {
         };
       } else if (game.reponses) {
         gameDataJson = game.reponses;
-      } else if (game.game_data_json) {
-        gameDataJson = game.game_data_json;
       }
     } else if (game.reponses) {
       gameDataJson = game.reponses;
-    } else if (game.game_data_json) {
-      gameDataJson = game.game_data_json;
+    }
     }
     
     return {
