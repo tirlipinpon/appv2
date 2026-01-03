@@ -371,11 +371,15 @@ export class GameService {
             });
 
             // Grouper et compter
-            data.forEach((game: any) => {
-              const subjectId = game.subject_id;
-              const typeName = game.game_type?.name || 'Inconnu';
+            data.forEach((game: unknown) => {
+              const gameData = game as GameWithTypeName;
+              const subjectId = gameData.subject_id;
+              const gameType = Array.isArray(gameData.game_type) 
+                ? gameData.game_type[0] 
+                : gameData.game_type;
+              const typeName = gameType?.name || 'Inconnu';
               
-              const current = statsBySubject.get(subjectId);
+              const current = statsBySubject.get(subjectId || '');
               if (current) {
                 current.stats[typeName] = (current.stats[typeName] || 0) + 1;
                 current.total++;
