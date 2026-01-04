@@ -120,7 +120,9 @@ export class ChronologieFormComponent implements OnChanges {
         }
       } else {
         // Réinitialiser le formulaire (mode création)
-        // Le FormArray est déjà vide après clear()
+        // Ajouter deux champs vides par défaut
+        this.motsArray.push(new FormControl<string>('', { nonNullable: true }));
+        this.motsArray.push(new FormControl<string>('', { nonNullable: true }));
       }
       
       // Désactiver le flag après le chargement initial

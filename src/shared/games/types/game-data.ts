@@ -28,6 +28,7 @@ export interface LiensData {
   mots: string[];
   reponses: string[];
   liens: { mot: string; reponse: string }[]; // Les associations correctes par contenu (pas par index)
+  mots_leurres?: string[]; // Mots leurres (distractors) optionnels
 }
 
 // Chronologie : suite de mots à mettre dans un ordre

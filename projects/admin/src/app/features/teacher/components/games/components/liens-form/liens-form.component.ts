@@ -22,8 +22,8 @@ export class LiensFormComponent implements OnChanges {
 
   constructor() {
     this.form = this.fb.group({
-      mots: this.fb.array<FormControl<string>>([]),
-      reponses: this.fb.array<FormControl<string>>([]),
+      paires: this.fb.array<FormGroup<{ mot: FormControl<string>; reponse: FormControl<string> }>>([]),
+      mots_leurres: this.fb.array<FormControl<string>>([]),
     });
 
     this.form.valueChanges.subscribe(() => {
@@ -31,24 +31,36 @@ export class LiensFormComponent implements OnChanges {
       if (this.isInitializing) {
         return;
       }
-      const mots = this.motsArray.value.filter((m: string) => m && m.trim());
-      const reponses = this.reponsesArray.value.filter((r: string) => r && r.trim());
       
-      // Générer automatiquement les liens : chaque mot à l'index i est associé à la réponse à l'index i
-      // Utiliser le contenu (string) plutôt que les index pour permettre le mélange
-      const liens = mots.map((mot, index) => ({
-        mot: mot,
-        reponse: reponses[index] || '',
-      })).filter(lien => lien.mot && lien.reponse); // Filtrer les associations incomplètes
+      const paires = this.pairesArray.value
+        .map((paire) => ({
+          mot: (paire.mot || '').trim(),
+          reponse: (paire.reponse || '').trim(),
+        }))
+        .filter((paire) => paire.mot && paire.reponse);
+      
+      const mots = paires.map((paire) => paire.mot);
+      const reponses = paires.map((paire) => paire.reponse);
+      
+      // Générer automatiquement les liens : chaque paire est un lien
+      const liens = paires.map((paire) => ({
+        mot: paire.mot,
+        reponse: paire.reponse,
+      }));
 
-      // Valider que le nombre de mots correspond au nombre de réponses
-      const isValid = mots.length > 0 && reponses.length > 0 && mots.length === reponses.length;
+      const motsLeurres = this.motsLeurresArray.value
+        .filter((m: string) => m && m.trim())
+        .map((m: string) => m.trim());
+
+      // Valider qu'il y a au moins une paire complète
+      const isValid = paires.length > 0;
 
       if (isValid) {
         const liensData: LiensData = {
           mots: mots,
           reponses: reponses,
           liens: liens,
+          mots_leurres: motsLeurres.length > 0 ? motsLeurres : undefined,
         };
         this.dataChange.emit(liensData);
       }
@@ -56,59 +68,76 @@ export class LiensFormComponent implements OnChanges {
     });
   }
 
-  get motsArray(): FormArray<FormControl<string>> {
-    return this.form.get('mots') as FormArray<FormControl<string>>;
+  get pairesArray(): FormArray<FormGroup<{ mot: FormControl<string>; reponse: FormControl<string> }>> {
+    return this.form.get('paires') as FormArray<FormGroup<{ mot: FormControl<string>; reponse: FormControl<string> }>>;
   }
 
-  get reponsesArray(): FormArray<FormControl<string>> {
-    return this.form.get('reponses') as FormArray<FormControl<string>>;
+  get motsLeurresArray(): FormArray<FormControl<string>> {
+    return this.form.get('mots_leurres') as FormArray<FormControl<string>>;
   }
 
-  addMot(): void {
-    this.motsArray.push(new FormControl<string>('', { nonNullable: true }));
+  addPaire(): void {
+    const paireGroup = this.fb.group({
+      mot: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+      reponse: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    });
+    this.pairesArray.push(paireGroup);
   }
 
-  removeMot(index: number): void {
-    this.motsArray.removeAt(index);
+  removePaire(index: number): void {
+    this.pairesArray.removeAt(index);
   }
 
-  addReponse(): void {
-    this.reponsesArray.push(new FormControl<string>('', { nonNullable: true }));
+  addMotLeurre(): void {
+    this.motsLeurresArray.push(new FormControl<string>('', { nonNullable: true }));
   }
 
-  removeReponse(index: number): void {
-    this.reponsesArray.removeAt(index);
+  removeMotLeurre(index: number): void {
+    this.motsLeurresArray.removeAt(index);
   }
 
+  getPaireFormGroup(index: number): FormGroup<{ mot: FormControl<string>; reponse: FormControl<string> }> {
+    return this.pairesArray.at(index) as FormGroup<{ mot: FormControl<string>; reponse: FormControl<string> }>;
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['initialData']) {
       // Activer le flag pour ignorer les émissions pendant l'initialisation
       this.isInitializing = true;
-      this.motsArray.clear();
-      this.reponsesArray.clear();
+      this.pairesArray.clear();
+      this.motsLeurresArray.clear();
 
       if (this.initialData) {
         // Charger les données existantes (mode édition)
-        this.initialData.mots.forEach(mot => {
-          this.motsArray.push(new FormControl<string>(mot, { nonNullable: true }));
-        });
+        // Créer les paires à partir des mots et réponses
+        const maxLength = Math.max(this.initialData.mots?.length || 0, this.initialData.reponses?.length || 0);
+        for (let i = 0; i < maxLength; i++) {
+          const paireGroup = this.fb.group({
+            mot: new FormControl<string>(this.initialData.mots[i] || '', { nonNullable: true, validators: [Validators.required] }),
+            reponse: new FormControl<string>(this.initialData.reponses[i] || '', { nonNullable: true, validators: [Validators.required] }),
+          });
+          this.pairesArray.push(paireGroup);
+        }
 
-        this.initialData.reponses.forEach(reponse => {
-          this.reponsesArray.push(new FormControl<string>(reponse, { nonNullable: true }));
-        });
+        // Charger les mots leurres
+        if (this.initialData.mots_leurres) {
+          this.initialData.mots_leurres.forEach(mot => {
+            this.motsLeurresArray.push(new FormControl<string>(mot, { nonNullable: true }));
+          });
+        }
       } else {
-        // Réinitialiser le formulaire (mode création)
-        // Les FormArrays sont déjà vides après clear()
+        // Réinitialiser le formulaire (mode création) - créer 2 paires par défaut
+        for (let i = 0; i < 2; i++) {
+          this.addPaire();
+        }
       }
       
       // Désactiver le flag après le chargement initial
       setTimeout(() => {
         this.isInitializing = false;
-        // Émettre la validité (false car le formulaire est vide en mode création)
+        // Émettre la validité (false car les paires par défaut sont vides)
         this.validityChange.emit(false);
       }, 0);
     }
   }
 }
-

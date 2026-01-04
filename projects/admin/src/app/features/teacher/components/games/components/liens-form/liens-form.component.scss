@@ -1,38 +1,4 @@
 .liens-form {
-  .columns-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 24px;
-  }
-
-  .column h4 {
-    margin-bottom: 12px;
-  }
-
-  .items-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .item-row {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-  }
-
-  .item-row input {
-    flex: 1;
-  }
-
-  .liens-section {
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 2px solid #e0e0e0;
-  }
-
   .hint {
     font-size: 12px;
     color: #666;
@@ -40,40 +6,74 @@
     font-style: italic;
   }
 
-  .liens-list {
+  .paires-section {
+    margin-bottom: 32px;
+
+    h4 {
+      margin-bottom: 12px;
+    }
+  }
+
+  .paires-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-bottom: 8px;
   }
 
-  .lien-row {
+  .paire-row {
     display: flex;
     gap: 8px;
-    align-items: center;
+    align-items: flex-start;
   }
 
-  .lien-row select {
+  .paire-inputs {
+    display: flex;
+    gap: 12px;
+    align-items: center;
     flex: 1;
   }
 
-  .lien-row span {
+  .input-mot,
+  .input-reponse {
+    flex: 1;
+  }
+
+  .separator {
     font-weight: bold;
     color: #666;
+    font-size: 16px;
+    flex-shrink: 0;
   }
 
-  .validation-message {
-    margin-top: 16px;
-    padding: 12px;
-    background: #fff3cd;
-    border: 1px solid #ffc107;
-    border-radius: 6px;
+  .leurres-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 2px solid #e0e0e0;
 
-    .error {
-      margin: 0;
-      color: #856404;
-      font-size: 14px;
+    h4 {
+      margin-bottom: 8px;
+    }
+
+    .hint {
+      margin-bottom: 12px;
     }
   }
-}
 
+  .leurres-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .leurre-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .leurre-row input {
+    flex: 1;
+  }
+}

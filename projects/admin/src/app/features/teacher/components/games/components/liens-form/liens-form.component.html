@@ -1,31 +1,47 @@
 <div [formGroup]="form" class="liens-form">
   <p class="hint">Chaque mot sera automatiquement associé à la réponse au même index (Mot 1 → Réponse 1, Mot 2 → Réponse 2, etc.)</p>
-  <div class="columns-container">
-    <div class="column">
-      <h4>Mots</h4>
-      <div formArrayName="mots" class="items-list">
-        <div *ngFor="let mot of motsArray.controls; let i = index" class="item-row">
-          <input type="text" [formControlName]="i" [placeholder]="'Mot ' + (i + 1)">
-          <button type="button" class="btn btn-danger btn-small" (click)="removeMot(i)">×</button>
+  
+  <div class="paires-section">
+    <h4>Paires (Mot - Réponse)</h4>
+    <div formArrayName="paires" class="paires-list">
+      <div *ngFor="let paireGroup of pairesArray.controls; let i = index" [formGroupName]="i" class="paire-row">
+        <div class="paire-inputs">
+          <input 
+            type="text" 
+            formControlName="mot" 
+            [placeholder]="'Mot ' + (i + 1)"
+            class="input-mot">
+          <span class="separator">→</span>
+          <input 
+            type="text" 
+            formControlName="reponse" 
+            [placeholder]="'Réponse ' + (i + 1)"
+            class="input-reponse">
         </div>
+        <button 
+          type="button" 
+          class="btn btn-danger btn-small" 
+          (click)="removePaire(i)"
+          [disabled]="pairesArray.length <= 1">
+          ×
+        </button>
       </div>
-      <button type="button" class="btn btn-secondary btn-small" (click)="addMot()">+ Ajouter un mot</button>
     </div>
-
-    <div class="column">
-      <h4>Réponses</h4>
-      <div formArrayName="reponses" class="items-list">
-        <div *ngFor="let reponse of reponsesArray.controls; let i = index" class="item-row">
-          <input type="text" [formControlName]="i" [placeholder]="'Réponse ' + (i + 1)">
-          <button type="button" class="btn btn-danger btn-small" (click)="removeReponse(i)">×</button>
-        </div>
-      </div>
-      <button type="button" class="btn btn-secondary btn-small" (click)="addReponse()">+ Ajouter une réponse</button>
-    </div>
+    <button type="button" class="btn btn-secondary btn-small" (click)="addPaire()">+ Ajouter une paire</button>
   </div>
 
-  <div class="validation-message" *ngIf="motsArray.length !== reponsesArray.length && (motsArray.length > 0 || reponsesArray.length > 0)">
-    <p class="error">⚠️ Le nombre de mots doit correspondre au nombre de réponses.</p>
+  <div class="leurres-section">
+    <h4>Mots leurres (optionnel)</h4>
+    <p class="hint">Ajoutez des mots leurres qui apparaîtront dans le jeu mais ne sont pas des réponses correctes</p>
+    <div formArrayName="mots_leurres" class="leurres-list">
+      <div *ngFor="let leurreControl of motsLeurresArray.controls; let i = index" class="leurre-row">
+        <input 
+          type="text" 
+          [formControlName]="i" 
+          [placeholder]="'Leurre ' + (i + 1)">
+        <button type="button" class="btn btn-danger btn-small" (click)="removeMotLeurre(i)">×</button>
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary btn-small" (click)="addMotLeurre()">+ Ajouter un leurre</button>
   </div>
 </div>
-
