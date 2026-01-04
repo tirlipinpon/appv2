@@ -254,16 +254,16 @@ export class CaseVideGameComponent implements OnInit {
       // Glisser depuis la banque de mots vers une case
       
       // Si la case contient déjà un mot, le remettre dans la banque
+      let returnedWordInstance: WordInstance | null = null;
       const previousWordInCase = caseLists.get(uniqueId)?.[0];
       if (previousWordInCase) {
         used.delete(previousWordInCase.word);
         answers.delete(caseIndex);
         // Créer une nouvelle instance pour le mot remis dans la banque
-        const newInstance: WordInstance = {
+        returnedWordInstance = {
           id: `word-${this.wordInstanceCounter++}`,
           word: previousWordInCase.word
         };
-        event.previousContainer.data.push(newInstance);
         caseLists.set(uniqueId, []);
       }
       
@@ -279,6 +279,11 @@ export class CaseVideGameComponent implements OnInit {
       const newAvailableWords: WordInstance[] = this.availableWords()
         .filter(w => w.id !== draggedWord.id)
         .map(w => ({ ...w })); // Nouvelle référence pour chaque mot restant
+      
+      // Ajouter le mot retourné à la banque s'il existe
+      if (returnedWordInstance) {
+        newAvailableWords.push(returnedWordInstance);
+      }
       
       // 2. Créer une nouvelle référence pour le mot glissé
       const draggedWordCopy: WordInstance = { ...draggedWord };

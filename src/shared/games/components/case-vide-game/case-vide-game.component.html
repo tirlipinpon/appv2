@@ -63,11 +63,10 @@
             [cdkDragData]="word"
             [attr.data-word-id]="word.id"
           >
-            <!-- Placeholder personnalisé avec identifiant unique -->
+            <!-- Placeholder personnalisé -->
             <ng-template cdkDragPlaceholder>
               <div class="word-tag placeholder">
                 <span class="word-text">{{ word.word }}</span>
-                <span class="placeholder-id">#{{ word.id }}</span>
               </div>
             </ng-template>
             
@@ -110,11 +109,10 @@
         [cdkDragData]="wordInstance"
         [attr.data-word-id]="wordInstance.id"
       >
-        <!-- Placeholder personnalisé avec identifiant unique -->
+        <!-- Placeholder personnalisé -->
         <ng-template cdkDragPlaceholder>
           <span class="case-word placeholder">
             <span class="word-text">{{ wordInstance.word }}</span>
-            <span class="placeholder-id">#{{ wordInstance.id }}</span>
           </span>
         </ng-template>
         
