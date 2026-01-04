@@ -80,6 +80,14 @@
     font-weight: 500;
     transition: all 0.2s;
     color: var(--theme-primary-color, #4CAF50);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    position: relative;
+
+    .word-text {
+      display: inline-block;
+    }
 
     &:hover {
       background: var(--theme-primary-color, #4CAF50);
@@ -97,6 +105,25 @@
       background: #e0e0e0;
       border-color: #bdbdbd;
       color: #757575;
+    }
+
+    // Style du placeholder pendant le drag
+    &.placeholder {
+      opacity: 0.6;
+      background-color: #e3f2fd;
+      border: 2px dashed #2196f3;
+      box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+    }
+
+    .placeholder-id {
+      font-size: 0.7em;
+      opacity: 0.8;
+      margin-left: 4px;
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.5);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
     }
   }
 
@@ -181,6 +208,10 @@
     cursor: move;
     position: relative;
 
+    .word-text {
+      display: inline-block;
+    }
+
     &.correct-word {
       background: var(--theme-primary-color, #4CAF50);
       color: white;
@@ -189,6 +220,25 @@
     &.incorrect-word {
       background: var(--theme-warn-color, #F44336);
       color: white;
+    }
+
+    // Style du placeholder pendant le drag
+    &.placeholder {
+      opacity: 0.6;
+      background-color: #e3f2fd;
+      border: 2px dashed #2196f3;
+      box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+    }
+
+    .placeholder-id {
+      font-size: 0.7em;
+      opacity: 0.8;
+      margin-left: 4px;
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.5);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
     }
   }
 
@@ -302,5 +352,19 @@
       margin: 0.25rem 0;
     }
   }
+}
+
+// Styles globaux pour CDK Drag and Drop
+.cdk-drag-placeholder {
+  opacity: 0;
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cdk-drop-list-dragging .word-tag:not(.cdk-drag-placeholder),
+.cdk-drop-list-dragging .case-word:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 

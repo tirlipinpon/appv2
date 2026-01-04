@@ -82,7 +82,8 @@ export class QcmFormComponent implements OnChanges {
         });
       } else {
         // Réinitialiser le formulaire (mode création)
-        // Les FormArrays sont déjà vides après clear()
+        // Ajouter un champ vide par défaut
+        this.addProposition();
       }
       
       // Désactiver le flag après le chargement initial

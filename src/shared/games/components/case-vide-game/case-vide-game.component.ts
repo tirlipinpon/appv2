@@ -4,6 +4,20 @@ import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/dra
 import type { CaseVideData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 
+// Interface pour représenter une instance unique d'un mot
+interface WordInstance {
+  id: string; // Identifiant unique pour chaque instance
+  word: string; // Le texte du mot
+}
+
+// Interface pour les parts de texte parsées avec cases
+interface ParsedTextePart {
+  type: 'text' | 'case';
+  content: string;
+  index?: number; // Index original du placeholder (pour validation)
+  uniqueId?: string; // ID unique pour CDK (ex: "case-1-pos-0", "case-1-pos-1")
+}
+
 @Component({
   selector: 'app-case-vide-game',
   standalone: true,
@@ -26,13 +40,17 @@ export class CaseVideGameComponent implements OnInit {
   // Signaux pour Case Vide
   userCaseVideAnswers = signal<Map<number, string>>(new Map());
   shuffledBanqueMots = signal<string[]>([]);
-  availableWords = signal<string[]>([]);
-  usedWords = signal<Set<string>>(new Set());
-  caseDropLists = signal<Map<number, string[]>>(new Map());
-  parsedTexteParts = signal<{ type: 'text' | 'case'; content: string; index?: number }[]>([]);
+  availableWords = signal<WordInstance[]>([]); // Utiliser WordInstance[] au lieu de string[]
+  usedWords = signal<Set<string>>(new Set()); // Garde le texte pour la validation
+  caseDropLists = signal<Map<string, WordInstance[]>>(new Map()); // Utiliser uniqueId comme clé au lieu de index
+  parsedTexteParts = signal<ParsedTextePart[]>([]);
+  caseUniqueIdToIndex = signal<Map<string, number>>(new Map()); // Correspondance uniqueId -> index pour validation
   caseVideUserAnswer = signal<string>(''); // Pour l'ancien format
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
+  
+  // Compteur pour générer des IDs uniques
+  private wordInstanceCounter = 0;
   
   // État pour afficher/masquer les aides
   showAides = signal<boolean>(false);
@@ -48,7 +66,17 @@ export class CaseVideGameComponent implements OnInit {
     
     // Parser le texte avec cases
     if (caseVideData.texte) {
-      this.parsedTexteParts.set(this.parseTexteWithCases(caseVideData.texte));
+      const parsedParts = this.parseTexteWithCases(caseVideData.texte);
+      this.parsedTexteParts.set(parsedParts);
+      
+      // Créer la Map de correspondance uniqueId -> index
+      const uniqueIdToIndexMap = new Map<string, number>();
+      parsedParts.forEach(part => {
+        if (part.type === 'case' && part.uniqueId && part.index !== undefined) {
+          uniqueIdToIndexMap.set(part.uniqueId, part.index);
+        }
+      });
+      this.caseUniqueIdToIndex.set(uniqueIdToIndexMap);
     }
     
     // Réinitialiser l'état utilisateur
@@ -62,15 +90,28 @@ export class CaseVideGameComponent implements OnInit {
     if (caseVideData.banque_mots) {
       const shuffled = this.shuffleArray([...caseVideData.banque_mots]);
       this.shuffledBanqueMots.set(shuffled);
-      this.availableWords.set([...shuffled]);
       
-      // Initialiser les listes de drop pour toutes les cases vides
-      const caseLists = new Map<number, string[]>();
-      if (caseVideData.cases_vides) {
-        caseVideData.cases_vides.forEach(caseVide => {
-          caseLists.set(caseVide.index, []);
-        });
-      }
+      // Réinitialiser le compteur pour chaque nouvelle initialisation
+      this.wordInstanceCounter = 0;
+      
+      // Créer des WordInstance avec des IDs uniques pour chaque mot
+      const wordInstances: WordInstance[] = shuffled.map(word => ({
+        id: `word-${this.wordInstanceCounter++}`,
+        word: word
+      }));
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:79',message:'Initialisation: wordInstances créées',data:{total:wordInstances.length,instances:wordInstances.map(w=>({id:w.id,word:w.word}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      this.availableWords.set(wordInstances);
+      
+      // Initialiser les listes de drop pour toutes les cases vides (utiliser uniqueId comme clé)
+      const caseLists = new Map<string, WordInstance[]>();
+      const parsedParts = this.parsedTexteParts();
+      parsedParts.forEach(part => {
+        if (part.type === 'case' && part.uniqueId) {
+          caseLists.set(part.uniqueId, []);
+        }
+      });
       this.caseDropLists.set(caseLists);
     }
   }
@@ -84,13 +125,14 @@ export class CaseVideGameComponent implements OnInit {
     return shuffled;
   }
 
-  private parseTexteWithCases(texte: string): { type: 'text' | 'case'; content: string; index?: number }[] {
+  private parseTexteWithCases(texte: string): ParsedTextePart[] {
     if (!texte) return [];
     
-    const parts: { type: 'text' | 'case'; content: string; index?: number }[] = [];
+    const parts: ParsedTextePart[] = [];
     const placeholderRegex = /\[(\d+)\]/g;
     let lastIndex = 0;
     let match;
+    let casePositionCounter = 0; // Compteur pour générer des IDs uniques basés sur la position
     
     while ((match = placeholderRegex.exec(texte)) !== null) {
       if (match.index > lastIndex) {
@@ -100,10 +142,13 @@ export class CaseVideGameComponent implements OnInit {
         });
       }
       const caseIndex = parseInt(match[1], 10);
+      // Générer un ID unique basé sur l'index ET la position dans le texte
+      const uniqueId = `case-${caseIndex}-pos-${casePositionCounter++}`;
       parts.push({
         type: 'case',
         content: match[0],
         index: caseIndex,
+        uniqueId: uniqueId,
       });
       lastIndex = match.index + match[0].length;
     }
@@ -125,11 +170,11 @@ export class CaseVideGameComponent implements OnInit {
     return parts;
   }
 
-  getAvailableWords(): string[] {
+  getAvailableWords(): WordInstance[] {
     return this.availableWords();
   }
 
-  parseTexteWithCasesParts(): { type: 'text' | 'case'; content: string; index?: number }[] {
+  parseTexteWithCasesParts(): ParsedTextePart[] {
     return this.parsedTexteParts();
   }
 
@@ -137,23 +182,42 @@ export class CaseVideGameComponent implements OnInit {
     return this.userCaseVideAnswers().get(caseIndex);
   }
 
-  getCaseDropListData(caseIndex: number): string[] {
-    return this.caseDropLists().get(caseIndex) || [];
+  getCaseDropListData(uniqueId: string): WordInstance[] {
+    const caseList = this.caseDropLists().get(uniqueId) || [];
+    // Retourner directement la liste (pas de copie pour éviter les boucles infinies)
+    return caseList;
+  }
+
+  getCaseIndexFromUniqueId(uniqueId: string): number | undefined {
+    return this.caseUniqueIdToIndex().get(uniqueId);
   }
 
   readonly connectedDropListIds = computed(() => {
-    const caseVideData = this.caseVideData;
     const ids: string[] = ['banque-mots'];
-    if (caseVideData?.cases_vides) {
-      caseVideData.cases_vides.forEach(caseVide => {
-        ids.push(`case-${caseVide.index}`);
-      });
-    }
+    // Utiliser parsedTexteParts pour être sûr d'avoir tous les IDs des cases dans le template
+    const parts = this.parsedTexteParts();
+    parts.forEach(part => {
+      if (part.type === 'case' && part.uniqueId) {
+        ids.push(part.uniqueId);
+      }
+    });
     return ids;
   });
 
-  isWordUsed(word: string): boolean {
-    return this.usedWords().has(word);
+  isWordUsed(wordInstance: WordInstance): boolean {
+    // Vérifier si cette instance spécifique est dans une case (pas seulement si le texte est utilisé)
+    const caseLists = this.caseDropLists();
+    let isUsed = false;
+    for (const wordInstances of caseLists.values()) {
+      if (wordInstances.some(w => w.id === wordInstance.id)) {
+        isUsed = true;
+        break;
+      }
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:172',message:'isWordUsed appelé',data:{wordInstance:{id:wordInstance.id,word:wordInstance.word},isUsed,caseListsContent:Array.from(caseLists.entries()).map(([k,v])=>({caseIndex:k,wordIds:v.map(w=>w.id)})),allWordIdsInCases:Array.from(caseLists.values()).flat().map(w=>w.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    return isUsed;
   }
 
   isCaseCorrect(caseIndex: number): boolean | null {
@@ -178,77 +242,102 @@ export class CaseVideGameComponent implements OnInit {
     return isUserAnswerCorrect;
   }
 
-  onWordDrop(event: CdkDragDrop<string[]>, caseIndex: number): void {
+  onWordDrop(event: CdkDragDrop<WordInstance[]>, uniqueId: string): void {
     if (this.disabled || this.isSubmitted()) return;
     
-    // Récupérer le mot qui est déplacé AVANT transferArrayItem
     const draggedWord = event.previousContainer.data[event.previousIndex];
     if (!draggedWord) return;
     
+    // Obtenir l'index original pour la validation
+    const caseIndex = this.getCaseIndexFromUniqueId(uniqueId);
+    if (caseIndex === undefined) return;
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:225',message:'onWordDrop ENTRY',data:{draggedWord:{id:draggedWord.id,word:draggedWord.word},previousContainerId:event.previousContainer.id,previousIndex:event.previousIndex,uniqueId,caseIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'SIMPLE'})}).catch(()=>{});
+    // #endregion
+    
     const answers = new Map(this.userCaseVideAnswers());
     const used = new Set(this.usedWords());
-    const available = [...this.availableWords()];
     const caseLists = new Map(this.caseDropLists());
-    
-    // Récupérer le mot déjà présent dans la case de destination (si existe)
-    const previousWordInCase = caseLists.get(caseIndex)?.[0];
     
     if (event.previousContainer.id === 'banque-mots') {
       // Glisser depuis la banque de mots vers une case
       
-      // Si la case contient déjà un mot, le remettre dans la banque AVANT le transfert
+      // Si la case contient déjà un mot, le remettre dans la banque
+      const previousWordInCase = caseLists.get(uniqueId)?.[0];
       if (previousWordInCase) {
-        used.delete(previousWordInCase);
+        used.delete(previousWordInCase.word);
         answers.delete(caseIndex);
-        // Remettre le mot précédent dans la banque
-        const previousWordIndex = available.findIndex(w => w === previousWordInCase);
-        if (previousWordIndex === -1) {
-          available.push(previousWordInCase);
-          // Insérer le mot à la position appropriée dans event.previousContainer.data
-          event.previousContainer.data.push(previousWordInCase);
-        }
+        // Créer une nouvelle instance pour le mot remis dans la banque
+        const newInstance: WordInstance = {
+          id: `word-${this.wordInstanceCounter++}`,
+          word: previousWordInCase.word
+        };
+        event.previousContainer.data.push(newInstance);
+        caseLists.set(uniqueId, []);
       }
       
-      // Retirer le nouveau mot de la banque
-      const wordIndex = available.indexOf(draggedWord);
-      if (wordIndex > -1) {
-        available.splice(wordIndex, 1);
-      }
+      // Mettre à jour les réponses et les mots utilisés
+      answers.set(caseIndex, draggedWord.word);
+      used.add(draggedWord.word);
       
-      // Ajouter le nouveau mot à la case
-      answers.set(caseIndex, draggedWord);
-      used.add(draggedWord);
-      caseLists.set(caseIndex, [draggedWord]);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:250',message:'AVANT traitement',data:{previousContainerDataBefore:event.previousContainer.data.map(w=>({id:w.id,word:w.word})),containerDataBefore:event.container.data.map(w=>({id:w.id,word:w.word})),previousIndex:event.previousIndex,draggedWordId:draggedWord.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'NO_TRANSFER'})}).catch(()=>{});
+      // #endregion
       
-      // Effectuer le transfert visuel (doit être fait après la mise à jour des signaux)
-      transferArrayItem(
-        event.previousContainer.data,
-        event.container.data,
-        event.previousIndex,
-        event.currentIndex >= 0 ? event.currentIndex : 0
-      );
+      // SOLUTION RADICALE : Ne PAS utiliser transferArrayItem du tout
+      // Mettre à jour les signaux AVANT que CDK ne traite le drop
+      // Cela évite toute confusion visuelle car CDK voit directement les bonnes données
       
-      // Mettre à jour les signaux
+      // 1. Créer le nouveau tableau de mots disponibles (filtrer par ID)
+      const newAvailableWords: WordInstance[] = this.availableWords()
+        .filter(w => w.id !== draggedWord.id)
+        .map(w => ({ ...w })); // Nouvelle référence pour chaque mot restant
+      
+      // 2. Créer une nouvelle référence pour le mot glissé
+      const draggedWordCopy: WordInstance = { ...draggedWord };
+      caseLists.set(uniqueId, [draggedWordCopy]);
+      
+      // 3. Mettre à jour TOUS les signaux AVANT que CDK ne fasse quoi que ce soit
+      this.availableWords.set(newAvailableWords);
+      this.caseDropLists.set(caseLists);
       this.userCaseVideAnswers.set(answers);
       this.usedWords.set(used);
-      this.availableWords.set(available);
-      this.caseDropLists.set(caseLists);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:270',message:'APRÈS mise à jour signaux (sans transferArrayItem)',data:{newAvailableWordsIds:newAvailableWords.map(w=>w.id),newAvailableWordsWords:newAvailableWords.map(w=>w.word),draggedWordCopyId:draggedWordCopy.id,draggedWordCopyWord:draggedWordCopy.word,duplicateWordsInBank:newAvailableWords.filter(w=>w.word===draggedWord.word).map(w=>({id:w.id,word:w.word})),filteredBy:'id'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'NO_TRANSFER'})}).catch(()=>{});
+      // #endregion
+      
+      // 4. Maintenant synchroniser les tableaux CDK avec les nouveaux tableaux
+      // CDK verra directement les bonnes données, sans confusion
+      event.previousContainer.data.length = 0;
+      event.previousContainer.data.push(...newAvailableWords);
+      event.container.data.length = 0;
+      event.container.data.push(draggedWordCopy);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:280',message:'APRÈS synchronisation tableaux CDK',data:{availableWordsAfter:this.availableWords().map(w=>({id:w.id,word:w.word})),caseListsAfter:Array.from(caseLists.entries()).map(([k,v])=>({caseIndex:k,words:v.map(w=>({id:w.id,word:w.word}))})),usedWords:Array.from(used),duplicateWordsAfter:this.availableWords().filter(w=>w.word===draggedWord.word).map(w=>({id:w.id,word:w.word})),previousContainerDataLength:event.previousContainer.data.length,containerDataLength:event.container.data.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'NO_TRANSFER'})}).catch(()=>{});
+      // #endregion
     } else if (event.previousContainer.id.startsWith('case-')) {
       // Glisser d'une case vers une autre case
-      const previousCaseIndex = parseInt(event.previousContainer.id.replace('case-', ''), 10);
+      const previousUniqueId = event.previousContainer.id;
+      const previousCaseIndex = this.getCaseIndexFromUniqueId(previousUniqueId);
+      if (previousCaseIndex === undefined) return;
       
       // Retirer le mot de la case source
       answers.delete(previousCaseIndex);
-      caseLists.set(previousCaseIndex, previousWordInCase ? [previousWordInCase] : []);
+      caseLists.set(previousUniqueId, []);
       
       // Si la case de destination contient déjà un mot, le mettre dans la case source
-      if (previousWordInCase && previousWordInCase !== draggedWord) {
-        answers.set(previousCaseIndex, previousWordInCase);
+      const previousWordInCase = caseLists.get(uniqueId)?.[0];
+      if (previousWordInCase && previousWordInCase.id !== draggedWord.id) {
+        answers.set(previousCaseIndex, previousWordInCase.word);
+        caseLists.set(previousUniqueId, [previousWordInCase]);
       }
       
       // Mettre le nouveau mot dans la case de destination
-      answers.set(caseIndex, draggedWord);
-      caseLists.set(caseIndex, [draggedWord]);
+      answers.set(caseIndex, draggedWord.word);
+      caseLists.set(uniqueId, [draggedWord]);
       
       // Effectuer le transfert visuel
       transferArrayItem(
@@ -258,27 +347,37 @@ export class CaseVideGameComponent implements OnInit {
         event.currentIndex >= 0 ? event.currentIndex : 0
       );
       
-      // Mettre à jour les signaux
-      this.userCaseVideAnswers.set(answers);
+      // Mettre à jour les signaux avec les tableaux modifiés
+      caseLists.set(previousUniqueId, [...event.previousContainer.data]);
+      caseLists.set(uniqueId, [...event.container.data]);
       this.caseDropLists.set(caseLists);
+      this.userCaseVideAnswers.set(answers);
     }
   }
 
-  removeWordFromCase(caseIndex: number): void {
+  removeWordFromCase(uniqueId: string): void {
     if (this.disabled || this.isSubmitted()) return;
+    
+    const caseIndex = this.getCaseIndexFromUniqueId(uniqueId);
+    if (caseIndex === undefined) return;
     
     const answers = new Map(this.userCaseVideAnswers());
     const used = new Set(this.usedWords());
     const caseLists = new Map(this.caseDropLists());
     
-    const word = answers.get(caseIndex);
-    if (word) {
+    const wordInstance = caseLists.get(uniqueId)?.[0];
+    if (wordInstance) {
+      const wordText = wordInstance.word;
       answers.delete(caseIndex);
-      used.delete(word);
-      caseLists.set(caseIndex, []);
+      used.delete(wordText);
+      caseLists.set(uniqueId, []);
       
       const available = [...this.availableWords()];
-      available.push(word);
+      // Remettre l'instance de mot dans la banque (créer une nouvelle instance avec un nouvel ID)
+      available.push({
+        id: `word-${this.wordInstanceCounter++}`,
+        word: wordText
+      });
       this.availableWords.set(available);
       
       this.userCaseVideAnswers.set(answers);

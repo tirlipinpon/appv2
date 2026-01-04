@@ -1,140 +1,172 @@
 <div class="case-vide-game">
   @if (instructions) {
-    <div class="game-instructions">
-      <p>{{ instructions }}</p>
-    </div>
-  }
-  @if (question) {
-    <div class="game-question">
-      <h2>{{ question }}</h2>
-    </div>
-  }
-  @if (aides && aides.length > 0) {
-    <div class="aides-toggle-container">
-      <button 
-        type="button"
-        class="aides-toggle-btn"
-        (click)="toggleAides()"
-        [attr.aria-expanded]="showAides()"
-        [attr.aria-label]="showAides() ? 'Masquer aide' : 'Afficher aide'">
-        <span class="toggle-icon">{{ showAides() ? '−' : '+' }}</span>
-        <span class="toggle-text">{{ showAides() ? 'Masquer aide' : 'Afficher aide' }}</span>
-      </button>
-      @if (showAides()) {
-        <div class="aides-container">
-          <strong>Aide :</strong>
-          <ul>
-            @for (aide of aides; track $index) {
-              <li>{{ aide }}</li>
-            }
-          </ul>
-        </div>
-      }
-    </div>
-  }
-  @if (caseVideData.texte && caseVideData.banque_mots) {
-    <!-- Nouveau format : Drag and Drop -->
-    @if ((showResult || isSubmitted()) && isCorrect() !== null) {
-      <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-        @if (isCorrect()) {
-          ✅ Toutes les réponses sont correctes !
-        } @else {
-          ❌ Certaines réponses sont incorrectes.
+  <div class="game-instructions">
+    <p>{{ instructions }}</p>
+  </div>
+  } @if (question) {
+  <div class="game-question">
+    <h2>{{ question }}</h2>
+  </div>
+  } @if (aides && aides.length > 0) {
+  <div class="aides-toggle-container">
+    <button
+      type="button"
+      class="aides-toggle-btn"
+      (click)="toggleAides()"
+      [attr.aria-expanded]="showAides()"
+      [attr.aria-label]="showAides() ? 'Masquer aide' : 'Afficher aide'"
+    >
+      <span class="toggle-icon">{{ showAides() ? "−" : "+" }}</span>
+      <span class="toggle-text">{{
+        showAides() ? "Masquer aide" : "Afficher aide"
+      }}</span>
+    </button>
+    @if (showAides()) {
+    <div class="aides-container">
+      <strong>Aide :</strong>
+      <ul>
+        @for (aide of aides; track $index) {
+        <li>{{ aide }}</li>
         }
-      </div>
+      </ul>
+    </div>
     }
+  </div>
+  } @if (caseVideData.texte && caseVideData.banque_mots) {
+  <!-- Nouveau format : Drag and Drop -->
+  @if ((showResult || isSubmitted()) && isCorrect() !== null) {
+  <div
+    class="result-message"
+    [class.correct]="isCorrect()"
+    [class.incorrect]="!isCorrect()"
+  >
+    @if (isCorrect()) { ✅ Toutes les réponses sont correctes ! } @else { ❌
+    Certaines réponses sont incorrectes. }
+  </div>
+  }
 
-    <!-- Banque de mots -->
-    <div class="banque-mots-container">
-      <h4>Banque de mots</h4>
-      <div 
-        cdkDropList
-        id="banque-mots"
-        class="banque-mots-list"
-        [cdkDropListData]="getAvailableWords()"
-        [cdkDropListConnectedTo]="connectedDropListIds()">
-        @for (word of getAvailableWords(); track word) {
-          <div 
+  <!-- Banque de mots -->
+  <div class="banque-mots-container">
+    <h4>Banque de mots</h4>
+    <div
+      cdkDropList
+      id="banque-mots"
+      class="banque-mots-list"
+      [cdkDropListData]="availableWords()"
+      [cdkDropListConnectedTo]="connectedDropListIds()"
+    >
+      @for (word of availableWords(); track word.id) {
+        @if (!isWordUsed(word)) {
+          <div
             class="word-tag"
             cdkDrag
             [cdkDragData]="word"
-            [class.used]="isWordUsed(word)">
-            {{ word }}
+            [attr.data-word-id]="word.id"
+          >
+            <!-- Placeholder personnalisé avec identifiant unique -->
+            <ng-template cdkDragPlaceholder>
+              <div class="word-tag placeholder">
+                <span class="word-text">{{ word.word }}</span>
+                <span class="placeholder-id">#{{ word.id }}</span>
+              </div>
+            </ng-template>
+            
+            <!-- Contenu normal -->
+            <span class="word-text">{{ word.word }}</span>
           </div>
-        }
-      </div>
-    </div>
-
-    <!-- Texte avec cases vides -->
-    <div class="texte-with-cases">
-      @for (part of parseTexteWithCasesParts(); track $index) {
-        @if (part.type === 'text') {
-          <span class="texte-part">{{ part.content }}</span>
-        } @else if (part.type === 'case' && part.index) {
-          <span 
-            cdkDropList
-            [id]="'case-' + part.index"
-            class="case-vide-drop"
-            [cdkDropListData]="getCaseDropListData(part.index)"
-            [cdkDropListConnectedTo]="connectedDropListIds()"
-            (cdkDropListDropped)="onWordDrop($event, part.index)"
-            [class.filled]="getWordInCase(part.index)"
-            [class.correct]="isCaseCorrect(part.index) === true && isCorrect() === true"
-            [class.incorrect]="isCaseCorrect(part.index) === false">
-            @if (getWordInCase(part.index)) {
-              <span 
-                class="case-word" 
-                [class.correct-word]="isCaseCorrect(part.index) === true && isCorrect() === true"
-                [class.incorrect-word]="isCaseCorrect(part.index) === false"
-                cdkDrag 
-                [cdkDragData]="getWordInCase(part.index)">
-                {{ getWordInCase(part.index) }}
-                @if (!isSubmitted() && !disabled) {
-                  <button 
-                    type="button" 
-                    class="btn-remove-word"
-                    (click)="removeWordFromCase(part.index); $event.stopPropagation()"
-                    title="Retirer ce mot">
-                    ×
-                  </button>
-                }
-              </span>
-            } @else {
-              <span class="case-placeholder">{{ part.content }}</span>
-            }
-          </span>
         }
       }
     </div>
-  } @else {
-    <!-- Ancien format : Input texte simple -->
-    @if ((showResult || isSubmitted()) && isCorrect() !== null) {
-      <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-        @if (isCorrect()) {
-          ✅ Bonne réponse !
-        } @else {
-          ❌ Mauvaise réponse.
+  </div>
+
+  <!-- Texte avec cases vides -->
+  <div class="texte-with-cases">
+    @for (part of parseTexteWithCasesParts(); track $index) { @if (part.type ===
+    'text') {
+    <span class="texte-part">{{ part.content }}</span>
+    } @else if (part.type === 'case' && part.uniqueId && part.index !== undefined) {
+    <span
+      cdkDropList
+      [id]="part.uniqueId"
+      class="case-vide-drop"
+      [cdkDropListData]="getCaseDropListData(part.uniqueId)"
+      [cdkDropListConnectedTo]="connectedDropListIds()"
+      (cdkDropListDropped)="onWordDrop($event, part.uniqueId!)"
+      [class.filled]="getWordInCase(part.index)"
+      [class.correct]="
+        isCaseCorrect(part.index) === true && isCorrect() === true
+      "
+      [class.incorrect]="isCaseCorrect(part.index) === false"
+    >
+      @if (getWordInCase(part.index)) { @for (wordInstance of
+      getCaseDropListData(part.uniqueId!); track wordInstance.id) {
+      <span
+        class="case-word"
+        [class.correct-word]="
+          isCaseCorrect(part.index) === true && isCorrect() === true
+        "
+        [class.incorrect-word]="isCaseCorrect(part.index) === false"
+        cdkDrag
+        [cdkDragData]="wordInstance"
+        [attr.data-word-id]="wordInstance.id"
+      >
+        <!-- Placeholder personnalisé avec identifiant unique -->
+        <ng-template cdkDragPlaceholder>
+          <span class="case-word placeholder">
+            <span class="word-text">{{ wordInstance.word }}</span>
+            <span class="placeholder-id">#{{ wordInstance.id }}</span>
+          </span>
+        </ng-template>
+        
+        <!-- Contenu normal -->
+        <span class="word-text">{{ wordInstance.word }}</span>
+        @if (!isSubmitted() && !disabled) {
+        <button
+          type="button"
+          class="btn-remove-word"
+          (click)="removeWordFromCase(part.uniqueId!); $event.stopPropagation()"
+          title="Retirer ce mot"
+        >
+          ×
+        </button>
         }
-      </div>
-    }
-    <div class="case-vide-sentence">
-      <span>{{ caseVideData.debut_phrase }}</span>
-      <input 
-        type="text" 
-        [value]="caseVideUserAnswer()"
-        (input)="caseVideUserAnswer.set($any($event.target).value)"
-        [disabled]="disabled || isSubmitted()"
-        placeholder="?"
-        class="case-vide-input">
-      <span>{{ caseVideData.fin_phrase }}</span>
-    </div>
+      </span>
+      } } @else {
+      <span class="case-placeholder">{{ part.content }}</span>
+      }
+    </span>
+    } }
+  </div>
+  } @else {
+  <!-- Ancien format : Input texte simple -->
+  @if ((showResult || isSubmitted()) && isCorrect() !== null) {
+  <div
+    class="result-message"
+    [class.correct]="isCorrect()"
+    [class.incorrect]="!isCorrect()"
+  >
+    @if (isCorrect()) { ✅ Bonne réponse ! } @else { ❌ Mauvaise réponse. }
+  </div>
+  }
+  <div class="case-vide-sentence">
+    <span>{{ caseVideData.debut_phrase }}</span>
+    <input
+      type="text"
+      [value]="caseVideUserAnswer()"
+      (input)="caseVideUserAnswer.set($any($event.target).value)"
+      [disabled]="disabled || isSubmitted()"
+      placeholder="?"
+      class="case-vide-input"
+    />
+    <span>{{ caseVideData.fin_phrase }}</span>
+  </div>
   }
 
   <app-game-error-actions
     [isSubmitted]="isSubmitted()"
     [isCorrect]="isCorrect()"
     (resetRequested)="onResetRequested()"
-    (nextRequested)="nextRequested.emit()">
+    (nextRequested)="nextRequested.emit()"
+  >
   </app-game-error-actions>
 </div>
-
