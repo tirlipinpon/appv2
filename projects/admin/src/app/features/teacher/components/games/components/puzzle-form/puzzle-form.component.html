@@ -1,0 +1,132 @@
+<div class="puzzle-form">
+  <form [formGroup]="form">
+    <!-- Upload d'image -->
+    <div class="upload-section">
+      <label for="imageFile" class="upload-label">
+        <span class="upload-icon">📷</span>
+        <span>Télécharger une image</span>
+      </label>
+      <input
+        type="file"
+        id="imageFile"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        (change)="onFileSelected($event)"
+        class="file-input"
+      />
+      @if (imageUrl()) {
+        <p class="image-info">
+          Image chargée : {{ imageWidth() }} × {{ imageHeight() }}px
+        </p>
+      }
+    </div>
+
+    <!-- Conteneur de l'image avec canvas pour découpe -->
+    @if (imageUrl()) {
+      <div class="image-editor">
+        <div class="editor-controls">
+          <button
+            type="button"
+            class="btn-mode"
+            [class.active]="isCreatingPolygon()"
+            (click)="startCreatingPolygon()"
+            title="Créer une nouvelle pièce"
+          >
+            ✏️ Nouvelle pièce
+          </button>
+
+          @if (isCreatingPolygon()) {
+            <button
+              type="button"
+              class="btn-mode btn-confirm"
+              (click)="finalizePolygon()"
+              [disabled]="!canFinalizePolygon()"
+              [title]="'Finaliser le polygone (' + polygonPoints().length + ' points, minimum 3)'"
+            >
+              ✓ Valider
+            </button>
+            <button
+              type="button"
+              class="btn-mode btn-cancel"
+              (click)="cancelPolygon()"
+              title="Annuler"
+            >
+              ✗ Annuler
+            </button>
+            @if (polygonPoints().length > 0) {
+              <button
+                type="button"
+                class="btn-mode btn-undo"
+                (click)="removeLastPolygonPoint()"
+                title="Retirer le dernier point"
+              >
+                ↶ Retirer dernier point
+              </button>
+            }
+            <p class="help-text">
+              Cliquez sur l'image pour ajouter des points au polygone (minimum 3 points)
+            </p>
+          }
+        </div>
+
+        <div
+          #imageContainer
+          class="image-container"
+          [style.position]="'relative'"
+        >
+          <img
+            #imageElement
+            [src]="imageUrl()!"
+            alt="Image du puzzle"
+            class="game-image"
+            (load)="updateImageDimensions()"
+            [style.position]="'absolute'"
+            [style.top.px]="imageOffsetY()"
+            [style.left.px]="imageOffsetX()"
+            [style.width.px]="displayedImageWidth()"
+            [style.height.px]="displayedImageHeight()"
+            [style.pointer-events]="'none'"
+          />
+
+          <canvas
+            #canvasElement
+            class="drawing-canvas"
+            [style.position]="'absolute'"
+            [style.top.px]="imageOffsetY()"
+            [style.left.px]="imageOffsetX()"
+            (click)="onCanvasClick($event)"
+            [style.cursor]="isCreatingPolygon() ? 'crosshair' : 'default'"
+          ></canvas>
+        </div>
+
+        <!-- Liste des pièces créées -->
+        @if (pieces().length > 0) {
+          <div class="pieces-list">
+            <h3>Pièces créées ({{ pieces().length }})</h3>
+            @for (piece of pieces(); track piece.id) {
+              <div class="piece-item">
+                <div class="piece-info">
+                  <input
+                    type="text"
+                    [value]="piece.name || ''"
+                    (input)="updatePieceName(piece.id, $any($event.target).value)"
+                    placeholder="Nom de la pièce (optionnel)"
+                    class="piece-name-input"
+                  />
+                  <span class="piece-points">{{ piece.polygon_points.length }} points</span>
+                </div>
+                <button
+                  type="button"
+                  class="btn-delete"
+                  (click)="deletePiece(piece.id)"
+                  title="Supprimer cette pièce"
+                >
+                  🗑️
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </form>
+</div>

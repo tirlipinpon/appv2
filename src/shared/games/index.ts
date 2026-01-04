@@ -7,6 +7,7 @@ export * from './components/image-interactive-game/image-interactive-game.compon
 export * from './components/case-vide-game/case-vide-game.component';
 export * from './components/liens-game/liens-game.component';
 export * from './components/vrai-faux-game/vrai-faux-game.component';
+export * from './components/puzzle-game/puzzle-game.component';
 export * from './components/game-error-actions/game-error-actions.component';
 
 // Types

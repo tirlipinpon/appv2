@@ -5,7 +5,7 @@ import { Observable, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import type { Game, GameUpdate } from '../../../../types/game';
 import type { GameType } from '../../../../types/game-type';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData, PuzzleData } from '@shared/games';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { CaseVideFormComponent } from '../case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from '../reponse-libre-form/reponse-libre-form.component';
@@ -16,11 +16,13 @@ import { VraiFauxFormComponent } from '../vrai-faux-form/vrai-faux-form.componen
 import { MemoryFormComponent } from '../memory-form/memory-form.component';
 import { SimonFormComponent } from '../simon-form/simon-form.component';
 import { ImageInteractiveFormComponent, type ImageInteractiveDataWithFile } from '../image-interactive-form/image-interactive-form.component';
+import { PuzzleFormComponent, type PuzzleDataWithFile } from '../puzzle-form/puzzle-form.component';
 import { GameGlobalFieldsComponent } from '../game-global-fields/game-global-fields.component';
 import { GamePreviewComponent } from '../game-preview/game-preview.component';
 import { normalizeGameData } from '../../../../utils/game-data-mapper';
 import { ImageUploadService, type ImageUploadResult } from '../../services/image-upload/image-upload.service';
 import { ErrorSnackbarService } from '../../../../../../shared';
+import { GameCreationService } from '../../../../services/game-creation/game-creation.service';
 import {
   isGameType,
   isGameTypeOneOf,
@@ -33,6 +35,7 @@ import {
   GAME_TYPE_VRAI_FAUX,
   GAME_TYPE_CASE_VIDE,
   GAME_TYPE_IMAGE_INTERACTIVE,
+  GAME_TYPE_PUZZLE,
   GAME_TYPE_REPONSE_LIBRE,
   getGameTypeVariations,
 } from '../../../../utils/game-type.util';
@@ -52,6 +55,7 @@ import {
     MemoryFormComponent,
     SimonFormComponent,
     ImageInteractiveFormComponent,
+    PuzzleFormComponent,
     GameGlobalFieldsComponent,
     GamePreviewComponent,
   ],
@@ -61,6 +65,7 @@ import {
 export class GameCardComponent implements OnInit, OnChanges {
   private readonly imageUploadService = inject(ImageUploadService);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
+  private readonly gameCreationService = inject(GameCreationService);
   
   // Exposer les fonctions utilitaires pour le template
   readonly isGameType = isGameType;
@@ -93,12 +98,13 @@ export class GameCardComponent implements OnInit, OnChanges {
       // Ne pas initialiser le mode édition automatiquement
     }
   }
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData | null>(null);
   
   // Données spécifiques pour le jeu image-interactive avec le fichier File (pour l'upload)
   private imageInteractiveDataWithFile = signal<ImageInteractiveDataWithFile | null>(null);
+  private puzzleDataWithFile = signal<PuzzleDataWithFile | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly currentGlobalFields = signal<GameGlobalFieldsData | null>(null);
   readonly previewIsOpen = signal<boolean>(false);
@@ -206,7 +212,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         this.currentGameTypeName(),
         this.game.metadata as Record<string, unknown>
       );
-      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData;
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData;
       this.initialGameData.set(gameData);
       this.gameSpecificData.set(gameData); // Initialiser aussi gameSpecificData
       this.gameSpecificValid.set(true); // Considérer comme valide si les données existent
@@ -221,16 +227,29 @@ export class GameCardComponent implements OnInit, OnChanges {
     // La validité est toujours vraie pour les champs globaux (optionnels)
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | ImageInteractiveDataWithFile): void {
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | ImageInteractiveDataWithFile | PuzzleData | PuzzleDataWithFile): void {
     // Si c'est ImageInteractiveDataWithFile, stocker séparément pour gérer l'upload
-    if ('imageFile' in data || 'oldImageUrl' in data) {
+    if (('imageFile' in data || 'oldImageUrl' in data) && ('zones' in data)) {
       this.imageInteractiveDataWithFile.set(data as ImageInteractiveDataWithFile);
+      this.puzzleDataWithFile.set(null);
       // Stocker aussi les données sans le fichier pour la compatibilité
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { imageFile, oldImageUrl, ...dataWithoutFile } = data as ImageInteractiveDataWithFile;
       this.gameSpecificData.set(dataWithoutFile as ImageInteractiveData);
+    } else if (('imageFile' in data || 'oldImageUrl' in data) && ('pieces' in data)) {
+      // Si c'est PuzzleDataWithFile, stocker séparément pour gérer l'upload
+      this.puzzleDataWithFile.set(data as PuzzleDataWithFile);
+      this.imageInteractiveDataWithFile.set(null);
+      // Stocker aussi les données sans le fichier pour la compatibilité
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { imageFile, oldImageUrl, ...dataWithoutFile } = data as PuzzleDataWithFile;
+      this.gameSpecificData.set(dataWithoutFile as PuzzleData);
     } else {
-      this.gameSpecificData.set(data);
-      this.imageInteractiveDataWithFile.set(null); // Réinitialiser si ce n'est pas ImageInteractive
+      // Autres types de jeux
+      const gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData | null = data as Exclude<typeof data, ImageInteractiveDataWithFile | PuzzleDataWithFile>;
+      this.gameSpecificData.set(gameData);
+      this.imageInteractiveDataWithFile.set(null);
+      this.puzzleDataWithFile.set(null);
     }
   }
 
@@ -248,6 +267,10 @@ export class GameCardComponent implements OnInit, OnChanges {
     // Vérifier si on a un fichier image à uploader (pour ImageInteractive)
     const imageDataWithFile = this.imageInteractiveDataWithFile();
     const isImageInteractive = isGameTypeOneOf(this.currentGameTypeName(), 'click', 'image interactive');
+
+    // Vérifier si on a un fichier image à uploader (pour Puzzle)
+    const puzzleDataWithFile = this.puzzleDataWithFile();
+    const isPuzzle = isGameTypeOneOf(this.currentGameTypeName(), ...getGameTypeVariations(GAME_TYPE_PUZZLE));
 
     if (isImageInteractive && imageDataWithFile?.imageFile) {
       // Uploader l'image avant de sauvegarder
@@ -286,6 +309,51 @@ export class GameCardComponent implements OnInit, OnChanges {
           this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
         }
       });
+    } else if (isPuzzle && puzzleDataWithFile?.imageFile) {
+      // Générer et uploader les pièces du puzzle avec nouveau fichier
+      this.gameCreationService.generateAndUploadPuzzlePieces(this.game.id, puzzleDataWithFile).subscribe({
+        next: (updatedPuzzleData) => {
+          if (!updatedPuzzleData) {
+            console.error('Erreur lors de la génération des pièces');
+            this.errorSnackbar.showError('Erreur lors de la génération des pièces');
+            return;
+          }
+
+          // Sauvegarder le jeu avec les pièces générées
+          this.saveGameWithData(globalFields, updatedPuzzleData);
+        },
+        error: (error) => {
+          console.error('Erreur génération pièces:', error);
+          this.errorSnackbar.showError('Erreur lors de la génération des pièces');
+        }
+      });
+    } else if (isPuzzle && gameData && 'pieces' in gameData) {
+      // Puzzle sans nouveau fichier : vérifier si les pièces ont des URLs
+      const puzzleData = gameData as PuzzleData;
+      const hasEmptyUrls = puzzleData.pieces.some(piece => !piece.image_url || piece.image_url === '');
+      
+      if (hasEmptyUrls && puzzleData.image_url) {
+        // Régénérer les pièces depuis l'image existante
+        this.gameCreationService.regeneratePuzzlePiecesFromExistingImage(this.game.id, puzzleData).subscribe({
+          next: (updatedPuzzleData) => {
+            if (!updatedPuzzleData) {
+              console.error('Erreur lors de la régénération des pièces');
+              this.errorSnackbar.showError('Erreur lors de la régénération des pièces');
+              return;
+            }
+
+            // Sauvegarder le jeu avec les pièces régénérées
+            this.saveGameWithData(globalFields, updatedPuzzleData);
+          },
+          error: (error) => {
+            console.error('Erreur régénération pièces:', error);
+            this.errorSnackbar.showError('Erreur lors de la régénération des pièces');
+          }
+        });
+      } else {
+        // Pas de nouveau fichier et URLs déjà présentes, sauvegarder directement
+        this.saveGameWithData(globalFields, gameData);
+      }
     } else {
       // Pas de nouveau fichier, sauvegarder directement
       this.saveGameWithData(globalFields, gameData);
@@ -294,7 +362,7 @@ export class GameCardComponent implements OnInit, OnChanges {
 
   private saveGameWithData(
     globalFields: GameGlobalFieldsData,
-    gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData
+    gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData
   ): void {
     // Générer un nom automatique
     const gameTypeName = this.currentGameTypeName();
@@ -323,6 +391,7 @@ export class GameCardComponent implements OnInit, OnChanges {
     this.isEditing.set(false);
     // Réinitialiser les données avec fichier après sauvegarde
     this.imageInteractiveDataWithFile.set(null);
+    this.puzzleDataWithFile.set(null);
   }
 
   cancelEdit(): void {
@@ -352,7 +421,7 @@ export class GameCardComponent implements OnInit, OnChanges {
         this.currentGameTypeName(),
         this.game.metadata as Record<string, unknown>
       );
-      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData;
+      const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData;
       this.gameSpecificData.set(gameData);
     }
     if (!this.currentGlobalFields()) {
@@ -469,6 +538,27 @@ export class GameCardComponent implements OnInit, OnChanges {
     return null;
   }
 
+  getInitialDataForPuzzle(): PuzzleData | null {
+    const data = this.initialGameData();
+    const currentType = this.currentGameTypeName();
+    
+    if (currentType && isGameType(currentType, 'puzzle') && data) {
+      if (
+        'image_url' in data && 
+        'image_width' in data && 
+        'image_height' in data &&
+        'pieces' in data &&
+        typeof data.image_url === 'string' &&
+        typeof data.image_width === 'number' &&
+        typeof data.image_height === 'number' &&
+        Array.isArray(data.pieces)
+      ) {
+        return data as PuzzleData;
+      }
+    }
+    return null;
+  }
+
   formatMetadataForDisplay(): string {
     const typeName = this.currentGameTypeName().toLowerCase();
     const metadata = this.game.metadata;
@@ -520,6 +610,11 @@ export class GameCardComponent implements OnInit, OnChanges {
       if (isGameTypeConstant(typeName, GAME_TYPE_IMAGE_INTERACTIVE)) {
         const click = metadata as unknown as ImageInteractiveData;
         return `Image ${click.image_width || 0}×${click.image_height || 0}px, ${click.zones?.length || 0} zone(s) cliquable(s)`;
+      }
+      
+      if (isGameTypeConstant(typeName, GAME_TYPE_PUZZLE)) {
+        const puzzle = metadata as unknown as PuzzleData;
+        return `Image ${puzzle.image_width || 0}×${puzzle.image_height || 0}px, ${puzzle.pieces?.length || 0} pièce(s)`;
       }
       
       return JSON.stringify(metadata).substring(0, 100);

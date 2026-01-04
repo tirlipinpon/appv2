@@ -13,6 +13,7 @@ export const GAME_TYPE_VRAI_FAUX = 'vrai_faux';
 export const GAME_TYPE_CASE_VIDE = 'case_vide';
 export const GAME_TYPE_IMAGE_INTERACTIVE = 'image_interactive';
 export const GAME_TYPE_REPONSE_LIBRE = 'reponse_libre';
+export const GAME_TYPE_PUZZLE = 'puzzle';
 
 // Variations de noms acceptées pour chaque type
 export const GAME_TYPE_VARIATIONS: Record<string, readonly string[]> = {
@@ -35,6 +36,7 @@ export const GAME_TYPE_VARIATIONS: Record<string, readonly string[]> = {
     'click',
   ] as const,
   [GAME_TYPE_REPONSE_LIBRE]: ['reponse_libre', 'reponse libre'] as const,
+  [GAME_TYPE_PUZZLE]: ['puzzle'] as const,
 } as const;
 
 // Liste de tous les types de jeux spécifiques
@@ -52,6 +54,7 @@ export const SPECIFIC_GAME_TYPES = [
   GAME_TYPE_CHRONOLOGIE,
   'click',
   GAME_TYPE_REPONSE_LIBRE,
+  GAME_TYPE_PUZZLE,
 ] as const;
 
 /**

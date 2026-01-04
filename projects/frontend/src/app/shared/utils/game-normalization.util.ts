@@ -18,6 +18,7 @@ import {
   GAME_TYPE_LIENS,
   GAME_TYPE_CASE_VIDE,
   GAME_TYPE_SIMON,
+  GAME_TYPE_PUZZLE,
   getGameTypeVariations,
 } from '@shared/utils/game-type.util';
 
@@ -208,6 +209,12 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
         gameDataJson = rawGame.reponses;
       }
       gameTypeName = GAME_TYPE_SIMON;
+    } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_PUZZLE))) {
+      // Puzzle : utiliser game_data_json directement (nouveau jeu, pas de migration depuis metadata)
+      if (rawGame.game_data_json && typeof rawGame.game_data_json === 'object' && Object.keys(rawGame.game_data_json).length > 0) {
+        gameDataJson = rawGame.game_data_json;
+      }
+      gameTypeName = GAME_TYPE_PUZZLE;
     } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_IMAGE_INTERACTIVE))) {
       // Image interactive (click) : convertir depuis metadata
       if (rawGame.metadata) {

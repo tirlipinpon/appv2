@@ -220,6 +220,15 @@
               (validityChange)="onGameValidityChange($event)">
             </app-image-interactive-form>
           }
+
+          <!-- Puzzle -->
+          @if (isGameType(selectedGameTypeName(), 'puzzle')) {
+            <app-puzzle-form
+              [initialData]="initialDataForPuzzle()"
+              (dataChange)="onGameDataChange($event)"
+              (validityChange)="onGameValidityChange($event)">
+            </app-puzzle-form>
+          }
         </div>
       }
 

@@ -1,0 +1,428 @@
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, OnInit, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup, FormControl } from '@angular/forms';
+import { ConfirmationDialogService } from '../../../../../../shared';
+import type { PuzzleData, PuzzlePiece } from '@shared/games';
+import { PuzzleValidationService } from '../../../../services/puzzle/puzzle-validation.service';
+import { PuzzleImageOptimizerService } from '../../../../services/puzzle/puzzle-image-optimizer.service';
+import { PuzzlePieceGeneratorService } from '../../../../services/puzzle/puzzle-piece-generator.service';
+import { PuzzleStorageService } from '../../../../services/puzzle/puzzle-storage.service';
+
+interface PieceInEdit {
+  id: string;
+  name?: string;
+  polygon_points: Array<{ x: number; y: number }>; // Points en coordonnées relatives (0-1)
+  original_x: number; // Position X originale relative (0-1)
+  original_y: number; // Position Y originale relative (0-1)
+  image_url?: string; // URL de la pièce générée (optionnel, défini après génération)
+}
+
+// Interface étendue pour les données en cours d'édition avec le fichier File
+export interface PuzzleDataWithFile extends PuzzleData {
+  imageFile?: File; // Fichier à uploader lors de la sauvegarde
+  oldImageUrl?: string; // URL de l'ancienne image à supprimer si on remplace l'image
+}
+
+@Component({
+  selector: 'app-puzzle-form',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
+  templateUrl: './puzzle-form.component.html',
+  styleUrls: ['./puzzle-form.component.scss'],
+})
+export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
+  private readonly fb = inject(FormBuilder);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly puzzleValidation = inject(PuzzleValidationService);
+  private readonly imageOptimizer = inject(PuzzleImageOptimizerService);
+  private readonly pieceGenerator = inject(PuzzlePieceGeneratorService);
+  private readonly storageService = inject(PuzzleStorageService);
+
+  @Input() initialData: PuzzleData | null = null;
+  @Output() dataChange = new EventEmitter<PuzzleDataWithFile>();
+  @Output() validityChange = new EventEmitter<boolean>();
+
+  @ViewChild('imageContainer', { static: false }) imageContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('imageElement', { static: false }) imageElement!: ElementRef<HTMLImageElement>;
+  @ViewChild('canvasElement', { static: false }) canvasElement!: ElementRef<HTMLCanvasElement>;
+
+  form: FormGroup;
+  private isInitializing = false;
+
+  // État de l'image
+  readonly imageUrl = signal<string | null>(null);
+  readonly imageWidth = signal<number>(0);
+  readonly imageHeight = signal<number>(0);
+  readonly displayedImageWidth = signal<number>(0);
+  readonly displayedImageHeight = signal<number>(0);
+  readonly imageOffsetX = signal<number>(0);
+  readonly imageOffsetY = signal<number>(0);
+
+  // Fichier sélectionné
+  private imageFile = signal<File | null>(null);
+  private oldImageUrl = signal<string | null>(null);
+
+  // Pièces
+  readonly pieces = signal<PieceInEdit[]>([]);
+  readonly selectedPieceId = signal<string | null>(null);
+
+  // Polygone en cours de création
+  readonly polygonPoints = signal<{ x: number; y: number }[]>([]);
+  readonly isCreatingPolygon = signal<boolean>(false);
+
+  // Canvas pour affichage
+  private ctx: CanvasRenderingContext2D | null = null;
+  private resizeObserver?: ResizeObserver;
+
+  constructor() {
+    this.form = this.fb.group({});
+  }
+
+  ngOnInit(): void {
+    if (this.initialData) {
+      this.loadInitialData();
+    }
+  }
+
+  ngAfterViewInit(): void {
+    if (this.canvasElement?.nativeElement) {
+      this.ctx = this.canvasElement.nativeElement.getContext('2d');
+    }
+
+    if (this.imageContainer?.nativeElement) {
+      this.resizeObserver = new ResizeObserver(() => {
+        this.updateImageDimensions();
+      });
+      this.resizeObserver.observe(this.imageContainer.nativeElement);
+    }
+
+    window.addEventListener('resize', this.handleResize.bind(this));
+    setTimeout(() => this.updateImageDimensions(), 100);
+  }
+
+  ngOnDestroy(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    window.removeEventListener('resize', this.handleResize.bind(this));
+
+    const imageUrl = this.imageUrl();
+    if (imageUrl && imageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(imageUrl);
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['initialData'] && this.initialData && !this.isInitializing) {
+      this.loadInitialData();
+    }
+  }
+
+  private loadInitialData(): void {
+    if (!this.initialData) {
+      return;
+    }
+
+    this.isInitializing = true;
+    this.oldImageUrl.set(this.initialData.image_url);
+    this.imageUrl.set(this.initialData.image_url);
+    this.imageWidth.set(this.initialData.image_width);
+    this.imageHeight.set(this.initialData.image_height);
+    this.imageFile.set(null);
+
+    const pieces: PieceInEdit[] = this.initialData.pieces.map(piece => ({
+      id: piece.id,
+      name: piece.name,
+      polygon_points: piece.polygon_points,
+      original_x: piece.original_x,
+      original_y: piece.original_y,
+      image_url: piece.image_url,
+    }));
+
+    this.pieces.set(pieces);
+    this.isInitializing = false;
+    this.updateImageDimensions();
+    this.emitDataChange();
+  }
+
+  async onFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      // Optimiser l'image
+      const optimizedFile = await this.imageOptimizer.optimizeUploadImage(file);
+      const dimensions = await this.imageOptimizer.getImageDimensions(optimizedFile);
+
+      this.imageFile.set(optimizedFile);
+      this.oldImageUrl.set(null);
+
+      const blobUrl = URL.createObjectURL(optimizedFile);
+      this.imageUrl.set(blobUrl);
+      this.imageWidth.set(dimensions.width);
+      this.imageHeight.set(dimensions.height);
+
+      // Réinitialiser les pièces
+      this.pieces.set([]);
+      this.polygonPoints.set([]);
+      this.isCreatingPolygon.set(false);
+
+      this.updateImageDimensions();
+      this.emitDataChange();
+    } catch (error) {
+      console.error('Erreur lors de l\'optimisation de l\'image:', error);
+    }
+  }
+
+  updateImageDimensions(): void {
+    if (!this.imageElement?.nativeElement || !this.imageContainer?.nativeElement) {
+      return;
+    }
+
+    const img = this.imageElement.nativeElement;
+    const container = this.imageContainer.nativeElement;
+
+    if (!img.complete || img.naturalWidth === 0) {
+      if (!img.src) {
+        return;
+      }
+      img.onload = () => this.updateImageDimensions();
+      return;
+    }
+
+    const containerWidth = container.clientWidth;
+    const originalWidth = this.imageWidth();
+    const originalHeight = this.imageHeight();
+
+    if (originalWidth === 0 || originalHeight === 0) {
+      return;
+    }
+
+    const aspectRatio = originalWidth / originalHeight;
+    let displayedWidth = containerWidth;
+    let displayedHeight = containerWidth / aspectRatio;
+
+    if (displayedHeight > container.clientHeight) {
+      displayedHeight = container.clientHeight;
+      displayedWidth = displayedHeight * aspectRatio;
+    }
+
+    this.displayedImageWidth.set(displayedWidth);
+    this.displayedImageHeight.set(displayedHeight);
+
+    const offsetX = (containerWidth - displayedWidth) / 2;
+    const offsetY = (container.clientHeight - displayedHeight) / 2;
+    this.imageOffsetX.set(offsetX);
+    this.imageOffsetY.set(offsetY);
+
+    // Mettre à jour le canvas
+    if (this.canvasElement?.nativeElement) {
+      this.canvasElement.nativeElement.width = displayedWidth;
+      this.canvasElement.nativeElement.height = displayedHeight;
+      this.drawCanvas();
+    }
+  }
+
+  private handleResize(): void {
+    this.updateImageDimensions();
+  }
+
+  onCanvasClick(event: MouseEvent): void {
+    if (!this.imageUrl() || this.isCreatingPolygon() === false) {
+      return;
+    }
+
+    const rect = this.canvasElement.nativeElement.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Convertir en coordonnées relatives
+    const relativeX = x / this.displayedImageWidth();
+    const relativeY = y / this.displayedImageHeight();
+
+    this.polygonPoints.update(points => [...points, { x: relativeX, y: relativeY }]);
+    this.drawCanvas();
+  }
+
+  startCreatingPolygon(): void {
+    this.isCreatingPolygon.set(true);
+    this.polygonPoints.set([]);
+    this.selectedPieceId.set(null);
+  }
+
+  cancelPolygon(): void {
+    this.isCreatingPolygon.set(false);
+    this.polygonPoints.set([]);
+    this.drawCanvas();
+  }
+
+  removeLastPolygonPoint(): void {
+    this.polygonPoints.update(points => points.slice(0, -1));
+    this.drawCanvas();
+  }
+
+  finalizePolygon(): void {
+    const points = this.polygonPoints();
+    if (!this.puzzleValidation.validatePolygon(points)) {
+      alert('Un polygone doit avoir au moins 3 points');
+      return;
+    }
+
+    if (this.puzzleValidation.hasIntersections(points)) {
+      alert('Le polygone ne peut pas avoir d\'auto-intersections');
+      return;
+    }
+
+    // Calculer le centre du polygone pour original_x/y
+    const centerX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+    const centerY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+
+    const newPiece: PieceInEdit = {
+      id: crypto.randomUUID(),
+      polygon_points: [...points],
+      original_x: centerX,
+      original_y: centerY,
+    };
+
+    this.pieces.update(pieces => [...pieces, newPiece]);
+    this.isCreatingPolygon.set(false);
+    this.polygonPoints.set([]);
+    this.drawCanvas();
+    this.emitDataChange();
+  }
+
+  deletePiece(pieceId: string): void {
+    this.confirmationDialog.confirm({
+      title: 'Supprimer la pièce',
+      message: 'Êtes-vous sûr de vouloir supprimer cette pièce ?',
+    }).then((confirmed) => {
+      if (confirmed) {
+        this.pieces.update(pieces => pieces.filter(p => p.id !== pieceId));
+        if (this.selectedPieceId() === pieceId) {
+          this.selectedPieceId.set(null);
+        }
+        this.drawCanvas();
+        this.emitDataChange();
+      }
+    });
+  }
+
+  updatePieceName(pieceId: string, name: string): void {
+    this.pieces.update(pieces =>
+      pieces.map(p => p.id === pieceId ? { ...p, name: name.trim() || undefined } : p)
+    );
+    this.emitDataChange();
+  }
+
+  private drawCanvas(): void {
+    if (!this.ctx || !this.imageUrl()) {
+      return;
+    }
+
+    const width = this.displayedImageWidth();
+    const height = this.displayedImageHeight();
+
+    // Effacer le canvas
+    this.ctx.clearRect(0, 0, width, height);
+
+    // Dessiner l'image de fond
+    const img = this.imageElement.nativeElement;
+    if (img.complete) {
+      this.ctx.drawImage(img, 0, 0, width, height);
+    }
+
+    // Dessiner les pièces validées
+    const pieces = this.pieces();
+    pieces.forEach(piece => {
+      this.drawPolygon(piece.polygon_points, piece.id === this.selectedPieceId() ? '#00ff00' : '#ff0000');
+    });
+
+    // Dessiner le polygone en cours de création
+    if (this.isCreatingPolygon()) {
+      const points = this.polygonPoints();
+      if (points.length > 0) {
+        this.drawPolygon(points, '#00aaff');
+      }
+    }
+  }
+
+  private drawPolygon(points: Array<{ x: number; y: number }>, color: string): void {
+    if (!this.ctx || points.length < 2) {
+      return;
+    }
+
+    const width = this.displayedImageWidth();
+    const height = this.displayedImageHeight();
+
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+
+    points.forEach((p, i) => {
+      const x = p.x * width;
+      const y = p.y * height;
+      if (i === 0) {
+        this.ctx!.moveTo(x, y);
+      } else {
+        this.ctx!.lineTo(x, y);
+      }
+    });
+
+    this.ctx.closePath();
+    this.ctx.stroke();
+
+    // Dessiner les points
+    points.forEach(p => {
+      const x = p.x * width;
+      const y = p.y * height;
+      this.ctx!.fillStyle = color;
+      this.ctx!.beginPath();
+      this.ctx!.arc(x, y, 5, 0, 2 * Math.PI);
+      this.ctx!.fill();
+    });
+  }
+
+  private emitDataChange(): void {
+    if (this.isInitializing) {
+      return;
+    }
+
+    const imageUrl = this.imageUrl();
+    const imageFile = this.imageFile();
+    const pieces = this.pieces();
+
+    if (!imageUrl) {
+      this.validityChange.emit(false);
+      return;
+    }
+
+    // Convertir les pièces en format PuzzlePiece (sans image_url pour l'instant, sera généré plus tard)
+    const puzzlePieces: PuzzlePiece[] = pieces.map(piece => ({
+      id: piece.id,
+      name: piece.name,
+      polygon_points: piece.polygon_points,
+      original_x: piece.original_x,
+      original_y: piece.original_y,
+      image_url: piece.image_url || '', // Sera rempli après génération des PNG
+    }));
+
+    const puzzleData: PuzzleDataWithFile = {
+      image_url: imageUrl.startsWith('blob:') ? '' : imageUrl,
+      image_width: this.imageWidth(),
+      image_height: this.imageHeight(),
+      pieces: puzzlePieces,
+      imageFile: imageFile || undefined,
+      oldImageUrl: this.oldImageUrl() || undefined,
+    };
+
+    this.dataChange.emit(puzzleData);
+    this.validityChange.emit(pieces.length > 0);
+  }
+
+  readonly canFinalizePolygon = computed(() => {
+    return this.isCreatingPolygon() && this.polygonPoints().length >= 3;
+  });
+}

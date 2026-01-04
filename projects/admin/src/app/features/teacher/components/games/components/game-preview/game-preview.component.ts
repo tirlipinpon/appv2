@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData, PuzzleData } from '@shared/games';
 import {
   isGameType,
   isGameTypeOneOf,
@@ -16,13 +16,13 @@ import {
   GAME_TYPE_VRAI_FAUX,
 } from '../../../../utils/game-type.util';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent } from '@shared/games';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, LetterByLetterInputComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
@@ -31,7 +31,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   isOpen = input<boolean>(false);
   @Input() gameTypeName = '';
   @Input() globalFields: GameGlobalFieldsData | null = null;
-  @Input() gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null = null;
+  @Input() gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData | null = null;
   
   @Output() closed = new EventEmitter<void>();
 
@@ -266,6 +266,12 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     this.isCorrect.set(isValid);
   }
 
+  // Méthodes pour Puzzle
+  onPuzzleValidated(isValid: boolean): void {
+    this.isSubmitted.set(true);
+    this.isCorrect.set(isValid);
+  }
+
   // Getters pour éviter les castings dans le template
   get qcmData(): QcmData | null {
     return isGameTypeConstant(this.gameTypeName, GAME_TYPE_QCM) && this.gameData ? this.gameData as QcmData : null;
@@ -301,6 +307,10 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
 
   get imageInteractiveData(): ImageInteractiveData | null {
     return isGameTypeOneOf(this.gameTypeName, 'click', 'image interactive') && this.gameData ? this.gameData as ImageInteractiveData : null;
+  }
+
+  get puzzleData(): PuzzleData | null {
+    return isGameType(this.gameTypeName, 'puzzle') && this.gameData ? this.gameData as PuzzleData : null;
   }
 
   // Méthodes helper pour les liens

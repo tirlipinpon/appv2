@@ -1,0 +1,162 @@
+.puzzle-game {
+  width: 100%;
+}
+
+.game-instructions {
+  margin-bottom: 1rem;
+  
+  p {
+    margin: 0;
+    color: var(--theme-text-color, #666);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
+.game-question {
+  margin-bottom: 1rem;
+  
+  h2 {
+    margin: 0;
+    color: var(--theme-text-color, #333);
+    font-size: 1.5rem;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+
+  .loading-message {
+    font-size: 1.125rem;
+    color: var(--theme-text-color, #666);
+    font-weight: 500;
+  }
+}
+
+.puzzle-container {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  overflow: hidden;
+
+  &.disabled {
+    opacity: 0.7;
+    pointer-events: none;
+  }
+}
+
+.result-message {
+  padding: 1rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+  font-weight: 600;
+  text-align: center;
+
+  &.correct {
+    background-color: rgba(76, 175, 80, 0.15);
+    color: #2e7d32;
+    border: 1px solid #4CAF50;
+  }
+
+  &.incorrect {
+    background-color: rgba(244, 67, 54, 0.15);
+    color: #c62828;
+    border: 1px solid #F44336;
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+
+  .btn {
+    padding: 0.5rem 1.5rem;
+    min-width: 120px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.btn-primary {
+      background-color: var(--theme-primary-color, #4CAF50);
+      color: white;
+
+      &:hover:not(:disabled) {
+        background-color: #45a049;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+.aides-toggle-container {
+  margin-bottom: 1rem;
+}
+
+.aides-toggle-btn {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #333;
+  width: 100%;
+  justify-content: center;
+
+  &:hover {
+    border-color: #4CAF50;
+    background-color: rgba(76, 175, 80, 0.05);
+  }
+
+  .toggle-icon {
+    font-weight: bold;
+    font-size: 1.2rem;
+    line-height: 1;
+    width: 1.2rem;
+    text-align: center;
+  }
+
+  .toggle-text {
+    font-size: 0.9rem;
+  }
+}
+
+.aides-container {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  background: #f0f0f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+
+  ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
+  }
+
+  li {
+    margin: 0.25rem 0;
+  }
+}

@@ -9,6 +9,7 @@ import type {
   MemoryData,
   SimonData,
   ImageInteractiveData,
+  PuzzleData,
 } from '@shared/games';
 import {
   isGameType,
@@ -23,6 +24,7 @@ import {
   GAME_TYPE_MEMORY,
   GAME_TYPE_SIMON,
   GAME_TYPE_IMAGE_INTERACTIVE,
+  GAME_TYPE_PUZZLE,
 } from '../../utils/game-type.util';
 
 export type GameDataType =
@@ -34,7 +36,8 @@ export type GameDataType =
   | VraiFauxData
   | MemoryData
   | SimonData
-  | ImageInteractiveData;
+  | ImageInteractiveData
+  | PuzzleData;
 
 @Injectable({
   providedIn: 'root',
@@ -81,6 +84,9 @@ export class GameDataInitializerService {
     }
     if (isGameTypeConstant(gameTypeName, GAME_TYPE_IMAGE_INTERACTIVE)) {
       return this.getInitialDataForImageInteractive(data);
+    }
+    if (isGameTypeConstant(gameTypeName, GAME_TYPE_PUZZLE)) {
+      return this.getInitialDataForPuzzle(data);
     }
 
     return null;
@@ -194,5 +200,23 @@ export class GameDataInitializerService {
       return null;
     }
     return data as ImageInteractiveData;
+  }
+
+  getInitialDataForPuzzle(data: unknown): PuzzleData | null {
+    if (
+      !data ||
+      typeof data !== 'object' ||
+      !('image_url' in data) ||
+      !('image_width' in data) ||
+      !('image_height' in data) ||
+      !('pieces' in data) ||
+      typeof (data as { image_url: unknown }).image_url !== 'string' ||
+      typeof (data as { image_width: unknown }).image_width !== 'number' ||
+      typeof (data as { image_height: unknown }).image_height !== 'number' ||
+      !Array.isArray((data as { pieces: unknown }).pieces)
+    ) {
+      return null;
+    }
+    return data as PuzzleData;
   }
 }

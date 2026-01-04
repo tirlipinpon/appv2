@@ -84,6 +84,23 @@ export interface ImageInteractiveData {
   require_all_correct_zones?: boolean; // Si true, toutes les zones correctes doivent être cliquées. Si false, une seule zone correcte suffit. Par défaut: true (rétrocompatibilité)
 }
 
+// Puzzle : pièces de puzzle générées depuis une image découpée en polygones
+export interface PuzzlePiece {
+  id: string; // UUID unique
+  image_url: string; // URL du PNG dans Supabase Storage (dossier puzzle-images)
+  original_x: number; // Position X originale relative (0-1)
+  original_y: number; // Position Y originale relative (0-1)
+  polygon_points: Array<{ x: number; y: number }>; // Points du polygone relatif (0-1)
+  name?: string; // Nom optionnel de la pièce (affiché en tooltip au survol)
+}
+
+export interface PuzzleData {
+  image_url: string; // URL de l'image originale dans game-images
+  image_width: number; // Largeur originale
+  image_height: number; // Hauteur originale
+  pieces: PuzzlePiece[]; // Liste des pièces générées
+}
+
 // Union type pour toutes les structures de données de jeu
-export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData;
+export type GameData = CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData;
 

@@ -8,9 +8,9 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent } from '@shared/games';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent } from '@shared/games';
 import { GameErrorActionsComponent } from '@shared/games';
-import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData, VraiFauxData } from '@shared/games';
+import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData, VraiFauxData, PuzzleData } from '@shared/games';
 import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
@@ -29,6 +29,7 @@ import {
   GAME_TYPE_LIENS,
   GAME_TYPE_VRAI_FAUX,
   GAME_TYPE_REPONSE_LIBRE,
+  GAME_TYPE_PUZZLE,
   SPECIFIC_GAME_TYPES,
   getGameTypeVariations,
 } from '@shared/utils/game-type.util';
@@ -37,7 +38,7 @@ import { normalizeGameType } from '../../shared/utils/game-normalization.util';
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, LetterByLetterInputComponent, BreadcrumbComponent, GameErrorActionsComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, LetterByLetterInputComponent, BreadcrumbComponent, GameErrorActionsComponent],
   template: `
     <div class="game-container">
       <!-- Breadcrumb -->
@@ -192,6 +193,19 @@ import { normalizeGameType } from '../../shared/utils/game-normalization.util';
             (resetRequested)="restartGame()"
             (nextRequested)="onNextButtonClick()">
           </app-vrai-faux-game>
+        } @else if (isPuzzleGame() && getPuzzleData()) {
+          <!-- Jeu Puzzle -->
+          <app-puzzle-game
+            [puzzleData]="getPuzzleData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
+            (validated)="onGameValidated($event)"
+            (resetRequested)="restartGame()"
+            (nextRequested)="onNextButtonClick()">
+          </app-puzzle-game>
         } @else if (isReponseLibreGame() && gameData()) {
           <!-- Jeu réponse libre -->
           <div class="question-container">
@@ -723,6 +737,9 @@ export class GameComponent implements OnInit, OnDestroy {
   isReponseLibreGame = computed(() => {
     return isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_REPONSE_LIBRE));
   });
+  isPuzzleGame = computed(() => {
+    return isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_PUZZLE));
+  });
   isGenericGame = computed(() => {
     const type = this.gameType();
     if (!type) return false;
@@ -779,6 +796,11 @@ export class GameComponent implements OnInit, OnDestroy {
   getVraiFauxData(): VraiFauxData | null {
     const data = this.gameData();
     return data && this.isVraiFauxGame() ? (data as unknown as VraiFauxData) : null;
+  }
+
+  getPuzzleData(): PuzzleData | null {
+    const data = this.gameData();
+    return data && this.isPuzzleGame() ? (data as unknown as PuzzleData) : null;
   }
 
   ngOnInit(): void {

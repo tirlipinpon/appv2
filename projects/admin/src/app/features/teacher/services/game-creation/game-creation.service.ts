@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, of, forkJoin, from } from 'rxjs';
 import { switchMap, tap, catchError } from 'rxjs/operators';
 import { GamesApplication } from '../../components/games/application/application';
 import { ImageUploadService } from '../../components/games/services/image-upload/image-upload.service';
 import { ErrorSnackbarService } from '../../../../shared';
-import type { Game, GameCreate } from '../../types/game';
+import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type {
   CaseVideData,
   ReponseLibreData,
@@ -15,8 +15,12 @@ import type {
   MemoryData,
   SimonData,
   ImageInteractiveData,
+  PuzzleData,
 } from '@shared/games';
 import type { ImageInteractiveDataWithFile } from '../../components/games/components/image-interactive-form/image-interactive-form.component';
+import type { PuzzleDataWithFile } from '../../components/games/components/puzzle-form/puzzle-form.component';
+import { PuzzleStorageService } from '../puzzle/puzzle-storage.service';
+import { PuzzlePieceGeneratorService } from '../puzzle/puzzle-piece-generator.service';
 
 export type GameData =
   | CaseVideData
@@ -27,7 +31,8 @@ export type GameData =
   | VraiFauxData
   | MemoryData
   | SimonData
-  | ImageInteractiveData;
+  | ImageInteractiveData
+  | PuzzleData;
 
 export interface CreateGameParams {
   gameTypeId: string;
@@ -37,8 +42,9 @@ export interface CreateGameParams {
   instructions?: string | null;
   question?: string | null;
   aides?: string[] | null;
-  gameData: GameData | ImageInteractiveDataWithFile;
+  gameData: GameData | ImageInteractiveDataWithFile | PuzzleDataWithFile;
   imageDataWithFile?: ImageInteractiveDataWithFile | null;
+  puzzleDataWithFile?: PuzzleDataWithFile | null;
 }
 
 export interface DuplicateGameParams {
@@ -59,6 +65,8 @@ export interface DuplicateGameParams {
 export class GameCreationService {
   private readonly application = inject(GamesApplication);
   private readonly imageUploadService = inject(ImageUploadService);
+  private readonly puzzleStorageService = inject(PuzzleStorageService);
+  private readonly puzzlePieceGenerator = inject(PuzzlePieceGeneratorService);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
 
   /**
@@ -88,6 +96,15 @@ export class GameCreationService {
   }
 
   /**
+   * Vérifie si un type de jeu est un jeu Puzzle
+   */
+  isPuzzleGame(gameTypeName: string | null): boolean {
+    if (!gameTypeName) return false;
+    const normalized = gameTypeName.toLowerCase().trim();
+    return normalized === 'puzzle';
+  }
+
+  /**
    * Vérifie si les données contiennent une image_url valide
    */
   hasImageUrl(data: unknown): boolean {
@@ -113,11 +130,15 @@ export class GameCreationService {
       aides,
       gameData,
       imageDataWithFile,
+      puzzleDataWithFile,
     } = params;
 
     const isImageInteractive = this.isImageInteractiveGame(gameTypeName);
+    const isPuzzle = this.isPuzzleGame(gameTypeName);
     const hasFile = imageDataWithFile?.imageFile !== undefined;
+    const hasPuzzleFile = puzzleDataWithFile?.imageFile !== undefined;
     const hasUrl = isImageInteractive && this.hasImageUrl(gameData);
+    const hasPuzzleUrl = isPuzzle && this.hasImageUrl(gameData);
 
     const autoName = this.generateAutoName(gameTypeName, question);
     const filteredAides = aides?.filter((a) => a && a.trim()) || null;
@@ -150,7 +171,22 @@ export class GameCreationService {
       return this.application.createGame(baseGameData);
     }
 
-    // Cas 3: Jeu normal (pas ImageInteractive ou pas d'image)
+    // Cas 3: Jeu Puzzle avec nouveau fichier à uploader
+    if (isPuzzle && hasPuzzleFile && puzzleDataWithFile?.imageFile) {
+      return this.createPuzzleGameWithFileUpload(
+        baseGameData,
+        puzzleDataWithFile,
+        gameData as PuzzleData
+      );
+    }
+
+    // Cas 4: Jeu Puzzle avec image_url existante
+    if (isPuzzle && hasPuzzleUrl && !hasPuzzleFile) {
+      baseGameData.metadata = gameData as unknown as Record<string, unknown>;
+      return this.application.createGame(baseGameData);
+    }
+
+    // Cas 5: Jeu normal (pas ImageInteractive/Puzzle ou pas d'image)
     baseGameData.metadata = gameData as unknown as Record<string, unknown>;
     return this.application.createGame(baseGameData);
   }
@@ -212,6 +248,166 @@ export class GameCreationService {
             });
 
             return of(createdGame);
+          }),
+          catchError((error) => {
+            this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
+            return of(null);
+          })
+        );
+      }),
+      catchError((error) => {
+        this.errorSnackbar.showError('Erreur lors de la création du jeu');
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Crée un jeu Puzzle avec upload d'image et génération des PNG des pièces
+   */
+  private createPuzzleGameWithFileUpload(
+    baseGameData: GameCreate,
+    puzzleDataWithFile: PuzzleDataWithFile,
+    gameData: PuzzleData
+  ): Observable<Game | null> {
+    const file = puzzleDataWithFile.imageFile!;
+
+    // Extraire les données sans le fichier
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { imageFile, oldImageUrl, ...puzzleData } = puzzleDataWithFile;
+    const puzzleDataTyped = puzzleData as PuzzleData;
+
+    // Créer le jeu sans image d'abord (les pièces n'ont pas encore d'image_url)
+    const gameDataWithoutImage: PuzzleData = {
+      image_url: '',
+      image_width: 0,
+      image_height: 0,
+      pieces: puzzleDataTyped.pieces.map(p => ({
+        ...p,
+        image_url: '', // Sera rempli après génération
+      })),
+    };
+
+    baseGameData.metadata = gameDataWithoutImage as unknown as Record<string, unknown>;
+
+    return this.application.createGame(baseGameData).pipe(
+      switchMap((createdGame) => {
+        if (!createdGame) {
+          this.errorSnackbar.showError('Erreur lors de la création du jeu');
+          return of(null);
+        }
+
+        // Uploader l'image originale dans le dossier du jeu créé
+        return this.imageUploadService.uploadImage(file, createdGame.id).pipe(
+          switchMap((result) => {
+            if (result.error) {
+              this.errorSnackbar.showError(
+                `Erreur lors de l'upload de l'image: ${result.error}`
+              );
+              return of(null);
+            }
+
+            // Générer les PNG des pièces et les uploader
+            const pieces = puzzleDataTyped.pieces;
+            if (pieces.length === 0) {
+              // Pas de pièces, juste mettre à jour avec l'image
+              const updatedPuzzleData: PuzzleData = {
+                image_url: result.url,
+                image_width: result.width,
+                image_height: result.height,
+                pieces: [],
+              };
+
+              this.application.updateGame(createdGame.id, {
+                metadata: updatedPuzzleData as unknown as Record<string, unknown>,
+              });
+
+              return of(createdGame);
+            }
+
+            // Générer et uploader les PNG des pièces en parallèle
+            const pieceGenerationPromises = pieces.map(piece =>
+              this.puzzlePieceGenerator.generatePiecePNG(
+                result.url,
+                piece.polygon_points,
+                result.width,
+                result.height
+              ).then(blob => ({
+                pieceId: piece.id,
+                blob,
+              })).catch(error => {
+                console.error(`Erreur génération pièce ${piece.id}:`, error);
+                return null;
+              })
+            );
+
+            // Générer les PNG des pièces
+            return from(Promise.all(pieceGenerationPromises)).pipe(
+              switchMap((results) => {
+                const validResults = results.filter((r): r is { pieceId: string; blob: Blob } => r !== null);
+
+                if (validResults.length !== pieces.length) {
+                  this.errorSnackbar.showError('Erreur lors de la génération de certaines pièces');
+                }
+
+                // Uploader les PNG des pièces en parallèle
+                const uploadObservables = validResults.map(({ pieceId, blob }) =>
+                  this.puzzleStorageService.uploadPiecePNG(pieceId, blob, createdGame.id)
+                );
+
+                if (uploadObservables.length === 0) {
+                  // Pas de pièces à uploader
+                  const updatedPuzzleData: PuzzleData = {
+                    image_url: result.url,
+                    image_width: result.width,
+                    image_height: result.height,
+                    pieces: [],
+                  };
+
+                  this.application.updateGame(createdGame.id, {
+                    metadata: updatedPuzzleData as unknown as Record<string, unknown>,
+                  });
+
+                  return of(createdGame);
+                }
+
+                return forkJoin(uploadObservables).pipe(
+                  switchMap((imageUrls) => {
+                    // Mettre à jour les pièces avec les URLs
+                    const updatedPieces = pieces.map((piece) => {
+                      const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
+                      return {
+                        ...piece,
+                        image_url: resultIndex >= 0 ? imageUrls[resultIndex] : '',
+                      };
+                    });
+
+                    const updatedPuzzleData: PuzzleData = {
+                      image_url: result.url,
+                      image_width: result.width,
+                      image_height: result.height,
+                      pieces: updatedPieces,
+                    };
+
+                    this.application.updateGame(createdGame.id, {
+                      metadata: updatedPuzzleData as unknown as Record<string, unknown>,
+                    });
+
+                    return of(createdGame);
+                  }),
+                  catchError((error) => {
+                    console.error('Erreur upload pièces:', error);
+                    this.errorSnackbar.showError('Erreur lors de l\'upload des pièces');
+                    return of(null);
+                  })
+                );
+              }),
+              catchError((error) => {
+                console.error('Erreur génération pièces:', error);
+                this.errorSnackbar.showError('Erreur lors de la génération des pièces');
+                return of(null);
+              })
+            );
           }),
           catchError((error) => {
             this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
@@ -315,11 +511,11 @@ export class GameCreationService {
     return this.application.createGame(baseGameData).pipe(
       switchMap((createdGame) => {
         if (!createdGame) {
-          this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+          this.errorSnackbar.showError('Erreur lors de la création du jeu');
           return of(null);
         }
 
-        // Copier l'image dans le nouveau dossier du jeu
+        // Copier l'image
         return this.imageUploadService.copyImageToGame(sourceImageUrl, createdGame.id).pipe(
           switchMap((result) => {
             if (result.error) {
@@ -329,8 +525,8 @@ export class GameCreationService {
               return of(null);
             }
 
-            // Mettre à jour le jeu avec la nouvelle URL d'image
-            const updatedMetadata: ImageInteractiveData = {
+            // Mettre à jour le jeu avec l'URL de l'image copiée
+            const updatedImageData: ImageInteractiveData = {
               image_url: result.url,
               image_width: result.width,
               image_height: result.height,
@@ -339,7 +535,7 @@ export class GameCreationService {
             };
 
             this.application.updateGame(createdGame.id, {
-              metadata: updatedMetadata as unknown as Record<string, unknown>,
+              metadata: updatedImageData as unknown as Record<string, unknown>,
             });
 
             return of(createdGame);
@@ -351,7 +547,228 @@ export class GameCreationService {
         );
       }),
       catchError((error) => {
-        this.errorSnackbar.showError('Erreur lors de la duplication du jeu');
+        this.errorSnackbar.showError('Erreur lors de la création du jeu');
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Génère et upload les pièces d'un puzzle, retourne les données mises à jour
+   * @param gameId ID du jeu
+   * @param puzzleDataWithFile Données du puzzle avec le fichier image
+   * @returns Observable avec les données PuzzleData mises à jour (avec URLs des pièces)
+   */
+  generateAndUploadPuzzlePieces(
+    gameId: string,
+    puzzleDataWithFile: PuzzleDataWithFile
+  ): Observable<PuzzleData | null> {
+    const file = puzzleDataWithFile.imageFile!;
+    const oldImageUrl = puzzleDataWithFile.oldImageUrl;
+
+    // Extraire les données sans le fichier
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { imageFile, oldImageUrl: _, ...puzzleData } = puzzleDataWithFile;
+    const puzzleDataTyped = puzzleData as PuzzleData;
+
+    // Supprimer l'ancienne image si elle existe
+    const deleteOldImage$: Observable<{ success: boolean; error: string | null }> = oldImageUrl
+      ? this.imageUploadService.deleteImage(oldImageUrl)
+      : of({ success: true, error: null });
+
+    return deleteOldImage$.pipe(
+      switchMap(() => {
+        // Uploader la nouvelle image
+        return this.imageUploadService.uploadImage(file, gameId).pipe(
+          switchMap((result) => {
+            if (result.error) {
+              this.errorSnackbar.showError(
+                `Erreur lors de l'upload de l'image: ${result.error}`
+              );
+              return of(null);
+            }
+
+            // Générer les PNG des pièces et les uploader
+            const pieces = puzzleDataTyped.pieces;
+            if (pieces.length === 0) {
+              // Pas de pièces, juste retourner les données avec l'image
+              const updatedPuzzleData: PuzzleData = {
+                image_url: result.url,
+                image_width: result.width,
+                image_height: result.height,
+                pieces: [],
+              };
+
+              return of(updatedPuzzleData);
+            }
+
+            // Générer et uploader les PNG des pièces en parallèle
+            const pieceGenerationPromises = pieces.map(piece =>
+              this.puzzlePieceGenerator.generatePiecePNG(
+                result.url,
+                piece.polygon_points,
+                result.width,
+                result.height
+              ).then(blob => ({
+                pieceId: piece.id,
+                blob,
+              })).catch(error => {
+                console.error(`Erreur génération pièce ${piece.id}:`, error);
+                return null;
+              })
+            );
+
+            // Générer les PNG des pièces
+            return from(Promise.all(pieceGenerationPromises)).pipe(
+              switchMap((results) => {
+                const validResults = results.filter((r): r is { pieceId: string; blob: Blob } => r !== null);
+
+                if (validResults.length !== pieces.length) {
+                  this.errorSnackbar.showError('Erreur lors de la génération de certaines pièces');
+                }
+
+                // Uploader les PNG des pièces en parallèle
+                const uploadObservables = validResults.map(({ pieceId, blob }) =>
+                  this.puzzleStorageService.uploadPiecePNG(pieceId, blob, gameId)
+                );
+
+                if (uploadObservables.length === 0) {
+                  // Pas de pièces à uploader
+                  const updatedPuzzleData: PuzzleData = {
+                    image_url: result.url,
+                    image_width: result.width,
+                    image_height: result.height,
+                    pieces: [],
+                  };
+
+                  return of(updatedPuzzleData);
+                }
+
+                return forkJoin(uploadObservables).pipe(
+                  switchMap((imageUrls) => {
+                    // Mettre à jour les pièces avec les URLs
+                    const updatedPieces = pieces.map((piece) => {
+                      const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
+                      return {
+                        ...piece,
+                        image_url: resultIndex >= 0 ? imageUrls[resultIndex] : '',
+                      };
+                    });
+
+                    const updatedPuzzleData: PuzzleData = {
+                      image_url: result.url,
+                      image_width: result.width,
+                      image_height: result.height,
+                      pieces: updatedPieces,
+                    };
+
+                    return of(updatedPuzzleData);
+                  }),
+                  catchError((error) => {
+                    console.error('Erreur upload pièces:', error);
+                    this.errorSnackbar.showError('Erreur lors de l\'upload des pièces');
+                    return of(null);
+                  })
+                );
+              }),
+              catchError((error) => {
+                console.error('Erreur génération pièces:', error);
+                this.errorSnackbar.showError('Erreur lors de la génération des pièces');
+                return of(null);
+              })
+            );
+          }),
+          catchError((error) => {
+            this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
+            return of(null);
+          })
+        );
+      }),
+      catchError((error) => {
+        this.errorSnackbar.showError('Erreur lors de la suppression de l\'ancienne image');
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Régénère les pièces d'un puzzle depuis l'image existante (quand les URLs des pièces sont vides)
+   * @param gameId ID du jeu
+   * @param puzzleData Données du puzzle avec l'image_url existante
+   * @returns Observable avec les données PuzzleData mises à jour (avec URLs des pièces)
+   */
+  regeneratePuzzlePiecesFromExistingImage(
+    gameId: string,
+    puzzleData: PuzzleData
+  ): Observable<PuzzleData | null> {
+    if (!puzzleData.image_url || puzzleData.pieces.length === 0) {
+      return of(puzzleData);
+    }
+
+    // Générer et uploader les PNG des pièces en parallèle
+    const pieceGenerationPromises = puzzleData.pieces.map(piece =>
+      this.puzzlePieceGenerator.generatePiecePNG(
+        puzzleData.image_url,
+        piece.polygon_points,
+        puzzleData.image_width,
+        puzzleData.image_height
+      ).then(blob => ({
+        pieceId: piece.id,
+        blob,
+      })).catch(error => {
+        console.error(`Erreur génération pièce ${piece.id}:`, error);
+        return null;
+      })
+    );
+
+    // Générer les PNG des pièces
+    return from(Promise.all(pieceGenerationPromises)).pipe(
+      switchMap((results) => {
+        const validResults = results.filter((r): r is { pieceId: string; blob: Blob } => r !== null);
+
+        if (validResults.length !== puzzleData.pieces.length) {
+          this.errorSnackbar.showError('Erreur lors de la génération de certaines pièces');
+        }
+
+        if (validResults.length === 0) {
+          return of(puzzleData);
+        }
+
+        // Uploader les PNG des pièces en parallèle
+        const uploadObservables = validResults.map(({ pieceId, blob }) =>
+          this.puzzleStorageService.uploadPiecePNG(pieceId, blob, gameId)
+        );
+
+        return forkJoin(uploadObservables).pipe(
+          switchMap((imageUrls) => {
+            // Mettre à jour les pièces avec les URLs
+            const updatedPieces = puzzleData.pieces.map((piece) => {
+              const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
+              return {
+                ...piece,
+                image_url: resultIndex >= 0 ? imageUrls[resultIndex] : piece.image_url || '',
+              };
+            });
+
+            const updatedPuzzleData: PuzzleData = {
+              image_url: puzzleData.image_url,
+              image_width: puzzleData.image_width,
+              image_height: puzzleData.image_height,
+              pieces: updatedPieces,
+            };
+
+            return of(updatedPuzzleData);
+          }),
+          catchError((error) => {
+            console.error('Erreur upload pièces:', error);
+            this.errorSnackbar.showError('Erreur lors de l\'upload des pièces');
+            return of(null);
+          })
+        );
+      }),
+      catchError((error) => {
+        console.error('Erreur génération pièces:', error);
+        this.errorSnackbar.showError('Erreur lors de la génération des pièces');
         return of(null);
       })
     );

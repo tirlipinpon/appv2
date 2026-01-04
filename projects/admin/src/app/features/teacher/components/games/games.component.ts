@@ -17,13 +17,14 @@ import { VraiFauxFormComponent } from './components/vrai-faux-form/vrai-faux-for
 import { MemoryFormComponent } from './components/memory-form/memory-form.component';
 import { SimonFormComponent } from './components/simon-form/simon-form.component';
 import { ImageInteractiveFormComponent, type ImageInteractiveDataWithFile } from './components/image-interactive-form/image-interactive-form.component';
+import { PuzzleFormComponent, type PuzzleDataWithFile } from './components/puzzle-form/puzzle-form.component';
 import { AIGameGeneratorFormComponent } from './components/ai-game-generator-form/ai-game-generator-form.component';
 import { AIGeneratedPreviewComponent } from './components/ai-generated-preview/ai-generated-preview.component';
 import { GameGlobalFieldsComponent, type GameGlobalFieldsData } from './components/game-global-fields/game-global-fields.component';
 import { GameCardComponent } from './components/game-card/game-card.component';
 import { DuplicateGameDialogComponent } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
-import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData } from '@shared/games';
+import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData, PuzzleData } from '@shared/games';
 import type { AIGameGenerationRequest } from '../../types/ai-game-generation';
 import type { TeacherAssignment } from '../../types/teacher-assignment';
 import type { Subject } from '../../types/subject';
@@ -56,6 +57,7 @@ import { normalizeGameTypeName, isGameType, isGameTypeOneOf } from '../../utils/
     MemoryFormComponent,
     SimonFormComponent,
     ImageInteractiveFormComponent,
+    PuzzleFormComponent,
     AIGameGeneratorFormComponent,
     AIGeneratedPreviewComponent,
     GameGlobalFieldsComponent,
@@ -193,14 +195,16 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly generationProgress = computed(() => this.gamesStore.generationProgress());
 
   // Données des composants spécifiques
-  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
+  readonly gameSpecificData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData | null>(null);
   readonly gameSpecificValid = signal<boolean>(false);
 
   // Données initiales pour l'édition
-  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null>(null);
+  readonly initialGameData = signal<CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData | null>(null);
   
   // Données spécifiques pour le jeu image-interactive avec le fichier File (pour l'upload lors de la création)
   private imageInteractiveDataWithFile = signal<ImageInteractiveDataWithFile | null>(null);
+  // Données spécifiques pour le jeu puzzle avec le fichier File (pour l'upload lors de la création)
+  private puzzleDataWithFile = signal<PuzzleDataWithFile | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
   
   // Computed signals pour les données initiales (évite les appels répétés inutiles)
@@ -214,7 +218,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       if (
         'image_url' in data && 
         'image_width' in data && 
-        'image_height' in data && 
+        'image_height' in data &&
         'zones' in data &&
         typeof data.image_url === 'string' &&
         typeof data.image_width === 'number' &&
@@ -222,6 +226,27 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         Array.isArray(data.zones)
       ) {
         return data as ImageInteractiveData;
+      }
+    }
+    return null;
+  });
+
+  readonly initialDataForPuzzle = computed(() => {
+    const data = this.initialGameData();
+    const currentType = this.selectedGameTypeName();
+    
+    if (currentType && isGameType(currentType, 'puzzle') && data) {
+      if (
+        'image_url' in data && 
+        'image_width' in data && 
+        'image_height' in data &&
+        'pieces' in data &&
+        typeof data.image_url === 'string' &&
+        typeof data.image_width === 'number' &&
+        typeof data.image_height === 'number' &&
+        Array.isArray(data.pieces)
+      ) {
+        return data as PuzzleData;
       }
     }
     return null;
@@ -425,7 +450,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
             this.getGameTypeName(game.game_type_id),
             game.metadata as Record<string, unknown>
           );
-          this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData);
+          this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData);
         } else {
           this.initialGameData.set(null);
         }
@@ -433,19 +458,29 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | ImageInteractiveDataWithFile): void {
+  onGameDataChange(data: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | ImageInteractiveDataWithFile | PuzzleData | PuzzleDataWithFile): void {
     // Si c'est ImageInteractiveDataWithFile, stocker séparément pour gérer l'upload
-    if ('imageFile' in data || 'oldImageUrl' in data) {
+    if (('imageFile' in data || 'oldImageUrl' in data) && ('zones' in data)) {
       this.imageInteractiveDataWithFile.set(data as ImageInteractiveDataWithFile);
+      this.puzzleDataWithFile.set(null);
       // Stocker aussi les données sans le fichier pour la compatibilité
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { imageFile, oldImageUrl, ...dataWithoutFile } = data as ImageInteractiveDataWithFile;
       this.gameSpecificData.set(dataWithoutFile as ImageInteractiveData);
+    } else if (('imageFile' in data || 'oldImageUrl' in data) && ('pieces' in data)) {
+      // Si c'est PuzzleDataWithFile, stocker séparément pour gérer l'upload
+      this.puzzleDataWithFile.set(data as PuzzleDataWithFile);
+      this.imageInteractiveDataWithFile.set(null);
+      // Stocker aussi les données sans le fichier pour la compatibilité
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { imageFile, oldImageUrl, ...dataWithoutFile } = data as PuzzleDataWithFile;
+      this.gameSpecificData.set(dataWithoutFile as PuzzleData);
     } else {
-      // Dans le bloc else, data ne peut pas être ImageInteractiveDataWithFile
-      const gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | null = data as Exclude<typeof data, ImageInteractiveDataWithFile>;
+      // Autres types de jeux
+      const gameData: CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData | null = data as Exclude<typeof data, ImageInteractiveDataWithFile | PuzzleDataWithFile>;
       this.gameSpecificData.set(gameData);
-      this.imageInteractiveDataWithFile.set(null); // Réinitialiser si ce n'est pas ImageInteractive
+      this.imageInteractiveDataWithFile.set(null);
+      this.puzzleDataWithFile.set(null);
     }
   }
 
@@ -500,6 +535,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       aides: this.aidesArray.value.filter((a: string) => a && a.trim()),
       gameData,
       imageDataWithFile: this.imageInteractiveDataWithFile(),
+      puzzleDataWithFile: this.puzzleDataWithFile(),
     }).subscribe({
       next: () => {
         this.isCreating = false;
@@ -538,7 +574,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         this.getGameTypeName(game.game_type_id),
         game.metadata as Record<string, unknown>
       );
-      this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData);
+      this.initialGameData.set(normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData);
     }
   }
 
@@ -558,7 +594,8 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.initialGameData.set(null);
     this.initialGlobalFields.set(null);
     this.selectedCategoryId.set(null);
-    this.imageInteractiveDataWithFile.set(null); // Réinitialiser les données avec fichier
+    this.imageInteractiveDataWithFile.set(null);
+    this.puzzleDataWithFile.set(null); // Réinitialiser les données avec fichier
   }
 
   update(): void {

@@ -10,7 +10,8 @@ import { Infrastructure } from '../components/infrastructure/infrastructure';
 import { GeneratedGameWithState, AIGameGenerationRequest, AIRawResponse } from '../types/ai-game-generation';
 import { ErrorSnackbarService, setStoreError } from '../../../shared';
 import { ImageUploadService } from '../components/games/services/image-upload/image-upload.service';
-import type { ImageInteractiveData } from '@shared/games';
+import { PuzzleStorageService } from '../services/puzzle/puzzle-storage.service';
+import type { ImageInteractiveData, PuzzleData } from '@shared/games';
 
 export interface GamesState {
   games: Game[];
@@ -55,7 +56,7 @@ export const GamesStore = signalStore(
     hasGameTypes: () => store.gameTypes().length > 0,
     hasGeneratedGames: () => store.generatedGames().length > 0,
   })),
-  withMethods((store, infrastructure = inject(Infrastructure), errorSnackbar = inject(ErrorSnackbarService), imageUploadService = inject(ImageUploadService)) => ({
+  withMethods((store, infrastructure = inject(Infrastructure), errorSnackbar = inject(ErrorSnackbarService), imageUploadService = inject(ImageUploadService), puzzleStorageService = inject(PuzzleStorageService)) => ({
     loadGameTypes: rxMethod<void>(
       pipe(
         tap(() => patchState(store, { isLoading: true, error: [] })),
@@ -205,7 +206,16 @@ export const GamesStore = signalStore(
             ? (gameToDelete.metadata as unknown as ImageInteractiveData).image_url 
             : null;
           
-          // Supprimer l'image du storage si elle existe
+          // Vérifier si c'est un jeu Puzzle avec des pièces à supprimer
+          const isPuzzle = gameToDelete && gameToDelete.metadata && 
+            'pieces' in gameToDelete.metadata &&
+            Array.isArray((gameToDelete.metadata as unknown as PuzzleData).pieces);
+          
+          const puzzleData = isPuzzle 
+            ? (gameToDelete.metadata as unknown as PuzzleData)
+            : null;
+          
+          // Supprimer l'image du storage si elle existe (pour ImageInteractive ou Puzzle)
           const deleteImage$ = imageUrl 
             ? imageUploadService.deleteImage(imageUrl).pipe(
                 catchError((error) => {
@@ -216,14 +226,37 @@ export const GamesStore = signalStore(
               )
             : of({ success: true, error: null });
           
+          // Supprimer toutes les images des pièces du puzzle si c'est un jeu Puzzle
+          const deletePuzzlePieces$ = puzzleData && puzzleData.pieces && puzzleData.pieces.length > 0
+            ? forkJoin(
+                puzzleData.pieces
+                  .filter(piece => piece.image_url && piece.image_url.length > 0)
+                  .map(piece => 
+                    puzzleStorageService.deletePiecePNG(piece.image_url).pipe(
+                      catchError((error) => {
+                        // Ne pas bloquer la suppression du jeu si une pièce ne peut pas être supprimée
+                        console.warn(`Erreur lors de la suppression de la pièce ${piece.id}:`, error);
+                        return of(void 0);
+                      })
+                    )
+                  )
+              ).pipe(
+                catchError((error) => {
+                  console.warn('Erreur lors de la suppression des pièces du puzzle:', error);
+                  return of([]);
+                })
+              )
+            : of([]);
+          
           // Optimistic update: remove locally first
           patchState(store, {
             games: previous.filter((g) => g.id !== gameId),
             isLoading: false,
           });
           
-          // Supprimer l'image puis le jeu
+          // Supprimer l'image, les pièces du puzzle, puis le jeu
           return deleteImage$.pipe(
+            switchMap(() => deletePuzzlePieces$),
             switchMap(() => infrastructure.deleteGame(gameId)),
             tap((result) => {
               if (result.error) {

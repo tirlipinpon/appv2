@@ -314,6 +314,23 @@
             </app-image-interactive-game>
           </div>
         }
+
+        <!-- Puzzle -->
+        @if (puzzleData) {
+          <div class="preview-content puzzle-preview">
+            <app-puzzle-game
+              [puzzleData]="puzzleData"
+              [showResult]="isSubmitted()"
+              [disabled]="false"
+              [aides]="globalFields?.aides || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
+              (validated)="onPuzzleValidated($event)"
+              (resetRequested)="reset()"
+              (nextRequested)="reset()">
+            </app-puzzle-game>
+          </div>
+        }
       </div>
 
       <div class="preview-footer">
