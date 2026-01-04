@@ -99,9 +99,6 @@ export class CaseVideGameComponent implements OnInit {
         id: `word-${this.wordInstanceCounter++}`,
         word: word
       }));
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:79',message:'Initialisation: wordInstances créées',data:{total:wordInstances.length,instances:wordInstances.map(w=>({id:w.id,word:w.word}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       this.availableWords.set(wordInstances);
       
       // Initialiser les listes de drop pour toutes les cases vides (utiliser uniqueId comme clé)
@@ -214,9 +211,6 @@ export class CaseVideGameComponent implements OnInit {
         break;
       }
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:172',message:'isWordUsed appelé',data:{wordInstance:{id:wordInstance.id,word:wordInstance.word},isUsed,caseListsContent:Array.from(caseLists.entries()).map(([k,v])=>({caseIndex:k,wordIds:v.map(w=>w.id)})),allWordIdsInCases:Array.from(caseLists.values()).flat().map(w=>w.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     return isUsed;
   }
 
@@ -252,10 +246,6 @@ export class CaseVideGameComponent implements OnInit {
     const caseIndex = this.getCaseIndexFromUniqueId(uniqueId);
     if (caseIndex === undefined) return;
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:225',message:'onWordDrop ENTRY',data:{draggedWord:{id:draggedWord.id,word:draggedWord.word},previousContainerId:event.previousContainer.id,previousIndex:event.previousIndex,uniqueId,caseIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'SIMPLE'})}).catch(()=>{});
-    // #endregion
-    
     const answers = new Map(this.userCaseVideAnswers());
     const used = new Set(this.usedWords());
     const caseLists = new Map(this.caseDropLists());
@@ -281,10 +271,6 @@ export class CaseVideGameComponent implements OnInit {
       answers.set(caseIndex, draggedWord.word);
       used.add(draggedWord.word);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:250',message:'AVANT traitement',data:{previousContainerDataBefore:event.previousContainer.data.map(w=>({id:w.id,word:w.word})),containerDataBefore:event.container.data.map(w=>({id:w.id,word:w.word})),previousIndex:event.previousIndex,draggedWordId:draggedWord.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'NO_TRANSFER'})}).catch(()=>{});
-      // #endregion
-      
       // SOLUTION RADICALE : Ne PAS utiliser transferArrayItem du tout
       // Mettre à jour les signaux AVANT que CDK ne traite le drop
       // Cela évite toute confusion visuelle car CDK voit directement les bonnes données
@@ -304,20 +290,12 @@ export class CaseVideGameComponent implements OnInit {
       this.userCaseVideAnswers.set(answers);
       this.usedWords.set(used);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:270',message:'APRÈS mise à jour signaux (sans transferArrayItem)',data:{newAvailableWordsIds:newAvailableWords.map(w=>w.id),newAvailableWordsWords:newAvailableWords.map(w=>w.word),draggedWordCopyId:draggedWordCopy.id,draggedWordCopyWord:draggedWordCopy.word,duplicateWordsInBank:newAvailableWords.filter(w=>w.word===draggedWord.word).map(w=>({id:w.id,word:w.word})),filteredBy:'id'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'NO_TRANSFER'})}).catch(()=>{});
-      // #endregion
-      
       // 4. Maintenant synchroniser les tableaux CDK avec les nouveaux tableaux
       // CDK verra directement les bonnes données, sans confusion
       event.previousContainer.data.length = 0;
       event.previousContainer.data.push(...newAvailableWords);
       event.container.data.length = 0;
       event.container.data.push(draggedWordCopy);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'case-vide-game.component.ts:280',message:'APRÈS synchronisation tableaux CDK',data:{availableWordsAfter:this.availableWords().map(w=>({id:w.id,word:w.word})),caseListsAfter:Array.from(caseLists.entries()).map(([k,v])=>({caseIndex:k,words:v.map(w=>({id:w.id,word:w.word}))})),usedWords:Array.from(used),duplicateWordsAfter:this.availableWords().filter(w=>w.word===draggedWord.word).map(w=>({id:w.id,word:w.word})),previousContainerDataLength:event.previousContainer.data.length,containerDataLength:event.container.data.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'NO_TRANSFER'})}).catch(()=>{});
-      // #endregion
     } else if (event.previousContainer.id.startsWith('case-')) {
       // Glisser d'une case vers une autre case
       const previousUniqueId = event.previousContainer.id;
