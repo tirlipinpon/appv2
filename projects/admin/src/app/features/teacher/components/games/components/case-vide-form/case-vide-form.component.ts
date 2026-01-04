@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, FormControl, Validators } from '@angular/forms';
 import type { CaseVideData } from '@shared/games';
@@ -10,7 +10,7 @@ import type { CaseVideData } from '@shared/games';
   templateUrl: './case-vide-form.component.html',
   styleUrls: ['./case-vide-form.component.scss'],
 })
-export class CaseVideFormComponent implements OnInit, OnChanges {
+export class CaseVideFormComponent implements OnChanges {
   private readonly fb = inject(FormBuilder);
 
   @Input() initialData: CaseVideData | null = null;
@@ -19,7 +19,7 @@ export class CaseVideFormComponent implements OnInit, OnChanges {
 
   form: FormGroup;
   private isInitializing = false;
-  extractedWords: Array<{ index: number; word: string }> = [];
+  extractedWords: { index: number; word: string }[] = [];
 
   constructor() {
     this.form = this.fb.group({
@@ -35,10 +35,6 @@ export class CaseVideFormComponent implements OnInit, OnChanges {
     });
   }
 
-  ngOnInit(): void {
-    // Pas besoin d'initialisation spéciale
-  }
-
   get motsLeurresArray(): FormArray<FormControl<string>> {
     return this.form.get('mots_leurres') as FormArray<FormControl<string>>;
   }
@@ -51,11 +47,11 @@ export class CaseVideFormComponent implements OnInit, OnChanges {
     this.motsLeurresArray.removeAt(index);
   }
 
-  extractWordsFromText(texte: string): Array<{ index: number; word: string }> {
+  extractWordsFromText(texte: string): { index: number; word: string }[] {
     // Extraire les mots entre [mot] du texte
     const regex = /\[([^\]]+)\]/g;
     const matches = Array.from(texte.matchAll(regex)) as RegExpMatchArray[];
-    const words: Array<{ index: number; word: string }> = [];
+    const words: { index: number; word: string }[] = [];
     
     matches.forEach((match, index) => {
       const word = match[1].trim();
@@ -67,11 +63,10 @@ export class CaseVideFormComponent implements OnInit, OnChanges {
     return words;
   }
 
-  transformTextWithPlaceholders(texte: string, extractedWords: Array<{ index: number; word: string }>): string {
+  transformTextWithPlaceholders(texte: string, extractedWords: { index: number; word: string }[]): string {
     // Remplacer [mot] par [1], [2], etc. dans l'ordre d'apparition
     let transformedText = texte;
     extractedWords.forEach((item) => {
-      const originalPattern = `[${item.word}]`;
       const placeholder = `[${item.index}]`;
       // Remplacer toutes les occurrences du même mot par le même placeholder
       const regex = new RegExp(`\\[${item.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]`, 'g');
