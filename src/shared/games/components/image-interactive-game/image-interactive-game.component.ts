@@ -38,6 +38,12 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
   // État de validation
   readonly isSubmitted = signal<boolean>(false);
   readonly isCorrect = signal<boolean | null>(null);
+
+  // Computed pour vérifier s'il n'y a qu'une seule zone correcte
+  readonly hasSingleCorrectZone = computed(() => {
+    const correctZones = this.imageData.zones.filter(z => z.is_correct);
+    return correctZones.length === 1;
+  });
   
   // État pour afficher/masquer les aides
   showAides = signal<boolean>(false);
@@ -186,11 +192,26 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
 
     if (clickedZone) {
       const clicked = new Set(this.clickedZoneIds());
-      if (clicked.has(clickedZone.id)) {
-        clicked.delete(clickedZone.id);
+      
+      // Si une seule réponse correcte est attendue, on ne peut sélectionner qu'une seule zone
+      if (this.hasSingleCorrectZone()) {
+        if (clicked.has(clickedZone.id)) {
+          // Désélectionner si on clique à nouveau sur la même zone
+          clicked.delete(clickedZone.id);
+        } else {
+          // Remplacer la sélection précédente par la nouvelle
+          clicked.clear();
+          clicked.add(clickedZone.id);
+        }
       } else {
-        clicked.add(clickedZone.id);
+        // Mode multi-sélection : ajouter/retirer la zone
+        if (clicked.has(clickedZone.id)) {
+          clicked.delete(clickedZone.id);
+        } else {
+          clicked.add(clickedZone.id);
+        }
       }
+      
       this.clickedZoneIds.set(clicked);
 
       // Émettre les zones cliquées
