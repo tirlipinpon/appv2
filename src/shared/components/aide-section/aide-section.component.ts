@@ -1,11 +1,12 @@
 import { Component, Input, Output, EventEmitter, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AideMediaModalComponent } from '../aide-media-modal/aide-media-modal.component';
 
 @Component({
   selector: 'app-aide-section',
   standalone: true,
-  imports: [CommonModule, AideMediaModalComponent],
+  imports: [CommonModule, MatTooltipModule, AideMediaModalComponent],
   templateUrl: './aide-section.component.html',
   styleUrl: './aide-section.component.scss',
 })
