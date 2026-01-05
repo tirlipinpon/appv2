@@ -61,6 +61,8 @@ interface RawGameFromDb {
   instructions?: string;
   reponses?: Record<string, unknown>;
   aides?: string[];
+  aide_image_url?: string;
+  aide_video_url?: string;
   metadata?: Record<string, unknown>;
   game_types?: {
     name: string;
@@ -253,6 +255,8 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
     question: rawGame.question,
     reponses: rawGame.reponses,
     aides: rawGame.aides,
+    aide_image_url: rawGame.aide_image_url,
+    aide_video_url: rawGame.aide_video_url,
     metadata: rawGame.metadata,
     instructions: rawGame.instructions
   };
