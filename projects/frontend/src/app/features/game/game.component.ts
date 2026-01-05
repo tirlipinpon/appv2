@@ -8,10 +8,8 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent } from '@shared/games';
-import { GameErrorActionsComponent } from '@shared/games';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent } from '@shared/games';
 import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData, VraiFauxData, PuzzleData } from '@shared/games';
-import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { SubjectsInfrastructure } from '../subjects/components/infrastructure/infrastructure';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
@@ -38,7 +36,7 @@ import { normalizeGameType } from '../../shared/utils/game-normalization.util';
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, LetterByLetterInputComponent, BreadcrumbComponent, GameErrorActionsComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent],
   template: `
     <div class="game-container">
       <!-- Breadcrumb -->
@@ -206,53 +204,18 @@ import { normalizeGameType } from '../../shared/utils/game-normalization.util';
             (resetRequested)="restartGame()"
             (nextRequested)="onNextButtonClick()">
           </app-puzzle-game>
-        } @else if (isReponseLibreGame() && gameData()) {
-          <!-- Jeu réponse libre -->
-          <div class="question-container">
-            <h2 class="question-text">
-              {{ application.getCurrentGame()()?.question || application.getCurrentGame()()?.instructions || 'Répondez à la question' }}
-            </h2>
-            @if (application.getCurrentGame()()?.aides && application.getCurrentGame()()!.aides!.length > 0) {
-              <div class="aides-toggle-container">
-                <button 
-                  type="button"
-                  class="aides-toggle-btn"
-                  (click)="toggleAides()"
-                  [attr.aria-expanded]="showAides()"
-                  [attr.aria-label]="showAides() ? 'Masquer aide' : 'Afficher aide'">
-                  <span class="toggle-icon">{{ showAides() ? '−' : '+' }}</span>
-                  <span class="toggle-text">{{ showAides() ? 'Masquer aide' : 'Afficher aide' }}</span>
-                </button>
-                @if (showAides()) {
-                  <div class="aides-container">
-                    <strong>Aide :</strong>
-                    <ul>
-                      @for (aide of application.getCurrentGame()()!.aides!; track $index) {
-                        <li>{{ aide }}</li>
-                      }
-                    </ul>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-          <div class="reponse-libre-container">
-            <app-letter-by-letter-input
-              [targetWord]="getReponseLibreReponseValide()"
-              [allowHyphen]="true"
-              [disabled]="showFeedback()"
-              (wordChange)="onReponseLibreWordChange($event)"
-              (wordComplete)="onReponseLibreWordComplete()">
-            </app-letter-by-letter-input>
-          </div>
-          
-          <!-- Actions pour le jeu réponse libre en cas d'erreur -->
-          <app-game-error-actions
-            [isSubmitted]="showFeedback()"
-            [isCorrect]="feedback()?.isCorrect ?? null"
+        } @else if (isReponseLibreGame() && getReponseLibreData()) {
+          <app-reponse-libre-game
+            [reponseLibreData]="getReponseLibreData()!"
+            [showResult]="showFeedback()"
+            [disabled]="showFeedback()"
+            [aides]="application.getCurrentGame()()?.aides || null"
+            [instructions]="application.getCurrentGame()()?.instructions || null"
+            [question]="application.getCurrentGame()()?.question || null"
+            (validated)="onGameValidated($event)"
             (resetRequested)="restartGame()"
             (nextRequested)="onNextButtonClick()">
-          </app-game-error-actions>
+          </app-reponse-libre-game>
         } @else if (isGenericGame() && application.getCurrentQuestion()()) {
           <!-- Jeux génériques avec questions/réponses -->
           <div class="game-info-container" *ngIf="application.getCurrentGame()()">
@@ -322,7 +285,7 @@ import { normalizeGameType } from '../../shared/utils/game-normalization.util';
         <!-- Boutons d'action - Masqués si le jeu est complété (le modal gère la navigation) -->
         <div class="actions-container" *ngIf="!isGameCompleted() || !showCompletionScreen()">
           <app-child-button
-            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (isReponseLibreGame() && reponseLibreInput().trim().length > 0) || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()) || (isVraiFauxGame() && canSubmitVraiFaux()))"
+            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()) || (isVraiFauxGame() && canSubmitVraiFaux()))"
             (buttonClick)="isCaseVideGame() ? submitCaseVide() : (isLiensGame() ? submitLiens() : (isVraiFauxGame() ? submitVraiFaux() : submitAnswer()))"
             variant="primary"
             size="large">
@@ -599,7 +562,6 @@ export class GameComponent implements OnInit, OnDestroy {
   private routeSubscription?: Subscription;
 
   selectedAnswer = signal<number | null>(null);
-  reponseLibreInput = signal<string>('');
   showFeedback = signal<boolean>(false);
   feedback = signal<FeedbackData | null>(null);
   correctAnswer = signal<number | null>(null);
@@ -840,7 +802,6 @@ export class GameComponent implements OnInit, OnDestroy {
     this.showFeedback.set(false);
     this.feedback.set(null);
     this.correctAnswer.set(null);
-    this.reponseLibreInput.set('');
     this.showAides.set(false);
     
     await this.application.initializeGame(gameId);
@@ -1076,14 +1037,6 @@ export class GameComponent implements OnInit, OnDestroy {
     this.selectedAnswer.set(index);
   }
 
-  onReponseLibreWordChange(word: string): void {
-    this.reponseLibreInput.set(word);
-  }
-
-  onReponseLibreWordComplete(): void {
-    // Le mot est complet et correct, on peut soumettre automatiquement
-    this.submitAnswer();
-  }
 
   async onGameValidated(isCorrect: boolean): Promise<void> {
     // Gérer la validation des jeux spécifiques
@@ -1104,31 +1057,8 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   async submitAnswer(): Promise<void> {
-    // Gérer les réponses libres
-    if (isGameTypeOneOf(this.gameType(), ...getGameTypeVariations(GAME_TYPE_REPONSE_LIBRE))) {
-      const game = this.application.getCurrentGame()();
-      const gameData = this.gameData();
-      if (!game || !gameData) return;
-
-      const reponseValide = (gameData as { reponse_valide?: string }).reponse_valide || '';
-      const userReponse = this.reponseLibreInput().trim().toLowerCase();
-      const isCorrect = userReponse === reponseValide.toLowerCase();
-
-      this.showFeedback.set(true);
-      const feedbackData: FeedbackData = {
-        isCorrect,
-        message: isCorrect ? 'Bravo ! Bonne réponse ! ✅' : 'Ce n\'est pas la bonne réponse. Réessaye ! ❌',
-        explanation: '' // Ne pas afficher la bonne réponse pour le jeu réponse libre
-      };
-      this.feedback.set(feedbackData);
-
-      // Pour les réponses libres, on considère qu'il n'y a qu'une seule question
-      if (isCorrect) {
-        // Afficher immédiatement le modal de complétion
-        await this.completeGame();
-      }
-      return;
-    }
+    // Note: Les jeux spécifiques (y compris réponse libre) gèrent leur propre validation
+    // via l'événement (validated) qui appelle onGameValidated()
 
     // Gérer les réponses à choix multiples
     if (this.selectedAnswer() === null) return;
@@ -1273,7 +1203,6 @@ export class GameComponent implements OnInit, OnDestroy {
       this.correctAnswer.set(null);
       this.showCompletionScreen.set(false);
       this.gameCompleted.set(false);
-      this.reponseLibreInput.set('');
       this.finalScore.set(0);
       this.completionMessage.set('');
       this.hasNextGame.set(false);
@@ -1374,7 +1303,6 @@ export class GameComponent implements OnInit, OnDestroy {
       this.correctAnswer.set(null);
       this.showCompletionScreen.set(false);
       this.gameCompleted.set(false);
-      this.reponseLibreInput.set('');
       this.finalScore.set(0);
       this.completionMessage.set('');
       this.showAides.set(false);
@@ -1396,7 +1324,6 @@ export class GameComponent implements OnInit, OnDestroy {
     this.correctAnswer.set(null);
     this.showCompletionScreen.set(false);
     this.gameCompleted.set(false);
-    this.reponseLibreInput.set('');
     this.finalScore.set(0);
     this.completionMessage.set('');
     this.showAides.set(false); // Réinitialiser le toggle des aides

@@ -16,13 +16,12 @@ import {
   GAME_TYPE_VRAI_FAUX,
 } from '../../../../utils/game-type.util';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent } from '@shared/games';
-import { LetterByLetterInputComponent } from '@shared/components/letter-by-letter-input/letter-by-letter-input.component';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, ReponseLibreGameComponent } from '@shared/games';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, ReponseLibreGameComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
@@ -43,7 +42,7 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   private updateLinksTimeout?: number;
 
 
-  // Pour Case Vide et Réponse Libre - réponse saisie (ancien format)
+  // Pour Case Vide - réponse saisie (ancien format)
   userAnswer = signal<string>('');
 
 
@@ -169,14 +168,9 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   }
 
   // Méthodes pour Réponse Libre
-  submitReponseLibre(): void {
-    if (this.isSubmitted()) return;
-    const reponseLibreData = this.gameData as ReponseLibreData;
-    if (!reponseLibreData) return;
-
-    const isValid = this.userAnswer().trim().toLowerCase() === reponseLibreData.reponse_valide.trim().toLowerCase();
+  onReponseLibreValidated(isCorrect: boolean): void {
     this.isSubmitted.set(true);
-    this.isCorrect.set(isValid);
+    this.isCorrect.set(isCorrect);
   }
 
   // Pour les liens - mot sélectionné pour créer un lien
@@ -363,9 +357,6 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     return this.userLinks().get(mot) || null;
   }
 
-  getReponseLibreReponseValide(): string {
-    return this.reponseLibreData?.reponse_valide || '';
-  }
 
 
   // Helper pour les aides

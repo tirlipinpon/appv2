@@ -89,30 +89,13 @@
         <!-- Réponse Libre -->
         @if (reponseLibreData) {
           <div class="preview-content reponse-libre-preview">
-            @if (isSubmitted() && isCorrect() !== null) {
-              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-                @if (isCorrect()) {
-                  ✅ Bonne réponse !
-                } @else {
-                  ❌ Mauvaise réponse. La bonne réponse était : "{{ getReponseLibreReponseValide() }}"
-                }
-              </div>
-            }
-            <div class="reponse-libre-input">
-              <app-letter-by-letter-input
-                [targetWord]="getReponseLibreReponseValide()"
-                [allowHyphen]="true"
-                [disabled]="isSubmitted()"
-                (wordChange)="userAnswer.set($event)"
-                (wordComplete)="submitReponseLibre()">
-              </app-letter-by-letter-input>
-            </div>
-            <button class="btn btn-primary" (click)="submitReponseLibre()" [disabled]="isSubmitted() || !userAnswer().trim()">
-              Valider
-            </button>
-            @if (isSubmitted()) {
-              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
-            }
+            <app-reponse-libre-game
+              [reponseLibreData]="reponseLibreData"
+              [showResult]="isSubmitted()"
+              [disabled]="isSubmitted()"
+              (validated)="onReponseLibreValidated($event)"
+              (resetRequested)="reset()">
+            </app-reponse-libre-game>
           </div>
         }
 
