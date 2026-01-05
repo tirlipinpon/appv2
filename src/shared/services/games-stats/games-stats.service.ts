@@ -32,14 +32,7 @@ export class GamesStatsService {
    * @param childId - ID de l'enfant (optionnel, pour frontend)
    * @returns Les stats ou null si non disponibles
    */
-  private getStatsForSubjectCallCount = 0;
   getStatsForSubject(subjectId: string, childId?: string | null): GameStatsData | null {
-    this.getStatsForSubjectCallCount++;
-    if (this.getStatsForSubjectCallCount <= 50 || this.getStatsForSubjectCallCount % 500 === 0) {
-      try {
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games-stats.service.ts:27',message:'GETSTATSFORSUBJECT_CALL',data:{subjectId,childId,callCount:this.getStatsForSubjectCallCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      } catch {}
-    }
     const key = this.store.getSubjectKey(childId, subjectId);
     const cached = this.store.getStats(key);
     if (cached) {
@@ -57,14 +50,7 @@ export class GamesStatsService {
    * @param childId - ID de l'enfant (optionnel, pour frontend)
    * @returns Les stats ou null si non disponibles
    */
-  private getStatsForCategoryCallCount = 0;
   getStatsForCategory(categoryId: string, childId?: string | null): GameStatsData | null {
-    this.getStatsForCategoryCallCount++;
-    if (this.getStatsForCategoryCallCount <= 50 || this.getStatsForCategoryCallCount % 500 === 0) {
-      try {
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games-stats.service.ts:45',message:'GETSTATSFORCATEGORY_CALL',data:{categoryId,childId,callCount:this.getStatsForCategoryCallCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      } catch {}
-    }
     const key = this.store.getCategoryKey(childId, categoryId);
     const cached = this.store.getStats(key);
     if (cached) {
@@ -104,7 +90,6 @@ export class GamesStatsService {
     this.store.loadStatsForCategory({ categoryId, childId, loader });
   }
 
-  private preloadStatsCallCount = 0;
   /**
    * Précharge les stats pour plusieurs matières et catégories en batch
    * @param subjectIds - IDs des matières à précharger
@@ -121,13 +106,6 @@ export class GamesStatsService {
     },
     childId?: string | null
   ): void {
-    this.preloadStatsCallCount++;
-    if (this.preloadStatsCallCount <= 10 || this.preloadStatsCallCount % 100 === 0) {
-      try {
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games-stats.service.ts:106',message:'PRELOADSTATS_CALL',data:{subjectIdsCount:subjectIds.length,categoryIdsCount:categoryIds.length,callCount:this.preloadStatsCallCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      } catch {}
-    }
-    
     const requests = [
       ...subjectIds.map((id) => ({
         type: 'subject' as const,

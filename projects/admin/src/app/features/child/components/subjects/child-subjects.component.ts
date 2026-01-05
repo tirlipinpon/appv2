@@ -417,15 +417,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     }
   }
 
-  private selectedSubjectsCallCount = 0;
   readonly selectedSubjects = computed(() => {
-    this.selectedSubjectsCallCount++;
-    if (this.selectedSubjectsCallCount <= 10 || this.selectedSubjectsCallCount % 100 === 0) {
-      try {
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'child-subjects.component.ts:420',message:'COMPUTED_SELECTEDSUBJECTS',data:{callCount:this.selectedSubjectsCallCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-      } catch {}
-    }
-    
     const explicit = this.enrollments();
     // Seulement les matières avec selected=true dans les enrollments
     const selectedIds = new Set(explicit.filter(e => e.selected === true).map(e => e.subject_id));
@@ -896,22 +888,11 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     return this.expandedSubjects().has(subjectId);
   }
 
-  private gamesCountBySubjectCallCount = 0;
   // Computed signal pour mettre en cache les totaux de jeux par matière
   // Cela évite les appels répétés depuis le template
   // Utilise untracked() pour éviter les dépendances réactives qui créent des boucles
   readonly gamesCountBySubject = computed(() => {
-    this.gamesCountBySubjectCallCount++;
-    // Log TOUS les appels (pas de limitation)
-    try {
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'child-subjects.component.ts:888',message:'COMPUTED_GAMESCOUNT_ENTRY',data:{callCount:this.gamesCountBySubjectCallCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-    } catch {}
-    
     const subjects = this.selectedSubjects();
-    try {
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'child-subjects.component.ts:896',message:'COMPUTED_GAMESCOUNT_SUBJECTS',data:{subjectsCount:subjects.length,subjectIds:subjects.map(s=>s.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-    } catch {}
-    
     const counts = new Map<string, number>();
     
     // Utiliser untracked() pour lire les catégories sans créer de dépendance réactive
@@ -949,10 +930,6 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
       
       counts.set(subject.id, total);
     });
-    
-    try {
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'child-subjects.component.ts:920',message:'COMPUTED_GAMESCOUNT_EXIT',data:{callCount:this.gamesCountBySubjectCallCount,countsSize:counts.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-    } catch {}
     
     return counts;
   });

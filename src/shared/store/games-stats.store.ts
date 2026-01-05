@@ -52,16 +52,7 @@ export const GamesStatsStore = signalStore(
       return `category:${categoryId}`;
     };
 
-    let getStatsCallCount = 0;
     const getStats = (key: string): GameStats | null => {
-      getStatsCallCount++;
-      // Limiter les logs pour éviter la surcharge
-      if (getStatsCallCount <= 100 || getStatsCallCount % 1000 === 0) {
-        try {
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games-stats.store.ts:55',message:'GETSTATS_CALL',data:{key,callCount:getStatsCallCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        } catch {}
-      }
-      
       // Utiliser untracked() pour lire le signal sans créer de dépendance réactive
       // Cela évite les boucles infinies quand getStats est appelé depuis un template
       const stats = untracked(() => store.statsByKey())[key];
@@ -143,9 +134,6 @@ export const GamesStatsStore = signalStore(
                     total: result.total,
                     timestamp: Date.now(),
                   };
-                  try {
-                    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games-stats.store.ts:220',message:'PATCHSTATE_CATEGORY',data:{key},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                  } catch {}
                   patchState(store, { statsByKey: currentStats });
                 }
               }),
@@ -213,9 +201,6 @@ export const GamesStatsStore = signalStore(
                     total: result.total,
                     timestamp: Date.now(),
                   };
-                  try {
-                    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games-stats.store.ts:220',message:'PATCHSTATE_CATEGORY',data:{key},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                  } catch {}
                   patchState(store, { statsByKey: currentStats });
                 }
               }),
@@ -266,11 +251,6 @@ export const GamesStatsStore = signalStore(
               // Déjà en cours de chargement, retourner l'Observable existant
               return existingBatch;
             }
-            
-            // Log pour debug
-            try {
-              fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'games-stats.store.ts:240',message:'LOADSTATSBATCH_ENTRY',data:{requestsCount:requests.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-            } catch {}
             
             // Filtrer les requêtes qui ne sont pas déjà en cache
             // Lire statsByKey une seule fois avec untracked() pour éviter les dépendances réactives
