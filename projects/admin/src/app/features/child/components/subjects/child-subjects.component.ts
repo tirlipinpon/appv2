@@ -1,11 +1,13 @@
-import { Component, Input, OnInit, OnDestroy, inject, signal, computed, effect } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, inject, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ParentSubjectService, CategoryEnrollment, Enrollment } from '../../services/subject/parent-subject.service';
 import { SchoolService } from '../../services/school/school.service';
-import { GamesStatsDisplayComponent, GamesStatsService, ErrorSnackbarService } from '../../../../shared';
+import { GamesStatsDisplayComponent } from '@shared';
+import { GamesStatsWrapperService } from '../../../../shared/services/games-stats/games-stats-wrapper.service';
+import { ErrorSnackbarService } from '../../../../shared';
 import { TeacherInfoModalComponent } from '../../../teacher/components/assignments/components/teacher-info-modal/teacher-info-modal.component';
 import type { Subject, SubjectCategory } from '../../../teacher/types/subject';
 import type { Child } from '../../types/child';
@@ -22,7 +24,7 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
   @Input() childId?: string;
   private readonly parentSvc = inject(ParentSubjectService);
   private readonly schoolService = inject(SchoolService);
-  private readonly gamesStatsService = inject(GamesStatsService);
+  private readonly gamesStatsService = inject(GamesStatsWrapperService);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -415,7 +417,15 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     }
   }
 
+  private selectedSubjectsCallCount = 0;
   readonly selectedSubjects = computed(() => {
+    this.selectedSubjectsCallCount++;
+    if (this.selectedSubjectsCallCount <= 10 || this.selectedSubjectsCallCount % 100 === 0) {
+      try {
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'child-subjects.component.ts:420',message:'COMPUTED_SELECTEDSUBJECTS',data:{callCount:this.selectedSubjectsCallCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      } catch {}
+    }
+    
     const explicit = this.enrollments();
     // Seulement les matières avec selected=true dans les enrollments
     const selectedIds = new Set(explicit.filter(e => e.selected === true).map(e => e.subject_id));
@@ -468,17 +478,30 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     );
   });
 
-  // Effect pour charger les stats de jeux quand les matières changent
-  private readonly loadGamesStatsEffect = effect(() => {
-    const selectedSubjects = this.selectedSubjects();
-    const unselectedSubjects = this.unselectedSubjects();
-    // Charger les stats pour toutes les matières affichées (sélectionnées + disponibles)
-    const allSubjects = [...selectedSubjects, ...unselectedSubjects];
-    if (allSubjects.length > 0) {
-      const subjectIds = allSubjects.map(s => s.id).filter(Boolean) as string[];
-      this.gamesStatsService.loadStatsForSubjects(subjectIds);
-    }
-  });
+  // DÉSACTIVÉ : Effect pour charger les stats de jeux quand les matières changent
+  // Cet effect causait des boucles infinies car il se déclenchait constamment
+  // Les stats seront chargées à la demande via getTotalGamesCount ou le composant games-stats-display
+  // private lastLoadedSubjectIds: string[] = [];
+  // private readonly loadGamesStatsEffect = effect(() => {
+  //   const selectedSubjects = this.selectedSubjects();
+  //   const unselectedSubjects = this.unselectedSubjects();
+  //   // Charger les stats pour toutes les matières affichées (sélectionnées + disponibles)
+  //   const allSubjects = [...selectedSubjects, ...unselectedSubjects];
+  //   if (allSubjects.length > 0) {
+  //     const subjectIds = allSubjects.map(s => s.id).filter(Boolean) as string[];
+  //     // Ne charger que si les IDs ont changé (comparaison par valeur, pas par référence)
+  //     const idsChanged = subjectIds.length !== this.lastLoadedSubjectIds.length ||
+  //       subjectIds.some(id => !this.lastLoadedSubjectIds.includes(id)) ||
+  //       this.lastLoadedSubjectIds.some(id => !subjectIds.includes(id));
+  //     if (idsChanged) {
+  //       this.lastLoadedSubjectIds = [...subjectIds];
+  //       // Utiliser untracked() pour l'appel à loadStatsForSubjects pour éviter les boucles
+  //       untracked(() => {
+  //         this.gamesStatsService.loadStatsForSubjects(subjectIds);
+  //       });
+  //     }
+  //   }
+  // });
   readonly unselectedSubjects = computed(() => {
     const explicit = this.enrollments();
     // Matières avec selected=false ou absentes des enrollments
@@ -559,16 +582,17 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
       });
       this.categoriesBySubject.set(new Map(currentCategoriesMap));
 
-      // Charger les stats de jeux pour toutes les catégories en parallèle
-      const allCategoryIds: string[] = [];
-      categoriesBySubject.forEach(categories => {
-        categories.forEach(category => {
-          allCategoryIds.push(category.id);
-        });
-      });
-      if (allCategoryIds.length > 0) {
-        this.gamesStatsService.loadStatsForCategories(allCategoryIds);
-      }
+      // NE PAS charger les stats de jeux depuis ici pour éviter les boucles infinies
+      // Les stats seront chargées à la demande via le composant games-stats-display
+      // const allCategoryIds: string[] = [];
+      // categoriesBySubject.forEach(categories => {
+      //   categories.forEach(category => {
+      //     allCategoryIds.push(category.id);
+      //   });
+      // });
+      // if (allCategoryIds.length > 0) {
+      //   this.gamesStatsService.loadStatsForCategories(allCategoryIds);
+      // }
 
       // Créer automatiquement les enrollments pour toutes les catégories des matières sélectionnées en batch
       const existingEnrollments = this.categoryEnrollments();
@@ -648,11 +672,12 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
       categoriesMap.set(subjectId, categories || []);
       this.categoriesBySubject.set(new Map(categoriesMap));
       
-      // Charger les stats de jeux pour les catégories en parallèle
-      if (categories && categories.length > 0) {
-        const categoryIds = categories.map(c => c.id);
-        this.gamesStatsService.loadStatsForCategories(categoryIds);
-      }
+      // NE PAS charger les stats de jeux depuis ici pour éviter les boucles infinies
+      // Les stats seront chargées à la demande via le composant games-stats-display
+      // if (categories && categories.length > 0) {
+      //   const categoryIds = categories.map(c => c.id);
+      //   this.gamesStatsService.loadStatsForCategories(categoryIds);
+      // }
       
       // Créer automatiquement les enrollments pour toutes les catégories seulement si la matière est sélectionnée
       if (isSelected) {
@@ -871,21 +896,75 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     return this.expandedSubjects().has(subjectId);
   }
 
-  // Récupère le nombre total de jeux pour une matière (incluant les jeux des catégories)
-  getTotalGamesCount(subjectId: string): number {
-    const subjectStats = this.gamesStatsService.getStats(subjectId);
-    let total = subjectStats?.total || 0;
+  private gamesCountBySubjectCallCount = 0;
+  // Computed signal pour mettre en cache les totaux de jeux par matière
+  // Cela évite les appels répétés depuis le template
+  // Utilise untracked() pour éviter les dépendances réactives qui créent des boucles
+  readonly gamesCountBySubject = computed(() => {
+    this.gamesCountBySubjectCallCount++;
+    // Log TOUS les appels (pas de limitation)
+    try {
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'child-subjects.component.ts:888',message:'COMPUTED_GAMESCOUNT_ENTRY',data:{callCount:this.gamesCountBySubjectCallCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+    } catch {}
     
-    // Ajouter les jeux de toutes les catégories
-    const categories = this.getCategoriesForSubject(subjectId);
-    categories.forEach(category => {
-      const categoryStats = this.gamesStatsService.getCategoryStats(category.id);
-      if (categoryStats) {
-        total += categoryStats.total;
+    const subjects = this.selectedSubjects();
+    try {
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'child-subjects.component.ts:896',message:'COMPUTED_GAMESCOUNT_SUBJECTS',data:{subjectsCount:subjects.length,subjectIds:subjects.map(s=>s.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+    } catch {}
+    
+    const counts = new Map<string, number>();
+    
+    // Utiliser untracked() pour lire les catégories sans créer de dépendance réactive
+    const categoriesBySubject = untracked(() => this.categoriesBySubject());
+    
+    // Lire directement statsByKey avec untracked() pour éviter les dépendances réactives
+    // Cela évite les boucles infinies causées par patchState qui modifie statsByKey
+    const statsByKey = untracked(() => this.gamesStatsService.statsByKey());
+    const DEFAULT_TTL = 5 * 60 * 1000;
+    const now = Date.now();
+    
+    subjects.forEach(subject => {
+      // Lire les stats de la matière directement depuis statsByKey
+      // NE PAS charger les stats depuis ce computed pour éviter les boucles infinies
+      // Les stats seront chargées à la demande via le composant games-stats-display ou getTotalGamesCount
+      const subjectKey = `subject:${subject.id}`;
+      const subjectCached = statsByKey[subjectKey];
+      let total = 0;
+      
+      if (subjectCached && (now - subjectCached.timestamp < DEFAULT_TTL)) {
+        total = subjectCached.total || 0;
       }
+      // Si pas en cache, retourner 0 (les stats seront chargées à la demande ailleurs)
+      
+      // Ajouter les jeux de toutes les catégories (sans créer de dépendance réactive)
+      const categories = categoriesBySubject.get(subject.id) || [];
+      categories.forEach(category => {
+        const categoryKey = `category:${category.id}`;
+        const categoryCached = statsByKey[categoryKey];
+        if (categoryCached && (now - categoryCached.timestamp < DEFAULT_TTL)) {
+          total += categoryCached.total || 0;
+        }
+        // Si pas en cache, ne rien ajouter (les stats seront chargées à la demande ailleurs)
+      });
+      
+      counts.set(subject.id, total);
     });
     
-    return total;
+    try {
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'child-subjects.component.ts:920',message:'COMPUTED_GAMESCOUNT_EXIT',data:{callCount:this.gamesCountBySubjectCallCount,countsSize:counts.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+    } catch {}
+    
+    return counts;
+  });
+
+  // Récupère le nombre total de jeux pour une matière (incluant les jeux des catégories)
+  // Utilise le computed signal pour éviter les appels répétés
+  // NE PAS charger les stats depuis cette méthode pour éviter les boucles infinies
+  // Les stats seront chargées à la demande via le composant games-stats-display
+  getTotalGamesCount(subjectId: string): number {
+    // Retourner simplement la valeur du computed sans déclencher de chargement
+    // Si les stats ne sont pas en cache, retourner 0 (elles seront chargées par games-stats-display)
+    return this.gamesCountBySubject().get(subjectId) || 0;
   }
 
   // Récupère le nombre de sous-catégories pour une matière

@@ -16,6 +16,8 @@
     "module": "preserve",
     "baseUrl": ".",
     "paths": {
+      "@shared": ["src/shared"],
+      "@shared/*": ["src/shared/*"],
       "@shared/games": ["src/shared/games"],
       "@shared/games/*": ["src/shared/games/*"],
       "@shared/components": ["src/shared/components"],

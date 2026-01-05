@@ -22,6 +22,7 @@ export * from './services/error/api-error-wrapper.service';
 export * from './services/error/error-handler.service';
 export * from './services/error/global-error-handler.service';
 export * from './services/games-stats/games-stats.service';
+export * from './services/games-stats/games-stats-wrapper.service';
 export * from './services/logging/logger.service';
 export * from './services/confirmation-dialog/confirmation-dialog.service';
 export * from './services/snackbar/error-snackbar.service';

@@ -1,25 +1,30 @@
 <div class="child-subjects-container" *ngIf="child() as c">
   <header class="subjects-header">
-    <a routerLink="/dashboard" class="btn-back">
-      ← Retour au dashboard
-    </a>
+    <a routerLink="/dashboard" class="btn-back"> ← Retour au dashboard </a>
     <div class="header-content">
       <h1>Matières de {{ c.firstname }} {{ c.lastname }}</h1>
       <div class="info-content">
         <span class="info-item">
           <span class="info-label">École:</span>
-          <span class="info-value">{{ schoolName() || c.school_id || 'Non renseignée' }}</span>
+          <span class="info-value">{{
+            schoolName() || c.school_id || "Non renseignée"
+          }}</span>
         </span>
         <span class="info-item" *ngIf="c.school_level">
           <span class="info-label">Niveau:</span>
-          <span class="info-value">{{ getSchoolLevelLabel(c.school_level) }}</span>
+          <span class="info-value">{{
+            getSchoolLevelLabel(c.school_level)
+          }}</span>
         </span>
         <span class="filter-section">
           <label for="subject-type-filter">Filtrer par type :</label>
-          <select 
+          <select
             id="subject-type-filter"
             [value]="selectedSubjectTypeFilter() || ''"
-            (change)="selectedSubjectTypeFilter.set($any($event.target).value || null)">
+            (change)="
+              selectedSubjectTypeFilter.set($any($event.target).value || null)
+            "
+          >
             <option value="">Tous les types</option>
             <option value="scolaire">Scolaire</option>
             <option value="extra">Extra-scolaire</option>
@@ -31,96 +36,188 @@
   </header>
 
   <main class="subjects-content">
-
     <div class="subjects-grid">
       <div class="subjects-column active-column">
         <div class="column-header">
           <div class="column-header-top">
             <h2>📖 Matières activées</h2>
-            <input 
-              type="text" 
+            <input
+              type="text"
               class="column-search-input"
-              placeholder="Rechercher..." 
-              [value]="activeSubjectsSearchQuery()" 
-              (input)="activeSubjectsSearchQuery.set($any($event.target).value)">
-            <span class="count-badge">{{ filteredSelectedSubjects().length }}</span>
+              placeholder="Rechercher..."
+              [value]="activeSubjectsSearchQuery()"
+              (input)="activeSubjectsSearchQuery.set($any($event.target).value)"
+            />
+            <span class="count-badge">{{
+              filteredSelectedSubjects().length
+            }}</span>
           </div>
         </div>
         <div class="subjects-list">
-          <div *ngFor="let s of filteredSelectedSubjects()" class="subject-card active" (click)="$event.stopPropagation()">
+          <div
+            *ngFor="let s of filteredSelectedSubjects()"
+            class="subject-card active"
+            (click)="$event.stopPropagation()"
+          >
             <div class="subject-header">
               <div class="subject-header-top">
                 <div class="subject-info">
-                  <label class="subject-checkbox" (click)="$event.stopPropagation()">
-                    <input type="checkbox" [checked]="true" (change)="onToggle(s.id, false); $event.stopPropagation()">
+                  <label
+                    class="subject-checkbox"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <input
+                      type="checkbox"
+                      [checked]="true"
+                      (change)="onToggle(s.id, false); $event.stopPropagation()"
+                    />
                     <span class="checkmark"></span>
                   </label>
                   <span class="subject-name">
-                    {{ s.name }} 
+                    {{ s.name }}
                     <span class="subject-type-badge">({{ s.type }})</span>
-                    <span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span>
-                    <span *ngIf="getCategoriesCount(s.id) > 0" class="categories-count">📁 {{ getCategoriesCount(s.id) }} sous-catégorie{{ getCategoriesCount(s.id) > 1 ? 's' : '' }}</span>
-                    <span *ngIf="getTotalGamesCount(s.id) > 0" class="games-count">🎮 {{ getTotalGamesCount(s.id) }} jeu{{ getTotalGamesCount(s.id) > 1 ? 'x' : '' }}</span>
+                    <span
+                      *ngIf="getSchoolLevelForSubject(s.id)"
+                      class="school-level-badge"
+                    >
+                      - {{ getSchoolLevelForSubject(s.id) }}</span
+                    >
+                    <span
+                      *ngIf="getCategoriesCount(s.id) > 0"
+                      class="categories-count"
+                      >📁 {{ getCategoriesCount(s.id) }} sous-catégorie{{
+                        getCategoriesCount(s.id) > 1 ? "s" : ""
+                      }}</span
+                    >
+                    <span
+                      *ngIf="getTotalGamesCount(s.id) > 0"
+                      class="games-count"
+                      >🎮 {{ getTotalGamesCount(s.id) }} jeu{{
+                        getTotalGamesCount(s.id) > 1 ? "x" : ""
+                      }}</span
+                    >
                   </span>
-                  <span *ngIf="isUnofficial(s.id)" class="unofficial-badge">(hors programme)</span>
+                  <span *ngIf="isUnofficial(s.id)" class="unofficial-badge"
+                    >(hors programme)</span
+                  >
                 </div>
                 <div class="subject-header-actions">
-                  <button 
+                  <button
                     *ngIf="getCategoriesForSubject(s.id).length > 0"
                     type="button"
                     class="toggle-categories-btn"
                     (click)="toggleCategories(s.id); $event.stopPropagation()"
                     [attr.aria-expanded]="isCategoriesExpanded(s.id)"
-                    [title]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'"
-                    [attr.aria-label]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'">
-                    <span class="toggle-icon" [class.expanded]="isCategoriesExpanded(s.id)">▼</span>
+                    [title]="
+                      isCategoriesExpanded(s.id)
+                        ? 'Masquer les sous-catégories'
+                        : 'Afficher les sous-catégories'
+                    "
+                    [attr.aria-label]="
+                      isCategoriesExpanded(s.id)
+                        ? 'Masquer les sous-catégories'
+                        : 'Afficher les sous-catégories'
+                    "
+                  >
+                    <span
+                      class="toggle-icon"
+                      [class.expanded]="isCategoriesExpanded(s.id)"
+                      >▼</span
+                    >
                   </button>
                 </div>
               </div>
-              <div *ngIf="getTeachersForSubject(s.id).length > 0" class="subject-teachers">
-                <span class="teachers-label">👨‍🏫 Prof{{ getTeachersForSubject(s.id).length > 1 ? 's' : '' }}:</span>
+              <div
+                *ngIf="getTeachersForSubject(s.id).length > 0"
+                class="subject-teachers"
+              >
+                <span class="teachers-label"
+                  >👨‍🏫 Prof{{
+                    getTeachersForSubject(s.id).length > 1 ? "s" : ""
+                  }}:</span
+                >
                 <span class="teachers-list">
-                  <span 
-                    *ngFor="let teacher of getTeachersForSubject(s.id); let last = last"
+                  <span
+                    *ngFor="
+                      let teacher of getTeachersForSubject(s.id);
+                      let last = last
+                    "
                     class="teacher-name clickable"
                     (click)="openTeacherModal(teacher, s.id)"
-                    title="Voir les informations du professeur">
-                    {{ teacher.fullname || 'Professeur' }}<span *ngIf="!last">, </span>
+                    title="Voir les informations du professeur"
+                  >
+                    {{ teacher.fullname || "Professeur"
+                    }}<span *ngIf="!last">, </span>
                   </span>
                 </span>
               </div>
               <div class="subject-games-stats">
-                <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
+                <app-games-stats-display
+                  [subjectId]="s.id"
+                ></app-games-stats-display>
               </div>
             </div>
-            
+
             <!-- Sous-catégories -->
-            <div *ngIf="getCategoriesForSubject(s.id).length > 0 && isCategoriesExpanded(s.id)" class="categories-section">
+            <div
+              *ngIf="
+                getCategoriesForSubject(s.id).length > 0 &&
+                isCategoriesExpanded(s.id)
+              "
+              class="categories-section"
+            >
               <div class="categories-header">
                 <strong>Sous-catégories:</strong>
               </div>
               <div class="categories-list">
-                <div *ngFor="let category of getCategoriesForSubject(s.id)" class="category-item">
+                <div
+                  *ngFor="let category of getCategoriesForSubject(s.id)"
+                  class="category-item"
+                >
                   <label class="category-checkbox">
-                    <input 
-                      type="checkbox" 
-                      [checked]="isCategorySelected(category.id)" 
-                      (change)="onToggleCategory(category.id, $any($event.target).checked)">
+                    <input
+                      type="checkbox"
+                      [checked]="isCategorySelected(category.id)"
+                      (change)="
+                        onToggleCategory(
+                          category.id,
+                          $any($event.target).checked
+                        )
+                      "
+                    />
                     <span class="checkmark"></span>
                     <span class="category-name">{{ category.name }}</span>
                   </label>
                   <div class="category-games-stats">
-                    <app-games-stats-display [categoryId]="category.id"></app-games-stats-display>
+                    <app-games-stats-display
+                      [categoryId]="category.id"
+                    ></app-games-stats-display>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div *ngIf="filteredSelectedSubjects().length === 0 && activeSubjectsSearchQuery().trim().length === 0" class="empty-state">
+          <div
+            *ngIf="
+              filteredSelectedSubjects().length === 0 &&
+              activeSubjectsSearchQuery().trim().length === 0
+            "
+            class="empty-state"
+          >
             <p class="muted">Aucune matière activée.</p>
           </div>
-          <div *ngIf="filteredSelectedSubjects().length === 0 && activeSubjectsSearchQuery().trim().length > 0" class="empty-state">
-            <p class="muted">Aucune matière activée ne correspond à "{{ activeSubjectsSearchQuery() }}".</p>
+          <div
+            *ngIf="
+              filteredSelectedSubjects().length === 0 &&
+              activeSubjectsSearchQuery().trim().length > 0
+            "
+            class="empty-state"
+          >
+            <p class="muted">
+              Aucune matière activée ne correspond à "{{
+                activeSubjectsSearchQuery()
+              }}".
+            </p>
           </div>
         </div>
       </div>
@@ -129,85 +226,176 @@
         <div class="column-header">
           <div class="column-header-top">
             <h2>📚 Matières disponibles</h2>
-            <input 
-              type="text" 
+            <input
+              type="text"
               class="column-search-input"
-              placeholder="Rechercher..." 
-              [value]="availableSubjectsSearchQuery()" 
-              (input)="availableSubjectsSearchQuery.set($any($event.target).value)">
-            <span class="count-badge">{{ filteredUnselectedSubjects().length }}</span>
+              placeholder="Rechercher..."
+              [value]="availableSubjectsSearchQuery()"
+              (input)="
+                availableSubjectsSearchQuery.set($any($event.target).value)
+              "
+            />
+            <span class="count-badge">{{
+              filteredUnselectedSubjects().length
+            }}</span>
           </div>
         </div>
         <div class="subjects-list">
-          <div *ngFor="let s of filteredUnselectedSubjects()" class="subject-card" (click)="$event.stopPropagation()">
+          <div
+            *ngFor="let s of filteredUnselectedSubjects()"
+            class="subject-card"
+            (click)="$event.stopPropagation()"
+          >
             <div class="subject-header">
               <div class="subject-header-top">
                 <div class="subject-info">
-                  <label class="subject-checkbox" (click)="$event.stopPropagation()">
-                    <input type="checkbox" [checked]="false" (change)="onToggle(s.id, true); $event.stopPropagation()">
+                  <label
+                    class="subject-checkbox"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <input
+                      type="checkbox"
+                      [checked]="false"
+                      (change)="onToggle(s.id, true); $event.stopPropagation()"
+                    />
                     <span class="checkmark"></span>
                   </label>
                   <span class="subject-name">
-                    {{ s.name }} 
+                    {{ s.name }}
                     <span class="subject-type-badge">({{ s.type }})</span>
-                    <span *ngIf="getSchoolLevelForSubject(s.id)" class="school-level-badge"> - {{ getSchoolLevelForSubject(s.id) }}</span>
-                    <span *ngIf="getCategoriesCount(s.id) > 0" class="categories-count">📁 {{ getCategoriesCount(s.id) }} sous-catégorie{{ getCategoriesCount(s.id) > 1 ? 's' : '' }}</span>
-                    <span *ngIf="getTotalGamesCount(s.id) > 0" class="games-count">🎮 {{ getTotalGamesCount(s.id) }} jeu{{ getTotalGamesCount(s.id) > 1 ? 'x' : '' }}</span>
+                    <span
+                      *ngIf="getSchoolLevelForSubject(s.id)"
+                      class="school-level-badge"
+                    >
+                      - {{ getSchoolLevelForSubject(s.id) }}</span
+                    >
+                    <span
+                      *ngIf="getCategoriesCount(s.id) > 0"
+                      class="categories-count"
+                      >📁 {{ getCategoriesCount(s.id) }} sous-catégorie{{
+                        getCategoriesCount(s.id) > 1 ? "s" : ""
+                      }}</span
+                    >
+                    <span
+                      *ngIf="getTotalGamesCount(s.id) > 0"
+                      class="games-count"
+                      >🎮 {{ getTotalGamesCount(s.id) }} jeu{{
+                        getTotalGamesCount(s.id) > 1 ? "x" : ""
+                      }}</span
+                    >
                   </span>
                 </div>
                 <div class="subject-header-actions">
-                  <button 
+                  <button
                     *ngIf="getCategoriesForSubject(s.id).length > 0"
                     type="button"
                     class="toggle-categories-btn"
                     (click)="toggleCategories(s.id); $event.stopPropagation()"
                     [attr.aria-expanded]="isCategoriesExpanded(s.id)"
-                    [title]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'"
-                    [attr.aria-label]="isCategoriesExpanded(s.id) ? 'Masquer les sous-catégories' : 'Afficher les sous-catégories'">
-                    <span class="toggle-icon" [class.expanded]="isCategoriesExpanded(s.id)">▼</span>
+                    [title]="
+                      isCategoriesExpanded(s.id)
+                        ? 'Masquer les sous-catégories'
+                        : 'Afficher les sous-catégories'
+                    "
+                    [attr.aria-label]="
+                      isCategoriesExpanded(s.id)
+                        ? 'Masquer les sous-catégories'
+                        : 'Afficher les sous-catégories'
+                    "
+                  >
+                    <span
+                      class="toggle-icon"
+                      [class.expanded]="isCategoriesExpanded(s.id)"
+                      >▼</span
+                    >
                   </button>
                 </div>
               </div>
-              <div *ngIf="getTeachersForSubject(s.id).length > 0" class="subject-teachers">
-                <span class="teachers-label">👨‍🏫 Prof{{ getTeachersForSubject(s.id).length > 1 ? 's' : '' }}:</span>
+              <div
+                *ngIf="getTeachersForSubject(s.id).length > 0"
+                class="subject-teachers"
+              >
+                <span class="teachers-label"
+                  >👨‍🏫 Prof{{
+                    getTeachersForSubject(s.id).length > 1 ? "s" : ""
+                  }}:</span
+                >
                 <span class="teachers-list">
-                  <span 
-                    *ngFor="let teacher of getTeachersForSubject(s.id); let last = last"
+                  <span
+                    *ngFor="
+                      let teacher of getTeachersForSubject(s.id);
+                      let last = last
+                    "
                     class="teacher-name clickable"
                     (click)="openTeacherModal(teacher, s.id)"
-                    title="Voir les informations du professeur">
-                    {{ teacher.fullname || 'Professeur' }}<span *ngIf="!last">, </span>
+                    title="Voir les informations du professeur"
+                  >
+                    {{ teacher.fullname || "Professeur"
+                    }}<span *ngIf="!last">, </span>
                   </span>
                 </span>
               </div>
               <div class="subject-games-stats">
-                <app-games-stats-display [subjectId]="s.id"></app-games-stats-display>
+                <app-games-stats-display
+                  [subjectId]="s.id"
+                ></app-games-stats-display>
               </div>
             </div>
-            
+
             <!-- Sous-catégories -->
-            <div *ngIf="getCategoriesForSubject(s.id).length > 0 && isCategoriesExpanded(s.id)" class="categories-section">
+            <div
+              *ngIf="
+                getCategoriesForSubject(s.id).length > 0 &&
+                isCategoriesExpanded(s.id)
+              "
+              class="categories-section"
+            >
               <div class="categories-header">
                 <strong>📁 Sous-catégories:</strong>
               </div>
               <div class="categories-list">
-                <div *ngFor="let category of getCategoriesForSubject(s.id)" class="category-item available-category">
+                <div
+                  *ngFor="let category of getCategoriesForSubject(s.id)"
+                  class="category-item available-category"
+                >
                   <div class="category-info">
                     <span class="category-name">{{ category.name }}</span>
-                    <span *ngIf="category.description" class="category-description">{{ category.description }}</span>
+                    <span
+                      *ngIf="category.description"
+                      class="category-description"
+                      >{{ category.description }}</span
+                    >
                   </div>
                   <div class="category-games-stats">
-                    <app-games-stats-display [categoryId]="category.id"></app-games-stats-display>
+                    <app-games-stats-display
+                      [categoryId]="category.id"
+                    ></app-games-stats-display>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div *ngIf="filteredUnselectedSubjects().length === 0 && availableSubjectsSearchQuery().trim().length === 0" class="empty-state">
+          <div
+            *ngIf="
+              filteredUnselectedSubjects().length === 0 &&
+              availableSubjectsSearchQuery().trim().length === 0
+            "
+            class="empty-state"
+          >
             <p class="muted">Aucune autre matière disponible.</p>
           </div>
-          <div *ngIf="filteredUnselectedSubjects().length === 0 && availableSubjectsSearchQuery().trim().length > 0" class="empty-state">
-            <p class="muted">Aucune matière disponible ne correspond à "{{ availableSubjectsSearchQuery() }}".</p>
+          <div
+            *ngIf="
+              filteredUnselectedSubjects().length === 0 &&
+              availableSubjectsSearchQuery().trim().length > 0
+            "
+            class="empty-state"
+          >
+            <p class="muted">
+              Aucune matière disponible ne correspond à "{{
+                availableSubjectsSearchQuery()
+              }}".
+            </p>
           </div>
         </div>
       </div>
@@ -216,29 +404,44 @@
     <div class="search-block">
       <div class="search-header">
         <h3>🔍 Ajouter une autre matière</h3>
-        <p class="search-hint">Recherchez une matière pour l'ajouter hors programme</p>
+        <p class="search-hint">
+          Recherchez une matière pour l'ajouter hors programme
+        </p>
       </div>
       <div class="search-input-wrapper">
-        <input 
-          type="text" 
+        <input
+          type="text"
           class="search-input"
-          placeholder="Rechercher une matière (min 2 lettres)..." 
-          [value]="searchQuery()" 
-          (input)="onSearchInput($any($event.target).value)">
+          placeholder="Rechercher une matière (min 2 lettres)..."
+          [value]="searchQuery()"
+          (input)="onSearchInput($any($event.target).value)"
+        />
       </div>
       <div *ngIf="searchQuery().trim().length >= 2" class="search-results">
         <div *ngIf="searchResults().length > 0">
           <div *ngFor="let s of searchResults()" class="search-result-item">
-            <span class="result-name">{{ s.name }} <span class="subject-type-badge">({{ s.type }})</span><span *ngIf="s.school_level" class="school-level-badge"> - {{ getSchoolLevelLabel(s.school_level) }}</span></span>
-            <button 
-              type="button" 
-              class="btn btn-primary btn-sm" 
-              (click)="addSearchedSubject(s.id)">
+            <span class="result-name"
+              >{{ s.name }}
+              <span class="subject-type-badge">({{ s.type }})</span
+              ><span *ngIf="s.school_level" class="school-level-badge">
+                - {{ getSchoolLevelLabel(s.school_level) }}</span
+              ></span
+            >
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              (click)="addSearchedSubject(s.id)"
+            >
               ➕ Activer (hors programme)
             </button>
           </div>
         </div>
-        <div *ngIf="searchResults().length === 0 && searchQuery().trim().length >= 2" class="no-results">
+        <div
+          *ngIf="
+            searchResults().length === 0 && searchQuery().trim().length >= 2
+          "
+          class="no-results"
+        >
           <p class="muted">Aucune matière trouvée pour "{{ searchQuery() }}"</p>
         </div>
       </div>
@@ -254,8 +457,7 @@
     [subjectName]="selectedTeacher()?.subjectName || null"
     [schoolId]="selectedTeacher()?.schoolId || null"
     [schoolLevel]="selectedTeacher()?.schoolLevel || null"
-    (modalClose)="closeTeacherModal()">
+    (modalClose)="closeTeacherModal()"
+  >
   </app-teacher-info-modal>
 </div>
-
-

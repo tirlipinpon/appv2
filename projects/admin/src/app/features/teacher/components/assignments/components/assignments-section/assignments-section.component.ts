@@ -4,7 +4,8 @@ import { RouterModule } from '@angular/router';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TeacherAssignmentStore } from '../../../../store/assignments.store';
 import { TeacherStore } from '../../../../store/index';
-import { GamesStatsDisplayComponent, GamesStatsService, ConfirmationDialogService } from '../../../../../../shared';
+import { GamesStatsDisplayComponent, GamesStatsService } from '@shared';
+import { ConfirmationDialogService } from '../../../../../../shared';
 import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../transfer-assignment-dialog/transfer-assignment-dialog.component';
 import { ChildrenListModalComponent } from '../children-list-modal/children-list-modal.component';
 import { TeacherInfoModalComponent } from '../teacher-info-modal/teacher-info-modal.component';
@@ -255,7 +256,18 @@ export class AssignmentsSectionComponent {
 
     if (subjectIds.length > 0) {
       // On sait que les assignments existent (on vient de les charger), donc skip la vérification
-      this.gamesStatsService.loadStatsForSubjects(subjectIds, true);
+      // Précharger les stats pour toutes les matières
+      this.gamesStatsService.preloadStats(
+        subjectIds,
+        [],
+        {
+          subjectLoader: (subjectId: string) => 
+            this.infrastructure.getGamesStatsBySubject(subjectId, undefined, true),
+          categoryLoader: () => {
+            throw new Error('Category loader not used');
+          }
+        }
+      );
     }
   });
 
@@ -434,7 +446,7 @@ export class AssignmentsSectionComponent {
 
   getTotalGamesCount(subjectId: string | null | undefined): number {
     if (!subjectId) return 0;
-    const stats = this.gamesStatsService.getStats(subjectId);
+    const stats = this.gamesStatsService.getStatsForSubject(subjectId);
     return stats?.total || 0;
   }
 
@@ -733,6 +745,20 @@ export class AssignmentsSectionComponent {
 
           this.gamesByCategory.set(gamesMap);
           this.childrenCountByCategory.set(countsMap);
+
+          // Précharger les stats pour toutes les catégories
+          const categoryIds = categories.map((cat: SubjectCategory) => cat.id);
+          this.gamesStatsService.preloadStats(
+            [],
+            categoryIds,
+            {
+              subjectLoader: () => {
+                throw new Error('Subject loader not used');
+              },
+              categoryLoader: (categoryId: string) =>
+                this.infrastructure.getGamesStatsByCategory(categoryId)
+            }
+          );
         });
       }
     });

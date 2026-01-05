@@ -114,7 +114,7 @@
                 {{ category.description }}
               </div>
               <div class="category-games">
-                <span class="games-count">🎮 {{ getGamesForCategory(category.id).length }} jeu(x)</span>
+                <app-games-stats-display [categoryId]="category.id"></app-games-stats-display>
                 <a
                   *ngIf="assignment.subject_id"
                   [routerLink]="['/teacher-subjects', assignment.subject_id, 'games']"

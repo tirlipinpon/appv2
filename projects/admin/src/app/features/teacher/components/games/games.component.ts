@@ -7,6 +7,7 @@ import { GamesApplication } from './application/application';
 import { GamesStore } from '../../store/games.store';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import { ErrorSnackbarService, ConfirmationDialogService } from '../../../../shared';
+import { GamesStatsDisplayComponent, GamesStatsService } from '@shared';
 import { TeacherService } from '../../services/teacher/teacher.service';
 import { CaseVideFormComponent } from './components/case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from './components/reponse-libre-form/reponse-libre-form.component';
@@ -64,6 +65,7 @@ import { normalizeGameTypeName, isGameType, isGameTypeOneOf } from '../../utils/
     GameGlobalFieldsComponent,
     GameCardComponent,
     DuplicateGameDialogComponent,
+    GamesStatsDisplayComponent,
   ],
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
@@ -84,6 +86,8 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly aideMediaUploadService = inject(AideMediaUploadService);
   readonly gamesStore = inject(GamesStore);
   readonly subjectsStore = inject(TeacherAssignmentStore);
+  private readonly gamesStatsService = inject(GamesStatsService);
+  private readonly infrastructure = inject(Infrastructure);
 
   readonly subjectId = signal<string | null>(null);
   readonly editingGameId = signal<string | null>(null);
@@ -352,9 +356,20 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       this.selectedCategoryId.set(categoryId);
       // Charger les jeux de la sous-catégorie
       this.application.loadGamesBySubject(id, categoryId);
+      // Charger les stats pour la catégorie
+      this.gamesStatsService.loadStatsForCategory(
+        categoryId,
+        () => this.infrastructure.getGamesStatsByCategory(categoryId)
+      );
     } else {
       // Charger les jeux de la matière
       this.application.loadGamesBySubject(id);
+      // Charger les stats pour la matière
+      this.gamesStatsService.loadStatsForSubject(
+        id,
+        () => this.infrastructure.getGamesStatsBySubject(id, undefined, true),
+        null
+      );
     }
     
     // Charger les assignments du professeur pour obtenir le school_level
@@ -381,9 +396,20 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         if (categoryId) {
           this.selectedCategoryId.set(categoryId);
           this.application.loadGamesBySubject(currentSubjectId, categoryId);
+          // Charger les stats pour la catégorie
+          this.gamesStatsService.loadStatsForCategory(
+            categoryId,
+            () => this.infrastructure.getGamesStatsByCategory(categoryId)
+          );
         } else {
           this.selectedCategoryId.set(null);
           this.application.loadGamesBySubject(currentSubjectId);
+          // Charger les stats pour la matière
+          this.gamesStatsService.loadStatsForSubject(
+            currentSubjectId,
+            () => this.infrastructure.getGamesStatsBySubject(currentSubjectId, undefined, true),
+            null
+          );
         }
       }
     });
@@ -399,8 +425,19 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
           if (currentSubjectId) {
             if (categoryId) {
               this.application.loadGamesBySubject(currentSubjectId, categoryId);
+              // Charger les stats pour la catégorie
+              this.gamesStatsService.loadStatsForCategory(
+                categoryId,
+                () => this.infrastructure.getGamesStatsByCategory(categoryId)
+              );
             } else {
               this.application.loadGamesBySubject(currentSubjectId);
+              // Charger les stats pour la matière
+              this.gamesStatsService.loadStatsForSubject(
+                currentSubjectId,
+                () => this.infrastructure.getGamesStatsBySubject(currentSubjectId, undefined, true),
+                null
+              );
             }
           }
         }

@@ -1,10 +1,13 @@
 import { inject, Injectable } from '@angular/core';
+import { Observable, from } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { SupabaseService } from '../../../../core/services/supabase/supabase.service';
 import { CacheService } from '../../../../core/services/cache/cache.service';
 import { Subject, SubjectCategory } from '../../types/subject.types';
 import { SubjectCategoryProgress, Game } from '../../../../core/types/game.types';
 import { normalizeGame } from '../../../../shared/utils/game-normalization.util';
 import { shuffleArray } from '../../../../shared/utils/array.util';
+import type { PostgrestError } from '@supabase/supabase-js';
 
 @Injectable({
   providedIn: 'root',
@@ -171,6 +174,89 @@ export class SubjectsInfrastructure {
     
     // Mélanger aléatoirement les jeux (on affiche tous les jeux maintenant)
     return shuffleArray(games);
+  }
+
+  /**
+   * Récupère les statistiques de jeux pour une matière (avec filtre enfant via RLS)
+   * @param childId - ID de l'enfant (obligatoire pour frontend)
+   * @param subjectId - ID de la matière
+   * @returns Observable avec les stats ou une erreur
+   */
+  getGamesStatsForChildSubject(
+    childId: string,
+    subjectId: string
+  ): Observable<{ stats: Record<string, number>; total: number; error: PostgrestError | null }> {
+    // Les RLS policies filtrent automatiquement les jeux selon les permissions de l'enfant
+    return from(
+      this.supabase.client
+        .from('games')
+        .select('id, game_type:game_types(name)')
+        .eq('subject_id', subjectId)
+        .is('subject_category_id', null)
+    ).pipe(
+      map(({ data, error }) => {
+        if (error || !data) {
+          return { stats: {}, total: 0, error: error || null };
+        }
+
+        // Grouper et compter par type
+        const stats: Record<string, number> = {};
+        let total = 0;
+
+        data.forEach((game: unknown) => {
+          const gameData = game as { game_type: { name: string } | { name: string }[] | null };
+          const gameType = Array.isArray(gameData.game_type) 
+            ? gameData.game_type[0] 
+            : gameData.game_type;
+          const typeName = gameType?.name || 'Inconnu';
+          stats[typeName] = (stats[typeName] || 0) + 1;
+          total++;
+        });
+
+        return { stats, total, error: null };
+      })
+    );
+  }
+
+  /**
+   * Récupère les statistiques de jeux pour une catégorie (avec filtre enfant via RLS)
+   * @param childId - ID de l'enfant (obligatoire pour frontend)
+   * @param categoryId - ID de la catégorie
+   * @returns Observable avec les stats ou une erreur
+   */
+  getGamesStatsForChildCategory(
+    childId: string,
+    categoryId: string
+  ): Observable<{ stats: Record<string, number>; total: number; error: PostgrestError | null }> {
+    // Les RLS policies filtrent automatiquement les jeux selon les permissions de l'enfant
+    return from(
+      this.supabase.client
+        .from('games')
+        .select('id, game_type:game_types(name)')
+        .eq('subject_category_id', categoryId)
+    ).pipe(
+      map(({ data, error }) => {
+        if (error || !data) {
+          return { stats: {}, total: 0, error: error || null };
+        }
+
+        // Grouper et compter par type
+        const stats: Record<string, number> = {};
+        let total = 0;
+
+        data.forEach((game: unknown) => {
+          const gameData = game as { game_type: { name: string } | { name: string }[] | null };
+          const gameType = Array.isArray(gameData.game_type) 
+            ? gameData.game_type[0] 
+            : gameData.game_type;
+          const typeName = gameType?.name || 'Inconnu';
+          stats[typeName] = (stats[typeName] || 0) + 1;
+          total++;
+        });
+
+        return { stats, total, error: null };
+      })
+    );
   }
 }
 

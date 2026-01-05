@@ -7,6 +7,8 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { StarRatingComponent } from '../../shared/components/star-rating/star-rating.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { GamesStatsDisplayComponent } from '@shared/components/games-stats-display/games-stats-display.component';
+import { GamesStatsService } from '@shared/services/games-stats/games-stats.service';
 import { Game } from '../../core/types/game.types';
 import {
   GAME_TYPE_QCM,
@@ -31,6 +33,7 @@ import {
     ProgressBarComponent,
     StarRatingComponent,
     BreadcrumbComponent,
+    GamesStatsDisplayComponent,
   ],
   template: `
     <div class="subjects-container">
@@ -74,6 +77,9 @@ import {
             role="button">
             <h3>{{ category.name }}</h3>
             <p *ngIf="category.description">{{ category.description }}</p>
+            <app-games-stats-display 
+              [categoryId]="category.id" 
+              [childId]="getCurrentChildId()" />
             <div *ngIf="category.progress" class="category-progress">
               <app-progress-bar
                 [value]="category.progress.completion_percentage"
@@ -104,6 +110,9 @@ import {
           <div class="games-counter">
             {{ getRemainingGamesCount() }}/{{ getTotalGamesCount() }} jeux restants
           </div>
+          <app-games-stats-display 
+            [categoryId]="selectedCategoryId()" 
+            [childId]="getCurrentChildId()" />
         </div>
         <div *ngIf="loadingGames()" class="loading">Chargement des jeux...</div>
         <div class="games-grid" *ngIf="!loadingGames()">
@@ -381,9 +390,10 @@ import {
 })
 export class SubjectsComponent implements OnInit {
   protected readonly application = inject(SubjectsApplication);
-  private readonly authService = inject(ChildAuthService);
+  readonly authService = inject(ChildAuthService);
   private readonly infrastructure = inject(SubjectsInfrastructure);
   private readonly router = inject(Router);
+  private readonly gamesStatsService = inject(GamesStatsService);
 
   selectedSubjectId = signal<string | null>(null);
   selectedCategoryId = signal<string | null>(null);
@@ -475,6 +485,30 @@ export class SubjectsComponent implements OnInit {
       const subject = this.selectedSubject();
       this.selectedSubjectId.set(subject?.id || null);
     });
+
+    // Précharger les stats des catégories quand elles sont chargées (désactivé temporairement pour éviter les boucles)
+    // Le chargement se fera à la demande quand l'utilisateur sélectionne une catégorie
+    // effect(() => {
+    //   const cats = this.categories();
+    //   const child = this.authService.getCurrentChild();
+    //   const childId = child?.child_id;
+    //   
+    //   if (cats.length > 0 && childId) {
+    //     const categoryIds = cats.map((cat: { id: string }) => cat.id);
+    //     this.gamesStatsService.preloadStats(
+    //       [],
+    //       categoryIds,
+    //       {
+    //         subjectLoader: () => {
+    //           throw new Error('Subject loader not used in this context');
+    //         },
+    //         categoryLoader: (categoryId: string) => 
+    //           this.infrastructure.getGamesStatsForChildCategory(childId, categoryId)
+    //       },
+    //       childId
+    //     );
+    //   }
+    // });
   }
 
   async ngOnInit(): Promise<void> {
@@ -540,6 +574,15 @@ export class SubjectsComponent implements OnInit {
       const games = await this.infrastructure.loadGamesByCategory(categoryId, childId);
       this.categoryGames.set(games);
       
+      // Charger les stats de jeux pour la catégorie
+      if (childId) {
+        this.gamesStatsService.loadStatsForCategory(
+          categoryId,
+          () => this.infrastructure.getGamesStatsForChildCategory(childId, categoryId),
+          childId
+        );
+      }
+      
       // Charger les scores des jeux si l'enfant est connecté
       if (childId && games.length > 0) {
         const gameIds = games.map(g => g.id);
@@ -602,6 +645,14 @@ export class SubjectsComponent implements OnInit {
   /**
    * Retourne les informations de style (couleur, icône) pour un type de jeu
    */
+  /**
+   * Récupère l'ID de l'enfant courant
+   */
+  getCurrentChildId(): string | null {
+    const child = this.authService.getCurrentChild();
+    return child?.child_id || null;
+  }
+
   getGameTypeStyle(gameType: string | undefined): { label: string; icon: string; color: string; bgColor: string } {
     if (!gameType) {
       return { label: 'Non défini', icon: '❓', color: '#666', bgColor: '#f5f5f5' };

@@ -7,6 +7,8 @@ import { routes } from './app.routes';
 import { GlobalErrorHandler, httpErrorInterceptor, ENVIRONMENT, APP_VERSION_TOKEN } from './shared';
 import { environment } from '../environments/environment';
 import { APP_VERSION } from './core/version';
+import { GamesStatsService } from '@shared/services/games-stats/games-stats.service';
+import { GamesStatsWrapperService } from './shared/services/games-stats/games-stats-wrapper.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -27,6 +29,12 @@ export const appConfig: ApplicationConfig = {
     {
       provide: APP_VERSION_TOKEN,
       useValue: APP_VERSION
+    },
+    // Fournir GamesStatsWrapperService comme implémentation de GamesStatsService dans admin
+    // Cela permet au composant games-stats-display d'utiliser automatiquement le wrapper service
+    {
+      provide: GamesStatsService,
+      useClass: GamesStatsWrapperService
     }
   ]
 };

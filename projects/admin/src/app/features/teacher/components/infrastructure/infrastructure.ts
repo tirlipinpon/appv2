@@ -313,6 +313,15 @@ export class Infrastructure {
     return this.gameService.getGamesStatsBySubjectsBatch(subjectIds, skipAssignmentCheck || false);
   }
 
+  getGamesStatsByCategory(categoryId: string): Observable<{ 
+    stats: Record<string, number>; 
+    total: number;
+    error: PostgrestError | null 
+  }> {
+    // Utiliser getGamesStatsBySubject avec categoryId (subjectId peut être vide)
+    return this.gameService.getGamesStatsBySubject('', categoryId, false);
+  }
+
   getGamesStatsByCategoriesBatch(categoryIds: string[]): Observable<{ 
     statsByCategory: Map<string, { stats: Record<string, number>, total: number }>;
     error: PostgrestError | null 
