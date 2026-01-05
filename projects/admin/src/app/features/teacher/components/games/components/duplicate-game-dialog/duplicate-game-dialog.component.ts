@@ -337,8 +337,56 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
   }
 
   onCancel(): void {
+    // Vérifier si le formulaire a été modifié
+    const hasChanges = this.hasFormChanges();
+    
+    if (hasChanges) {
+      const confirmed = confirm('Vous avez des modifications non sauvegardées. Êtes-vous sûr de vouloir fermer ?');
+      if (!confirmed) {
+        return;
+      }
+    }
+    
     this.isProcessing.set(false);
     this.cancel.emit();
+  }
+
+  /**
+   * Vérifie si le formulaire a été modifié par rapport aux valeurs initiales
+   */
+  private hasFormChanges(): boolean {
+    // Vérifier si les champs globaux ont changé
+    const currentGlobalFields = this.globalFieldsData();
+    const initialGlobalFields = {
+      instructions: this.game.instructions || null,
+      question: this.game.question || null,
+      aides: this.game.aides || null,
+    };
+    
+    const globalFieldsChanged = 
+      currentGlobalFields?.instructions !== initialGlobalFields.instructions ||
+      currentGlobalFields?.question !== initialGlobalFields.question ||
+      JSON.stringify(currentGlobalFields?.aides || []) !== JSON.stringify(initialGlobalFields.aides || []);
+
+    // Vérifier si les données spécifiques du jeu ont changé
+    const currentGameData = this.gameSpecificData();
+    const initialGameData = this.initialGameData();
+    const gameDataChanged = JSON.stringify(currentGameData) !== JSON.stringify(initialGameData);
+
+    // Vérifier si les sélections du formulaire ont changé par rapport aux valeurs initiales
+    const formValue = this.duplicateForm.value;
+    const initialSchoolId = this.currentAssignment?.school_id || '';
+    const initialLevel = this.currentAssignment?.school_level || '';
+    const initialSubjectId = this.game.subject_id || this.currentAssignment?.subject_id || '';
+    const initialCategoryId = this.game.subject_category_id || '';
+
+    const formChanged = 
+      formValue.schoolId !== initialSchoolId ||
+      formValue.level !== initialLevel ||
+      formValue.subjectId !== initialSubjectId ||
+      formValue.subjectCategoryId !== initialCategoryId;
+
+    return globalFieldsChanged || gameDataChanged || formChanged;
   }
 
   getSchoolLevelLabel = getSchoolLevelLabel;
