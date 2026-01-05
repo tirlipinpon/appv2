@@ -7,7 +7,7 @@ export class SoundService {
   private readonly soundsEnabled = signal<boolean>(true);
   private readonly volume = signal<number>(0.7);
   private audioContext: AudioContext | null = null;
-  private soundCache: Map<string, AudioBuffer> = new Map();
+  private soundCache = new Map<string, AudioBuffer>();
 
   constructor() {
     // Initialiser le contexte audio

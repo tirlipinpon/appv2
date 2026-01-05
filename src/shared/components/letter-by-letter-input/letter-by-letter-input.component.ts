@@ -1,10 +1,10 @@
-import { 
-  Component, 
-  Input, 
-  Output, 
-  EventEmitter, 
-  OnInit, 
-  OnChanges, 
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  OnInit,
+  OnChanges,
   SimpleChanges,
   ViewChild,
   ElementRef,
@@ -30,10 +30,10 @@ export interface LetterBox {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LetterByLetterInputComponent implements OnInit, OnChanges {
-  @Input() targetWord: string = '';
+  @Input() targetWord = '';
   @Input() maxLength?: number;
-  @Input() allowHyphen: boolean = true;
-  @Input() disabled: boolean = false;
+  @Input() allowHyphen = true;
+  @Input() disabled = false;
   
   @Output() wordChange = new EventEmitter<string>();
   @Output() wordComplete = new EventEmitter<string>();

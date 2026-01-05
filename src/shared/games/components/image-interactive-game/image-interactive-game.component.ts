@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { ImageInteractiveData, ImageInteractiveZone } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
