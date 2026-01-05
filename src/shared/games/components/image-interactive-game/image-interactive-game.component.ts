@@ -2,11 +2,12 @@ import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDes
 import { CommonModule } from '@angular/common';
 import type { ImageInteractiveData, ImageInteractiveZone } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 @Component({
   selector: 'app-image-interactive-game',
   standalone: true,
-  imports: [CommonModule, GameErrorActionsComponent],
+  imports: [CommonModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './image-interactive-game.component.html',
   styleUrl: './image-interactive-game.component.scss',
 })
@@ -15,6 +16,8 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
   @Input() showResult = false; // Pour afficher les résultats après validation
   @Input() disabled = false; // Pour désactiver l'interaction
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
 
@@ -45,8 +48,6 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
     return correctZones.length === 1;
   });
   
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
 
   // État de chargement de l'image
   readonly imageError = signal<boolean>(false);
@@ -406,8 +407,5 @@ export class ImageInteractiveGameComponent implements OnInit, AfterViewInit, OnD
     return points.map(p => `${p.x},${p.y}`).join(' ');
   }
 
-  toggleAides(): void {
-    this.showAides.update(v => !v);
-  }
 }
 

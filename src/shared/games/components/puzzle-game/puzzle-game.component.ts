@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDes
 import { CommonModule } from '@angular/common';
 import type { PuzzleData, PuzzlePiece } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 import { calculateSnappedPosition, relativeToAbsolute, type Position, type SnappedPosition } from '../../utils/puzzle-magnetism.util';
 import Konva from 'konva';
 
@@ -20,7 +21,7 @@ interface PieceState {
 @Component({
   selector: 'app-puzzle-game',
   standalone: true,
-  imports: [CommonModule, GameErrorActionsComponent],
+  imports: [CommonModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './puzzle-game.component.html',
   styleUrl: './puzzle-game.component.scss',
 })
@@ -29,6 +30,8 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
   @Input() showResult = false;
   @Input() disabled = false;
   @Input() aides: string[] | null = null;
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null;
   @Input() question: string | null = null;
 
@@ -63,8 +66,6 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
   readonly isSubmitted = signal<boolean>(false);
   readonly isCorrect = signal<boolean | null>(null);
 
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
 
   // Pièce en cours de drag
   private draggedPiece: PieceState | null = null;
@@ -636,7 +637,4 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
     this.resetRequested.emit();
   }
 
-  toggleAides(): void {
-    this.showAides.update(v => !v);
-  }
 }

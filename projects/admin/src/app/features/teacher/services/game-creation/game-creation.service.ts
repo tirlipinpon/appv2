@@ -3,6 +3,7 @@ import { Observable, of, forkJoin, from } from 'rxjs';
 import { switchMap, tap, catchError } from 'rxjs/operators';
 import { GamesApplication } from '../../components/games/application/application';
 import { ImageUploadService } from '../../components/games/services/image-upload/image-upload.service';
+import { AideMediaUploadService } from '../../components/games/services/aide-media/aide-media-upload.service';
 import { ErrorSnackbarService } from '../../../../shared';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type {
@@ -42,6 +43,9 @@ export interface CreateGameParams {
   instructions?: string | null;
   question?: string | null;
   aides?: string[] | null;
+  aideImageFile?: File | null;
+  aideImageUrl?: string | null;
+  aideVideoUrl?: string | null;
   gameData: GameData | ImageInteractiveDataWithFile | PuzzleDataWithFile;
   imageDataWithFile?: ImageInteractiveDataWithFile | null;
   puzzleDataWithFile?: PuzzleDataWithFile | null;
@@ -65,6 +69,7 @@ export interface DuplicateGameParams {
 export class GameCreationService {
   private readonly application = inject(GamesApplication);
   private readonly imageUploadService = inject(ImageUploadService);
+  private readonly aideMediaUploadService = inject(AideMediaUploadService);
   private readonly puzzleStorageService = inject(PuzzleStorageService);
   private readonly puzzlePieceGenerator = inject(PuzzlePieceGeneratorService);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
@@ -128,6 +133,9 @@ export class GameCreationService {
       instructions,
       question,
       aides,
+      aideImageFile,
+      aideImageUrl,
+      aideVideoUrl,
       gameData,
       imageDataWithFile,
       puzzleDataWithFile,
@@ -153,6 +161,7 @@ export class GameCreationService {
       question: question?.trim() || null,
       reponses: null,
       aides: filteredAides && filteredAides.length > 0 ? filteredAides : null,
+      aide_video_url: aideVideoUrl?.trim() || null,
       metadata: null, // Sera défini selon le cas
     };
 
@@ -188,7 +197,66 @@ export class GameCreationService {
 
     // Cas 5: Jeu normal (pas ImageInteractive/Puzzle ou pas d'image)
     baseGameData.metadata = gameData as unknown as Record<string, unknown>;
-    return this.application.createGame(baseGameData);
+    
+    // Créer le jeu d'abord, puis uploader l'image d'aide si nécessaire
+    return this.application.createGame(baseGameData).pipe(
+      switchMap((createdGame) => {
+        if (!createdGame) {
+          return of(null);
+        }
+
+        // Si une image d'aide doit être uploadée
+        if (aideImageFile) {
+          return this.uploadAideImageAndUpdateGame(createdGame.id, aideImageFile).pipe(
+            switchMap(() => of(createdGame)),
+            catchError((error) => {
+              // Même en cas d'erreur d'upload, retourner le jeu créé
+              console.error('Erreur lors de l\'upload de l\'image d\'aide:', error);
+              return of(createdGame);
+            })
+          );
+        }
+
+        // Si une URL d'image d'aide existe déjà (mode édition)
+        if (aideImageUrl) {
+          this.application.updateGame(createdGame.id, {
+            aide_image_url: aideImageUrl,
+          });
+          return of(createdGame);
+        }
+
+        return of(createdGame);
+      })
+    );
+  }
+
+  /**
+   * Upload une image d'aide et met à jour le jeu
+   */
+  private uploadAideImageAndUpdateGame(
+    gameId: string,
+    imageFile: File
+  ): Observable<void> {
+    return this.aideMediaUploadService.uploadAideImage(imageFile, gameId).pipe(
+      switchMap((result) => {
+        if (result.error) {
+          this.errorSnackbar.showError(
+            `Erreur lors de l'upload de l'image d'aide: ${result.error}`
+          );
+          return of(void 0);
+        }
+
+        // Mettre à jour le jeu avec l'URL de l'image d'aide
+        this.application.updateGame(gameId, {
+          aide_image_url: result.url,
+        });
+        return of(void 0);
+      }),
+      catchError((error) => {
+        this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image d\'aide');
+        return of(void 0);
+      })
+    );
   }
 
   /**

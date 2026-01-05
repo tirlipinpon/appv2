@@ -84,6 +84,62 @@
         }
       }
     }
+
+    .aide-media-section {
+      margin-bottom: 1.5rem;
+
+      .aide-media-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .file-input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        margin-bottom: 0.5rem;
+
+        &:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+      }
+
+      .aide-image-preview {
+        margin-top: 0.5rem;
+        padding: 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+
+        .preview-image {
+          max-width: 100%;
+          max-height: 200px;
+          object-fit: contain;
+          display: block;
+          margin-bottom: 0.5rem;
+          border-radius: 4px;
+        }
+
+        .remove-image-btn {
+          margin-top: 0.5rem;
+        }
+      }
+
+      .error-message {
+        display: block;
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+      }
+    }
   }
 }
 

@@ -35,6 +35,7 @@ import { normalizeGameData } from '../../utils/game-data-mapper';
 import { SCHOOL_LEVELS } from '../../utils/school-levels.util';
 import type { DuplicateGameData } from './components/duplicate-game-dialog/duplicate-game-dialog.component';
 import { ImageUploadService } from './services/image-upload/image-upload.service';
+import { AideMediaUploadService } from './services/aide-media/aide-media-upload.service';
 import { GameDataInitializerService } from '../../services/game-data-initializer/game-data-initializer.service';
 import { GameCreationService } from '../../services/game-creation/game-creation.service';
 import { AssignmentFilterService } from '../../services/assignment-filter/assignment-filter.service';
@@ -80,6 +81,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly gameDataInitializer = inject(GameDataInitializerService);
   private readonly gameCreationService = inject(GameCreationService);
   private readonly assignmentFilter = inject(AssignmentFilterService);
+  private readonly aideMediaUploadService = inject(AideMediaUploadService);
   readonly gamesStore = inject(GamesStore);
   readonly subjectsStore = inject(TeacherAssignmentStore);
 
@@ -206,6 +208,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   // Données spécifiques pour le jeu puzzle avec le fichier File (pour l'upload lors de la création)
   private puzzleDataWithFile = signal<PuzzleDataWithFile | null>(null);
   readonly initialGlobalFields = signal<GameGlobalFieldsData | null>(null);
+  private globalFieldsData = signal<GameGlobalFieldsData | null>(null);
   
   // Computed signals pour les données initiales (évite les appels répétés inutiles)
   readonly initialDataForImageInteractive = computed(() => {
@@ -276,6 +279,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onGlobalFieldsChange(data: GameGlobalFieldsData): void {
+    this.globalFieldsData.set(data);
     this.gameForm.patchValue({
       instructions: data.instructions || '',
       question: data.question || '',
@@ -533,6 +537,9 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       instructions: (v['instructions'] as string | undefined) || null,
       question: (typeof v['question'] === 'string' ? v['question'].trim() : null) || null,
       aides: this.aidesArray.value.filter((a: string) => a && a.trim()),
+      aideImageFile: this.globalFieldsData()?.aideImageFile || null,
+      aideImageUrl: this.globalFieldsData()?.aideImageUrl || null,
+      aideVideoUrl: this.globalFieldsData()?.aideVideoUrl || null,
       gameData,
       imageDataWithFile: this.imageInteractiveDataWithFile(),
       puzzleDataWithFile: this.puzzleDataWithFile(),
@@ -566,6 +573,8 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       instructions: game.instructions || null,
       question: game.question || null,
       aides: game.aides || null,
+      aideImageUrl: game.aide_image_url || null,
+      aideVideoUrl: game.aide_video_url || null,
     });
 
     // Charger les données spécifiques depuis metadata et normaliser si nécessaire
@@ -593,6 +602,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.gameSpecificValid.set(false);
     this.initialGameData.set(null);
     this.initialGlobalFields.set(null);
+    this.globalFieldsData.set(null);
     this.selectedCategoryId.set(null);
     this.imageInteractiveDataWithFile.set(null);
     this.puzzleDataWithFile.set(null); // Réinitialiser les données avec fichier
@@ -614,17 +624,61 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     // Construire les aides
     const aides = this.aidesArray.value.filter((a: string) => a && a.trim());
 
-    this.application.updateGame(gameId, {
+    const globalFields = this.globalFieldsData();
+    const updateData: GameUpdate = {
       name: autoName,
       instructions: (v['instructions'] as string | undefined) || null,
       question: questionValue || null,
       reponses: null,
       aides: aides.length > 0 ? aides : null,
+      aide_video_url: globalFields?.aideVideoUrl?.trim() || null,
       metadata: gameData as unknown as Record<string, unknown>,
       game_type_id: (v['game_type_id'] as string) || '',
-    });
+    };
 
-    this.cancelEdit();
+    // Si une nouvelle image d'aide est uploadée, l'uploader d'abord
+    if (globalFields?.aideImageFile) {
+      const game = this.games().find(g => g.id === gameId);
+      const oldImageUrl = game?.aide_image_url;
+
+      // Supprimer l'ancienne image si elle existe
+      if (oldImageUrl) {
+        this.aideMediaUploadService.deleteAideImage(oldImageUrl).subscribe();
+      }
+
+      // Uploader la nouvelle image
+      this.aideMediaUploadService.uploadAideImage(globalFields.aideImageFile, gameId).subscribe({
+        next: (result) => {
+          if (result.error) {
+            this.errorSnackbar.showError(`Erreur lors de l'upload de l'image d'aide: ${result.error}`);
+          } else {
+            updateData.aide_image_url = result.url;
+          }
+          this.application.updateGame(gameId, updateData);
+          this.cancelEdit();
+        },
+        error: (error) => {
+          console.error('Erreur upload image d\'aide:', error);
+          this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image d\'aide');
+          // Mettre à jour quand même le reste
+          this.application.updateGame(gameId, updateData);
+          this.cancelEdit();
+        }
+      });
+    } else {
+      // Si l'image a été supprimée (aideImageUrl est null mais il y avait une image avant)
+      const game = this.games().find(g => g.id === gameId);
+      if (game?.aide_image_url && !globalFields?.aideImageUrl) {
+        this.aideMediaUploadService.deleteAideImage(game.aide_image_url).subscribe();
+        updateData.aide_image_url = null;
+      } else if (globalFields?.aideImageUrl) {
+        // Conserver l'URL existante
+        updateData.aide_image_url = globalFields.aideImageUrl;
+      }
+
+      this.application.updateGame(gameId, updateData);
+      this.cancelEdit();
+    }
   }
 
   updateGameFromCard(gameId: string, updates: GameUpdate): void {
@@ -643,6 +697,16 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     if (confirmed) {
+      // Supprimer l'image d'aide si elle existe
+      const game = this.games().find(g => g.id === gameId);
+      if (game?.aide_image_url) {
+        this.aideMediaUploadService.deleteAideImage(game.aide_image_url).subscribe({
+          error: (error) => {
+            console.error('Erreur lors de la suppression de l\'image d\'aide:', error);
+            // Continuer quand même la suppression du jeu
+          }
+        });
+      }
       this.application.deleteGame(gameId);
     }
   }

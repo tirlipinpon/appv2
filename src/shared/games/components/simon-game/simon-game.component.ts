@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDes
 import { CommonModule } from '@angular/common';
 import type { SimonData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 interface SimonElement {
   id: number;
@@ -13,7 +14,7 @@ interface SimonElement {
 @Component({
   selector: 'app-simon-game',
   standalone: true,
-  imports: [CommonModule, GameErrorActionsComponent],
+  imports: [CommonModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './simon-game.component.html',
   styleUrl: './simon-game.component.scss',
 })
@@ -22,6 +23,8 @@ export class SimonGameComponent implements OnInit, OnDestroy {
   @Input() showResult = false;
   @Input() disabled = false;
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
   
@@ -51,8 +54,6 @@ export class SimonGameComponent implements OnInit, OnDestroy {
   // Élément actuellement illuminé (pour l'animation)
   highlightedElement = signal<number | null>(null);
   
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
   
   private animationTimeouts: number[] = [];
 
@@ -392,8 +393,5 @@ export class SimonGameComponent implements OnInit, OnDestroy {
     return this.simonData.type_elements === 'couleurs';
   }
 
-  toggleAides(): void {
-    this.showAides.update((v: boolean) => !v);
-  }
 }
 

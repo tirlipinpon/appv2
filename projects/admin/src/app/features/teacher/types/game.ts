@@ -16,6 +16,8 @@ export interface Game {
   question: string | null;
   reponses: GameReponses | null;
   aides: string[] | null;
+  aide_image_url: string | null;
+  aide_video_url: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
@@ -30,6 +32,8 @@ export interface GameCreate {
   question?: string | null;
   reponses?: GameReponses | null;
   aides?: string[] | null;
+  aide_image_url?: string | null;
+  aide_video_url?: string | null;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -39,6 +43,8 @@ export interface GameUpdate {
   question?: string | null;
   reponses?: GameReponses | null;
   aides?: string[] | null;
+  aide_image_url?: string | null;
+  aide_video_url?: string | null;
   metadata?: Record<string, unknown> | null;
   game_type_id?: string;
   subject_id?: string | null;

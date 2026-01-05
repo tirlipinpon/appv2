@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from
 import { CommonModule } from '@angular/common';
 import type { QcmData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 interface ShuffledProposition {
   originalIndex: number;
@@ -12,7 +13,7 @@ interface ShuffledProposition {
 @Component({
   selector: 'app-qcm-game',
   standalone: true,
-  imports: [CommonModule, GameErrorActionsComponent],
+  imports: [CommonModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './qcm-game.component.html',
   styleUrl: './qcm-game.component.scss',
 })
@@ -21,6 +22,8 @@ export class QcmGameComponent implements OnInit {
   @Input() showResult = false; // Pour afficher les résultats après validation
   @Input() disabled = false; // Pour désactiver l'interaction
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
   
@@ -32,8 +35,6 @@ export class QcmGameComponent implements OnInit {
   // Propositions mélangées avec leur lettre (A, B, C...)
   shuffledPropositions = signal<ShuffledProposition[]>([]);
   
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
   
   // Réponses sélectionnées (par lettre: A, B, C...)
   selectedLetters = signal<Set<string>>(new Set());
@@ -161,11 +162,5 @@ export class QcmGameComponent implements OnInit {
     return !this.isSubmitted() && this.selectedLetters().size > 0;
   }
 
-  /**
-   * Toggle l'affichage des aides
-   */
-  toggleAides(): void {
-    this.showAides.update((v: boolean) => !v);
-  }
 }
 

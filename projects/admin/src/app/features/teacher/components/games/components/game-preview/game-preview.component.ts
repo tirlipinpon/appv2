@@ -16,12 +16,12 @@ import {
   GAME_TYPE_VRAI_FAUX,
 } from '../../../../utils/game-type.util';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
-import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, ReponseLibreGameComponent } from '@shared/games';
+import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, VraiFauxGameComponent } from '@shared/games';
 
 @Component({
   selector: 'app-game-preview',
   standalone: true,
-  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, ReponseLibreGameComponent],
+  imports: [CommonModule, DragDropModule, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, VraiFauxGameComponent],
   templateUrl: './game-preview.component.html',
   styleUrl: './game-preview.component.scss',
 })
@@ -238,6 +238,12 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
   }
 
   onChronologieValidated(isValid: boolean): void {
+    this.isSubmitted.set(true);
+    this.isCorrect.set(isValid);
+  }
+
+  // Méthodes pour Vrai/Faux
+  onVraiFauxValidated(isValid: boolean): void {
     this.isSubmitted.set(true);
     this.isCorrect.set(isValid);
   }

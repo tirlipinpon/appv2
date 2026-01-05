@@ -202,6 +202,8 @@ export class GameCardComponent implements OnInit, OnChanges {
       instructions: this.game.instructions || null,
       question: this.game.question || null,
       aides: this.game.aides || null,
+      aideImageUrl: this.game.aide_image_url || null,
+      aideVideoUrl: this.game.aide_video_url || null,
     };
     this.initialGlobalFields.set(globalFields);
     this.currentGlobalFields.set(globalFields); // Initialiser aussi currentGlobalFields
@@ -380,6 +382,8 @@ export class GameCardComponent implements OnInit, OnChanges {
       question: globalFields.question?.trim() || null,
       reponses: null,
       aides: aides,
+      aide_image_url: globalFields.aideImageUrl || null,
+      aide_video_url: globalFields.aideVideoUrl || null,
       metadata: gameData as unknown as Record<string, unknown>,
     };
 
@@ -429,6 +433,8 @@ export class GameCardComponent implements OnInit, OnChanges {
         instructions: this.game.instructions || null,
         question: this.game.question || null,
         aides: this.game.aides || null,
+        aideImageUrl: this.game.aide_image_url || null,
+        aideVideoUrl: this.game.aide_video_url || null,
       };
       this.currentGlobalFields.set(globalFields);
     }

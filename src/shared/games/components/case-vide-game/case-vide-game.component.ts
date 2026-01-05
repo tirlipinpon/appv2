@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 // Interface pour représenter une instance unique d'un mot
 interface WordInstance {
@@ -21,7 +22,7 @@ interface ParsedTextePart {
 @Component({
   selector: 'app-case-vide-game',
   standalone: true,
-  imports: [CommonModule, DragDropModule, GameErrorActionsComponent],
+  imports: [CommonModule, DragDropModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './case-vide-game.component.html',
   styleUrl: './case-vide-game.component.scss',
 })
@@ -30,6 +31,8 @@ export class CaseVideGameComponent implements OnInit {
   @Input() showResult = false;
   @Input() disabled = false;
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
   
@@ -52,8 +55,6 @@ export class CaseVideGameComponent implements OnInit {
   // Compteur pour générer des IDs uniques
   private wordInstanceCounter = 0;
   
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
 
   ngOnInit(): void {
     this.initializeCaseVide();
@@ -436,8 +437,5 @@ export class CaseVideGameComponent implements OnInit {
     return false;
   }
 
-  toggleAides(): void {
-    this.showAides.update(v => !v);
-  }
 }
 

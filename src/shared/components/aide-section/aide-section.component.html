@@ -1,0 +1,56 @@
+@if (shouldShow()) {
+  <div class="aides-toggle-container">
+    <div class="aides-controls">
+      @if (hasAideText()) {
+        <button 
+          type="button"
+          class="aides-toggle-btn"
+          (click)="toggleAides()"
+          [attr.aria-expanded]="showAides()"
+          [attr.aria-label]="showAides() ? 'Masquer aide' : 'Afficher aide'">
+          <span class="toggle-icon">{{ showAides() ? '−' : '+' }}</span>
+          <span class="toggle-text">{{ showAides() ? 'Masquer aide' : 'Afficher aide' }}</span>
+        </button>
+      }
+      @if (hasImage()) {
+        <button
+          type="button"
+          class="aide-media-btn"
+          (click)="openImageModal()"
+          aria-label="Voir l'image d'aide"
+          title="Voir l'image d'aide">
+          🖼️
+        </button>
+      }
+      @if (hasVideo()) {
+        <button
+          type="button"
+          class="aide-media-btn"
+          (click)="openVideoModal()"
+          aria-label="Voir la vidéo d'aide"
+          title="Voir la vidéo d'aide">
+          ▶️
+        </button>
+      }
+    </div>
+    @if (showAides() && hasAideText()) {
+      <div class="aides-container">
+        <strong>Aide</strong>
+        <ul>
+          @for (aide of aides; track $index) {
+            <li>{{ aide }}</li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+}
+
+@if (showMediaModal()) {
+  <app-aide-media-modal
+    [aideImageUrl]="mediaTypeToShow() === 'image' ? aideImageUrl : null"
+    [aideVideoUrl]="mediaTypeToShow() === 'video' ? aideVideoUrl : null"
+    [isOpen]="showMediaModal"
+    (close)="closeMediaModal()">
+  </app-aide-media-modal>
+}

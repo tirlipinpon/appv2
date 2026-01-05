@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import type { ReponseLibreData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 import { LetterByLetterInputComponent } from '../../../components/letter-by-letter-input/letter-by-letter-input.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 @Component({
   selector: 'app-reponse-libre-game',
   standalone: true,
-  imports: [CommonModule, GameErrorActionsComponent, LetterByLetterInputComponent],
+  imports: [CommonModule, GameErrorActionsComponent, LetterByLetterInputComponent, AideSectionComponent],
   templateUrl: './reponse-libre-game.component.html',
   styleUrl: './reponse-libre-game.component.scss',
 })
@@ -16,6 +17,8 @@ export class ReponseLibreGameComponent implements OnInit {
   @Input() showResult = false; // Pour afficher les résultats après validation
   @Input() disabled = false; // Pour désactiver l'interaction
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
   
@@ -24,8 +27,6 @@ export class ReponseLibreGameComponent implements OnInit {
   @Output() resetRequested = new EventEmitter<void>();
   @Output() nextRequested = new EventEmitter<void>();
 
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
   
   // Réponse de l'utilisateur
   userAnswer = signal<string>('');
@@ -87,13 +88,6 @@ export class ReponseLibreGameComponent implements OnInit {
    */
   canValidate(): boolean {
     return !this.isSubmitted() && this.userAnswer().trim().length > 0;
-  }
-
-  /**
-   * Toggle l'affichage des aides
-   */
-  toggleAides(): void {
-    this.showAides.update((v: boolean) => !v);
   }
 
   /**

@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, computed, OnInit, After
 import { CommonModule } from '@angular/common';
 import type { LiensData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 interface LinkPath {
   mot: string;
@@ -12,7 +13,7 @@ interface LinkPath {
 @Component({
   selector: 'app-liens-game',
   standalone: true,
-  imports: [CommonModule, GameErrorActionsComponent],
+  imports: [CommonModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './liens-game.component.html',
   styleUrl: './liens-game.component.scss',
 })
@@ -21,6 +22,8 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
   @Input() showResult = false;
   @Input() disabled = false;
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
   
@@ -48,8 +51,6 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
   
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
 
   private resizeObserver?: ResizeObserver;
   private updateLinksTimeout?: number;
@@ -295,8 +296,5 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
     return this.userLinks().size > 0;
   }
 
-  toggleAides(): void {
-    this.showAides.update(v => !v);
-  }
 }
 

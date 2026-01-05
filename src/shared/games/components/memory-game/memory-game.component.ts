@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effec
 import { CommonModule } from '@angular/common';
 import type { MemoryData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 interface MemoryCard {
   id: number;
@@ -15,7 +16,7 @@ interface MemoryCard {
 @Component({
   selector: 'app-memory-game',
   standalone: true,
-  imports: [CommonModule, GameErrorActionsComponent],
+  imports: [CommonModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './memory-game.component.html',
   styleUrl: './memory-game.component.scss',
 })
@@ -24,6 +25,8 @@ export class MemoryGameComponent implements OnInit {
   @Input() showResult = false;
   @Input() disabled = false;
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
   
@@ -37,8 +40,6 @@ export class MemoryGameComponent implements OnInit {
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
   
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
 
   // Calcul du nombre de colonnes optimal pour l'affichage (responsive)
   gridColumns = computed(() => {
@@ -235,8 +236,5 @@ export class MemoryGameComponent implements OnInit {
     return this.memoryData.paires.length;
   }
 
-  toggleAides(): void {
-    this.showAides.update(v => !v);
-  }
 }
 

@@ -299,59 +299,6 @@
     }
   }
 
-  .aides-toggle-container {
-    margin-bottom: 1rem;
-  }
-
-  .aides-toggle-btn {
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #333;
-    width: 100%;
-    justify-content: center;
-
-    &:hover {
-      border-color: #4CAF50;
-      background-color: rgba(76, 175, 80, 0.05);
-    }
-
-    .toggle-icon {
-      font-weight: bold;
-      font-size: 1.2rem;
-      line-height: 1;
-      width: 1.2rem;
-      text-align: center;
-    }
-
-    .toggle-text {
-      font-size: 0.9rem;
-    }
-  }
-
-  .aides-container {
-    margin-top: 0.5rem;
-    padding: 1rem;
-    background: #f0f0f0;
-    border-radius: 8px;
-    font-size: 0.9rem;
-
-    ul {
-      margin: 0.5rem 0 0 1.5rem;
-      padding: 0;
-    }
-
-    li {
-      margin: 0.25rem 0;
-    }
-  }
 }
 
 // Styles globaux pour CDK Drag and Drop

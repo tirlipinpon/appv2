@@ -48,5 +48,48 @@
       + Ajouter une aide
     </button>
   </div>
+
+  <!-- Médias d'aide -->
+  <div class="form-group">
+    <label>Médias d'aide</label>
+    
+    <!-- Upload d'image d'aide -->
+    <div class="aide-media-section">
+      <label for="aide-image-input" class="aide-media-label">Image d'aide</label>
+      <input 
+        id="aide-image-input"
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        (change)="onAideImageSelected($event)"
+        class="file-input">
+      
+      @if (aideImagePreview) {
+        <div class="aide-image-preview">
+          <img [src]="aideImagePreview" alt="Aperçu image d'aide" class="preview-image">
+          <button 
+            type="button"
+            class="btn btn-danger btn-sm remove-image-btn"
+            (click)="removeAideImage()"
+            aria-label="Supprimer l'image d'aide">
+            ✕ Supprimer l'image
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Lien vidéo d'aide -->
+    <div class="aide-media-section">
+      <label for="aide-video-url">Lien vidéo d'aide (YouTube, Vimeo, etc.)</label>
+      <input 
+        id="aide-video-url"
+        type="text"
+        class="form-control"
+        formControlName="aideVideoUrl"
+        placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/...">
+      @if (form.get('aideVideoUrl')?.hasError('invalidVideoUrl') && form.get('aideVideoUrl')?.touched) {
+        <small class="error-message">URL vidéo invalide. Veuillez entrer un lien YouTube, Vimeo ou autre plateforme vidéo valide.</small>
+      }
+    </div>
+  </div>
 </div>
 

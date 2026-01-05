@@ -16,6 +16,8 @@ export interface Game {
   instructions?: string;
   reponses?: Record<string, unknown>;
   aides?: string[];
+  aide_image_url?: string;
+  aide_video_url?: string;
   metadata?: Record<string, unknown>;
 }
 

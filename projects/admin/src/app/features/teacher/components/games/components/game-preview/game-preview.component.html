@@ -52,6 +52,8 @@
               [showResult]="isSubmitted()"
               [disabled]="false"
               [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
               [instructions]="globalFields?.instructions || null"
               [question]="globalFields?.question || null"
               (answerSelected)="onQcmAnswerSelected($event)"
@@ -69,6 +71,8 @@
               [showResult]="isSubmitted()"
               [disabled]="false"
               [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
               [instructions]="globalFields?.instructions || null"
               [question]="globalFields?.question || null"
               (validated)="onCaseVideValidated($event)">
@@ -93,6 +97,11 @@
               [reponseLibreData]="reponseLibreData"
               [showResult]="isSubmitted()"
               [disabled]="isSubmitted()"
+              [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
               (validated)="onReponseLibreValidated($event)"
               (resetRequested)="reset()">
             </app-reponse-libre-game>
@@ -177,6 +186,8 @@
               [showResult]="isSubmitted()"
               [disabled]="false"
               [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
               [instructions]="globalFields?.instructions || null"
               [question]="globalFields?.question || null"
               (orderChanged)="onChronologieOrderChanged($event)"
@@ -188,56 +199,17 @@
         <!-- Vrai/Faux -->
         @if (vraiFauxData) {
           <div class="preview-content vrai-faux-preview">
-            @if (isSubmitted() && isCorrect() !== null) {
-              <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-                @if (isCorrect()) {
-                  ✅ Toutes les réponses sont correctes !
-                } @else {
-                  ❌ Certaines réponses sont incorrectes.
-                }
-              </div>
-            }
-            <div class="vrai-faux-grid">
-              <div class="vrai-faux-header">
-                <div class="header-column vrai-column">Vrai</div>
-                <div class="header-column enonce-column"></div>
-                <div class="header-column faux-column">Faux</div>
-              </div>
-              @for (enonce of getVraiFauxEnonces(); track $index) {
-                <div class="vrai-faux-row">
-                  <button
-                    type="button"
-                    class="vrai-button"
-                    [class.selected]="isVraiFauxAnswerSelected($index, true)"
-                    [class.correct]="isSubmitted() && isVraiFauxCorrect($index) === true && isVraiFauxAnswerSelected($index, true)"
-                    [class.incorrect]="isSubmitted() && isVraiFauxCorrect($index) === false && isVraiFauxAnswerSelected($index, true)"
-                    (click)="selectVraiFauxAnswer($index, true)"
-                    [disabled]="isSubmitted()">
-                    <span class="circle"></span>
-                  </button>
-                  <div class="enonce-text">{{ enonce.texte }}</div>
-                  <button
-                    type="button"
-                    class="faux-button"
-                    [class.selected]="isVraiFauxAnswerSelected($index, false)"
-                    [class.correct]="isSubmitted() && isVraiFauxCorrect($index) === true && isVraiFauxAnswerSelected($index, false)"
-                    [class.incorrect]="isSubmitted() && isVraiFauxCorrect($index) === false && isVraiFauxAnswerSelected($index, false)"
-                    (click)="selectVraiFauxAnswer($index, false)"
-                    [disabled]="isSubmitted()">
-                    <span class="circle"></span>
-                  </button>
-                </div>
-              }
-            </div>
-            <button 
-              class="btn btn-primary" 
-              (click)="submitVraiFaux()" 
-              [disabled]="isSubmitted() || userVraiFauxAnswers().size !== getVraiFauxEnonces().length">
-              Valider
-            </button>
-            @if (isSubmitted()) {
-              <button class="btn btn-secondary" (click)="reset()">Réessayer</button>
-            }
+            <app-vrai-faux-game
+              [vraiFauxData]="vraiFauxData"
+              [showResult]="isSubmitted()"
+              [disabled]="false"
+              [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
+              [instructions]="globalFields?.instructions || null"
+              [question]="globalFields?.question || null"
+              (validated)="onVraiFauxValidated($event)">
+            </app-vrai-faux-game>
           </div>
         }
 
@@ -258,6 +230,8 @@
               [showResult]="isSubmitted()"
               [disabled]="false"
               [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
               [instructions]="globalFields?.instructions || null"
               [question]="globalFields?.question || null"
               (validated)="onMemoryValidated($event)">
@@ -276,6 +250,8 @@
               [showResult]="isSubmitted()"
               [disabled]="false"
               [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
               [instructions]="globalFields?.instructions || null"
               [question]="globalFields?.question || null"
               (validated)="onSimonValidated($event)">
@@ -291,6 +267,8 @@
               [showResult]="isSubmitted()"
               [disabled]="false"
               [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
               [instructions]="globalFields?.instructions || null"
               [question]="globalFields?.question || null"
               (validated)="onImageInteractiveValidated($event)">
@@ -306,6 +284,8 @@
               [showResult]="isSubmitted()"
               [disabled]="false"
               [aides]="globalFields?.aides || null"
+              [aideImageUrl]="globalFields?.aideImageUrl || null"
+              [aideVideoUrl]="globalFields?.aideVideoUrl || null"
               [instructions]="globalFields?.instructions || null"
               [question]="globalFields?.question || null"
               (validated)="onPuzzleValidated($event)"

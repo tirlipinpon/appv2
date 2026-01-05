@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import type { ChronologieData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 @Component({
   selector: 'app-chronologie-game',
   standalone: true,
-  imports: [CommonModule, DragDropModule, GameErrorActionsComponent],
+  imports: [CommonModule, DragDropModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './chronologie-game.component.html',
   styleUrl: './chronologie-game.component.scss',
 })
@@ -16,6 +17,8 @@ export class ChronologieGameComponent implements OnInit {
   @Input() showResult = false; // Pour afficher les résultats après validation
   @Input() disabled = false; // Pour désactiver l'interaction
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
   
@@ -31,8 +34,6 @@ export class ChronologieGameComponent implements OnInit {
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
   
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
 
   ngOnInit(): void {
     this.shuffleMots();
@@ -108,8 +109,5 @@ export class ChronologieGameComponent implements OnInit {
     return currentOrder[index] === correctOrder[index];
   }
 
-  toggleAides(): void {
-    this.showAides.update(v => !v);
-  }
 }
 

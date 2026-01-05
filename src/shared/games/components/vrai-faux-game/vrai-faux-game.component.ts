@@ -2,11 +2,12 @@ import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from
 import { CommonModule } from '@angular/common';
 import type { VraiFauxData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
+import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 
 @Component({
   selector: 'app-vrai-faux-game',
   standalone: true,
-  imports: [CommonModule, GameErrorActionsComponent],
+  imports: [CommonModule, GameErrorActionsComponent, AideSectionComponent],
   templateUrl: './vrai-faux-game.component.html',
   styleUrl: './vrai-faux-game.component.scss',
 })
@@ -15,6 +16,8 @@ export class VraiFauxGameComponent implements OnInit {
   @Input() showResult = false;
   @Input() disabled = false;
   @Input() aides: string[] | null = null; // Aides pour le jeu
+  @Input() aideImageUrl: string | null = null; // URL de l'image d'aide
+  @Input() aideVideoUrl: string | null = null; // URL de la vidéo d'aide
   @Input() instructions: string | null = null; // Instructions pour le jeu
   @Input() question: string | null = null; // Question pour le jeu
   
@@ -32,8 +35,6 @@ export class VraiFauxGameComponent implements OnInit {
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
   
-  // État pour afficher/masquer les aides
-  showAides = signal<boolean>(false);
 
   ngOnInit(): void {
     this.shuffleVraiFauxData();
@@ -123,8 +124,5 @@ export class VraiFauxGameComponent implements OnInit {
     return this.userAnswers().size === this.getVraiFauxEnonces().length;
   }
 
-  toggleAides(): void {
-    this.showAides.update(v => !v);
-  }
 }
 
