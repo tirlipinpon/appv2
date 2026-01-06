@@ -100,17 +100,17 @@ export class ChildAuthService {
     this.currentSession = null;
     try {
       sessionStorage.removeItem(CHILD_SESSION_KEY);
-    } catch (error) {
+    } catch {
       // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
     }
     try {
       sessionStorage.removeItem(CHILD_AUTH_TOKEN_KEY);
-    } catch (error) {
+    } catch {
       // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
     }
     try {
       sessionStorage.removeItem(CHILD_AUTH_EXPIRES_AT_KEY);
-    } catch (error) {
+    } catch {
       // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
     }
   }
@@ -123,11 +123,69 @@ export class ChildAuthService {
   }
 
   /**
-   * Vérifie si un enfant est authentifié
+   * Vérifie si un enfant est authentifié (vérification simple)
    */
   isAuthenticated(): boolean {
     const token = this.getToken();
     return token !== null && this.currentSession !== null;
+  }
+
+  /**
+   * Valide la session de manière complète (présence, expiration, validité JWT)
+   * Utilisé par le guard pour une validation robuste
+   * @returns true si la session est valide, false sinon
+   */
+  async isSessionValid(): Promise<boolean> {
+    // 1. Vérifier la présence du token et de la session
+    const token = this.getToken();
+    if (!token || !this.currentSession) {
+      return false;
+    }
+
+    // 2. Vérifier l'expiration (déjà fait dans getToken(), mais on double-vérifie)
+    const expiresAtStr = sessionStorage.getItem(CHILD_AUTH_EXPIRES_AT_KEY);
+    if (!expiresAtStr) {
+      return false;
+    }
+
+    const expiresAt = parseInt(expiresAtStr, 10);
+    if (isNaN(expiresAt) || Date.now() > expiresAt) {
+      // Token expiré, nettoyer
+      this.clearSession();
+      return false;
+    }
+
+    // 3. Vérifier la structure basique du JWT (3 parties séparées par des points)
+    const jwtParts = token.split('.');
+    if (jwtParts.length !== 3) {
+      // JWT invalide, nettoyer
+      this.clearSession();
+      return false;
+    }
+
+    // 4. Décoder et vérifier l'expiration dans le payload JWT (double vérification)
+    try {
+      const payload = JSON.parse(atob(jwtParts[1]));
+      const jwtExp = payload.exp;
+      
+      // Vérifier que l'expiration JWT n'est pas passée
+      if (jwtExp && typeof jwtExp === 'number') {
+        const jwtExpiresAt = jwtExp * 1000; // Convertir en millisecondes
+        if (Date.now() > jwtExpiresAt) {
+          // JWT expiré selon son propre payload, nettoyer
+          this.clearSession();
+          return false;
+        }
+      }
+    } catch (error) {
+      // Si on ne peut pas décoder le JWT, considérer comme invalide
+      console.error('Erreur lors du décodage du JWT:', error);
+      this.clearSession();
+      return false;
+    }
+
+    // 5. Toutes les validations passées
+    return true;
   }
 
   /**
@@ -153,23 +211,29 @@ export class ChildAuthService {
 
   /**
    * Restaure la session depuis sessionStorage
+   * Valide l'expiration et la structure du JWT au chargement
    */
   private restoreSession(): void {
     try {
       const sessionData = sessionStorage.getItem(CHILD_SESSION_KEY);
       if (sessionData) {
-        // Vérifier que le token n'est pas expiré
+        // Vérifier que le token n'est pas expiré (getToken() fait déjà cette vérification)
         const token = this.getToken();
         if (token) {
-          this.currentSession = JSON.parse(sessionData) as ChildSession;
-        } else {
-          // Token expiré, nettoyer
-          this.currentSession = null;
-          try {
-            sessionStorage.removeItem(CHILD_SESSION_KEY);
-          } catch {
-            // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
+          // Vérifier la structure basique du JWT
+          const jwtParts = token.split('.');
+          if (jwtParts.length === 3) {
+            // JWT valide structurellement, restaurer la session
+            this.currentSession = JSON.parse(sessionData) as ChildSession;
+          } else {
+            // JWT invalide, nettoyer
+            this.currentSession = null;
+            this.clearSession();
           }
+        } else {
+          // Token expiré ou manquant, nettoyer
+          this.currentSession = null;
+          this.clearSession();
         }
       }
     } catch (error) {
@@ -177,7 +241,7 @@ export class ChildAuthService {
       this.currentSession = null;
       // Protéger removeItem dans le catch pour éviter une double exception
       try {
-        sessionStorage.removeItem(CHILD_SESSION_KEY);
+        this.clearSession();
       } catch {
         // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
       }

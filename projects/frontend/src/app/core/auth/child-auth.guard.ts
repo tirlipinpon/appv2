@@ -2,16 +2,28 @@ import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { ChildAuthService } from './child-auth.service';
 
-export const childAuthGuard: CanActivateFn = (_route, _state) => {
+/**
+ * Guard qui protège les routes nécessitant une authentification enfant
+ * Valide la session de manière complète (présence, expiration, validité JWT)
+ */
+export const childAuthGuard: CanActivateFn = async () => {
   const authService = inject(ChildAuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated()) {
+  // Utiliser isSessionValid() pour une validation robuste
+  const isValid = await authService.isSessionValid();
+
+  if (isValid) {
     return true;
   }
 
-  // Rediriger vers la page de connexion
-  router.navigate(['/login']);
+  // Session invalide ou expirée, nettoyer et rediriger vers la page de connexion
+  await authService.logout();
+  router.navigate(['/login'], {
+    queryParams: {
+      reason: 'session_expired',
+    },
+  });
   return false;
 };
 
