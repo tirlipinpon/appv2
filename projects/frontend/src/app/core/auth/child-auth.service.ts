@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import { ChildSession } from '../types/child-session';
 import { ENVIRONMENT } from '../tokens/environment.token';
 import { SupabaseService } from '../services/supabase/supabase.service';
@@ -13,7 +13,7 @@ const VALIDATION_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes en millisecondes
 })
 export class ChildAuthService {
   private readonly environment = inject(ENVIRONMENT, { optional: true });
-  private readonly supabaseService = inject(SupabaseService);
+  private readonly injector = inject(Injector);
   private currentSession: ChildSession | null = null;
   private validationInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -477,9 +477,12 @@ export class ChildAuthService {
     const childId = this.currentSession.child_id;
 
     try {
+      // Injection lazy pour éviter la dépendance circulaire
+      const supabaseService = this.injector.get(SupabaseService);
+      
       // Faire une requête Supabase pour vérifier que l'enfant existe et est actif
       // Le JWT dans le header permettra à RLS de vérifier l'authentification
-      const { data, error } = await this.supabaseService.client
+      const { data, error } = await supabaseService.client
         .from('children')
         .select('id, is_active')
         .eq('id', childId)
