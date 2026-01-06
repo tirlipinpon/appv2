@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import { SupabaseService } from '../services/supabase/supabase.service';
 import { ChildSession } from '../types/child-session';
 import { ENVIRONMENT } from '../tokens/environment.token';
 
@@ -11,7 +10,6 @@ const CHILD_AUTH_EXPIRES_AT_KEY = 'child_auth_expires_at';
   providedIn: 'root',
 })
 export class ChildAuthService {
-  private readonly supabase = inject(SupabaseService);
   private readonly environment = inject(ENVIRONMENT, { optional: true });
   private currentSession: ChildSession | null = null;
 
