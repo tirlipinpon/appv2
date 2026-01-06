@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../services/supabase/supabase.service';
 import { ChildSession } from '../types/child-session';
+import { ENVIRONMENT } from '../tokens/environment.token';
 
 const CHILD_SESSION_KEY = 'child_session';
 
@@ -9,6 +10,7 @@ const CHILD_SESSION_KEY = 'child_session';
 })
 export class ChildAuthService {
   private readonly supabase = inject(SupabaseService);
+  private readonly environment = inject(ENVIRONMENT, { optional: true });
   private currentSession: ChildSession | null = null;
 
   constructor() {
@@ -17,38 +19,55 @@ export class ChildAuthService {
   }
 
   /**
-   * Authentifie un enfant via prénom + code PIN
+   * Authentifie un enfant via prénom + code PIN via Edge Function sécurisée
+   * Le PIN n'est jamais exposé en frontend, validation 100% backend
    */
   async login(firstname: string, pin: string): Promise<ChildSession> {
     try {
-      // Note: Les RLS policies peuvent bloquer l'accès si l'utilisateur n'est pas authentifié via Supabase Auth
-      // On utilise l'anon key qui devrait permettre la lecture selon les policies
-      const { data, error } = await this.supabase.client
-        .from('children')
-        .select('id, firstname, school_level, parent_id, school_id, avatar_url, avatar_seed, avatar_style')
-        .eq('firstname', firstname)
-        .eq('login_pin', pin)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Erreur Supabase:', error);
-        throw new Error(`Erreur de connexion: ${error.message}`);
+      if (!this.environment) {
+        throw new Error('Configuration manquante');
       }
 
-      if (!data) {
-        throw new Error('Prénom ou code PIN incorrect. Vérifie tes informations.');
+      // 1. Appeler Edge Function (PIN jamais exposé en frontend)
+      const edgeFunctionUrl = `${this.environment.supabaseUrl}/functions/v1/auth-login-child`;
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.environment.supabaseAnonKey}`
+        },
+        body: JSON.stringify({ firstname, pin })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || 'Identifiants incorrects';
+        throw new Error(errorMessage);
       }
 
+      const { access_token, user } = await response.json();
+
+      // 2. Créer session Supabase (PAS de refresh_token - 8h suffisant)
+      const { error: sessionError } = await this.supabase.client.auth.setSession({
+        access_token,
+        refresh_token: '', // Pas de refresh token (8h suffisant pour app enfant)
+      });
+
+      if (sessionError) {
+        console.error('Erreur setSession:', sessionError);
+        throw new Error('Erreur lors de la création de la session');
+      }
+
+      // 3. Créer session enfant depuis les données de l'Edge Function
       const session: ChildSession = {
-        child_id: data.id,
-        firstname: data.firstname,
-        school_level: data.school_level,
-        parent_id: data.parent_id,
-        school_id: data.school_id,
-        avatar_url: data.avatar_url,
-        avatar_seed: data.avatar_seed,
-        avatar_style: data.avatar_style,
+        child_id: user.id,
+        firstname: user.firstname,
+        school_level: user.school_level,
+        parent_id: user.parent_id,
+        school_id: user.school_id,
+        avatar_url: user.avatar_url,
+        avatar_seed: user.avatar_seed,
+        avatar_style: user.avatar_style,
       };
 
       this.currentSession = session;
@@ -67,7 +86,10 @@ export class ChildAuthService {
   /**
    * Déconnecte l'enfant
    */
-  logout(): void {
+  async logout(): Promise<void> {
+    // Déconnecter la session Supabase Auth
+    await this.supabase.client.auth.signOut();
+    
     this.currentSession = null;
     sessionStorage.removeItem(CHILD_SESSION_KEY);
   }

@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ChildAuthService } from '../../../core/auth/child-auth.service';
 
 @Component({
@@ -87,9 +87,11 @@ import { ChildAuthService } from '../../../core/auth/child-auth.service';
 })
 export class AppLayoutComponent {
   private readonly authService = inject(ChildAuthService);
+  private readonly router = inject(Router);
 
-  onLogout(): void {
-    this.authService.logout();
+  async onLogout(): Promise<void> {
+    await this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }
 
