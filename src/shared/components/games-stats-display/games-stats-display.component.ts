@@ -93,7 +93,7 @@ export class GamesStatsDisplayComponent {
       if (this.statsKey() !== newKey) {
         this.statsKey.set(newKey);
       }
-    }, { allowSignalWrites: true });
+    });
 
     // Effect pour charger automatiquement les stats si absentes du cache
     effect(() => {

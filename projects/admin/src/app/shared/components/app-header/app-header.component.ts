@@ -134,7 +134,7 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
       console.log('[Header] Mise à jour du rôle actif:', authServiceRole);
       this.activeRole.set(authServiceRole);
     }
-  }, { allowSignalWrites: true });
+  });
 
   // Effect pour charger les profils selon le rôle actif
   private readonly roleWatcher = effect(() => {
@@ -154,7 +154,7 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
 
     // Note: Le chargement des profils parent et teacher doit être géré depuis admin
     // via injection de dépendances ou via des services fournis
-  }, { allowSignalWrites: true });
+  });
 
   async ngOnInit() {
     // Vérifier d'abord si l'utilisateur est connecté avant de charger le profil

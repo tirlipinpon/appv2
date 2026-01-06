@@ -103,7 +103,7 @@ export class SubjectsComponent implements OnInit {
     } else {
       console.log('[SubjectsComponent] Effect: conditions non remplies', { sid, listLength: list.length });
     }
-  }, { allowSignalWrites: true });
+  });
 
   subjectForm = this.fb.group({
     name: ['', Validators.required],
