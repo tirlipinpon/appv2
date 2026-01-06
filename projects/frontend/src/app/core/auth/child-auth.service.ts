@@ -124,9 +124,12 @@ export class ChildAuthService {
 
   /**
    * Vérifie si un enfant est authentifié (vérification simple)
+   * Version "safe" sans effets de bord - utilise getTokenSafe() pour éviter de nettoyer
+   * la session de manière inattendue. Pour une validation complète avec nettoyage,
+   * utiliser isSessionValid() à la place.
    */
   isAuthenticated(): boolean {
-    const token = this.getToken();
+    const token = this.getTokenSafe();
     return token !== null && this.currentSession !== null;
   }
 
@@ -292,7 +295,7 @@ export class ChildAuthService {
   /**
    * Récupère le token JWT depuis sessionStorage et vérifie l'expiration
    * Version avec effets de bord (nettoie la session si invalide)
-   * Utilisée par isAuthenticated() et isSessionValid() pour maintenir la cohérence
+   * Utilisée par isSessionValid() et restoreSession() pour maintenir la cohérence
    */
   private getToken(): string | null {
     try {
