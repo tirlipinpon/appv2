@@ -12,7 +12,7 @@ export class ChildAuthService {
   private currentSession: ChildSession | null = null;
 
   constructor() {
-    // Restaurer la session depuis localStorage au démarrage
+    // Restaurer la session depuis sessionStorage au démarrage
     this.restoreSession();
   }
 
@@ -69,7 +69,7 @@ export class ChildAuthService {
    */
   logout(): void {
     this.currentSession = null;
-    localStorage.removeItem(CHILD_SESSION_KEY);
+    sessionStorage.removeItem(CHILD_SESSION_KEY);
   }
 
   /**
@@ -87,28 +87,28 @@ export class ChildAuthService {
   }
 
   /**
-   * Sauvegarde la session dans localStorage
+   * Sauvegarde la session dans sessionStorage
    */
   private saveSession(session: ChildSession): void {
     try {
-      localStorage.setItem(CHILD_SESSION_KEY, JSON.stringify(session));
+      sessionStorage.setItem(CHILD_SESSION_KEY, JSON.stringify(session));
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de la session:', error);
     }
   }
 
   /**
-   * Restaure la session depuis localStorage
+   * Restaure la session depuis sessionStorage
    */
   private restoreSession(): void {
     try {
-      const sessionData = localStorage.getItem(CHILD_SESSION_KEY);
+      const sessionData = sessionStorage.getItem(CHILD_SESSION_KEY);
       if (sessionData) {
         this.currentSession = JSON.parse(sessionData) as ChildSession;
       }
     } catch (error) {
       console.error('Erreur lors de la restauration de la session:', error);
-      localStorage.removeItem(CHILD_SESSION_KEY);
+      sessionStorage.removeItem(CHILD_SESSION_KEY);
       this.currentSession = null;
     }
   }
