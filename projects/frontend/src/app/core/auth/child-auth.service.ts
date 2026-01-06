@@ -298,10 +298,8 @@ export class ChildAuthService {
       // Si l'un des deux est manquant, les données sont corrompues - nettoyer tout
       if (!token || !expiresAtStr) {
         // Nettoyer les données incohérentes pour éviter l'accumulation de tokens orphelins
-        if (token || expiresAtStr) {
-          // Un seul des deux existe, données corrompues - nettoyer
-          this.clearSession();
-        }
+        // et maintenir la cohérence entre currentSession et sessionStorage
+        this.clearSession();
         return null;
       }
 
