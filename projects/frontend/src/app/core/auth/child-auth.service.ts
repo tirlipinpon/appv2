@@ -249,19 +249,42 @@ export class ChildAuthService {
   }
 
   /**
-   * Sauvegarde le token JWT dans sessionStorage
+   * Sauvegarde le token JWT dans sessionStorage de manière atomique
+   * Si l'une des deux sauvegardes échoue, nettoie immédiatement pour éviter l'incohérence
    * @returns true si la sauvegarde a réussi, false sinon
    */
   private saveToken(token: string, expiresIn: number): boolean {
+    const expiresAt = Date.now() + (expiresIn * 1000);
+    let tokenSaved = false;
+    let expiresAtSaved = false;
+
     try {
-      const expiresAt = Date.now() + (expiresIn * 1000);
+      // Sauvegarder le token
       sessionStorage.setItem(CHILD_AUTH_TOKEN_KEY, token);
-      sessionStorage.setItem(CHILD_AUTH_EXPIRES_AT_KEY, expiresAt.toString());
-      return true;
+      tokenSaved = true;
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du token:', error);
+      // Si la première sauvegarde échoue, rien à nettoyer
       return false;
     }
+
+    try {
+      // Sauvegarder l'expiration
+      sessionStorage.setItem(CHILD_AUTH_EXPIRES_AT_KEY, expiresAt.toString());
+      expiresAtSaved = true;
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde de l\'expiration:', error);
+      // Si la deuxième sauvegarde échoue, nettoyer le token déjà sauvegardé pour éviter l'incohérence
+      try {
+        sessionStorage.removeItem(CHILD_AUTH_TOKEN_KEY);
+      } catch {
+        // Ignorer les erreurs de nettoyage
+      }
+      return false;
+    }
+
+    // Les deux sauvegardes ont réussi
+    return tokenSaved && expiresAtSaved;
   }
 
   /**
