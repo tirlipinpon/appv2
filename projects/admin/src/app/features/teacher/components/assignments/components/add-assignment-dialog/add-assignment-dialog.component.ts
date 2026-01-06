@@ -1,12 +1,10 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject, signal, computed, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SchoolLevelSelectComponent, ErrorSnackbarService } from '../../../../../../shared';
 import { Infrastructure } from '../../../infrastructure/infrastructure';
 import { Application } from '../../../application/application';
 import { TeacherAssignmentStore } from '../../../../store/assignments.store';
-import type { School } from '../../../../types/school';
-import type { Subject } from '../../../../types/subject';
 
 @Component({
   selector: 'app-add-assignment-dialog',
@@ -23,7 +21,7 @@ export class AddAssignmentDialogComponent implements OnInit {
   private readonly store = inject(TeacherAssignmentStore);
 
   @Input() teacherId: string | null = null;
-  @Output() close = new EventEmitter<void>();
+  @Output() dialogClose = new EventEmitter<void>();
   @Output() assignmentCreated = new EventEmitter<void>();
 
   // Forms
@@ -76,7 +74,7 @@ export class AddAssignmentDialogComponent implements OnInit {
       school_level: ['', Validators.required],
       subject_id: ['', Validators.required],
     });
-    this.assignmentForm.get('school_level')?.valueChanges.subscribe((val) => {
+    this.assignmentForm.get('school_level')?.valueChanges.subscribe(() => {
       // Réinitialiser la matière quand on change le niveau
       this.assignmentForm.patchValue({ subject_id: '' });
       this.tryLoadSubjectsForSelection();
@@ -111,7 +109,7 @@ export class AddAssignmentDialogComponent implements OnInit {
     this.application.loadSchools();
   }
 
-  onSchoolChange(schoolId: string): void {
+  onSchoolChange(_schoolId: string): void {
     // Le listener valueChanges s'occupe du reste
   }
 
@@ -233,12 +231,12 @@ export class AddAssignmentDialogComponent implements OnInit {
     this.application.createAssignment(assignmentData);
     this.assignmentForm.reset();
     this.assignmentCreated.emit();
-    this.close.emit();
+    this.dialogClose.emit();
     if (this.teacherId) this.application.loadAssignments(this.teacherId);
   }
 
   onCancel(): void {
-    this.close.emit();
+    this.dialogClose.emit();
   }
 
   getSchoolName(schoolId: string): string {

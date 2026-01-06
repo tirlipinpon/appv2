@@ -30,7 +30,7 @@
   <app-add-assignment-dialog
     *ngIf="showAssignmentDialog()"
     [teacherId]="teacherId()"
-    (close)="showAssignmentDialog.set(false)"
+    (dialogClose)="showAssignmentDialog.set(false)"
     (assignmentCreated)="onAssignmentCreated()">
   </app-add-assignment-dialog>
 
