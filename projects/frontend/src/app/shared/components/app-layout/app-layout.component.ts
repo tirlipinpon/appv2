@@ -89,9 +89,19 @@ export class AppLayoutComponent {
   private readonly authService = inject(ChildAuthService);
   private readonly router = inject(Router);
 
+  /**
+   * Gère la déconnexion de l'utilisateur
+   * Nettoie complètement la session et redirige explicitement vers la page de connexion
+   */
   async onLogout(): Promise<void> {
+    // Déconnexion complète (nettoie session, intervalles, etc.)
     await this.authService.logout();
-    this.router.navigate(['/login']);
+    
+    // Redirection explicite vers la page de connexion
+    // Utiliser replaceUrl pour éviter de pouvoir revenir en arrière
+    await this.router.navigate(['/login'], {
+      replaceUrl: true,
+    });
   }
 }
 

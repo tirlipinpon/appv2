@@ -102,21 +102,32 @@ export class ChildAuthService {
   }
 
   /**
-   * Déconnecte l'enfant
+   * Déconnecte l'enfant complètement
+   * Nettoie toutes les données de session, arrête les intervalles et réinitialise l'état
    */
   async logout(): Promise<void> {
-    // Arrêter la validation périodique
+    // 1. Arrêter la validation périodique (si active)
     this.stopPeriodicValidation();
     
-    // Supprimer le JWT et la session
+    // 2. Nettoyer toutes les données de session (JWT, session, timestamps)
     this.clearSession();
+    
+    // 3. Réinitialiser complètement l'état
+    this.currentSession = null;
+    
+    // Note : Pas besoin d'appeler supabase.auth.signOut() car on utilise un JWT manuel
+    // Le JWT est stocké dans sessionStorage et sera supprimé par clearSession()
+    
+    console.log('Déconnexion complète effectuée');
   }
 
   /**
    * Nettoie la session de manière synchrone (utilisé par getToken et logout)
+   * Supprime toutes les données de session du sessionStorage
+   * Note: currentSession est géré séparément dans logout() pour éviter les doubles assignations
+   * Cette méthode nettoie uniquement le sessionStorage, pas currentSession
    */
   private clearSession(): void {
-    this.currentSession = null;
     try {
       sessionStorage.removeItem(CHILD_SESSION_KEY);
     } catch {
