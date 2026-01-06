@@ -7,5 +7,7 @@ export interface ChildSession {
   avatar_url: string | null;
   avatar_seed: string | null;
   avatar_style: string | null;
+  createdAt: number; // Timestamp de création de la session (millisecondes)
+  lastActivity: number; // Timestamp de la dernière activité (millisecondes)
 }
 

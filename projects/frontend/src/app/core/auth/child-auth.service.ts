@@ -55,6 +55,7 @@ export class ChildAuthService {
       }
 
       // 3. Créer session enfant depuis les données de l'Edge Function
+      const now = Date.now();
       const session: ChildSession = {
         child_id: user.id,
         firstname: user.firstname,
@@ -64,6 +65,8 @@ export class ChildAuthService {
         avatar_url: user.avatar_url,
         avatar_seed: user.avatar_seed,
         avatar_style: user.avatar_style,
+        createdAt: now, // Timestamp de création
+        lastActivity: now, // Timestamp de dernière activité (initialisé à la création)
       };
 
       // 4. Sauvegarder la session (si échec, nettoyer le token pour cohérence)
@@ -134,8 +137,9 @@ export class ChildAuthService {
   }
 
   /**
-   * Valide la session de manière complète (présence, expiration, validité JWT)
+   * Valide la session de manière complète (présence, expiration, validité JWT, activité)
    * Utilisé par le guard pour une validation robuste
+   * Double expiration : absolue (8h depuis création) et relative (1h d'inactivité)
    * @returns true si la session est valide, false sinon
    */
   async isSessionValid(): Promise<boolean> {
@@ -145,7 +149,7 @@ export class ChildAuthService {
       return false;
     }
 
-    // 2. Vérifier l'expiration (déjà fait dans getToken(), mais on double-vérifie)
+    // 2. Vérifier l'expiration absolue du JWT (déjà fait dans getToken(), mais on double-vérifie)
     const expiresAtStr = sessionStorage.getItem(CHILD_AUTH_EXPIRES_AT_KEY);
     if (!expiresAtStr) {
       return false;
@@ -153,7 +157,7 @@ export class ChildAuthService {
 
     const expiresAt = parseInt(expiresAtStr, 10);
     if (isNaN(expiresAt) || Date.now() > expiresAt) {
-      // Token expiré, nettoyer
+      // Token expiré (expiration absolue), nettoyer
       this.clearSession();
       return false;
     }
@@ -187,7 +191,30 @@ export class ChildAuthService {
       return false;
     }
 
-    // 5. Toutes les validations passées
+    // 5. Vérifier l'expiration relative (1h d'inactivité)
+    const now = Date.now();
+    const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 heure en millisecondes
+    const lastActivity = this.currentSession.lastActivity || this.currentSession.createdAt;
+    
+    if (now - lastActivity > INACTIVITY_TIMEOUT) {
+      // Session expirée par inactivité (1h sans activité), nettoyer
+      console.log('Session expirée par inactivité (1h sans activité)');
+      this.clearSession();
+      return false;
+    }
+
+    // 6. Vérifier l'expiration absolue depuis création (8h maximum)
+    const ABSOLUTE_TIMEOUT = 8 * 60 * 60 * 1000; // 8 heures en millisecondes
+    const createdAt = this.currentSession.createdAt;
+    
+    if (now - createdAt > ABSOLUTE_TIMEOUT) {
+      // Session expirée par durée absolue (8h depuis création), nettoyer
+      console.log('Session expirée par durée absolue (8h depuis création)');
+      this.clearSession();
+      return false;
+    }
+
+    // 7. Toutes les validations passées
     return true;
   }
 
@@ -197,7 +224,31 @@ export class ChildAuthService {
    * Le nettoyage sera géré par l'intercepteur d'erreurs Supabase (401/403)
    */
   getAccessToken(): string | null {
+    // Mettre à jour l'activité lors de l'accès au token (activité = requête Supabase)
+    this.updateActivity();
     return this.getTokenSafe();
+  }
+
+  /**
+   * Met à jour le timestamp de dernière activité
+   * Appelé automatiquement lors des interactions (requêtes Supabase, navigation, etc.)
+   * @returns true si la mise à jour a réussi, false sinon
+   */
+  updateActivity(): boolean {
+    if (!this.currentSession) {
+      return false;
+    }
+
+    try {
+      const now = Date.now();
+      this.currentSession.lastActivity = now;
+      
+      // Sauvegarder la session mise à jour
+      return this.saveSession(this.currentSession);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'activité:', error);
+      return false;
+    }
   }
 
   /**
@@ -217,6 +268,7 @@ export class ChildAuthService {
   /**
    * Restaure la session depuis sessionStorage
    * Valide l'expiration et la structure du JWT au chargement
+   * Restaure les timestamps (createdAt, lastActivity) si présents, sinon les initialise
    */
   private restoreSession(): void {
     try {
@@ -229,7 +281,23 @@ export class ChildAuthService {
           const jwtParts = token.split('.');
           if (jwtParts.length === 3) {
             // JWT valide structurellement, restaurer la session
-            this.currentSession = JSON.parse(sessionData) as ChildSession;
+            const restoredSession = JSON.parse(sessionData) as ChildSession;
+            
+            // S'assurer que les timestamps existent (compatibilité avec anciennes sessions)
+            const now = Date.now();
+            if (!restoredSession.createdAt) {
+              restoredSession.createdAt = now;
+            }
+            if (!restoredSession.lastActivity) {
+              restoredSession.lastActivity = restoredSession.createdAt || now;
+            }
+            
+            this.currentSession = restoredSession;
+            
+            // Sauvegarder la session avec les timestamps mis à jour si nécessaire
+            if (!restoredSession.createdAt || !restoredSession.lastActivity) {
+              this.saveSession(this.currentSession);
+            }
           } else {
             // JWT invalide, nettoyer
             this.currentSession = null;

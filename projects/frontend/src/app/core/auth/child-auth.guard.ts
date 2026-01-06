@@ -4,7 +4,8 @@ import { ChildAuthService } from './child-auth.service';
 
 /**
  * Guard qui protège les routes nécessitant une authentification enfant
- * Valide la session de manière complète (présence, expiration, validité JWT)
+ * Valide la session de manière complète (présence, expiration, validité JWT, activité)
+ * Met à jour l'activité lors de la navigation (si session valide)
  */
 export const childAuthGuard: CanActivateFn = async () => {
   const authService = inject(ChildAuthService);
@@ -14,6 +15,8 @@ export const childAuthGuard: CanActivateFn = async () => {
   const isValid = await authService.isSessionValid();
 
   if (isValid) {
+    // Session valide, mettre à jour l'activité (navigation = activité)
+    authService.updateActivity();
     return true;
   }
 
