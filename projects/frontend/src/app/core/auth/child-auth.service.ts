@@ -4,6 +4,8 @@ import { ChildSession } from '../types/child-session';
 import { ENVIRONMENT } from '../tokens/environment.token';
 
 const CHILD_SESSION_KEY = 'child_session';
+const CHILD_AUTH_TOKEN_KEY = 'child_auth_token';
+const CHILD_AUTH_EXPIRES_AT_KEY = 'child_auth_expires_at';
 
 @Injectable({
   providedIn: 'root',
@@ -45,18 +47,10 @@ export class ChildAuthService {
         throw new Error(errorMessage);
       }
 
-      const { access_token, user } = await response.json();
+      const { access_token, expires_in, user } = await response.json();
 
-      // 2. Créer session Supabase (PAS de refresh_token - 8h suffisant)
-      const { error: sessionError } = await this.supabase.client.auth.setSession({
-        access_token,
-        refresh_token: '', // Pas de refresh token (8h suffisant pour app enfant)
-      });
-
-      if (sessionError) {
-        console.error('Erreur setSession:', sessionError);
-        throw new Error('Erreur lors de la création de la session');
-      }
+      // 2. Stocker le JWT manuellement (pas de setSession car JWT généré manuellement)
+      this.saveToken(access_token, expires_in);
 
       // 3. Créer session enfant depuis les données de l'Edge Function
       const session: ChildSession = {
@@ -87,11 +81,11 @@ export class ChildAuthService {
    * Déconnecte l'enfant
    */
   async logout(): Promise<void> {
-    // Déconnecter la session Supabase Auth
-    await this.supabase.client.auth.signOut();
-    
+    // Supprimer le JWT et la session
     this.currentSession = null;
     sessionStorage.removeItem(CHILD_SESSION_KEY);
+    sessionStorage.removeItem(CHILD_AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(CHILD_AUTH_EXPIRES_AT_KEY);
   }
 
   /**
@@ -105,7 +99,15 @@ export class ChildAuthService {
    * Vérifie si un enfant est authentifié
    */
   isAuthenticated(): boolean {
-    return this.currentSession !== null;
+    const token = this.getToken();
+    return token !== null && this.currentSession !== null;
+  }
+
+  /**
+   * Retourne le token JWT actuel pour les requêtes Supabase
+   */
+  getAccessToken(): string | null {
+    return this.getToken();
   }
 
   /**
@@ -126,12 +128,59 @@ export class ChildAuthService {
     try {
       const sessionData = sessionStorage.getItem(CHILD_SESSION_KEY);
       if (sessionData) {
-        this.currentSession = JSON.parse(sessionData) as ChildSession;
+        // Vérifier que le token n'est pas expiré
+        const token = this.getToken();
+        if (token) {
+          this.currentSession = JSON.parse(sessionData) as ChildSession;
+        } else {
+          // Token expiré, nettoyer
+          sessionStorage.removeItem(CHILD_SESSION_KEY);
+          this.currentSession = null;
+        }
       }
     } catch (error) {
       console.error('Erreur lors de la restauration de la session:', error);
       sessionStorage.removeItem(CHILD_SESSION_KEY);
       this.currentSession = null;
+    }
+  }
+
+  /**
+   * Sauvegarde le token JWT dans sessionStorage
+   */
+  private saveToken(token: string, expiresIn: number): void {
+    try {
+      const expiresAt = Date.now() + (expiresIn * 1000);
+      sessionStorage.setItem(CHILD_AUTH_TOKEN_KEY, token);
+      sessionStorage.setItem(CHILD_AUTH_EXPIRES_AT_KEY, expiresAt.toString());
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du token:', error);
+    }
+  }
+
+  /**
+   * Récupère le token JWT depuis sessionStorage et vérifie l'expiration
+   */
+  private getToken(): string | null {
+    try {
+      const token = sessionStorage.getItem(CHILD_AUTH_TOKEN_KEY);
+      const expiresAtStr = sessionStorage.getItem(CHILD_AUTH_EXPIRES_AT_KEY);
+
+      if (!token || !expiresAtStr) {
+        return null;
+      }
+
+      const expiresAt = parseInt(expiresAtStr, 10);
+      if (Date.now() > expiresAt) {
+        // Token expiré, nettoyer
+        this.logout();
+        return null;
+      }
+
+      return token;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du token:', error);
+      return null;
     }
   }
 }
