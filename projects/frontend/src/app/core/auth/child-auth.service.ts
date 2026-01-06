@@ -192,11 +192,23 @@ export class ChildAuthService {
       const token = sessionStorage.getItem(CHILD_AUTH_TOKEN_KEY);
       const expiresAtStr = sessionStorage.getItem(CHILD_AUTH_EXPIRES_AT_KEY);
 
+      // Si l'un des deux est manquant, les données sont corrompues - nettoyer tout
       if (!token || !expiresAtStr) {
+        // Nettoyer les données incohérentes pour éviter l'accumulation de tokens orphelins
+        if (token || expiresAtStr) {
+          // Un seul des deux existe, données corrompues - nettoyer
+          this.clearSession();
+        }
         return null;
       }
 
       const expiresAt = parseInt(expiresAtStr, 10);
+      if (isNaN(expiresAt)) {
+        // expiresAt n'est pas un nombre valide, données corrompues - nettoyer
+        this.clearSession();
+        return null;
+      }
+
       if (Date.now() > expiresAt) {
         // Token expiré, nettoyer
         this.clearSession();
@@ -206,6 +218,8 @@ export class ChildAuthService {
       return token;
     } catch (error) {
       console.error('Erreur lors de la récupération du token:', error);
+      // En cas d'erreur, nettoyer pour éviter les données corrompues
+      this.clearSession();
       return null;
     }
   }
