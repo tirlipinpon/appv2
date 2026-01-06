@@ -190,9 +190,11 @@ export class ChildAuthService {
 
   /**
    * Retourne le token JWT actuel pour les requêtes Supabase
+   * Version "safe" sans effets de bord - ne nettoie pas la session si le token est invalide
+   * Le nettoyage sera géré par l'intercepteur d'erreurs Supabase (401/403)
    */
   getAccessToken(): string | null {
-    return this.getToken();
+    return this.getTokenSafe();
   }
 
   /**
@@ -289,6 +291,8 @@ export class ChildAuthService {
 
   /**
    * Récupère le token JWT depuis sessionStorage et vérifie l'expiration
+   * Version avec effets de bord (nettoie la session si invalide)
+   * Utilisée par isAuthenticated() et isSessionValid() pour maintenir la cohérence
    */
   private getToken(): string | null {
     try {
@@ -321,6 +325,42 @@ export class ChildAuthService {
       console.error('Erreur lors de la récupération du token:', error);
       // En cas d'erreur, nettoyer pour éviter les données corrompues
       this.clearSession();
+      return null;
+    }
+  }
+
+  /**
+   * Récupère le token JWT depuis sessionStorage sans effets de bord
+   * Version "safe" utilisée par getAccessToken() pour éviter de nettoyer la session
+   * pendant une requête Supabase en cours
+   * Le nettoyage sera géré par l'intercepteur d'erreurs (401/403)
+   */
+  private getTokenSafe(): string | null {
+    try {
+      const token = sessionStorage.getItem(CHILD_AUTH_TOKEN_KEY);
+      const expiresAtStr = sessionStorage.getItem(CHILD_AUTH_EXPIRES_AT_KEY);
+
+      // Si l'un des deux est manquant, retourner null sans nettoyer
+      if (!token || !expiresAtStr) {
+        return null;
+      }
+
+      const expiresAt = parseInt(expiresAtStr, 10);
+      if (isNaN(expiresAt)) {
+        // expiresAt invalide, retourner null sans nettoyer
+        return null;
+      }
+
+      if (Date.now() > expiresAt) {
+        // Token expiré, retourner null sans nettoyer
+        // Le nettoyage sera fait par l'intercepteur d'erreurs Supabase (401/403)
+        return null;
+      }
+
+      return token;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du token:', error);
+      // En cas d'erreur, retourner null sans nettoyer
       return null;
     }
   }
