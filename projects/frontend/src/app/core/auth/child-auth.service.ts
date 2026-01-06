@@ -48,7 +48,11 @@ export class ChildAuthService {
       const { access_token, expires_in, user } = await response.json();
 
       // 2. Stocker le JWT manuellement (pas de setSession car JWT généré manuellement)
-      this.saveToken(access_token, expires_in);
+      // Si la sauvegarde échoue, on ne peut pas continuer (token requis pour les requêtes Supabase)
+      const tokenSaved = this.saveToken(access_token, expires_in);
+      if (!tokenSaved) {
+        throw new Error('Impossible de sauvegarder la session. Vérifie que la navigation privée n\'est pas activée.');
+      }
 
       // 3. Créer session enfant depuis les données de l'Edge Function
       const session: ChildSession = {
@@ -62,9 +66,15 @@ export class ChildAuthService {
         avatar_style: user.avatar_style,
       };
 
-      this.currentSession = session;
-      this.saveSession(session);
+      // 4. Sauvegarder la session (si échec, nettoyer le token pour cohérence)
+      const sessionSaved = this.saveSession(session);
+      if (!sessionSaved) {
+        // Si on ne peut pas sauvegarder la session, nettoyer le token pour éviter un état incohérent
+        this.clearSession();
+        throw new Error('Impossible de sauvegarder la session. Vérifie que la navigation privée n\'est pas activée.');
+      }
 
+      this.currentSession = session;
       return session;
     } catch (error: unknown) {
       console.error('Erreur lors de la connexion:', error);
@@ -129,12 +139,15 @@ export class ChildAuthService {
 
   /**
    * Sauvegarde la session dans sessionStorage
+   * @returns true si la sauvegarde a réussi, false sinon
    */
-  private saveSession(session: ChildSession): void {
+  private saveSession(session: ChildSession): boolean {
     try {
       sessionStorage.setItem(CHILD_SESSION_KEY, JSON.stringify(session));
+      return true;
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de la session:', error);
+      return false;
     }
   }
 
@@ -173,14 +186,17 @@ export class ChildAuthService {
 
   /**
    * Sauvegarde le token JWT dans sessionStorage
+   * @returns true si la sauvegarde a réussi, false sinon
    */
-  private saveToken(token: string, expiresIn: number): void {
+  private saveToken(token: string, expiresIn: number): boolean {
     try {
       const expiresAt = Date.now() + (expiresIn * 1000);
       sessionStorage.setItem(CHILD_AUTH_TOKEN_KEY, token);
       sessionStorage.setItem(CHILD_AUTH_EXPIRES_AT_KEY, expiresAt.toString());
+      return true;
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du token:', error);
+      return false;
     }
   }
 
