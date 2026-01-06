@@ -88,9 +88,21 @@ export class ChildAuthService {
    */
   private clearSession(): void {
     this.currentSession = null;
-    sessionStorage.removeItem(CHILD_SESSION_KEY);
-    sessionStorage.removeItem(CHILD_AUTH_TOKEN_KEY);
-    sessionStorage.removeItem(CHILD_AUTH_EXPIRES_AT_KEY);
+    try {
+      sessionStorage.removeItem(CHILD_SESSION_KEY);
+    } catch (error) {
+      // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
+    }
+    try {
+      sessionStorage.removeItem(CHILD_AUTH_TOKEN_KEY);
+    } catch (error) {
+      // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
+    }
+    try {
+      sessionStorage.removeItem(CHILD_AUTH_EXPIRES_AT_KEY);
+    } catch (error) {
+      // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
+    }
   }
 
   /**
@@ -139,14 +151,23 @@ export class ChildAuthService {
           this.currentSession = JSON.parse(sessionData) as ChildSession;
         } else {
           // Token expiré, nettoyer
-          sessionStorage.removeItem(CHILD_SESSION_KEY);
           this.currentSession = null;
+          try {
+            sessionStorage.removeItem(CHILD_SESSION_KEY);
+          } catch {
+            // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
+          }
         }
       }
     } catch (error) {
       console.error('Erreur lors de la restauration de la session:', error);
-      sessionStorage.removeItem(CHILD_SESSION_KEY);
       this.currentSession = null;
+      // Protéger removeItem dans le catch pour éviter une double exception
+      try {
+        sessionStorage.removeItem(CHILD_SESSION_KEY);
+      } catch {
+        // Ignorer les erreurs de sessionStorage (mode navigation privée, etc.)
+      }
     }
   }
 
