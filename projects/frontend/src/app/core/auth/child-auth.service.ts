@@ -1,21 +1,30 @@
 import { Injectable, inject } from '@angular/core';
 import { ChildSession } from '../types/child-session';
 import { ENVIRONMENT } from '../tokens/environment.token';
+import { SupabaseService } from '../services/supabase/supabase.service';
 
 const CHILD_SESSION_KEY = 'child_session';
 const CHILD_AUTH_TOKEN_KEY = 'child_auth_token';
 const CHILD_AUTH_EXPIRES_AT_KEY = 'child_auth_expires_at';
+const VALIDATION_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes en millisecondes
 
 @Injectable({
   providedIn: 'root',
 })
 export class ChildAuthService {
   private readonly environment = inject(ENVIRONMENT, { optional: true });
+  private readonly supabaseService = inject(SupabaseService);
   private currentSession: ChildSession | null = null;
+  private validationInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     // Restaurer la session depuis sessionStorage au démarrage
     this.restoreSession();
+    
+    // Démarrer la validation périodique si une session existe
+    if (this.currentSession) {
+      this.startPeriodicValidation();
+    }
   }
 
   /**
@@ -78,6 +87,10 @@ export class ChildAuthService {
       }
 
       this.currentSession = session;
+      
+      // Démarrer la validation périodique après connexion réussie
+      this.startPeriodicValidation();
+      
       return session;
     } catch (error: unknown) {
       console.error('Erreur lors de la connexion:', error);
@@ -92,6 +105,9 @@ export class ChildAuthService {
    * Déconnecte l'enfant
    */
   async logout(): Promise<void> {
+    // Arrêter la validation périodique
+    this.stopPeriodicValidation();
+    
     // Supprimer le JWT et la session
     this.clearSession();
   }
@@ -433,6 +449,81 @@ export class ChildAuthService {
       console.error('Erreur lors de la récupération du token:', error);
       // En cas d'erreur, retourner null sans nettoyer
       return null;
+    }
+  }
+
+  /**
+   * Valide la session avec le backend
+   * Vérifie que l'enfant existe toujours et est actif dans la base de données
+   * @returns true si l'enfant est valide et actif, false sinon
+   */
+  async validateSessionWithBackend(): Promise<boolean> {
+    // Si pas de session, pas besoin de valider
+    if (!this.currentSession) {
+      return false;
+    }
+
+    const childId = this.currentSession.child_id;
+
+    try {
+      // Faire une requête Supabase pour vérifier que l'enfant existe et est actif
+      // Le JWT dans le header permettra à RLS de vérifier l'authentification
+      const { data, error } = await this.supabaseService.client
+        .from('children')
+        .select('id, is_active')
+        .eq('id', childId)
+        .maybeSingle();
+
+      // Gérer les erreurs réseau ou de connexion (ne pas déconnecter si erreur temporaire)
+      if (error) {
+        // Erreur réseau ou temporaire - ne pas déconnecter
+        // Seules les erreurs 401/403 (gérées par l'intercepteur) doivent déconnecter
+        console.warn('Erreur lors de la validation backend (non critique):', error);
+        return true; // Considérer comme valide pour éviter les déconnexions intempestives
+      }
+
+      // Si l'enfant n'existe pas ou n'est pas actif, déconnecter
+      if (!data || !data.is_active) {
+        console.log('Enfant désactivé ou inexistant, déconnexion automatique');
+        await this.logout();
+        return false;
+      }
+
+      // L'enfant existe et est actif
+      return true;
+    } catch (error) {
+      // Erreur inattendue (exception non gérée par Supabase)
+      // Ne pas déconnecter en cas d'erreur réseau temporaire
+      console.error('Erreur lors de la validation backend:', error);
+      return true; // Considérer comme valide pour éviter les déconnexions intempestives
+    }
+  }
+
+  /**
+   * Démarre la validation périodique avec le backend
+   * Valide toutes les 10 minutes que l'enfant est toujours actif
+   */
+  private startPeriodicValidation(): void {
+    // Arrêter l'interval existant s'il y en a un
+    this.stopPeriodicValidation();
+
+    // Démarrer un nouvel interval de validation toutes les 10 minutes
+    this.validationInterval = setInterval(async () => {
+      // Valider la session avec le backend
+      await this.validateSessionWithBackend();
+    }, VALIDATION_INTERVAL_MS);
+
+    console.log('Validation périodique démarrée (toutes les 10 minutes)');
+  }
+
+  /**
+   * Arrête la validation périodique
+   */
+  private stopPeriodicValidation(): void {
+    if (this.validationInterval) {
+      clearInterval(this.validationInterval);
+      this.validationInterval = null;
+      console.log('Validation périodique arrêtée');
     }
   }
 }
