@@ -82,6 +82,13 @@ export class ChildAuthService {
    */
   async logout(): Promise<void> {
     // Supprimer le JWT et la session
+    this.clearSession();
+  }
+
+  /**
+   * Nettoie la session de manière synchrone (utilisé par getToken et logout)
+   */
+  private clearSession(): void {
     this.currentSession = null;
     sessionStorage.removeItem(CHILD_SESSION_KEY);
     sessionStorage.removeItem(CHILD_AUTH_TOKEN_KEY);
@@ -173,7 +180,7 @@ export class ChildAuthService {
       const expiresAt = parseInt(expiresAtStr, 10);
       if (Date.now() > expiresAt) {
         // Token expiré, nettoyer
-        this.logout();
+        this.clearSession();
         return null;
       }
 
