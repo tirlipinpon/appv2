@@ -18,7 +18,7 @@ import { GameFeedbackMessageService, GameFeedbackMessage } from '../../services/
           <span class="feedback-emoji" *ngIf="feedback()?.emoji">{{ feedback()?.emoji }}</span>
           <span class="feedback-text">{{ feedback()?.message }}</span>
         </div>
-        <div *ngIf="successRate() !== null && !isCorrect()" class="success-rate-badge">
+        <div *ngIf="shouldShowBadge()" class="success-rate-badge">
           {{ formattedSuccessRate() }}
         </div>
       </div>
@@ -136,6 +136,8 @@ export class GameFeedbackMessageComponent {
   successRate = input<number | null>(null);
   gameType = input<string | null>(null);
   explanation = input<string | undefined>(undefined);
+  correctCount = input<number>(0);
+  incorrectCount = input<number>(0);
 
   // Computed
   feedback = computed<GameFeedbackMessage | null>(() => {
@@ -149,6 +151,26 @@ export class GameFeedbackMessageComponent {
   formattedSuccessRate = computed<string>(() => {
     const rate = this.successRate();
     if (rate === null) return '';
+    
+    // Pour les jeux spécifiques, utiliser les compteurs
+    const correct = this.correctCount();
+    const incorrect = this.incorrectCount();
+    const total = correct + incorrect;
+    
+    // Afficher le ratio et le pourcentage : "2/5 (40%)" ou "0/1 (0%)"
+    if (total > 0) {
+      return `${correct}/${total} (${rate}%)`;
+    }
+    
     return `${rate}%`;
+  });
+  
+  // Computed pour vérifier si on doit afficher le badge
+  shouldShowBadge = computed<boolean>(() => {
+    const rate = this.successRate();
+    const total = this.correctCount() + this.incorrectCount();
+    // Afficher le badge seulement si on a un pourcentage, que la réponse est incorrecte
+    // et qu'il y a eu au moins une tentative
+    return rate !== null && rate !== undefined && !this.isCorrect() && total > 0;
   });
 }

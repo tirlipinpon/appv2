@@ -299,7 +299,9 @@ import { GameFeedbackMessageComponent } from './components/game-feedback-message
           [isCorrect]="feedback()?.isCorrect ?? false"
           [successRate]="currentGameSuccessRate()"
           [gameType]="normalizedGameType()"
-          [explanation]="feedback()?.explanation">
+          [explanation]="feedback()?.explanation"
+          [correctCount]="getCorrectCountForDisplay()"
+          [incorrectCount]="getIncorrectCountForDisplay()">
         </app-game-feedback-message>
 
         <!-- Boutons d'action - Masqués si le jeu est complété (le modal gère la navigation) -->
@@ -591,7 +593,36 @@ export class GameComponent implements OnInit, OnDestroy {
   gameCompleted = signal<boolean>(false);
   categoryProgress = signal<number>(0); // Progression globale de la catégorie
   totalScore = signal<number>(0); // Score total (nombre de jeux résolus avec score 100%)
-  currentGameSuccessRate = signal<number | null>(null); // Taux de réussite du jeu actuel (0-100)
+  
+  // Compteurs pour calculer le pourcentage lors de la validation
+  correctAnswersCount = signal<number>(0);
+  incorrectAnswersCount = signal<number>(0);
+  
+  // Taux de réussite calculé après chaque validation
+  // Pour les jeux génériques : utilise le score du GameState
+  // Pour les jeux spécifiques : utilise les compteurs de tentatives
+  currentGameSuccessRate = computed<number | null>(() => {
+    // Pour les jeux génériques avec questions, utiliser le score du GameState
+    if (this.isGenericGame()) {
+      const gameState = this.application.getGameState()();
+      if (!gameState || !gameState.questions || gameState.questions.length === 0) {
+        return null;
+      }
+      const totalQuestions = gameState.questions.length;
+      const score = gameState.score;
+      if (totalQuestions === 0) return null;
+      return Math.round((score / totalQuestions) * 100);
+    }
+    
+    // Pour les jeux spécifiques, utiliser les compteurs de tentatives
+    const correct = this.correctAnswersCount();
+    const incorrect = this.incorrectAnswersCount();
+    const total = correct + incorrect;
+    
+    if (total === 0) return null;
+    
+    return Math.round((correct / total) * 100);
+  });
   
   // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
   showAides = signal<boolean>(false);
@@ -831,7 +862,8 @@ export class GameComponent implements OnInit, OnDestroy {
     this.feedback.set(null);
     this.correctAnswer.set(null);
     this.showAides.set(false);
-    this.currentGameSuccessRate.set(null);
+    this.correctAnswersCount.set(0);
+    this.incorrectAnswersCount.set(0);
     
     await this.application.initializeGame(gameId);
     // Charger les informations de subject et category pour le breadcrumb
@@ -839,8 +871,6 @@ export class GameComponent implements OnInit, OnDestroy {
     // Charger la progression globale de la catégorie
     await this.loadCategoryProgress();
     await this.loadTotalScore();
-    // Charger le taux de réussite du jeu actuel
-    await this.loadCurrentGameSuccessRate();
   }
 
   private async loadCategoryProgress(): Promise<void> {
@@ -880,25 +910,6 @@ export class GameComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async loadCurrentGameSuccessRate(): Promise<void> {
-    const child = this.childAuthService.getCurrentChild();
-    const childId = child?.child_id;
-    const game = this.application.getCurrentGame()();
-    
-    if (!childId || !game?.id) {
-      this.currentGameSuccessRate.set(null);
-      return;
-    }
-    
-    try {
-      const scores = await this.subjectsInfrastructure.getGameScores(childId, [game.id]);
-      const score = scores.get(game.id) ?? null;
-      this.currentGameSuccessRate.set(score);
-    } catch (error) {
-      console.error('Erreur lors du chargement du taux de réussite du jeu:', error);
-      this.currentGameSuccessRate.set(null);
-    }
-  }
 
   async loadBreadcrumbData(): Promise<void> {
     const game = this.application.getCurrentGame()();
@@ -1005,6 +1016,40 @@ export class GameComponent implements OnInit, OnDestroy {
   async onCaseVideValidated(isValid: boolean): Promise<void> {
     this.showFeedback.set(true);
     
+    // Compter le nombre réel de cases correctes/incorrectes
+    const caseVideData = this.getCaseVideData();
+    if (caseVideData?.cases_vides && this.caseVideGameComponent) {
+      let correctCases = 0;
+      let incorrectCases = 0;
+      
+      // Compter les cases correctes et incorrectes
+      for (const caseVide of caseVideData.cases_vides) {
+        const userAnswer = this.caseVideGameComponent.getWordInCase(caseVide.index);
+        if (userAnswer) {
+          const isCaseCorrect = userAnswer.toLowerCase().trim() === caseVide.reponse_correcte.toLowerCase().trim();
+          if (isCaseCorrect) {
+            correctCases++;
+          } else {
+            incorrectCases++;
+          }
+        } else {
+          // Case non remplie = incorrecte
+          incorrectCases++;
+        }
+      }
+      
+      // Ajouter les comptes réels
+      this.correctAnswersCount.update(count => count + correctCases);
+      this.incorrectAnswersCount.update(count => count + incorrectCases);
+    } else if (caseVideData?.reponse_valide) {
+      // Format ancien : compter comme 1 tentative
+      if (isValid) {
+        this.correctAnswersCount.update(count => count + 1);
+      } else {
+        this.incorrectAnswersCount.update(count => count + 1);
+      }
+    }
+    
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
       message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
@@ -1014,8 +1059,6 @@ export class GameComponent implements OnInit, OnDestroy {
     
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
-      // Mettre à jour le taux de réussite après une validation réussie
-      this.currentGameSuccessRate.set(100);
       // Afficher immédiatement le modal de complétion
       await this.completeGame();
     } else {
@@ -1028,6 +1071,62 @@ export class GameComponent implements OnInit, OnDestroy {
   async onLiensValidated(isValid: boolean): Promise<void> {
     this.showFeedback.set(true);
     
+    // Compter le nombre réel de liens corrects/incorrects
+    const liensData = this.getLiensData();
+    if (liensData && this.liensGameComponent) {
+      let correctLiens = 0;
+      let incorrectLiens = 0;
+      
+      // Récupérer les liens de l'utilisateur depuis le composant
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userLinks = (this.liensGameComponent as any).userLinks() as Map<string, string>;
+      const userLinksArray = Array.from(userLinks.entries()).map((entry) => {
+        const [mot, reponse] = entry;
+        return { mot, reponse };
+      });
+      
+      // Compter les liens corrects et incorrects
+      // Pour chaque lien attendu, vérifier si l'utilisateur l'a créé correctement
+      for (const correctLink of liensData.liens) {
+        const userLink = userLinksArray.find(link => link.mot === correctLink.mot);
+        if (userLink && userLink.reponse === correctLink.reponse) {
+          correctLiens++;
+        } else {
+          // Lien incorrect ou manquant
+          incorrectLiens++;
+        }
+      }
+      
+      // Compter aussi les liens créés par l'utilisateur qui ne sont pas dans la liste correcte
+      // (liens supplémentaires incorrects)
+      for (const userLink of userLinksArray) {
+        const isInCorrectList = liensData.liens.some(correct => 
+          correct.mot === userLink.mot && correct.reponse === userLink.reponse
+        );
+        if (!isInCorrectList) {
+          // Ce lien n'est pas dans la liste correcte
+          // Vérifier si on l'a déjà compté (lien incorrect pour un mot attendu)
+          const isMotInCorrectList = liensData.liens.some(correct => correct.mot === userLink.mot);
+          if (!isMotInCorrectList) {
+            // Ce mot n'est même pas dans la liste attendue, c'est un lien supplémentaire incorrect
+            incorrectLiens++;
+          }
+          // Si le mot est dans la liste mais avec une mauvaise réponse, on l'a déjà compté dans la boucle précédente
+        }
+      }
+      
+      // Ajouter les comptes réels
+      this.correctAnswersCount.update(count => count + correctLiens);
+      this.incorrectAnswersCount.update(count => count + incorrectLiens);
+    } else {
+      // Fallback : compter comme 1 tentative
+      if (isValid) {
+        this.correctAnswersCount.update(count => count + 1);
+      } else {
+        this.incorrectAnswersCount.update(count => count + 1);
+      }
+    }
+    
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
       message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
@@ -1037,8 +1136,6 @@ export class GameComponent implements OnInit, OnDestroy {
     
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
-      // Mettre à jour le taux de réussite après une validation réussie
-      this.currentGameSuccessRate.set(100);
       // Afficher immédiatement le modal de complétion
       await this.completeGame();
     } else {
@@ -1052,6 +1149,46 @@ export class GameComponent implements OnInit, OnDestroy {
   async onVraiFauxValidated(isValid: boolean): Promise<void> {
     this.showFeedback.set(true);
     
+    // Compter le nombre réel d'énoncés corrects/incorrects
+    const vraiFauxData = this.getVraiFauxData();
+    if (vraiFauxData && this.vraiFauxGameComponent) {
+      let correctEnonces = 0;
+      let incorrectEnonces = 0;
+      
+      // Récupérer les réponses de l'utilisateur depuis le composant
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userAnswers = (this.vraiFauxGameComponent as any).userAnswers() as Map<number, boolean>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const enonces = (this.vraiFauxGameComponent as any).getVraiFauxEnonces() as { texte: string; reponse_correcte: boolean }[];
+      
+      // Compter les énoncés corrects et incorrects
+      for (let i = 0; i < enonces.length; i++) {
+        const enonce = enonces[i];
+        const userAnswer = userAnswers.get(i);
+        if (userAnswer !== undefined) {
+          if (userAnswer === enonce.reponse_correcte) {
+            correctEnonces++;
+          } else {
+            incorrectEnonces++;
+          }
+        } else {
+          // Énoncé sans réponse = incorrect
+          incorrectEnonces++;
+        }
+      }
+      
+      // Ajouter les comptes réels
+      this.correctAnswersCount.update(count => count + correctEnonces);
+      this.incorrectAnswersCount.update(count => count + incorrectEnonces);
+    } else {
+      // Fallback : compter comme 1 tentative
+      if (isValid) {
+        this.correctAnswersCount.update(count => count + 1);
+      } else {
+        this.incorrectAnswersCount.update(count => count + 1);
+      }
+    }
+    
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
       message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
@@ -1061,8 +1198,6 @@ export class GameComponent implements OnInit, OnDestroy {
     
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
-      // Mettre à jour le taux de réussite après une validation réussie
-      this.currentGameSuccessRate.set(100);
       // Afficher immédiatement le modal de complétion
       await this.completeGame();
     } else {
@@ -1077,10 +1212,42 @@ export class GameComponent implements OnInit, OnDestroy {
     this.selectedAnswer.set(index);
   }
 
+  // Méthodes pour obtenir les compteurs selon le type de jeu
+  getCorrectCountForDisplay(): number {
+    // Pour les jeux génériques, utiliser le score du GameState
+    if (this.isGenericGame()) {
+      const gameState = this.application.getGameState()();
+      return gameState?.score ?? 0;
+    }
+    // Pour les jeux spécifiques, utiliser les compteurs
+    return this.correctAnswersCount();
+  }
+
+  getIncorrectCountForDisplay(): number {
+    // Pour les jeux génériques, calculer : totalQuestions - score
+    if (this.isGenericGame()) {
+      const gameState = this.application.getGameState()();
+      if (!gameState || !gameState.questions) return 0;
+      const totalQuestions = gameState.questions.length;
+      const score = gameState.score ?? 0;
+      return totalQuestions - score;
+    }
+    // Pour les jeux spécifiques, utiliser les compteurs
+    return this.incorrectAnswersCount();
+  }
+
 
   async onGameValidated(isCorrect: boolean): Promise<void> {
     // Gérer la validation des jeux spécifiques
     this.showFeedback.set(true);
+    
+    // Compter la réponse après validation
+    if (isCorrect) {
+      this.correctAnswersCount.update(count => count + 1);
+    } else {
+      this.incorrectAnswersCount.update(count => count + 1);
+    }
+    
     const feedbackData: FeedbackData = {
       isCorrect,
       message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
@@ -1091,8 +1258,6 @@ export class GameComponent implements OnInit, OnDestroy {
     // Pour les jeux spécifiques, on considère qu'il n'y a qu'une seule "question"
     // donc on passe directement à la fin du jeu si correct
     if (isCorrect) {
-      // Mettre à jour le taux de réussite après une validation réussie
-      this.currentGameSuccessRate.set(100);
       // Afficher immédiatement le modal de complétion
       await this.completeGame();
     }
@@ -1110,6 +1275,10 @@ export class GameComponent implements OnInit, OnDestroy {
 
     this.correctAnswer.set(question.correctAnswer);
     const result = await this.application.submitAnswer(this.selectedAnswer()!);
+    
+    // Pour les jeux génériques, le score est géré par le GameState
+    // Pas besoin de compter manuellement, le computed utilisera gameState.score
+    
     this.feedback.set(result.feedback);
     this.showFeedback.set(true);
   }
@@ -1142,8 +1311,6 @@ export class GameComponent implements OnInit, OnDestroy {
     await this.loadCategoryProgress();
     // Recharger le score total après avoir complété le jeu
     await this.loadTotalScore();
-    // Recharger le taux de réussite du jeu actuel après complétion
-    await this.loadCurrentGameSuccessRate();
     
     // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
     const normalizedGameType = normalizeGameType(game?.game_type);
@@ -1350,6 +1517,12 @@ export class GameComponent implements OnInit, OnDestroy {
       this.finalScore.set(0);
       this.completionMessage.set('');
       this.showAides.set(false);
+      
+      // Réinitialiser les compteurs pour repartir à zéro lors d'un réessai
+      this.correctAnswersCount.set(0);
+      this.incorrectAnswersCount.set(0);
+      
+      // Pour les jeux génériques, le score est géré par le GameState (remis à zéro automatiquement)
       
       // Recharger le jeu depuis la base de données
       // Les composants enfants seront réinitialisés via l'événement resetRequested

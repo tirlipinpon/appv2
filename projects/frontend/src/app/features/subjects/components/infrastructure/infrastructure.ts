@@ -136,6 +136,60 @@ export class SubjectsInfrastructure {
     return scoresMap;
   }
 
+  /**
+   * Calcule le pourcentage de réussite précis pour un jeu en comptant toutes les questions
+   * correctes et incorrectes de toutes les tentatives
+   * @param childId - ID de l'enfant
+   * @param gameId - ID du jeu
+   * @returns Pourcentage de réussite (0-100) ou null si aucune tentative
+   */
+  async calculateGameSuccessRate(childId: string, gameId: string): Promise<number | null> {
+    const { data, error } = await this.supabase.client
+      .from('frontend_game_attempts')
+      .select('score, responses_json')
+      .eq('child_id', childId)
+      .eq('game_id', gameId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    // Pour les jeux avec questions (jeux génériques)
+    // On peut calculer le pourcentage basé sur le score moyen ou le meilleur score
+    // Mais pour être plus précis, on devrait compter toutes les questions répondues
+    
+    // Pour l'instant, on utilise le meilleur score comme indicateur
+    // TODO: Améliorer pour compter précisément toutes les questions correctes/incorrectes
+    let bestScore = 0;
+    let totalQuestions = 0;
+    
+    for (const attempt of data) {
+      // Le score dans la table est déjà un pourcentage (0-100)
+      if (attempt.score > bestScore) {
+        bestScore = attempt.score;
+      }
+      
+      // Si on a des réponses JSON, on pourrait compter les questions
+      if (attempt.responses_json && typeof attempt.responses_json === 'object') {
+        const responses = attempt.responses_json as { questions?: unknown[] };
+        if (responses.questions && Array.isArray(responses.questions)) {
+          // Le nombre de questions dans cette tentative
+          const questionsInAttempt = responses.questions.length;
+          if (questionsInAttempt > totalQuestions) {
+            totalQuestions = questionsInAttempt;
+          }
+        }
+      }
+    }
+
+    // Si on a un meilleur score, on l'utilise
+    // Sinon, on retourne null (aucune tentative valide)
+    return bestScore > 0 ? bestScore : null;
+  }
+
 
   async loadGamesByCategory(categoryId: string, childId?: string): Promise<Game[]> {
     const { data, error } = await this.supabase.client
