@@ -53,7 +53,7 @@ import {
       <!-- Liste des matières -->
       <div class="subjects-grid" *ngIf="!isLoading() && !selectedSubjectId()">
         <div
-          *ngFor="let subject of subjects()"
+          *ngFor="let subject of filteredSubjects()"
           class="subject-card"
           (click)="selectSubject(subject.id)"
           (keydown.enter)="selectSubject(subject.id)"
@@ -69,7 +69,7 @@ import {
         <h2>{{ selectedSubject()?.name }}</h2>
         <div class="categories-grid">
           <div
-            *ngFor="let category of categories()"
+            *ngFor="let category of filteredCategories()"
             class="category-card"
             (click)="selectCategory(category.id)"
             (keydown.enter)="selectCategory(category.id)"
@@ -401,12 +401,124 @@ export class SubjectsComponent implements OnInit {
   gameScores = signal<Map<string, number>>(new Map());
   loadingGames = signal<boolean>(false);
 
+  // Signal pour stocker les catégories par matière (pour le filtrage)
+  categoriesBySubject = signal<Map<string, any[]>>(new Map());
+
   // Exposer les signals directement pour le template
   subjects = computed(() => this.application.getSubjects()());
   categories = computed(() => this.application.getCategories()());
   isLoading = computed(() => this.application.isLoading()());
   error = computed(() => this.application.getError()());
   selectedSubject = computed(() => this.application.getSelectedSubject()());
+
+  // Computed signal pour filtrer les catégories avec des jeux
+  // On cache seulement si les stats sont chargées ET total = 0
+  // Si les stats ne sont pas encore chargées, on affiche la catégorie (pour ne pas cacher prématurément)
+  filteredCategories = computed(() => {
+    const allCategories = this.categories();
+    const childId = this.getCurrentChildId();
+    // Lire le signal statsByKey pour que le computed soit réactif aux changements
+    const statsByKey = this.gamesStatsService.statsByKey();
+    
+    if (allCategories.length === 0) return [];
+    
+    return allCategories.filter((category: { id: string }) => {
+      // Utiliser directement le store pour être réactif
+      const categoryKey = childId ? `${childId}:category:${category.id}` : `category:${category.id}`;
+      const cached = statsByKey[categoryKey];
+      const stats = cached && (Date.now() - cached.timestamp < 5 * 60 * 1000)
+        ? { total: cached.total, stats: cached.stats }
+        : null;
+      
+      // Si les stats ne sont pas encore chargées (null), on affiche la catégorie
+      // On cache seulement si les stats sont chargées ET total = 0
+      if (stats === null) {
+        return true; // Afficher par défaut si stats pas encore chargées
+      }
+      // Cacher seulement si total = 0 (pas de jeux)
+      return stats.total > 0;
+    });
+  });
+
+  // Computed signal pour filtrer les matières avec des jeux (directs ou via catégories)
+  filteredSubjects = computed(() => {
+    const allSubjects = this.subjects();
+    const childId = this.getCurrentChildId();
+    const categoriesMap = this.categoriesBySubject();
+    // Lire le signal statsByKey pour que le computed soit réactif aux changements
+    const statsByKey = this.gamesStatsService.statsByKey();
+    
+    if (allSubjects.length === 0) return [];
+    
+    return allSubjects.filter((subject: { id: string }) => {
+      // Vérifier si la matière a des jeux directs
+      // Utiliser directement le store pour être réactif
+      const subjectKey = childId ? `${childId}:subject:${subject.id}` : `subject:${subject.id}`;
+      const subjectCached = statsByKey[subjectKey];
+      const subjectStats = subjectCached && (Date.now() - subjectCached.timestamp < 5 * 60 * 1000) 
+        ? { total: subjectCached.total, stats: subjectCached.stats }
+        : null;
+      
+      if (subjectStats !== null && subjectStats.total > 0) {
+        // Stats chargées et la matière a des jeux directs
+        return true;
+      }
+      
+      // Vérifier si les catégories ont été chargées pour cette matière
+      const subjectCategories = categoriesMap.get(subject.id);
+      
+      // Si undefined, les catégories ne sont pas encore chargées, afficher par défaut
+      if (subjectCategories === undefined) {
+        return true;
+      }
+      
+      // Si tableau vide, la matière n'a pas de catégories
+      // Dans ce cas, vérifier uniquement les jeux directs
+      if (subjectCategories.length === 0) {
+        // Pas de catégories : vérifier uniquement les jeux directs
+        // Si les stats sont chargées et total = 0, cacher
+        if (subjectStats !== null) {
+          // Stats chargées : cacher si total = 0
+          return subjectStats.total > 0;
+        }
+        // Si les stats ne sont pas encore chargées, afficher par défaut
+        // (elles seront chargées par l'effect et le computed se réexécutera)
+        return true;
+      }
+      
+      // La matière a des catégories : vérifier si au moins une catégorie a des jeux
+      let hasCategoryWithGames = false;
+      let allCategoriesStatsLoaded = true;
+      
+      for (const category of subjectCategories) {
+        const categoryKey = childId ? `${childId}:category:${category.id}` : `category:${category.id}`;
+        const categoryCached = statsByKey[categoryKey];
+        const categoryStats = categoryCached && (Date.now() - categoryCached.timestamp < 5 * 60 * 1000)
+          ? { total: categoryCached.total, stats: categoryCached.stats }
+          : null;
+        
+        if (categoryStats === null) {
+          // Stats pas encore chargées pour cette catégorie
+          allCategoriesStatsLoaded = false;
+        } else if (categoryStats.total > 0) {
+          hasCategoryWithGames = true;
+        }
+      }
+      
+      // Si au moins une catégorie a des jeux, afficher la matière
+      if (hasCategoryWithGames) {
+        return true;
+      }
+      
+      // Si toutes les stats sont chargées et aucune catégorie n'a de jeux, cacher
+      // Sinon, afficher (pour ne pas cacher prématurément)
+      if (allCategoriesStatsLoaded) {
+        return false;
+      }
+      
+      return true;
+    });
+  });
   
   // Jeux triés : d'abord les non complétés, puis les complétés
   sortedGames = computed(() => {
@@ -486,29 +598,87 @@ export class SubjectsComponent implements OnInit {
       this.selectedSubjectId.set(subject?.id || null);
     });
 
-    // Précharger les stats des catégories quand elles sont chargées (désactivé temporairement pour éviter les boucles)
-    // Le chargement se fera à la demande quand l'utilisateur sélectionne une catégorie
-    // effect(() => {
-    //   const cats = this.categories();
-    //   const child = this.authService.getCurrentChild();
-    //   const childId = child?.child_id;
-    //   
-    //   if (cats.length > 0 && childId) {
-    //     const categoryIds = cats.map((cat: { id: string }) => cat.id);
-    //     this.gamesStatsService.preloadStats(
-    //       [],
-    //       categoryIds,
-    //       {
-    //         subjectLoader: () => {
-    //           throw new Error('Subject loader not used in this context');
-    //         },
-    //         categoryLoader: (categoryId: string) => 
-    //           this.infrastructure.getGamesStatsForChildCategory(childId, categoryId)
-    //       },
-    //       childId
-    //     );
-    //   }
-    // });
+    // Charger les stats pour toutes les catégories quand elles sont chargées
+    effect(() => {
+      const cats = this.categories();
+      const child = this.authService.getCurrentChild();
+      const childId = child?.child_id;
+      
+      if (cats.length > 0 && childId) {
+        const categoryIds = cats.map((cat: { id: string }) => cat.id);
+        
+        // Précharger les stats pour toutes les catégories
+        // Cela permet au filtrage de fonctionner et à app-games-stats-display d'afficher les stats
+        this.gamesStatsService.preloadStats(
+          [],
+          categoryIds,
+          {
+            subjectLoader: () => {
+              throw new Error('Subject loader not used in this context');
+            },
+            categoryLoader: (categoryId: string) => 
+              this.infrastructure.getGamesStatsForChildCategory(childId, categoryId)
+          },
+          childId
+        );
+      }
+    });
+
+    // Charger les stats pour toutes les matières et leurs catégories
+    effect(() => {
+      const subjects = this.subjects();
+      const child = this.authService.getCurrentChild();
+      const childId = child?.child_id;
+      
+      if (subjects.length > 0 && childId) {
+        const subjectIds = subjects.map((subject: { id: string }) => subject.id);
+        
+        // Précharger les stats pour toutes les matières
+        this.gamesStatsService.preloadStats(
+          subjectIds,
+          [],
+          {
+            subjectLoader: (subjectId: string) => 
+              this.infrastructure.getGamesStatsForChildSubject(childId, subjectId),
+            categoryLoader: () => {
+              throw new Error('Category loader not used in this context');
+            }
+          },
+          childId
+        );
+
+        // Charger les catégories pour chaque matière en parallèle
+        Promise.all(
+          subjectIds.map(async (subjectId: string) => {
+            try {
+              const categories = await this.infrastructure.loadSubjectCategories(subjectId);
+              const currentMap = new Map(this.categoriesBySubject());
+              currentMap.set(subjectId, categories);
+              this.categoriesBySubject.set(currentMap);
+              
+              // Charger les stats pour ces catégories
+              if (categories.length > 0) {
+                const categoryIds = categories.map((cat: { id: string }) => cat.id);
+                this.gamesStatsService.preloadStats(
+                  [],
+                  categoryIds,
+                  {
+                    subjectLoader: () => {
+                      throw new Error('Subject loader not used in this context');
+                    },
+                    categoryLoader: (categoryId: string) => 
+                      this.infrastructure.getGamesStatsForChildCategory(childId, categoryId)
+                  },
+                  childId
+                );
+              }
+            } catch (error) {
+              console.error(`Erreur lors du chargement des catégories pour la matière ${subjectId}:`, error);
+            }
+          })
+        );
+      }
+    });
   }
 
   async ngOnInit(): Promise<void> {
