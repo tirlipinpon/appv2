@@ -743,35 +743,10 @@ export class SubjectsComponent implements OnInit {
         );
 
         // Charger les catégories pour chaque matière en parallèle
-        Promise.all(
-          subjectIds.map(async (subjectId: string) => {
-            try {
-              const categories = await this.infrastructure.loadSubjectCategories(subjectId);
-              const currentMap = new Map(this.categoriesBySubject());
-              currentMap.set(subjectId, categories);
-              this.categoriesBySubject.set(currentMap);
-              
-              // Charger les stats pour ces catégories
-              if (categories.length > 0) {
-                const categoryIds = categories.map((cat: { id: string }) => cat.id);
-                this.gamesStatsService.preloadStats(
-                  [],
-                  categoryIds,
-                  {
-                    subjectLoader: () => {
-                      throw new Error('Subject loader not used in this context');
-                    },
-                    categoryLoader: (categoryId: string) => 
-                      this.infrastructure.getGamesStatsForChildCategory(childId, categoryId)
-                  },
-                  childId
-                );
-              }
-            } catch (error) {
-              console.error(`Erreur lors du chargement des catégories pour la matière ${subjectId}:`, error);
-            }
-          })
-        );
+        // Utiliser .then() et .catch() car les effects ne peuvent pas être async
+        this.loadCategoriesForSubjects(subjectIds, childId).catch((error) => {
+          console.error('Erreur lors du chargement des catégories:', error);
+        });
       }
     });
   }
@@ -839,6 +814,42 @@ export class SubjectsComponent implements OnInit {
     } finally {
       this.loadingGames.set(false);
     }
+  }
+
+  /**
+   * Charge les catégories pour toutes les matières en parallèle
+   * Méthode séparée pour pouvoir être appelée depuis l'effect avec await
+   */
+  private async loadCategoriesForSubjects(subjectIds: string[], childId: string): Promise<void> {
+    await Promise.all(
+      subjectIds.map(async (subjectId: string) => {
+        try {
+          const categories = await this.infrastructure.loadSubjectCategories(subjectId);
+          const currentMap = new Map(this.categoriesBySubject());
+          currentMap.set(subjectId, categories);
+          this.categoriesBySubject.set(currentMap);
+          
+          // Charger les stats pour ces catégories
+          if (categories.length > 0) {
+            const categoryIds = categories.map((cat: { id: string }) => cat.id);
+            this.gamesStatsService.preloadStats(
+              [],
+              categoryIds,
+              {
+                subjectLoader: () => {
+                  throw new Error('Subject loader not used in this context');
+                },
+                categoryLoader: (categoryId: string) => 
+                  this.infrastructure.getGamesStatsForChildCategory(childId, categoryId)
+              },
+              childId
+            );
+          }
+        } catch (error) {
+          console.error(`Erreur lors du chargement des catégories pour la matière ${subjectId}:`, error);
+        }
+      })
+    );
   }
 
   goBack(): void {
