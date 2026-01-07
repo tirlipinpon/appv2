@@ -249,7 +249,7 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: var(--theme-warn-color, #F44336);
+    background: #757575;
     color: white;
     border: none;
     cursor: pointer;
@@ -262,7 +262,7 @@
     transition: all 0.2s;
 
     &:hover {
-      background: #d32f2f;
+      background: #616161;
       transform: scale(1.1);
     }
   }

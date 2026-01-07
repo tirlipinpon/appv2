@@ -114,11 +114,6 @@
       background: #eeeeee;
     }
 
-    &.selected {
-      border-color: var(--theme-primary-color, #4CAF50);
-      background: rgba(76, 175, 80, 0.1);
-    }
-
     &.correct {
       border-color: #4CAF50;
       background: #4CAF50;
@@ -142,16 +137,38 @@
       transition: all 0.2s;
     }
 
-    &.selected .circle {
-      background: var(--theme-primary-color, #4CAF50);
-    }
-
     &.correct .circle {
       background: white;
     }
 
     &.incorrect .circle {
       background: white;
+    }
+  }
+
+  .vrai-button {
+    &.selected {
+      border-color: var(--theme-primary-color, #4CAF50);
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    &.selected .circle {
+      background: var(--theme-primary-color, #4CAF50);
+    }
+  }
+
+  .faux-button {
+    &:hover:not(:disabled) {
+      border-color: #F44336;
+    }
+
+    &.selected {
+      border-color: #F44336;
+      background: rgba(244, 67, 54, 0.1);
+    }
+
+    &.selected .circle {
+      background: #F44336;
     }
   }
 

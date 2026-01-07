@@ -40,8 +40,6 @@ import {
     <div class="subjects-container">
       <!-- Breadcrumb -->
       <app-breadcrumb [items]="breadcrumbItems()" />
-      
-      <h1>{{ pageTitle() }}</h1>
 
       <div *ngIf="isLoading()" class="loading">
         Chargement...
@@ -67,7 +65,6 @@ import {
 
       <!-- Sous-matières d'une matière sélectionnée -->
       <div *ngIf="selectedSubjectId() && selectedSubject() && !selectedCategoryId()" class="categories-view">
-        <h2>{{ selectedSubject()?.name }}</h2>
         
         <!-- Catégories (sous-matières) -->
         <div *ngIf="filteredCategories().length > 0" class="categories-section">
@@ -116,7 +113,7 @@ import {
               {{ getRemainingSubjectGamesCount() }}/{{ getTotalSubjectGamesCount() }} jeux restants
             </div>
             <app-games-stats-display 
-              [subjectId]="selectedSubjectId() ?? undefined" 
+              [subjectId]="selectedSubjectId()" 
               [childId]="getCurrentChildId()" />
           </div>
           <div class="games-grid">
@@ -145,7 +142,6 @@ import {
       <!-- Jeux d'une sous-matière sélectionnée -->
       <div *ngIf="selectedCategoryId()" class="games-view">
         <div class="games-header" *ngIf="!loadingGames() && categoryGames().length > 0">
-          <h2>Jeux disponibles</h2>
           <div class="games-counter">
             {{ getRemainingGamesCount() }}/{{ getTotalGamesCount() }} jeux restants
           </div>
@@ -190,12 +186,6 @@ import {
       .subjects-container {
         padding: 2rem;
       }
-    }
-
-
-    h1 {
-      margin-bottom: 2rem;
-      color: var(--theme-text-color, #333);
     }
 
     .loading, .error {
@@ -332,11 +322,6 @@ import {
       margin-bottom: 1.5rem;
       flex-wrap: wrap;
       gap: 1rem;
-    }
-
-    .games-header h2 {
-      margin: 0;
-      color: var(--theme-text-color, #333);
     }
 
     .games-counter {
