@@ -67,37 +67,75 @@ import {
       <!-- Sous-matières d'une matière sélectionnée -->
       <div *ngIf="selectedSubjectId() && selectedSubject() && !selectedCategoryId()" class="categories-view">
         <h2>{{ selectedSubject()?.name }}</h2>
-        <div class="categories-grid">
-          <div
-            *ngFor="let category of filteredCategories()"
-            class="category-card"
-            (click)="selectCategory(category.id)"
-            (keydown.enter)="selectCategory(category.id)"
-            tabindex="0"
-            role="button">
-            <h3>{{ category.name }}</h3>
-            <p *ngIf="category.description">{{ category.description }}</p>
-            <app-games-stats-display 
-              [categoryId]="category.id" 
-              [childId]="getCurrentChildId()" />
-            <div *ngIf="category.progress" class="category-progress">
-              <app-progress-bar
-                [value]="category.progress.completion_percentage"
-                [max]="100"
-                [label]="'Progression'"
-                variant="primary">
-              </app-progress-bar>
-              <app-star-rating
-                [rating]="category.progress.stars_count"
-                [maxStars]="3"
-                [showText]="true">
-              </app-star-rating>
-              <div *ngIf="category.progress.completed" class="completed-badge">
-                ✓ Terminé
+        
+        <!-- Catégories (sous-matières) -->
+        <div *ngIf="filteredCategories().length > 0" class="categories-section">
+          <h3>Sous-matières</h3>
+          <div class="categories-grid">
+            <div
+              *ngFor="let category of filteredCategories()"
+              class="category-card"
+              (click)="selectCategory(category.id)"
+              (keydown.enter)="selectCategory(category.id)"
+              tabindex="0"
+              role="button">
+              <h3>{{ category.name }}</h3>
+              <p *ngIf="category.description">{{ category.description }}</p>
+              <app-games-stats-display 
+                [categoryId]="category.id" 
+                [childId]="getCurrentChildId()" />
+              <div *ngIf="category.progress" class="category-progress">
+                <app-progress-bar
+                  [value]="category.progress.completion_percentage"
+                  [max]="100"
+                  [label]="'Progression'"
+                  variant="primary">
+                </app-progress-bar>
+                <app-star-rating
+                  [rating]="category.progress.stars_count"
+                  [maxStars]="3"
+                  [showText]="true">
+                </app-star-rating>
+                <div *ngIf="category.progress.completed" class="completed-badge">
+                  ✓ Terminé
+                </div>
+              </div>
+              <div *ngIf="!category.progress" class="not-started">
+                Pas encore commencé
               </div>
             </div>
-            <div *ngIf="!category.progress" class="not-started">
-              Pas encore commencé
+          </div>
+        </div>
+
+        <!-- Jeux directs de la matière -->
+        <div *ngIf="subjectGames().length > 0" class="subject-games-section">
+          <div class="games-header">
+            <h3>Jeux de la matière</h3>
+            <div class="games-counter">
+              {{ getRemainingSubjectGamesCount() }}/{{ getTotalSubjectGamesCount() }} jeux restants
+            </div>
+            <app-games-stats-display 
+              [subjectId]="selectedSubjectId() ?? undefined" 
+              [childId]="getCurrentChildId()" />
+          </div>
+          <div class="games-grid">
+            <div
+              *ngFor="let game of sortedSubjectGames()"
+              class="game-card"
+              [class.completed]="isGameCompleted(game.id)"
+              [routerLink]="['/game', game.id]">
+              <div class="game-card-header">
+                <h3>{{ game.name }}</h3>
+                <div *ngIf="isGameCompleted(game.id)" class="completed-badge">
+                  <span class="check-icon">✓</span>
+                  <span class="score-text">{{ getGameScore(game.id) }}%</span>
+                </div>
+              </div>
+              <p *ngIf="game.description">{{ game.description }}</p>
+              <div class="game-type-badge" [style.background-color]="getGameTypeStyle(game.game_type).bgColor" [style.color]="getGameTypeStyle(game.game_type).color">
+                <span class="game-type-icon">{{ getGameTypeStyle(game.game_type).icon }}</span>
+                <span class="game-type-label">{{ getGameTypeStyle(game.game_type).label }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -201,6 +239,25 @@ import {
 
     .categories-view {
       margin-top: 2rem;
+    }
+
+    .categories-section {
+      margin-bottom: 3rem;
+    }
+
+    .categories-section h3 {
+      margin-bottom: 1rem;
+      color: var(--theme-text-color, #333);
+      font-size: 1.25rem;
+    }
+
+    .subject-games-section {
+      margin-top: 2rem;
+    }
+
+    .subject-games-section h3 {
+      margin: 0;
+      color: var(--theme-text-color, #333);
     }
 
 
@@ -398,6 +455,7 @@ export class SubjectsComponent implements OnInit {
   selectedSubjectId = signal<string | null>(null);
   selectedCategoryId = signal<string | null>(null);
   categoryGames = signal<Game[]>([]);
+  subjectGames = signal<Game[]>([]);
   gameScores = signal<Map<string, number>>(new Map());
   loadingGames = signal<boolean>(false);
 
@@ -539,6 +597,26 @@ export class SubjectsComponent implements OnInit {
     // Retourner d'abord les non complétés, puis les complétés
     return [...incompleteGames, ...completedGames];
   });
+
+  // Jeux directs de la matière triés : d'abord les non complétés, puis les complétés
+  sortedSubjectGames = computed(() => {
+    const games = this.subjectGames();
+    const scores = this.gameScores();
+    
+    // Séparer les jeux complétés et non complétés
+    const incompleteGames = games.filter(game => {
+      const score = scores.get(game.id);
+      return score !== 100;
+    });
+    
+    const completedGames = games.filter(game => {
+      const score = scores.get(game.id);
+      return score === 100;
+    });
+    
+    // Retourner d'abord les non complétés, puis les complétés
+    return [...incompleteGames, ...completedGames];
+  });
   
   // Catégorie sélectionnée pour le breadcrumb
   selectedCategory = computed(() => {
@@ -596,6 +674,23 @@ export class SubjectsComponent implements OnInit {
     effect(() => {
       const subject = this.selectedSubject();
       this.selectedSubjectId.set(subject?.id || null);
+    });
+
+    // Recharger les jeux directs quand une matière est sélectionnée
+    // (y compris quand on revient de la page de jeu)
+    effect(() => {
+      const subjectId = this.selectedSubjectId();
+      const categoryId = this.selectedCategoryId();
+      
+      // Ne charger les jeux directs que si une matière est sélectionnée et aucune catégorie n'est sélectionnée
+      if (subjectId && !categoryId) {
+        // Vérifier si les jeux ne sont pas déjà chargés pour cette matière
+        // On recharge toujours pour s'assurer que les scores sont à jour après avoir joué
+        this.loadSubjectGames(subjectId);
+      } else if (!subjectId) {
+        // Nettoyer les jeux directs si aucune matière n'est sélectionnée
+        this.subjectGames.set([]);
+      }
     });
 
     // Charger les stats pour toutes les catégories quand elles sont chargées
@@ -705,6 +800,45 @@ export class SubjectsComponent implements OnInit {
 
   async selectSubject(subjectId: string): Promise<void> {
     await this.application.selectSubject(subjectId);
+    // Les jeux directs seront chargés par l'effect qui surveille selectedSubjectId
+  }
+
+  /**
+   * Charge les jeux directs d'une matière
+   * Méthode séparée pour pouvoir être appelée depuis l'effect
+   */
+  private async loadSubjectGames(subjectId: string): Promise<void> {
+    this.loadingGames.set(true);
+    try {
+      const child = this.authService.getCurrentChild();
+      const childId = child?.child_id;
+      const games = await this.infrastructure.loadGamesBySubject(subjectId, childId);
+      this.subjectGames.set(games);
+      
+      // Charger les stats de jeux pour la matière
+      if (childId) {
+        this.gamesStatsService.loadStatsForSubject(
+          subjectId,
+          () => this.infrastructure.getGamesStatsForChildSubject(childId, subjectId),
+          childId
+        );
+      }
+      
+      // Charger les scores des jeux directs si l'enfant est connecté
+      if (childId && games.length > 0) {
+        const gameIds = games.map(g => g.id);
+        const scores = await this.infrastructure.getGameScores(childId, gameIds);
+        // Fusionner avec les scores existants
+        const currentScores = new Map(this.gameScores());
+        scores.forEach((score, gameId) => currentScores.set(gameId, score));
+        this.gameScores.set(currentScores);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des jeux directs de la matière:', error);
+      this.subjectGames.set([]);
+    } finally {
+      this.loadingGames.set(false);
+    }
   }
 
   goBack(): void {
@@ -716,6 +850,7 @@ export class SubjectsComponent implements OnInit {
       // Retour depuis les catégories vers les matières
       // Réinitialiser à la fois le signal local et le store
       this.selectedSubjectId.set(null);
+      this.subjectGames.set([]);
       this.application.resetSelection();
     }
   }
@@ -724,6 +859,7 @@ export class SubjectsComponent implements OnInit {
     this.selectedSubjectId.set(null);
     this.selectedCategoryId.set(null);
     this.categoryGames.set([]);
+    this.subjectGames.set([]);
     this.application.resetSelection();
   }
 
@@ -731,6 +867,7 @@ export class SubjectsComponent implements OnInit {
     if (this.selectedCategoryId()) {
       this.selectedCategoryId.set(null);
       this.categoryGames.set([]);
+      // Ne pas nettoyer subjectGames car ils doivent rester visibles
     }
   }
 
@@ -896,5 +1033,21 @@ export class SubjectsComponent implements OnInit {
    */
   getTotalGamesCount(): number {
     return this.categoryGames().length;
+  }
+
+  /**
+   * Calcule le nombre de jeux directs restants (non complétés)
+   */
+  getRemainingSubjectGamesCount(): number {
+    const games = this.subjectGames();
+    const scores = this.gameScores();
+    return games.filter(game => scores.get(game.id) !== 100).length;
+  }
+  
+  /**
+   * Retourne le nombre total de jeux directs
+   */
+  getTotalSubjectGamesCount(): number {
+    return this.subjectGames().length;
   }
 }
