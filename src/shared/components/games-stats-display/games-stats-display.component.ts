@@ -1,4 +1,4 @@
-import { Component, input, inject, computed, effect, ChangeDetectionStrategy, untracked } from '@angular/core';
+import { Component, input, inject, computed, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GamesStatsService } from '../../services/games-stats/games-stats.service';
 import { GamesStatsStore } from '../../store/games-stats.store';
@@ -125,7 +125,12 @@ export class GamesStatsDisplayComponent {
         // Charger les stats
         const subjectId = this.subjectId();
         const categoryId = this.categoryId();
-        const service = this.gamesStatsService as any;
+        // Le wrapper service dans admin a loadStatsForSubjects et loadStatsForCategories
+        // Vérifier si ces méthodes existent (elles sont disponibles dans GamesStatsWrapperService)
+        const service = this.gamesStatsService as GamesStatsService & {
+          loadStatsForCategories?: (categoryIds: string[]) => void;
+          loadStatsForSubjects?: (subjectIds: string[]) => void;
+        };
         
         if (categoryId != null && typeof service.loadStatsForCategories === 'function') {
           service.loadStatsForCategories([categoryId]);
