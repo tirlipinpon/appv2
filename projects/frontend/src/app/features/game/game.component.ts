@@ -32,11 +32,12 @@ import {
   getGameTypeVariations,
 } from '@shared/utils/game-type.util';
 import { normalizeGameType } from '../../shared/utils/game-normalization.util';
+import { GameFeedbackMessageComponent } from './components/game-feedback-message/game-feedback-message.component';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent, GameFeedbackMessageComponent],
   template: `
     <div class="game-container">
       <!-- Breadcrumb -->
@@ -293,14 +294,13 @@ import { normalizeGameType } from '../../shared/utils/game-normalization.util';
         }
 
         <!-- Feedback -->
-        <div *ngIf="showFeedback() && feedback()" class="feedback-container" [class.correct]="feedback()?.isCorrect" [class.incorrect]="!feedback()?.isCorrect">
-          <div class="feedback-message">
-            {{ feedback()?.message }}
-          </div>
-          <div *ngIf="feedback()?.explanation" class="feedback-explanation">
-            {{ feedback()?.explanation }}
-          </div>
-        </div>
+        <app-game-feedback-message
+          *ngIf="showFeedback() && feedback()"
+          [isCorrect]="feedback()?.isCorrect ?? false"
+          [successRate]="currentGameSuccessRate()"
+          [gameType]="normalizedGameType()"
+          [explanation]="feedback()?.explanation">
+        </app-game-feedback-message>
 
         <!-- Boutons d'action - Masqués si le jeu est complété (le modal gère la navigation) -->
         <div class="actions-container" *ngIf="!isGameCompleted() || !showCompletionScreen()">
@@ -591,6 +591,7 @@ export class GameComponent implements OnInit, OnDestroy {
   gameCompleted = signal<boolean>(false);
   categoryProgress = signal<number>(0); // Progression globale de la catégorie
   totalScore = signal<number>(0); // Score total (nombre de jeux résolus avec score 100%)
+  currentGameSuccessRate = signal<number | null>(null); // Taux de réussite du jeu actuel (0-100)
   
   // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
   showAides = signal<boolean>(false);
@@ -686,6 +687,13 @@ export class GameComponent implements OnInit, OnDestroy {
   gameType = computed(() => {
     const game = this.application.getCurrentGame()();
     return game?.game_type || null;
+  });
+
+  // Type de jeu normalisé pour le service de feedback
+  normalizedGameType = computed(() => {
+    const type = this.gameType();
+    if (!type) return null;
+    return normalizeGameType(type);
   });
 
   gameData = computed(() => {
@@ -823,6 +831,7 @@ export class GameComponent implements OnInit, OnDestroy {
     this.feedback.set(null);
     this.correctAnswer.set(null);
     this.showAides.set(false);
+    this.currentGameSuccessRate.set(null);
     
     await this.application.initializeGame(gameId);
     // Charger les informations de subject et category pour le breadcrumb
@@ -830,6 +839,8 @@ export class GameComponent implements OnInit, OnDestroy {
     // Charger la progression globale de la catégorie
     await this.loadCategoryProgress();
     await this.loadTotalScore();
+    // Charger le taux de réussite du jeu actuel
+    await this.loadCurrentGameSuccessRate();
   }
 
   private async loadCategoryProgress(): Promise<void> {
@@ -866,6 +877,26 @@ export class GameComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Erreur lors du chargement du score total:', error);
       this.totalScore.set(0);
+    }
+  }
+
+  private async loadCurrentGameSuccessRate(): Promise<void> {
+    const child = this.childAuthService.getCurrentChild();
+    const childId = child?.child_id;
+    const game = this.application.getCurrentGame()();
+    
+    if (!childId || !game?.id) {
+      this.currentGameSuccessRate.set(null);
+      return;
+    }
+    
+    try {
+      const scores = await this.subjectsInfrastructure.getGameScores(childId, [game.id]);
+      const score = scores.get(game.id) ?? null;
+      this.currentGameSuccessRate.set(score);
+    } catch (error) {
+      console.error('Erreur lors du chargement du taux de réussite du jeu:', error);
+      this.currentGameSuccessRate.set(null);
     }
   }
 
@@ -973,31 +1004,18 @@ export class GameComponent implements OnInit, OnDestroy {
 
   async onCaseVideValidated(isValid: boolean): Promise<void> {
     this.showFeedback.set(true);
-    const caseVideData = this.getCaseVideData();
-    let message = '';
-    let explanation = '';
-    
-    if (caseVideData?.texte && caseVideData.cases_vides) {
-      // Nouveau format
-      message = isValid ? 'Bravo ! Toutes les réponses sont correctes ! ✅' : 'Certaines réponses sont incorrectes. ❌';
-      // Ne pas afficher les bonnes réponses si la réponse est incorrecte
-      explanation = '';
-    } else if (caseVideData?.debut_phrase && caseVideData.fin_phrase && caseVideData.reponse_valide) {
-      // Ancien format
-      message = isValid ? 'Bravo ! Bonne réponse ! ✅' : 'Ce n\'est pas la bonne réponse. ❌';
-      // Ne pas afficher les bonnes réponses si la réponse est incorrecte
-      explanation = '';
-    }
     
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
-      message,
-      explanation
+      message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
+      explanation: ''
     };
     this.feedback.set(feedbackData);
     
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
+      // Mettre à jour le taux de réussite après une validation réussie
+      this.currentGameSuccessRate.set(100);
       // Afficher immédiatement le modal de complétion
       await this.completeGame();
     } else {
@@ -1009,17 +1027,18 @@ export class GameComponent implements OnInit, OnDestroy {
 
   async onLiensValidated(isValid: boolean): Promise<void> {
     this.showFeedback.set(true);
-    const message = isValid ? 'Bravo ! Tous les liens sont corrects ! ✅' : 'Certains liens sont incorrects. ❌';
     
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
-      message,
+      message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
       explanation: ''
     };
     this.feedback.set(feedbackData);
     
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
+      // Mettre à jour le taux de réussite après une validation réussie
+      this.currentGameSuccessRate.set(100);
       // Afficher immédiatement le modal de complétion
       await this.completeGame();
     } else {
@@ -1032,17 +1051,18 @@ export class GameComponent implements OnInit, OnDestroy {
 
   async onVraiFauxValidated(isValid: boolean): Promise<void> {
     this.showFeedback.set(true);
-    const message = isValid ? 'Bravo ! Toutes les réponses sont correctes ! ✅' : 'Certaines réponses sont incorrectes. ❌';
     
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
-      message,
+      message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
       explanation: ''
     };
     this.feedback.set(feedbackData);
     
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
+      // Mettre à jour le taux de réussite après une validation réussie
+      this.currentGameSuccessRate.set(100);
       // Afficher immédiatement le modal de complétion
       await this.completeGame();
     } else {
@@ -1063,7 +1083,7 @@ export class GameComponent implements OnInit, OnDestroy {
     this.showFeedback.set(true);
     const feedbackData: FeedbackData = {
       isCorrect,
-      message: isCorrect ? 'Bravo ! Bonne réponse ! ✅' : 'Ce n\'est pas la bonne réponse. Réessaye ! ❌',
+      message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
       explanation: ''
     };
     this.feedback.set(feedbackData);
@@ -1071,6 +1091,8 @@ export class GameComponent implements OnInit, OnDestroy {
     // Pour les jeux spécifiques, on considère qu'il n'y a qu'une seule "question"
     // donc on passe directement à la fin du jeu si correct
     if (isCorrect) {
+      // Mettre à jour le taux de réussite après une validation réussie
+      this.currentGameSuccessRate.set(100);
       // Afficher immédiatement le modal de complétion
       await this.completeGame();
     }
@@ -1120,6 +1142,8 @@ export class GameComponent implements OnInit, OnDestroy {
     await this.loadCategoryProgress();
     // Recharger le score total après avoir complété le jeu
     await this.loadTotalScore();
+    // Recharger le taux de réussite du jeu actuel après complétion
+    await this.loadCurrentGameSuccessRate();
     
     // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
     const normalizedGameType = normalizeGameType(game?.game_type);

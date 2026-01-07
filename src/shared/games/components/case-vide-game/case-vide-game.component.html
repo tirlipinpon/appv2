@@ -14,16 +14,6 @@
     [aideVideoUrl]="aideVideoUrl">
   </app-aide-section> @if (caseVideData.texte && caseVideData.banque_mots) {
   <!-- Nouveau format : Drag and Drop -->
-  @if ((showResult || isSubmitted()) && isCorrect() !== null) {
-  <div
-    class="result-message"
-    [class.correct]="isCorrect()"
-    [class.incorrect]="!isCorrect()"
-  >
-    @if (isCorrect()) { ✅ Toutes les réponses sont correctes ! } @else { ❌
-    Certaines réponses sont incorrectes. }
-  </div>
-  }
 
   <!-- Banque de mots -->
   <div class="banque-mots-container">
@@ -117,15 +107,6 @@
   </div>
   } @else {
   <!-- Ancien format : Input texte simple -->
-  @if ((showResult || isSubmitted()) && isCorrect() !== null) {
-  <div
-    class="result-message"
-    [class.correct]="isCorrect()"
-    [class.incorrect]="!isCorrect()"
-  >
-    @if (isCorrect()) { ✅ Bonne réponse ! } @else { ❌ Mauvaise réponse. }
-  </div>
-  }
   <div class="case-vide-sentence">
     <span>{{ caseVideData.debut_phrase }}</span>
     <input

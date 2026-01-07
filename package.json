@@ -1,6 +1,6 @@
 {
   "name": "appv2",
-  "version": "0.177.0",
+  "version": "0.179.0",
   "scripts": {
     "ng": "ng",
     "prebuild:admin": "node scripts/increment-version.js && node scripts/generate-version.js",

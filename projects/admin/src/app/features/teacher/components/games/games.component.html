@@ -259,8 +259,8 @@
     <div class="section-header" (click)="toggleGamesList()">
       <h3>📋 Mes jeux ({{ games().length }})</h3>
       <app-games-stats-display 
-        [subjectId]="subjectId() || undefined" 
-        [categoryId]="selectedCategoryId() || undefined">
+        [subjectId]="subjectId() || null" 
+        [categoryId]="selectedCategoryId() || null">
       </app-games-stats-display>
       <button type="button" class="toggle-btn" [attr.aria-expanded]="isGamesListExpanded()">
         {{ isGamesListExpanded() ? '−' : '+' }}
