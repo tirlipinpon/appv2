@@ -14,15 +14,6 @@
     [aideImageUrl]="aideImageUrl"
     [aideVideoUrl]="aideVideoUrl">
   </app-aide-section>
-  @if ((showResult || isSubmitted()) && isCorrect() !== null) {
-    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-      @if (isCorrect()) {
-        ✅ Toutes les réponses sont correctes !
-      } @else {
-        ❌ Certaines réponses sont incorrectes.
-      }
-    </div>
-  }
 
   <div class="vrai-faux-grid">
     <div class="vrai-faux-header">

@@ -14,11 +14,6 @@
     [aideImageUrl]="aideImageUrl"
     [aideVideoUrl]="aideVideoUrl">
   </app-aide-section>
-  @if (isSubmitted() && isCorrect()) {
-    <div class="result-message correct">
-      ✅ Bravo ! Toutes les paires ont été trouvées !
-    </div>
-  }
 
   <div class="progress-info">
     Paires trouvées : {{ getProgress() }} / {{ getTotalPairs() }}

@@ -14,15 +14,6 @@
     [aideImageUrl]="aideImageUrl"
     [aideVideoUrl]="aideVideoUrl">
   </app-aide-section>
-  @if ((showResult || isSubmitted()) && isCorrect() !== null) {
-    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-      @if (isCorrect()) {
-        ✅ Tous les liens sont corrects !
-      } @else {
-        ❌ Certains liens sont incorrects.
-      }
-    </div>
-  }
 
   <div class="liens-grid-container">
     <div class="liens-grid" #liensGrid>

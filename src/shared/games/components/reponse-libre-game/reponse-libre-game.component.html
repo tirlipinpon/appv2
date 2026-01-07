@@ -36,18 +36,6 @@
     </div>
   }
 
-  @if (isSubmitted() && showResult && isCorrect()) {
-    <div class="result-message correct">
-      ✅ Bonne réponse !
-    </div>
-  }
-
-  @if (isSubmitted() && showResult && !isCorrect()) {
-    <div class="result-message incorrect">
-      ❌ Mauvaise réponse. La bonne réponse était : "{{ getReponseValide() }}"
-    </div>
-  }
-
   <app-game-error-actions
     [isSubmitted]="isSubmitted()"
     [isCorrect]="isCorrect()"

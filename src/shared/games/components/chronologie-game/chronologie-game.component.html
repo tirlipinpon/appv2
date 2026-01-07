@@ -59,12 +59,6 @@
     </div>
   }
 
-  @if (isSubmitted() && showResult && isCorrect()) {
-    <div class="result-message correct">
-      ✅ Ordre correct !
-    </div>
-  }
-
   <app-game-error-actions
     [isSubmitted]="isSubmitted()"
     [isCorrect]="isCorrect()"

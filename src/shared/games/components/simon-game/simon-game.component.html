@@ -14,16 +14,6 @@
     [aideImageUrl]="aideImageUrl"
     [aideVideoUrl]="aideVideoUrl">
   </app-aide-section>
-  <!-- Message de résultat -->
-  @if (isGameOver()) {
-    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-      @if (isCorrect()) {
-        ✅ Bravo ! Vous avez réussi le niveau {{ currentLevel() }} !
-      } @else {
-        ❌ Erreur ! Vous avez atteint le niveau {{ currentLevel() }}.
-      }
-    </div>
-  }
 
   <!-- Informations du jeu -->
   <div class="game-info">

@@ -105,13 +105,6 @@
     </div>
   </div>
 
-  <!-- Message de résultat -->
-  @if (resultMessage(); as message) {
-    <div class="result-message" [class.correct]="isCorrect()" [class.incorrect]="!isCorrect()">
-      {{ message }}
-    </div>
-  }
-
   <!-- Actions -->
   @if (!isSubmitted()) {
     <div class="actions">

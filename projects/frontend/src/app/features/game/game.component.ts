@@ -33,11 +33,12 @@ import {
 } from '@shared/utils/game-type.util';
 import { normalizeGameType } from '../../shared/utils/game-normalization.util';
 import { GameFeedbackMessageComponent } from './components/game-feedback-message/game-feedback-message.component';
+import { GameErrorModalComponent } from '../../shared/components/game-error-modal/game-error-modal.component';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent, GameFeedbackMessageComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent, GameFeedbackMessageComponent, GameErrorModalComponent],
   template: `
     <div class="game-container">
       <!-- Breadcrumb -->
@@ -293,9 +294,9 @@ import { GameFeedbackMessageComponent } from './components/game-feedback-message
           </div>
         }
 
-        <!-- Feedback -->
+        <!-- Feedback - Masqué si le modal d'erreur est affiché -->
         <app-game-feedback-message
-          *ngIf="showFeedback() && feedback()"
+          *ngIf="showFeedback() && feedback() && !shouldShowErrorModal()"
           [isCorrect]="feedback()?.isCorrect ?? false"
           [successRate]="currentGameSuccessRate()"
           [gameType]="normalizedGameType()"
@@ -343,6 +344,19 @@ import { GameFeedbackMessageComponent } from './components/game-feedback-message
         [actions]="completionActions()"
         (overlayClick)="goToSubjects()">
       </app-completion-modal>
+
+      <!-- Modal d'erreur -->
+      <app-game-error-modal
+        [visible]="shouldShowErrorModal()"
+        [isCorrect]="feedback()?.isCorrect ?? false"
+        [successRate]="currentGameSuccessRate()"
+        [gameType]="normalizedGameType()"
+        [explanation]="feedback()?.explanation"
+        [correctCount]="getCorrectCountForDisplay()"
+        [incorrectCount]="getIncorrectCountForDisplay()"
+        (resetRequested)="onErrorModalReset()"
+        (nextRequested)="onErrorModalNext()">
+      </app-game-error-modal>
     </div>
   `,
   styles: [`
@@ -627,6 +641,13 @@ export class GameComponent implements OnInit, OnDestroy {
   // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
   showAides = signal<boolean>(false);
 
+  // Computed pour déterminer si le modal d'erreur doit être affiché
+  shouldShowErrorModal = computed<boolean>(() => {
+    return this.showFeedback() && 
+           this.feedback() !== null && 
+           this.feedback()?.isCorrect === false &&
+           !this.isGameCompleted();
+  });
 
   toggleAides(): void {
     this.showAides.update(v => !v);
@@ -1014,6 +1035,11 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   async onCaseVideValidated(isValid: boolean): Promise<void> {
+    // Réinitialiser les compteurs avant chaque validation pour compter uniquement cette tentative
+    // Cela permet de corriger le problème où les compteurs s'accumulent entre les tentatives
+    this.correctAnswersCount.set(0);
+    this.incorrectAnswersCount.set(0);
+    
     this.showFeedback.set(true);
     
     // Compter le nombre réel de cases correctes/incorrectes
@@ -1069,6 +1095,12 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   async onLiensValidated(isValid: boolean): Promise<void> {
+    // Réinitialiser les compteurs si c'est une nouvelle tentative (après une tentative précédente)
+    if (this.showFeedback()) {
+      this.correctAnswersCount.set(0);
+      this.incorrectAnswersCount.set(0);
+    }
+    
     this.showFeedback.set(true);
     
     // Compter le nombre réel de liens corrects/incorrects
@@ -1147,6 +1179,12 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   async onVraiFauxValidated(isValid: boolean): Promise<void> {
+    // Réinitialiser les compteurs si c'est une nouvelle tentative (après une tentative précédente)
+    if (this.showFeedback()) {
+      this.correctAnswersCount.set(0);
+      this.incorrectAnswersCount.set(0);
+    }
+    
     this.showFeedback.set(true);
     
     // Compter le nombre réel d'énoncés corrects/incorrects

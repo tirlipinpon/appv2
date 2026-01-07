@@ -45,12 +45,6 @@
     </div>
   }
 
-  @if (isSubmitted() && showResult && isCorrect()) {
-    <div class="result-message correct">
-      ✅ Bonne réponse !
-    </div>
-  }
-
   <app-game-error-actions
     [isSubmitted]="isSubmitted()"
     [isCorrect]="isCorrect()"
