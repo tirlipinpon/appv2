@@ -1,4 +1,4 @@
-import { Component, input, inject, computed, effect, ChangeDetectionStrategy, signal, untracked } from '@angular/core';
+import { Component, input, inject, computed, effect, ChangeDetectionStrategy, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GamesStatsService } from '../../services/games-stats/games-stats.service';
 import { GamesStatsStore } from '../../store/games-stats.store';
@@ -79,107 +79,63 @@ import { GameTypeStyleService } from '../../services/game-type-style/game-type-s
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GamesStatsDisplayComponent {
-  subjectId = input<string | undefined>();
-  categoryId = input<string | null | undefined>();
-  childId = input<string | null | undefined>();
-  showEmpty = input<boolean>(false); // Afficher même si 0 jeux (défaut: false)
+  subjectId = input<string | null>(null);
+  categoryId = input<string | null>(null);
+  childId = input<string | null>(null);
+  showEmpty = input(false);
   
   private readonly gamesStatsService = inject(GamesStatsService);
   private readonly store = inject(GamesStatsStore);
   private readonly gameTypeStyleService = inject(GameTypeStyleService);
-
-  // Signal pour suivre les stats depuis le store
-  private readonly statsKey = signal<string | null>(null);
-  // Set pour suivre les clés pour lesquelles on a déjà déclenché un chargement
   private readonly loadingKeys = new Set<string>();
 
-  constructor() {
-    // Effect pour mettre à jour la clé quand les inputs changent
-    // Utiliser allowSignalWrites pour éviter les problèmes de cycle
-    effect(() => {
-      // Lire les inputs de manière synchrone
-      const subjectId = this.subjectId();
-      const categoryId = this.categoryId();
-      const childId = this.childId();
-      
-      // Calculer la clé de manière synchrone sans lire le store
-      let newKey: string | null = null;
-      
-      // Priorité à la catégorie si fournie
-      if (categoryId != null && categoryId !== undefined) {
-        // Générer la clé manuellement pour éviter d'appeler le store dans l'effect
-        if (childId) {
-          newKey = `${childId}:category:${categoryId}`;
-        } else {
-          newKey = `category:${categoryId}`;
-        }
-      } else if (subjectId) {
-        // Générer la clé manuellement pour éviter d'appeler le store dans l'effect
-        if (childId) {
-          newKey = `${childId}:subject:${subjectId}`;
-        } else {
-          newKey = `subject:${subjectId}`;
-        }
-      }
-      
-      // Mettre à jour le signal seulement si la clé a changé
-      if (this.statsKey() !== newKey) {
-        this.statsKey.set(newKey);
-      }
-    });
+  // Computed key - source unique de vérité
+  private readonly statsKey = computed(() => {
+    const subjectId = this.subjectId();
+    const categoryId = this.categoryId();
+    const childId = this.childId();
+    
+    if (categoryId != null) {
+      return childId ? `${childId}:category:${categoryId}` : `category:${categoryId}`;
+    }
+    if (subjectId) {
+      return childId ? `${childId}:subject:${subjectId}` : `subject:${subjectId}`;
+    }
+    return null;
+  });
 
-    // Effect pour charger automatiquement les stats si absentes du cache
+  constructor() {
+    // Un seul effet pour gérer le chargement
     effect(() => {
       const key = this.statsKey();
       if (!key) return;
 
-      // Vérifier si les stats sont en cache
-      const statsByKey = untracked(() => this.store.statsByKey());
+      // ✅ SANS untracked() - maintenant l'effect se redéclenche quand statsByKey change
+      const statsByKey = this.store.statsByKey();
       const cached = statsByKey[key];
       const DEFAULT_TTL = 5 * 60 * 1000;
       const now = Date.now();
       
-      // Si pas en cache ou expiré, et pas déjà en cours de chargement
       const needsLoading = !cached || (cached && (now - cached.timestamp >= DEFAULT_TTL));
       const notLoading = !this.loadingKeys.has(key);
       
       if (needsLoading && notLoading) {
-        // Marquer comme en cours de chargement
         this.loadingKeys.add(key);
         
-        // Charger les stats à la demande
-        untracked(() => {
-          const subjectId = this.subjectId();
-          const categoryId = this.categoryId();
-          const childId = this.childId();
-          
-          // Vérifier si le service a les méthodes de chargement (wrapper service)
-          // Le wrapper service dans admin a loadStatsForSubjects et loadStatsForCategories
-          // Comme GamesStatsWrapperService étend GamesStatsService, Angular devrait injecter le wrapper service
-          // dans admin, mais on vérifie quand même si les méthodes existent pour être sûr
-          const service = this.gamesStatsService as any;
-          
-          if (categoryId != null && categoryId !== undefined) {
-            // Charger les stats pour une catégorie
-            if (typeof service.loadStatsForCategories === 'function') {
-              service.loadStatsForCategories([categoryId]);
-            } else {
-              console.warn('GamesStatsDisplayComponent: loadStatsForCategories not available. Stats will not be loaded automatically.');
-            }
-          } else if (subjectId) {
-            // Charger les stats pour une matière
-            if (typeof service.loadStatsForSubjects === 'function') {
-              service.loadStatsForSubjects([subjectId]);
-            } else {
-              console.warn('GamesStatsDisplayComponent: loadStatsForSubjects not available. Stats will not be loaded automatically.');
-            }
-          }
-          
-          // Retirer du Set après un délai pour permettre un rechargement si nécessaire
-          setTimeout(() => {
-            this.loadingKeys.delete(key);
-          }, 2000);
-        });
+        // Charger les stats
+        const subjectId = this.subjectId();
+        const categoryId = this.categoryId();
+        const service = this.gamesStatsService as any;
+        
+        if (categoryId != null && typeof service.loadStatsForCategories === 'function') {
+          service.loadStatsForCategories([categoryId]);
+        } else if (subjectId && typeof service.loadStatsForSubjects === 'function') {
+          service.loadStatsForSubjects([subjectId]);
+        }
+        
+        setTimeout(() => {
+          this.loadingKeys.delete(key);
+        }, 2000);
       }
     });
   }
@@ -190,9 +146,9 @@ export class GamesStatsDisplayComponent {
       return this.showEmpty() ? '🎮 0 jeu' : '';
     }
 
-    // Lire directement statsByKey avec untracked() pour éviter les dépendances réactives
-    // Cela évite les boucles infinies causées par patchState qui modifie statsByKey
-    const statsByKey = untracked(() => this.store.statsByKey());
+    // Lire le store de manière RÉACTIVE pour que le computed se mette à jour
+    // quand les stats arrivent dans le store
+    const statsByKey = this.store.statsByKey();
     const cached = statsByKey[key];
     
     if (!cached) {
@@ -225,7 +181,9 @@ export class GamesStatsDisplayComponent {
       return null;
     }
 
-    const statsByKey = untracked(() => this.store.statsByKey());
+    // Lire le store de manière RÉACTIVE pour que le computed se mette à jour
+    // quand les stats arrivent dans le store
+    const statsByKey = this.store.statsByKey();
     const cached = statsByKey[key];
     
     if (!cached) {
