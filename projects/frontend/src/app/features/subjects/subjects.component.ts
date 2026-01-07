@@ -9,6 +9,7 @@ import { StarRatingComponent } from '../../shared/components/star-rating/star-ra
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { GamesStatsDisplayComponent } from '@shared/components/games-stats-display/games-stats-display.component';
 import { GamesStatsService } from '@shared/services/games-stats/games-stats.service';
+import { GameTypeStyleService } from '@shared/services/game-type-style/game-type-style.service';
 import { Game } from '../../core/types/game.types';
 import {
   GAME_TYPE_QCM,
@@ -451,6 +452,7 @@ export class SubjectsComponent implements OnInit {
   private readonly infrastructure = inject(SubjectsInfrastructure);
   private readonly router = inject(Router);
   private readonly gamesStatsService = inject(GamesStatsService);
+  private readonly gameTypeStyleService = inject(GameTypeStyleService);
 
   selectedSubjectId = signal<string | null>(null);
   selectedCategoryId = signal<string | null>(null);
@@ -976,43 +978,52 @@ export class SubjectsComponent implements OnInit {
       return { label: 'Non défini', icon: '❓', color: '#666', bgColor: '#f5f5f5' };
     }
 
-    const typeStyles: Record<string, { label: string; icon: string; color: string; bgColor: string }> = {
-      [GAME_TYPE_QCM]: { label: 'QCM', icon: '📝', color: '#1976d2', bgColor: '#e3f2fd' },
-      [GAME_TYPE_MEMORY]: { label: 'Memory', icon: '🧠', color: '#7b1fa2', bgColor: '#f3e5f5' },
-      [GAME_TYPE_CHRONOLOGIE]: { label: 'Chronologie', icon: '⏱️', color: '#f57c00', bgColor: '#fff3e0' },
-      [GAME_TYPE_SIMON]: { label: 'Simon', icon: '🎮', color: '#388e3c', bgColor: '#e8f5e9' },
-      [GAME_TYPE_IMAGE_INTERACTIVE]: { label: 'Image interactive', icon: '🖼️', color: '#c2185b', bgColor: '#fce4ec' },
-      [GAME_TYPE_REPONSE_LIBRE]: { label: 'Réponse libre', icon: '✍️', color: '#0288d1', bgColor: '#e1f5fe' },
-      [GAME_TYPE_VRAI_FAUX]: { label: 'Vrai/Faux', icon: '✓✗', color: '#d32f2f', bgColor: '#ffebee' },
-      [GAME_TYPE_LIENS]: { label: 'Liens', icon: '🔗', color: '#5d4037', bgColor: '#efebe9' },
-      [GAME_TYPE_CASE_VIDE]: { label: 'Case vide', icon: '📋', color: '#455a64', bgColor: '#eceff1' },
+    // Utiliser le service pour récupérer l'icône et la couleur depuis la DB
+    const style = this.gameTypeStyleService.getGameTypeStyleSync(gameType);
+
+    // Garder les valeurs de fallback pour bgColor (utilisées dans le template)
+    const fallbackBgColors: Record<string, string> = {
+      [GAME_TYPE_QCM]: '#e3f2fd',
+      [GAME_TYPE_MEMORY]: '#f3e5f5',
+      [GAME_TYPE_CHRONOLOGIE]: '#fff3e0',
+      [GAME_TYPE_SIMON]: '#e8f5e9',
+      [GAME_TYPE_IMAGE_INTERACTIVE]: '#fce4ec',
+      [GAME_TYPE_REPONSE_LIBRE]: '#e1f5fe',
+      [GAME_TYPE_VRAI_FAUX]: '#ffebee',
+      [GAME_TYPE_LIENS]: '#efebe9',
+      [GAME_TYPE_CASE_VIDE]: '#eceff1',
     };
 
-    // Normaliser le type pour la comparaison
+    // Normaliser le type pour trouver le bgColor
     const normalizedType = normalizeGameTypeName(gameType);
-    
-    // Chercher dans les constantes et leurs variations
-    for (const [constantType, style] of Object.entries(typeStyles)) {
-      if (getGameTypeVariations(constantType).some(variation => 
-        normalizeGameTypeName(variation) === normalizedType
-      )) {
-        return style;
+    let bgColor = '#f5f5f5'; // Par défaut
+
+    for (const [constantType, bg] of Object.entries(fallbackBgColors)) {
+      if (normalizeGameTypeName(constantType) === normalizedType ||
+          getGameTypeVariations(constantType).some(v => normalizeGameTypeName(v) === normalizedType)) {
+        bgColor = bg;
+        break;
       }
     }
-    
+
     // Vérifier aussi 'click' qui est une variation de image_interactive
     if (normalizedType === normalizeGameTypeName('click')) {
-      return typeStyles[GAME_TYPE_IMAGE_INTERACTIVE];
+      bgColor = fallbackBgColors[GAME_TYPE_IMAGE_INTERACTIVE];
     }
 
-    // Par défaut, formater le type
+    // Formater le label
     const formattedLabel = gameType
       .replace(/_/g, ' ')
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
-    
-    return { label: formattedLabel, icon: '🎯', color: '#666', bgColor: '#f5f5f5' };
+
+    return {
+      label: formattedLabel,
+      icon: style.icon,
+      color: style.colorCode,
+      bgColor: bgColor,
+    };
   }
 
   /**

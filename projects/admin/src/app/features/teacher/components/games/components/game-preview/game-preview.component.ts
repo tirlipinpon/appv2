@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect, input } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, AfterViewInit, AfterViewChecked, ViewChild, ElementRef, OnDestroy, effect, input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData, ReponseLibreData, LiensData, ChronologieData, QcmData, VraiFauxData, MemoryData, SimonData, ImageInteractiveData, PuzzleData } from '@shared/games';
@@ -17,6 +17,7 @@ import {
 } from '../../../../utils/game-type.util';
 import type { GameGlobalFieldsData } from '../game-global-fields/game-global-fields.component';
 import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, VraiFauxGameComponent } from '@shared/games';
+import { GameTypeStyleService } from '../../../../../../shared/services/game-type-style/game-type-style.service';
 
 @Component({
   selector: 'app-game-preview',
@@ -26,6 +27,8 @@ import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonG
   styleUrl: './game-preview.component.scss',
 })
 export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
+  private readonly gameTypeStyleService = inject(GameTypeStyleService);
+
   // Utiliser input() pour créer un signal qui réagit aux changements
   isOpen = input<boolean>(false);
   @Input() gameTypeName = '';
@@ -567,6 +570,13 @@ export class GamePreviewComponent implements AfterViewInit, AfterViewChecked, On
     const userAnswer = this.userVraiFauxAnswers().get(index);
     if (userAnswer === undefined) return null;
     return userAnswer === enonce.reponse_correcte;
+  }
+
+  /**
+   * Récupère le style (icône et couleur) pour le type de jeu
+   */
+  getGameTypeStyle() {
+    return this.gameTypeStyleService.getGameTypeStyleSync(this.gameTypeName);
   }
 
 }

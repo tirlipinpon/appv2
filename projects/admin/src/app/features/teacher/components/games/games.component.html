@@ -59,8 +59,15 @@
          [class.game-type-chronologie]="isGameType(selectedGameTypeName(), 'chronologie')"
          [class.game-type-vrai-faux]="isGameType(selectedGameTypeName(), 'vrai/faux')"
          [class.game-type-memory]="isGameType(selectedGameTypeName(), 'memory')"
-         [class.game-type-simon]="isGameType(selectedGameTypeName(), 'simon')">
-      <h3>{{ isEditing() ? '✏️ Modifier le jeu' : '➕ Créer un nouveau jeu' }}</h3>
+         [class.game-type-simon]="isGameType(selectedGameTypeName(), 'simon')"
+         [style.color]="getSelectedGameTypeStyle().colorCode"
+         [style.border-left-color]="getSelectedGameTypeStyle().colorCode">
+      <h3>
+        @if (selectedGameTypeName()) {
+          <span class="game-type-icon">{{ getSelectedGameTypeStyle().icon }}</span>
+        }
+        {{ isEditing() ? '✏️ Modifier le jeu' : '➕ Créer un nouveau jeu' }}
+      </h3>
       <button type="button" class="toggle-btn" [attr.aria-expanded]="isManualCreationExpanded()">
         {{ isManualCreationExpanded() ? '−' : '+' }}
       </button>

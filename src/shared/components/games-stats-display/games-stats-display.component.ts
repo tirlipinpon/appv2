@@ -2,6 +2,7 @@ import { Component, input, inject, computed, effect, ChangeDetectionStrategy, si
 import { CommonModule } from '@angular/common';
 import { GamesStatsService } from '../../services/games-stats/games-stats.service';
 import { GamesStatsStore } from '../../store/games-stats.store';
+import { GameTypeStyleService } from '../../services/game-type-style/game-type-style.service';
 
 /**
  * Composant réutilisable pour afficher les statistiques de jeux
@@ -19,10 +20,18 @@ import { GamesStatsStore } from '../../store/games-stats.store';
   standalone: true,
   imports: [CommonModule],
   template: `
-    @if (formattedStats(); as stats) {
+    @if (formattedTypeStats(); as typeStats) {
       <div class="games-stats">
         <span class="games-icon">🎮</span>
-        <span class="games-text">{{ stats }}</span>
+        <span class="games-total">{{ typeStats.total }} jeu{{ typeStats.total > 1 ? 'x' : '' }} :</span>
+        <span class="games-types">
+          @for (typeStat of typeStats.types; track typeStat.type) {
+            <span class="game-type-badge" [style.color]="typeStat.colorCode">
+              <span class="game-type-icon">{{ typeStat.icon }}</span>
+              <span class="game-type-name">{{ typeStat.name }} ({{ typeStat.count }})</span>
+            </span>
+          }
+        </span>
       </div>
     }
   `,
@@ -35,13 +44,36 @@ import { GamesStatsStore } from '../../store/games-stats.store';
       font-size: 0.875rem;
       color: #555;
       font-weight: 500;
+      flex-wrap: wrap;
     }
     .games-icon {
       font-size: 1rem;
       flex-shrink: 0;
     }
-    .games-text {
-      flex: 1;
+    .games-total {
+      flex-shrink: 0;
+    }
+    .games-types {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .game-type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .game-type-icon {
+      font-size: 0.875rem;
+      line-height: 1;
+    }
+    .game-type-name {
+      font-size: 0.875rem;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -54,6 +86,7 @@ export class GamesStatsDisplayComponent {
   
   private readonly gamesStatsService = inject(GamesStatsService);
   private readonly store = inject(GamesStatsStore);
+  private readonly gameTypeStyleService = inject(GameTypeStyleService);
 
   // Signal pour suivre les stats depuis le store
   private readonly statsKey = signal<string | null>(null);
@@ -181,5 +214,55 @@ export class GamesStatsDisplayComponent {
       stats: cached.stats,
       total: cached.total,
     });
+  });
+
+  readonly formattedTypeStats = computed(() => {
+    const key = this.statsKey();
+    if (!key) {
+      if (this.showEmpty()) {
+        return { total: 0, types: [] };
+      }
+      return null;
+    }
+
+    const statsByKey = untracked(() => this.store.statsByKey());
+    const cached = statsByKey[key];
+    
+    if (!cached) {
+      if (this.showEmpty()) {
+        return { total: 0, types: [] };
+      }
+      return null;
+    }
+    
+    const now = Date.now();
+    const DEFAULT_TTL = 5 * 60 * 1000;
+    if (now - cached.timestamp >= DEFAULT_TTL) {
+      if (this.showEmpty()) {
+        return { total: 0, types: [] };
+      }
+      return null;
+    }
+    
+    if (cached.total === 0 && !this.showEmpty()) {
+      return null;
+    }
+
+    // Formater les stats avec les icônes et couleurs
+    const types = Object.entries(cached.stats).map(([type, count]) => {
+      const style = this.gameTypeStyleService.getGameTypeStyleSync(type);
+      return {
+        type,
+        name: type,
+        count,
+        icon: style.icon,
+        colorCode: style.colorCode,
+      };
+    });
+
+    return {
+      total: cached.total,
+      types,
+    };
   });
 }

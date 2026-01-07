@@ -8,7 +8,10 @@
     tabindex="-1">
     <div class="preview-container" (click)="$event.stopPropagation()" (keydown.escape)="close()" tabindex="0">
       <div class="preview-header">
-        <h2 class="preview-title">🎮 Prévisualisation du jeu</h2>
+        <h2 class="preview-title">
+          <span class="game-type-icon" [style.color]="getGameTypeStyle().colorCode">{{ getGameTypeStyle().icon }}</span>
+          Prévisualisation du jeu
+        </h2>
         <button 
           class="preview-close"
           type="button"

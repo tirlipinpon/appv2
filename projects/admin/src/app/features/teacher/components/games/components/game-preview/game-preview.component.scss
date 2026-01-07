@@ -42,6 +42,14 @@
     font-size: $font-size-xl;
     font-weight: $font-weight-semibold;
     color: $color-text-primary;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .game-type-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+    }
   }
 
   .preview-close {

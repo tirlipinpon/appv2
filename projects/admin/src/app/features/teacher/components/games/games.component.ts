@@ -8,6 +8,7 @@ import { GamesStore } from '../../store/games.store';
 import { TeacherAssignmentStore } from '../../store/assignments.store';
 import { ErrorSnackbarService, ConfirmationDialogService } from '../../../../shared';
 import { GamesStatsDisplayComponent, GamesStatsService } from '@shared';
+import { GameTypeStyleService } from '../../../../shared/services/game-type-style/game-type-style.service';
 import { TeacherService } from '../../services/teacher/teacher.service';
 import { CaseVideFormComponent } from './components/case-vide-form/case-vide-form.component';
 import { ReponseLibreFormComponent } from './components/reponse-libre-form/reponse-libre-form.component';
@@ -88,6 +89,7 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly subjectsStore = inject(TeacherAssignmentStore);
   private readonly gamesStatsService = inject(GamesStatsService);
   private readonly infrastructure = inject(Infrastructure);
+  private readonly gameTypeStyleService = inject(GameTypeStyleService);
 
   readonly subjectId = signal<string | null>(null);
   readonly editingGameId = signal<string | null>(null);
@@ -470,6 +472,15 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly normalizeGameTypeName = normalizeGameTypeName;
   readonly isGameType = isGameType;
   readonly isGameTypeOneOf = isGameTypeOneOf;
+
+  /**
+   * Récupère le style (icône et couleur) pour le type de jeu sélectionné
+   */
+  getSelectedGameTypeStyle() {
+    const typeName = this.selectedGameTypeName();
+    if (!typeName) return { icon: '', colorCode: '#666' };
+    return this.gameTypeStyleService.getGameTypeStyleSync(typeName);
+  }
 
   onGameTypeChange(): void {
     const gameTypeId = this.gameForm.get('game_type_id')?.value;

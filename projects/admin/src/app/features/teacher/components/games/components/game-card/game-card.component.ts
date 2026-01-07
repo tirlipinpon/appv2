@@ -23,6 +23,7 @@ import { normalizeGameData } from '../../../../utils/game-data-mapper';
 import { ImageUploadService, type ImageUploadResult } from '../../services/image-upload/image-upload.service';
 import { ErrorSnackbarService } from '../../../../../../shared';
 import { GameCreationService } from '../../../../services/game-creation/game-creation.service';
+import { GameTypeStyleService } from '../../../../../../shared/services/game-type-style/game-type-style.service';
 import {
   isGameType,
   isGameTypeOneOf,
@@ -66,10 +67,18 @@ export class GameCardComponent implements OnInit, OnChanges {
   private readonly imageUploadService = inject(ImageUploadService);
   private readonly errorSnackbar = inject(ErrorSnackbarService);
   private readonly gameCreationService = inject(GameCreationService);
+  private readonly gameTypeStyleService = inject(GameTypeStyleService);
   
   // Exposer les fonctions utilitaires pour le template
   readonly isGameType = isGameType;
   readonly isGameTypeOneOf = isGameTypeOneOf;
+
+  /**
+   * Récupère le style (icône et couleur) pour le type de jeu
+   */
+  getGameTypeStyle() {
+    return this.gameTypeStyleService.getGameTypeStyleSync(this.gameTypeName);
+  }
 
   @Input({ required: true }) game!: Game;
   @Input({ required: true }) gameTypeName!: string;

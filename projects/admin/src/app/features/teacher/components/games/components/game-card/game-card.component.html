@@ -14,7 +14,12 @@
   <div class="game-header-toggle">
     <div class="game-header-info">
       <h4>{{ game.name }}</h4>
-      <span class="game-type-badge">{{ currentGameTypeName() }}</span>
+      <span class="game-type-badge" 
+            [style.color]="getGameTypeStyle().colorCode"
+            [style.border-color]="getGameTypeStyle().colorCode">
+        <span class="game-type-icon">{{ getGameTypeStyle().icon }}</span>
+        <span class="game-type-name">{{ currentGameTypeName() }}</span>
+      </span>
       <div class="game-header-actions" (click)="$event.stopPropagation()" tabindex="0" (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()">
         <button class="btn btn-info btn-sm" (click)="openPreview(); $event.stopPropagation()" [disabled]="isEditing() && !gameSpecificValid()">
           👁️ Prévisualiser
