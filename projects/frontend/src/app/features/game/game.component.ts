@@ -354,8 +354,8 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
         [explanation]="feedback()?.explanation"
         [correctCount]="getCorrectCountForDisplay()"
         [incorrectCount]="getIncorrectCountForDisplay()"
-        (resetRequested)="onErrorModalReset()"
-        (nextRequested)="onErrorModalNext()">
+        (resetRequested)="restartGame()"
+        (nextRequested)="onNextButtonClick()">
       </app-game-error-modal>
     </div>
   `,
@@ -1095,11 +1095,10 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   async onLiensValidated(isValid: boolean): Promise<void> {
-    // Réinitialiser les compteurs si c'est une nouvelle tentative (après une tentative précédente)
-    if (this.showFeedback()) {
-      this.correctAnswersCount.set(0);
-      this.incorrectAnswersCount.set(0);
-    }
+    // Réinitialiser les compteurs avant chaque validation pour compter uniquement cette tentative
+    // Cela permet de corriger le problème où les compteurs s'accumulent entre les tentatives
+    this.correctAnswersCount.set(0);
+    this.incorrectAnswersCount.set(0);
     
     this.showFeedback.set(true);
     
@@ -1179,11 +1178,10 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   async onVraiFauxValidated(isValid: boolean): Promise<void> {
-    // Réinitialiser les compteurs si c'est une nouvelle tentative (après une tentative précédente)
-    if (this.showFeedback()) {
-      this.correctAnswersCount.set(0);
-      this.incorrectAnswersCount.set(0);
-    }
+    // Réinitialiser les compteurs avant chaque validation pour compter uniquement cette tentative
+    // Cela permet de corriger le problème où les compteurs s'accumulent entre les tentatives
+    this.correctAnswersCount.set(0);
+    this.incorrectAnswersCount.set(0);
     
     this.showFeedback.set(true);
     

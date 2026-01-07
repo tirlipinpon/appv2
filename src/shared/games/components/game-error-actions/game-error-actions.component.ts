@@ -11,16 +11,17 @@ import { CommonModule } from '@angular/common';
 export class GameErrorActionsComponent {
   @Input() isSubmitted = false;
   @Input() isCorrect: boolean | null = null;
+  @Input() hideActions = false; // Pour masquer les actions quand un modal est affiché
 
   @Output() resetRequested = new EventEmitter<void>();
   @Output() nextRequested = new EventEmitter<void>();
 
   /**
    * Vérifie si les boutons doivent être affichés
-   * (seulement si soumis ET incorrect)
+   * (seulement si soumis ET incorrect ET pas masqué)
    */
   shouldShowActions(): boolean {
-    return this.isSubmitted && this.isCorrect === false;
+    return !this.hideActions && this.isSubmitted && this.isCorrect === false;
   }
 
   onReset(): void {
