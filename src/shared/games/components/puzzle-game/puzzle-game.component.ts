@@ -1,9 +1,9 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { PuzzleData, PuzzlePiece } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
-import { calculateSnappedPosition, relativeToAbsolute, type Position, type SnappedPosition } from '../../utils/puzzle-magnetism.util';
+import { calculateSnappedPosition, relativeToAbsolute, type Position } from '../../utils/puzzle-magnetism.util';
 import Konva from 'konva';
 
 interface PieceState {
@@ -16,6 +16,8 @@ interface PieceState {
   targetY: number; // Position cible Y (pixels)
   originalImageWidth: number; // Largeur originale de l'image de la pièce
   originalImageHeight: number; // Hauteur originale de l'image de la pièce
+  isThumbnail: boolean; // Indique si la pièce est actuellement en mode vignette
+  thumbnailScale: number; // Facteur d'échelle pour la vignette (0.25 pour 25%)
 }
 
 @Component({
@@ -78,7 +80,7 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
   private resizeObserver?: ResizeObserver;
 
   // Seuil de snap en pixels
-  private readonly SNAP_THRESHOLD = 30;
+  private readonly SNAP_THRESHOLD = 80;
 
   ngOnInit(): void {
     this.totalImages.set(this.puzzleData.pieces.length + 1); // +1 pour l'image de fond
@@ -298,6 +300,8 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
         isPlaced: false,
         originalImageWidth: 0, // Sera défini lors du chargement de l'image
         originalImageHeight: 0, // Sera défini lors du chargement de l'image
+        isThumbnail: false, // Sera initialisé à true dans loadPieceImage
+        thumbnailScale: 0.25, // 25% de la taille
       });
     }
 
@@ -311,8 +315,9 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
     this.shufflePieces();
   }
 
-  private async loadPieceImage(pieceState: PieceState, index: number): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async loadPieceImage(pieceState: PieceState, _index: number): Promise<void> {
+    return new Promise<void>((resolve) => {
       if (!pieceState.piece.image_url) {
         console.error(`Pièce ${pieceState.piece.id} n'a pas d'URL d'image`);
         this.imagesLoaded.update(count => count + 1);
@@ -340,16 +345,20 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
         pieceState.originalImageWidth = imageObj.width;
         pieceState.originalImageHeight = imageObj.height;
 
-        // Redimensionner la pièce selon le même ratio que l'image de fond
-        const pieceWidth = imageObj.width * scaleX;
-        const pieceHeight = imageObj.height * scaleY;
+        // Initialiser en mode vignette
+        pieceState.isThumbnail = true;
+        pieceState.thumbnailScale = 0.25;
+
+        // Calculer la taille vignette (25% de la taille réelle)
+        const thumbnailWidth = imageObj.width * scaleX * pieceState.thumbnailScale;
+        const thumbnailHeight = imageObj.height * scaleY * pieceState.thumbnailScale;
 
         const konvaImage = new Konva.Image({
           x: pieceState.x,
           y: pieceState.y,
           image: imageObj,
-          width: pieceWidth,
-          height: pieceHeight,
+          width: thumbnailWidth,
+          height: thumbnailHeight,
           draggable: !this.disabled && !this.isSubmitted(),
         });
 
@@ -411,7 +420,12 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
     // Zone à droite de l'image pour placer les pièces mélangées (plus accessible)
     const shuffleAreaPadding = 20;
     const shuffleAreaX = offsetX + width + shuffleAreaPadding;
-    const shuffleAreaWidth = Math.max(200, containerWidth - shuffleAreaX - shuffleAreaPadding);
+    
+    // Calculer la largeur disponible en tenant compte du padding de droite
+    // S'assurer qu'il y a au moins 150px de largeur disponible
+    const availableWidth = containerWidth - shuffleAreaX - shuffleAreaPadding;
+    const shuffleAreaWidth = Math.max(150, availableWidth);
+    
     const shuffleAreaY = offsetY;
     const shuffleAreaHeight = Math.min(height, containerHeight - shuffleAreaY - shuffleAreaPadding);
 
@@ -432,11 +446,38 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
       const col = index % cols;
       const row = Math.floor(index / cols);
       
-      // Position aléatoire dans la cellule pour un effet plus naturel
+      // Calculer la position dans la cellule
       const cellX = shuffleAreaX + col * cellWidth;
       const cellY = shuffleAreaY + row * cellHeight;
-      const randomX = cellX + Math.random() * (cellWidth * 0.7);
-      const randomY = cellY + Math.random() * (cellHeight * 0.7);
+      
+      // Calculer la largeur maximale d'une pièce en vignette pour cette cellule
+      const maxPieceWidth = cellWidth * 0.8; // 80% de la largeur de la cellule
+      
+      // Position aléatoire dans la cellule, mais s'assurer qu'elle ne dépasse pas
+      const randomOffsetX = Math.random() * (cellWidth * 0.6); // Réduire à 60% pour plus de marge
+      const randomOffsetY = Math.random() * (cellHeight * 0.6);
+      
+      let randomX = cellX + randomOffsetX;
+      let randomY = cellY + randomOffsetY;
+      
+      // S'assurer que la pièce ne dépasse pas du conteneur
+      // Tenir compte de la largeur de la pièce en vignette
+      if (pieceState.konvaImage) {
+        const pieceWidth = pieceState.konvaImage.width() || maxPieceWidth;
+        const pieceHeight = pieceState.konvaImage.height() || cellHeight * 0.8;
+        
+        // Ajuster la position X pour que la pièce reste dans les limites
+        const maxX = containerWidth - shuffleAreaPadding - pieceWidth;
+        randomX = Math.min(randomX, maxX);
+        
+        // Ajuster la position Y pour que la pièce reste dans les limites
+        const maxY = containerHeight - shuffleAreaPadding - pieceHeight;
+        randomY = Math.min(randomY, maxY);
+        
+        // S'assurer que la position est au moins au début de la zone
+        randomX = Math.max(randomX, shuffleAreaX);
+        randomY = Math.max(randomY, shuffleAreaY);
+      }
 
       pieceState.x = randomX;
       pieceState.y = randomY;
@@ -460,6 +501,32 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
     this.draggedPiece = pieceState;
     this.draggedKonvaNode = konvaImage;
 
+    // Si la pièce est en mode vignette, l'agrandir à taille réelle
+    if (pieceState.isThumbnail) {
+      const displayedWidth = this.displayedImageWidth() || this.puzzleData.image_width;
+      const displayedHeight = this.displayedImageHeight() || this.puzzleData.image_height;
+      const scaleX = displayedWidth / this.puzzleData.image_width;
+      const scaleY = displayedHeight / this.puzzleData.image_height;
+
+      // Calculer la taille réelle complète
+      const fullWidth = pieceState.originalImageWidth * scaleX;
+      const fullHeight = pieceState.originalImageHeight * scaleY;
+
+      // Animer l'agrandissement
+      const growAnim = new Konva.Tween({
+        node: konvaImage,
+        width: fullWidth,
+        height: fullHeight,
+        duration: 0.2,
+        easing: Konva.Easings.EaseOut,
+        onFinish: () => {
+          pieceState.isThumbnail = false;
+        },
+      });
+
+      growAnim.play();
+    }
+
     // Déplacer la pièce sur le drag layer
     konvaImage.moveTo(this.dragLayer!);
     this.dragLayer!.draw();
@@ -477,16 +544,71 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
       return;
     }
 
-    // Calculer la position aimantée
-    const currentPos: Position = { x: konvaImage.x(), y: konvaImage.y() };
-    const targetPos: Position = { x: pieceState.targetX, y: pieceState.targetY };
-    const snapped = calculateSnappedPosition(currentPos, targetPos, this.SNAP_THRESHOLD);
+    // Calculer les dimensions
+    const displayedWidth = this.displayedImageWidth() || this.puzzleData.image_width;
+    const displayedHeight = this.displayedImageHeight() || this.puzzleData.image_height;
+    const scaleX = displayedWidth / this.puzzleData.image_width;
+    const scaleY = displayedHeight / this.puzzleData.image_height;
 
-    // Animer vers la position (snapped ou actuelle)
+    // Dimensions à taille réelle
+    const fullWidth = pieceState.originalImageWidth * scaleX;
+    const fullHeight = pieceState.originalImageHeight * scaleY;
+
+    // Dimensions vignette
+    const thumbnailWidth = fullWidth * pieceState.thumbnailScale;
+    const thumbnailHeight = fullHeight * pieceState.thumbnailScale;
+
+   // Calculer un seuil de snap dynamique basé sur la taille de la pièce
+   const pieceWidth = konvaImage.width() || 50;
+   const pieceHeight = konvaImage.height() || 50;
+   const avgPieceSize = (pieceWidth + pieceHeight) / 2;
+   const dynamicSnapThreshold = Math.max(15, avgPieceSize * 0.12); // 12% de la taille, min 15px
+ 
+   // Calculer la position aimantée avec le seuil dynamique
+   const currentPos: Position = { x: konvaImage.x(), y: konvaImage.y() };
+   const targetPos: Position = { x: pieceState.targetX, y: pieceState.targetY };
+   const snapped = calculateSnappedPosition(currentPos, targetPos, dynamicSnapThreshold);
+
+    // Calculer la zone des vignettes (à droite de l'image)
+    const offsetX = this.imageOffsetX();
+    const shuffleAreaPadding = 20;
+    const shuffleAreaX = offsetX + displayedWidth + shuffleAreaPadding;
+
+    // Vérifier si la position finale est dans la zone des vignettes
+    const isFinalPositionInThumbnailZone = snapped.x > shuffleAreaX;
+
+    // Déterminer la taille finale selon 3 cas :
+    // 1. Si snappée → taille réelle + placée
+    // 2. Si dans zone vignette → taille vignette + non placée
+    // 3. Sinon (relâchée ailleurs sur l'image) → taille réelle + non placée
+    let finalWidth: number;
+    let finalHeight: number;
+
+    if (snapped.snapped) {
+      // Cas 1 : Snappée à la bonne position
+      finalWidth = fullWidth;
+      finalHeight = fullHeight;
+      pieceState.isThumbnail = false;
+    } else if (isFinalPositionInThumbnailZone) {
+      // Cas 2 : Relâchée dans la zone des vignettes (à droite)
+      finalWidth = thumbnailWidth;
+      finalHeight = thumbnailHeight;
+      pieceState.isThumbnail = true;
+    } else {
+      // Cas 3 : Relâchée ailleurs sur l'image (mais pas snappée)
+      // RESTER en taille réelle (ne pas revenir en vignette)
+      finalWidth = fullWidth;
+      finalHeight = fullHeight;
+      pieceState.isThumbnail = false;
+    }
+ 
+    // Animer vers la position et la taille finale
     const anim = new Konva.Tween({
       node: konvaImage,
       x: snapped.x,
       y: snapped.y,
+      width: finalWidth,
+      height: finalHeight,
       duration: snapped.snapped ? 0.2 : 0.1,
       easing: Konva.Easings.EaseOut,
       onFinish: () => {
@@ -568,9 +690,18 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
     // Mettre à jour les dimensions et positions des pièces
     piecesState.forEach((pieceState) => {
       if (pieceState.konvaImage && pieceState.originalImageWidth > 0 && pieceState.originalImageHeight > 0) {
-        // Utiliser les dimensions originales stockées pour recalculer avec le nouveau ratio
-        const pieceWidth = pieceState.originalImageWidth * scaleX;
-        const pieceHeight = pieceState.originalImageHeight * scaleY;
+        let pieceWidth: number;
+        let pieceHeight: number;
+
+        if (pieceState.isThumbnail) {
+          // Si en mode vignette, utiliser la taille vignette
+          pieceWidth = pieceState.originalImageWidth * scaleX * pieceState.thumbnailScale;
+          pieceHeight = pieceState.originalImageHeight * scaleY * pieceState.thumbnailScale;
+        } else {
+          // Si en mode taille réelle, utiliser la taille complète
+          pieceWidth = pieceState.originalImageWidth * scaleX;
+          pieceHeight = pieceState.originalImageHeight * scaleY;
+        }
         
         pieceState.konvaImage.width(pieceWidth);
         pieceState.konvaImage.height(pieceHeight);
@@ -625,12 +756,27 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
   }
 
   reset(): void {
-    this.piecesState.update(pieces => {
-      pieces.forEach(p => {
-        p.isPlaced = false;
-      });
-      return [...pieces];
+    const piecesState = this.piecesState();
+    const displayedWidth = this.displayedImageWidth() || this.puzzleData.image_width;
+    const displayedHeight = this.displayedImageHeight() || this.puzzleData.image_height;
+    const scaleX = displayedWidth / this.puzzleData.image_width;
+    const scaleY = displayedHeight / this.puzzleData.image_height;
+
+    // Remettre toutes les pièces en mode vignette
+    piecesState.forEach(pieceState => {
+      pieceState.isPlaced = false;
+      pieceState.isThumbnail = true;
+
+      // Remettre les dimensions en vignette
+      if (pieceState.konvaImage && pieceState.originalImageWidth > 0 && pieceState.originalImageHeight > 0) {
+        const thumbnailWidth = pieceState.originalImageWidth * scaleX * pieceState.thumbnailScale;
+        const thumbnailHeight = pieceState.originalImageHeight * scaleY * pieceState.thumbnailScale;
+        pieceState.konvaImage.width(thumbnailWidth);
+        pieceState.konvaImage.height(thumbnailHeight);
+      }
     });
+
+    this.piecesState.set([...piecesState]);
     this.isSubmitted.set(false);
     this.isCorrect.set(null);
     this.shufflePieces();

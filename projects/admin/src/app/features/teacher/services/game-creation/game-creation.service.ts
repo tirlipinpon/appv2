@@ -1,11 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, of, forkJoin, from } from 'rxjs';
-import { switchMap, tap, catchError } from 'rxjs/operators';
+import { switchMap, catchError } from 'rxjs/operators';
 import { GamesApplication } from '../../components/games/application/application';
 import { ImageUploadService } from '../../components/games/services/image-upload/image-upload.service';
 import { AideMediaUploadService } from '../../components/games/services/aide-media/aide-media-upload.service';
 import { ErrorSnackbarService } from '../../../../shared';
-import type { Game, GameCreate, GameUpdate } from '../../types/game';
+import type { Game, GameCreate } from '../../types/game';
 import type {
   CaseVideData,
   ReponseLibreData,
@@ -252,7 +252,7 @@ export class GameCreationService {
         });
         return of(void 0);
       }),
-      catchError((error) => {
+      catchError(() => {
         this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image d\'aide');
         return of(void 0);
       })
@@ -265,7 +265,8 @@ export class GameCreationService {
   private createGameWithFileUpload(
     baseGameData: GameCreate,
     imageDataWithFile: ImageInteractiveDataWithFile,
-    gameData: ImageInteractiveData
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _gameData: ImageInteractiveData
   ): Observable<Game | null> {
     const file = imageDataWithFile.imageFile!;
 
@@ -317,13 +318,13 @@ export class GameCreationService {
 
             return of(createdGame);
           }),
-          catchError((error) => {
+          catchError(() => {
             this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
             return of(null);
           })
         );
       }),
-      catchError((error) => {
+      catchError(() => {
         this.errorSnackbar.showError('Erreur lors de la création du jeu');
         return of(null);
       })
@@ -336,7 +337,8 @@ export class GameCreationService {
   private createPuzzleGameWithFileUpload(
     baseGameData: GameCreate,
     puzzleDataWithFile: PuzzleDataWithFile,
-    gameData: PuzzleData
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _gameData: PuzzleData
   ): Observable<Game | null> {
     const file = puzzleDataWithFile.imageFile!;
 
@@ -400,9 +402,10 @@ export class GameCreationService {
                 piece.polygon_points,
                 result.width,
                 result.height
-              ).then(blob => ({
+              ).then(result => ({
                 pieceId: piece.id,
-                blob,
+                blob: result.blob,
+                croppedPolygonPoints: result.croppedPolygonPoints,
               })).catch(error => {
                 console.error(`Erreur génération pièce ${piece.id}:`, error);
                 return null;
@@ -412,7 +415,7 @@ export class GameCreationService {
             // Générer les PNG des pièces
             return from(Promise.all(pieceGenerationPromises)).pipe(
               switchMap((results) => {
-                const validResults = results.filter((r): r is { pieceId: string; blob: Blob } => r !== null);
+                const validResults = results.filter((r): r is { pieceId: string; blob: Blob; croppedPolygonPoints: { x: number; y: number }[] } => r !== null);
 
                 if (validResults.length !== pieces.length) {
                   this.errorSnackbar.showError('Erreur lors de la génération de certaines pièces');
@@ -441,12 +444,25 @@ export class GameCreationService {
 
                 return forkJoin(uploadObservables).pipe(
                   switchMap((imageUrls) => {
-                    // Mettre à jour les pièces avec les URLs
+                    // Mettre à jour les pièces avec les URLs et les nouveaux polygon_points
                     const updatedPieces = pieces.map((piece) => {
                       const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
+                      const generatedResult = resultIndex >= 0 ? validResults[resultIndex] : null;
+                      
+                      // Recalculer la bounding box AVANT cropping pour obtenir les vraies coordonnées
+                      const bbox = this.puzzlePieceGenerator.calculateBoundingBox(
+                        piece.polygon_points,
+                        result.width,
+                        result.height,
+                        2
+                      );
+                      
                       return {
                         ...piece,
                         image_url: resultIndex >= 0 ? imageUrls[resultIndex] : '',
+                        polygon_points: generatedResult?.croppedPolygonPoints || piece.polygon_points,
+                        original_x: bbox.minX / result.width,
+                        original_y: bbox.minY / result.height,
                       };
                     });
 
@@ -477,13 +493,13 @@ export class GameCreationService {
               })
             );
           }),
-          catchError((error) => {
+          catchError(() => {
             this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
             return of(null);
           })
         );
       }),
-      catchError((error) => {
+      catchError(() => {
         this.errorSnackbar.showError('Erreur lors de la création du jeu');
         return of(null);
       })
@@ -608,13 +624,13 @@ export class GameCreationService {
 
             return of(createdGame);
           }),
-          catchError((error) => {
+          catchError(() => {
             this.errorSnackbar.showError('Erreur lors de la copie de l\'image');
             return of(null);
           })
         );
       }),
-      catchError((error) => {
+      catchError(() => {
         this.errorSnackbar.showError('Erreur lors de la création du jeu');
         return of(null);
       })
@@ -677,9 +693,10 @@ export class GameCreationService {
                 piece.polygon_points,
                 result.width,
                 result.height
-              ).then(blob => ({
+              ).then(result => ({
                 pieceId: piece.id,
-                blob,
+                blob: result.blob,
+                croppedPolygonPoints: result.croppedPolygonPoints,
               })).catch(error => {
                 console.error(`Erreur génération pièce ${piece.id}:`, error);
                 return null;
@@ -689,7 +706,7 @@ export class GameCreationService {
             // Générer les PNG des pièces
             return from(Promise.all(pieceGenerationPromises)).pipe(
               switchMap((results) => {
-                const validResults = results.filter((r): r is { pieceId: string; blob: Blob } => r !== null);
+                const validResults = results.filter((r): r is { pieceId: string; blob: Blob; croppedPolygonPoints: { x: number; y: number }[] } => r !== null);
 
                 if (validResults.length !== pieces.length) {
                   this.errorSnackbar.showError('Erreur lors de la génération de certaines pièces');
@@ -714,12 +731,25 @@ export class GameCreationService {
 
                 return forkJoin(uploadObservables).pipe(
                   switchMap((imageUrls) => {
-                    // Mettre à jour les pièces avec les URLs
+                    // Mettre à jour les pièces avec les URLs et les nouveaux polygon_points
                     const updatedPieces = pieces.map((piece) => {
                       const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
+                      const generatedResult = resultIndex >= 0 ? validResults[resultIndex] : null;
+                      
+                      // Recalculer la bounding box AVANT cropping pour obtenir les vraies coordonnées
+                      const bbox = this.puzzlePieceGenerator.calculateBoundingBox(
+                        piece.polygon_points,
+                        result.width,
+                        result.height,
+                        2
+                      );
+                      
                       return {
                         ...piece,
                         image_url: resultIndex >= 0 ? imageUrls[resultIndex] : '',
+                        polygon_points: generatedResult?.croppedPolygonPoints || piece.polygon_points,
+                        original_x: bbox.minX / result.width,
+                        original_y: bbox.minY / result.height,
                       };
                     });
 
@@ -746,13 +776,13 @@ export class GameCreationService {
               })
             );
           }),
-          catchError((error) => {
+          catchError(() => {
             this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
             return of(null);
           })
         );
       }),
-      catchError((error) => {
+      catchError(() => {
         this.errorSnackbar.showError('Erreur lors de la suppression de l\'ancienne image');
         return of(null);
       })
@@ -780,9 +810,10 @@ export class GameCreationService {
         piece.polygon_points,
         puzzleData.image_width,
         puzzleData.image_height
-      ).then(blob => ({
+      ).then(result => ({
         pieceId: piece.id,
-        blob,
+        blob: result.blob,
+        croppedPolygonPoints: result.croppedPolygonPoints,
       })).catch(error => {
         console.error(`Erreur génération pièce ${piece.id}:`, error);
         return null;
@@ -792,7 +823,7 @@ export class GameCreationService {
     // Générer les PNG des pièces
     return from(Promise.all(pieceGenerationPromises)).pipe(
       switchMap((results) => {
-        const validResults = results.filter((r): r is { pieceId: string; blob: Blob } => r !== null);
+        const validResults = results.filter((r): r is { pieceId: string; blob: Blob; croppedPolygonPoints: { x: number; y: number }[] } => r !== null);
 
         if (validResults.length !== puzzleData.pieces.length) {
           this.errorSnackbar.showError('Erreur lors de la génération de certaines pièces');
@@ -809,12 +840,25 @@ export class GameCreationService {
 
         return forkJoin(uploadObservables).pipe(
           switchMap((imageUrls) => {
-            // Mettre à jour les pièces avec les URLs
+            // Mettre à jour les pièces avec les URLs et les nouveaux polygon_points
             const updatedPieces = puzzleData.pieces.map((piece) => {
               const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
+              const generatedResult = resultIndex >= 0 ? validResults[resultIndex] : null;
+              
+              // Recalculer la bounding box AVANT cropping pour obtenir les vraies coordonnées
+              const bbox = this.puzzlePieceGenerator.calculateBoundingBox(
+                piece.polygon_points,
+                puzzleData.image_width,
+                puzzleData.image_height,
+                2
+              );
+              
               return {
                 ...piece,
                 image_url: resultIndex >= 0 ? imageUrls[resultIndex] : piece.image_url || '',
+                polygon_points: generatedResult?.croppedPolygonPoints || piece.polygon_points,
+                original_x: bbox.minX / puzzleData.image_width,
+                original_y: bbox.minY / puzzleData.image_height,
               };
             });
 

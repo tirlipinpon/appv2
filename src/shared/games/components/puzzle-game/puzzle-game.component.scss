@@ -54,6 +54,10 @@
     opacity: 0.7;
     pointer-events: none;
   }
+
+  // Zone des vignettes (pièces à droite)
+  // Les pièces en mode vignette sont automatiquement positionnées à droite
+  // via la logique de shufflePieces() dans le composant
 }
 
 .result-message {
