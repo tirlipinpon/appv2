@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, OnInit, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { ConfirmationDialogService } from '../../../../../../shared';
 import type { PuzzleData, PuzzlePiece } from '@shared/games';
 import { PuzzleValidationService } from '../../../../services/puzzle/puzzle-validation.service';
@@ -11,7 +11,7 @@ import { PuzzleStorageService } from '../../../../services/puzzle/puzzle-storage
 interface PieceInEdit {
   id: string;
   name?: string;
-  polygon_points: Array<{ x: number; y: number }>; // Points en coordonnées relatives (0-1)
+  polygon_points: { x: number; y: number }[]; // Points en coordonnées relatives (0-1)
   original_x: number; // Position X originale relative (0-1)
   original_y: number; // Position Y originale relative (0-1)
   image_url?: string; // URL de la pièce générée (optionnel, défini après génération)
@@ -349,7 +349,7 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
     }
   }
 
-  private drawPolygon(points: Array<{ x: number; y: number }>, color: string): void {
+  private drawPolygon(points: { x: number; y: number }[], color: string): void {
     if (!this.ctx || points.length < 2) {
       return;
     }

@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Observable, from } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -25,7 +24,7 @@ export class PuzzlePieceGeneratorService {
    */
   generatePiecePNG(
     imageUrl: string,
-    polygonPoints: Array<{ x: number; y: number }>,
+    polygonPoints: { x: number; y: number }[],
     imageWidth: number,
     imageHeight: number
   ): Promise<Blob> {
