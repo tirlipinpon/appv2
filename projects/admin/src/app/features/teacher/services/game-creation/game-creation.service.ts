@@ -799,10 +799,6 @@ export class GameCreationService {
     gameId: string,
     puzzleData: PuzzleData
   ): Observable<PuzzleData | null> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game-creation.service.ts:798',message:'regeneratePuzzlePiecesFromExistingImage entry',data:{gameId,piecesCount:puzzleData.pieces.length,pieceIds:puzzleData.pieces.map(p=>p.id),existingUrls:puzzleData.pieces.map(p=>p.image_url||'empty')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
     if (!puzzleData.image_url || puzzleData.pieces.length === 0) {
       return of(puzzleData);
     }
@@ -837,10 +833,6 @@ export class GameCreationService {
           return of(puzzleData);
         }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game-creation.service.ts:837',message:'Before upload pieces',data:{gameId,validResultsCount:validResults.length,pieceIds:validResults.map(r=>r.pieceId),existingUrls:puzzleData.pieces.filter(p=>p.image_url).map(p=>p.image_url)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-
         // Supprimer les anciennes pièces avant de les régénérer
         const existingPieces = puzzleData.pieces.filter(p => p.image_url && p.image_url.trim() !== '');
         const deleteObservables = existingPieces.map(piece =>
@@ -860,9 +852,6 @@ export class GameCreationService {
 
         return deleteAll$.pipe(
           switchMap(() => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game-creation.service.ts:850',message:'After delete, before upload',data:{gameId,validResultsCount:validResults.length,pieceIds:validResults.map(r=>r.pieceId)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
 
             // Uploader les PNG des pièces en parallèle
             const uploadObservables = validResults.map(({ pieceId, blob }) =>

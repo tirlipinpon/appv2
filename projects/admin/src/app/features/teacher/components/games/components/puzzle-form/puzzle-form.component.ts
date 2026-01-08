@@ -105,6 +105,8 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
 
   ngOnInit(): void {
     if (this.initialData) {
+      const dataHash = this.getDataHash(this.initialData);
+      this.lastInitialDataHash = dataHash;
       this.loadInitialData();
     }
   }

@@ -20,10 +20,6 @@ export class PuzzleStorageService {
   uploadPiecePNG(pieceId: string, blob: Blob, gameId: string): Observable<string> {
     const fileName = `${gameId}/${pieceId}.png`;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'puzzle-storage.service.ts:20',message:'uploadPiecePNG entry',data:{pieceId,gameId,fileName,blobSize:blob.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-
     return from(
       this.supabaseService.client.storage
         .from(this.bucketName)
@@ -34,14 +30,6 @@ export class PuzzleStorageService {
         })
     ).pipe(
       map((result) => {
-        // #region agent log
-        if (result.error) {
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'puzzle-storage.service.ts:34',message:'uploadPiecePNG error',data:{pieceId,gameId,fileName,error:result.error.message,errorName:result.error.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        } else {
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'puzzle-storage.service.ts:36',message:'uploadPiecePNG success',data:{pieceId,gameId,fileName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        }
-        // #endregion
-
         if (result.error) {
           throw new Error(result.error.message || 'Erreur lors de l\'upload de la pièce');
         }
