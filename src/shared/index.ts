@@ -1,5 +1,6 @@
 // Components
 export * from './components/games-stats-display/games-stats-display.component';
+export * from './components/games-counter/games-counter.component';
 
 // Services
 export * from './services/games-stats/games-stats.service';

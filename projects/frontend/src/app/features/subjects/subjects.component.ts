@@ -8,6 +8,7 @@ import { ProgressBarComponent } from '../../shared/components/progress-bar/progr
 import { StarRatingComponent } from '../../shared/components/star-rating/star-rating.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { GamesStatsDisplayComponent } from '@shared/components/games-stats-display/games-stats-display.component';
+import { GamesCounterComponent } from '@shared/components/games-counter/games-counter.component';
 import { GamesStatsService } from '@shared/services/games-stats/games-stats.service';
 import { GameTypeStyleService } from '@shared/services/game-type-style/game-type-style.service';
 import { Game } from '../../core/types/game.types';
@@ -35,6 +36,7 @@ import {
     StarRatingComponent,
     BreadcrumbComponent,
     GamesStatsDisplayComponent,
+    GamesCounterComponent,
   ],
   template: `
     <div class="subjects-container">
@@ -60,6 +62,13 @@ import {
           role="button">
           <h2>{{ subject.name }}</h2>
           <p *ngIf="subject.description">{{ subject.description }}</p>
+          <app-games-counter 
+            [subjectId]="subject.id"
+            [categoryIds]="getCategoryIdsForSubject(subject.id)"
+            [childId]="getCurrentChildId()"
+            [remaining]="getRemainingGamesForSubject(subject.id)?.remaining ?? null"
+            [total]="getRemainingGamesForSubject(subject.id)?.total ?? null">
+          </app-games-counter>
         </div>
       </div>
 
@@ -79,6 +88,12 @@ import {
               role="button">
               <h3>{{ category.name }}</h3>
               <p *ngIf="category.description">{{ category.description }}</p>
+              <app-games-counter 
+                [categoryId]="category.id"
+                [childId]="getCurrentChildId()"
+                [remaining]="getRemainingGamesForCategory(category.id)?.remaining ?? null"
+                [total]="getRemainingGamesForCategory(category.id)?.total ?? null">
+              </app-games-counter>
               <app-games-stats-display 
                 [categoryId]="category.id" 
                 [childId]="getCurrentChildId()" />
@@ -449,6 +464,10 @@ export class SubjectsComponent implements OnInit {
   // Signal pour stocker les catégories par matière (pour le filtrage)
   categoriesBySubject = signal<Map<string, any[]>>(new Map());
 
+  // Signaux pour stocker les jeux par catégorie et par matière (pour calculer les restants)
+  gamesByCategory = signal<Map<string, Game[]>>(new Map());
+  gamesBySubject = signal<Map<string, Game[]>>(new Map());
+
   // Exposer les signals directement pour le template
   subjects = computed(() => this.application.getSubjects()());
   categories = computed(() => this.application.getCategories()());
@@ -777,6 +796,11 @@ export class SubjectsComponent implements OnInit {
       const games = await this.infrastructure.loadGamesBySubject(subjectId, childId);
       this.subjectGames.set(games);
       
+      // Mettre à jour gamesBySubject pour le calcul des restants
+      const currentGamesBySubject = new Map(this.gamesBySubject());
+      currentGamesBySubject.set(subjectId, games);
+      this.gamesBySubject.set(currentGamesBySubject);
+      
       // Charger les stats de jeux pour la matière
       if (childId) {
         this.gamesStatsService.loadStatsForSubject(
@@ -831,6 +855,48 @@ export class SubjectsComponent implements OnInit {
               },
               childId
             );
+
+            // Charger les jeux de toutes les catégories en parallèle
+            await Promise.all(
+              categoryIds.map(async (categoryId: string) => {
+                try {
+                  const games = await this.infrastructure.loadGamesByCategory(categoryId, childId);
+                  const currentGamesByCategory = new Map(this.gamesByCategory());
+                  currentGamesByCategory.set(categoryId, games);
+                  this.gamesByCategory.set(currentGamesByCategory);
+
+                  // Charger les scores si l'enfant est connecté
+                  if (childId && games.length > 0) {
+                    const gameIds = games.map(g => g.id);
+                    const scores = await this.infrastructure.getGameScores(childId, gameIds);
+                    const currentScores = new Map(this.gameScores());
+                    scores.forEach((score, gameId) => currentScores.set(gameId, score));
+                    this.gameScores.set(currentScores);
+                  }
+                } catch (error) {
+                  console.error(`Erreur lors du chargement des jeux pour la catégorie ${categoryId}:`, error);
+                }
+              })
+            );
+          }
+
+          // Charger les jeux directs de la matière
+          try {
+            const games = await this.infrastructure.loadGamesBySubject(subjectId, childId);
+            const currentGamesBySubject = new Map(this.gamesBySubject());
+            currentGamesBySubject.set(subjectId, games);
+            this.gamesBySubject.set(currentGamesBySubject);
+
+            // Charger les scores si l'enfant est connecté
+            if (childId && games.length > 0) {
+              const gameIds = games.map(g => g.id);
+              const scores = await this.infrastructure.getGameScores(childId, gameIds);
+              const currentScores = new Map(this.gameScores());
+              scores.forEach((score, gameId) => currentScores.set(gameId, score));
+              this.gameScores.set(currentScores);
+            }
+          } catch (error) {
+            console.error(`Erreur lors du chargement des jeux directs pour la matière ${subjectId}:`, error);
           }
         } catch (error) {
           console.error(`Erreur lors du chargement des catégories pour la matière ${subjectId}:`, error);
@@ -879,6 +945,11 @@ export class SubjectsComponent implements OnInit {
       const games = await this.infrastructure.loadGamesByCategory(categoryId, childId);
       this.categoryGames.set(games);
       
+      // Mettre à jour gamesByCategory pour le calcul des restants
+      const currentGamesByCategory = new Map(this.gamesByCategory());
+      currentGamesByCategory.set(categoryId, games);
+      this.gamesByCategory.set(currentGamesByCategory);
+      
       // Charger les stats de jeux pour la catégorie
       if (childId) {
         this.gamesStatsService.loadStatsForCategory(
@@ -892,7 +963,10 @@ export class SubjectsComponent implements OnInit {
       if (childId && games.length > 0) {
         const gameIds = games.map(g => g.id);
         const scores = await this.infrastructure.getGameScores(childId, gameIds);
-        this.gameScores.set(scores);
+        // Fusionner avec les scores existants
+        const currentScores = new Map(this.gameScores());
+        scores.forEach((score, gameId) => currentScores.set(gameId, score));
+        this.gameScores.set(currentScores);
       } else {
         this.gameScores.set(new Map());
       }
@@ -1056,5 +1130,55 @@ export class SubjectsComponent implements OnInit {
    */
   getTotalSubjectGamesCount(): number {
     return this.subjectGames().length;
+  }
+
+  /**
+   * Retourne les IDs des catégories pour une matière donnée
+   */
+  getCategoryIdsForSubject(subjectId: string): string[] {
+    const categories = this.categoriesBySubject().get(subjectId);
+    return categories ? categories.map((cat: { id: string }) => cat.id) : [];
+  }
+
+  /**
+   * Calcule les jeux restants pour une catégorie
+   */
+  getRemainingGamesForCategory(categoryId: string): { remaining: number; total: number } | null {
+    const games = this.gamesByCategory().get(categoryId);
+    if (!games || games.length === 0) {
+      // Si les jeux ne sont pas encore chargés, retourner null pour utiliser les stats
+      return null;
+    }
+    const scores = this.gameScores();
+    const remaining = games.filter(game => scores.get(game.id) !== 100).length;
+    return { remaining, total: games.length };
+  }
+
+  /**
+   * Calcule les jeux restants pour une matière (directs + sous-matières)
+   */
+  getRemainingGamesForSubject(subjectId: string): { remaining: number; total: number } | null {
+    const subjectGames = this.gamesBySubject().get(subjectId) || [];
+    const categoryIds = this.getCategoryIdsForSubject(subjectId);
+    const scores = this.gameScores();
+    
+    // Compter les jeux directs
+    let totalGames = subjectGames.length;
+    let remainingGames = subjectGames.filter(game => scores.get(game.id) !== 100).length;
+
+    // Ajouter les jeux des sous-matières
+    for (const catId of categoryIds) {
+      const catGames = this.gamesByCategory().get(catId);
+      if (catGames) {
+        totalGames += catGames.length;
+        remainingGames += catGames.filter(game => scores.get(game.id) !== 100).length;
+      }
+    }
+
+    if (totalGames === 0) {
+      return null;
+    }
+
+    return { remaining: remainingGames, total: totalGames };
   }
 }
