@@ -78,7 +78,7 @@
             [src]="imageUrl()!"
             alt="Image du puzzle"
             class="game-image"
-            (load)="updateImageDimensions()"
+            (load)="onImageLoad()"
             [style.position]="'absolute'"
             [style.top.px]="imageOffsetY()"
             [style.left.px]="imageOffsetX()"
@@ -112,7 +112,7 @@
                     placeholder="Nom de la pièce (optionnel)"
                     class="piece-name-input"
                   />
-                  <span class="piece-points">{{ piece.polygon_points.length }} points</span>
+                  <span class="piece-points">{{ (piece.polygon_points || []).length }} points</span>
                 </div>
                 <button
                   type="button"

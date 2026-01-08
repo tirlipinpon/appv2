@@ -799,6 +799,10 @@ export class GameCreationService {
     gameId: string,
     puzzleData: PuzzleData
   ): Observable<PuzzleData | null> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game-creation.service.ts:798',message:'regeneratePuzzlePiecesFromExistingImage entry',data:{gameId,piecesCount:puzzleData.pieces.length,pieceIds:puzzleData.pieces.map(p=>p.id),existingUrls:puzzleData.pieces.map(p=>p.image_url||'empty')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+
     if (!puzzleData.image_url || puzzleData.pieces.length === 0) {
       return of(puzzleData);
     }
@@ -833,48 +837,121 @@ export class GameCreationService {
           return of(puzzleData);
         }
 
-        // Uploader les PNG des pièces en parallèle
-        const uploadObservables = validResults.map(({ pieceId, blob }) =>
-          this.puzzleStorageService.uploadPiecePNG(pieceId, blob, gameId)
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game-creation.service.ts:837',message:'Before upload pieces',data:{gameId,validResultsCount:validResults.length,pieceIds:validResults.map(r=>r.pieceId),existingUrls:puzzleData.pieces.filter(p=>p.image_url).map(p=>p.image_url)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+
+        // Supprimer les anciennes pièces avant de les régénérer
+        const existingPieces = puzzleData.pieces.filter(p => p.image_url && p.image_url.trim() !== '');
+        const deleteObservables = existingPieces.map(piece =>
+          this.puzzleStorageService.deletePiecePNG(piece.image_url!).pipe(
+            catchError((error) => {
+              // Ignorer les erreurs de suppression (fichier peut ne pas exister)
+              console.warn(`Impossible de supprimer la pièce ${piece.id}:`, error);
+              return of(void 0);
+            })
+          )
         );
 
-        return forkJoin(uploadObservables).pipe(
-          switchMap((imageUrls) => {
-            // Mettre à jour les pièces avec les URLs et les nouveaux polygon_points
-            const updatedPieces = puzzleData.pieces.map((piece) => {
-              const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
-              const generatedResult = resultIndex >= 0 ? validResults[resultIndex] : null;
-              
-              // Recalculer la bounding box AVANT cropping pour obtenir les vraies coordonnées
-              const bbox = this.puzzlePieceGenerator.calculateBoundingBox(
-                piece.polygon_points,
-                puzzleData.image_width,
-                puzzleData.image_height,
-                2
-              );
-              
-              return {
-                ...piece,
-                image_url: resultIndex >= 0 ? imageUrls[resultIndex] : piece.image_url || '',
-                polygon_points: generatedResult?.croppedPolygonPoints || piece.polygon_points,
-                original_x: bbox.minX / puzzleData.image_width,
-                original_y: bbox.minY / puzzleData.image_height,
-              };
-            });
+        // Supprimer les anciennes pièces, puis uploader les nouvelles
+        const deleteAll$ = deleteObservables.length > 0 
+          ? forkJoin(deleteObservables)
+          : of([]);
 
-            const updatedPuzzleData: PuzzleData = {
-              image_url: puzzleData.image_url,
-              image_width: puzzleData.image_width,
-              image_height: puzzleData.image_height,
-              pieces: updatedPieces,
-            };
+        return deleteAll$.pipe(
+          switchMap(() => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game-creation.service.ts:850',message:'After delete, before upload',data:{gameId,validResultsCount:validResults.length,pieceIds:validResults.map(r=>r.pieceId)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
 
-            return of(updatedPuzzleData);
+            // Uploader les PNG des pièces en parallèle
+            const uploadObservables = validResults.map(({ pieceId, blob }) =>
+              this.puzzleStorageService.uploadPiecePNG(pieceId, blob, gameId)
+            );
+
+            return forkJoin(uploadObservables).pipe(
+              switchMap((imageUrls) => {
+                // Mettre à jour les pièces avec les URLs et les nouveaux polygon_points
+                const updatedPieces = puzzleData.pieces.map((piece) => {
+                  const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
+                  const generatedResult = resultIndex >= 0 ? validResults[resultIndex] : null;
+                  
+                  // Recalculer la bounding box AVANT cropping pour obtenir les vraies coordonnées
+                  const bbox = this.puzzlePieceGenerator.calculateBoundingBox(
+                    piece.polygon_points,
+                    puzzleData.image_width,
+                    puzzleData.image_height,
+                    2
+                  );
+                  
+                  return {
+                    ...piece,
+                    image_url: resultIndex >= 0 ? imageUrls[resultIndex] : piece.image_url || '',
+                    polygon_points: generatedResult?.croppedPolygonPoints || piece.polygon_points,
+                    original_x: bbox.minX / puzzleData.image_width,
+                    original_y: bbox.minY / puzzleData.image_height,
+                  };
+                });
+
+                const updatedPuzzleData: PuzzleData = {
+                  image_url: puzzleData.image_url,
+                  image_width: puzzleData.image_width,
+                  image_height: puzzleData.image_height,
+                  pieces: updatedPieces,
+                };
+
+                return of(updatedPuzzleData);
+              }),
+              catchError((error) => {
+                console.error('Erreur upload pièces:', error);
+                this.errorSnackbar.showError('Erreur lors de l\'upload des pièces');
+                return of(null);
+              })
+            );
           }),
           catchError((error) => {
-            console.error('Erreur upload pièces:', error);
-            this.errorSnackbar.showError('Erreur lors de l\'upload des pièces');
-            return of(null);
+            console.error('Erreur lors de la suppression des anciennes pièces:', error);
+            // Continuer quand même avec l'upload même si la suppression a échoué
+            const uploadObservables = validResults.map(({ pieceId, blob }) =>
+              this.puzzleStorageService.uploadPiecePNG(pieceId, blob, gameId)
+            );
+            return forkJoin(uploadObservables).pipe(
+              switchMap((imageUrls) => {
+                const updatedPieces = puzzleData.pieces.map((piece) => {
+                  const resultIndex = validResults.findIndex(r => r.pieceId === piece.id);
+                  const generatedResult = resultIndex >= 0 ? validResults[resultIndex] : null;
+                  
+                  const bbox = this.puzzlePieceGenerator.calculateBoundingBox(
+                    piece.polygon_points,
+                    puzzleData.image_width,
+                    puzzleData.image_height,
+                    2
+                  );
+                  
+                  return {
+                    ...piece,
+                    image_url: resultIndex >= 0 ? imageUrls[resultIndex] : piece.image_url || '',
+                    polygon_points: generatedResult?.croppedPolygonPoints || piece.polygon_points,
+                    original_x: bbox.minX / puzzleData.image_width,
+                    original_y: bbox.minY / puzzleData.image_height,
+                  };
+                });
+
+                const updatedPuzzleData: PuzzleData = {
+                  image_url: puzzleData.image_url,
+                  image_width: puzzleData.image_width,
+                  image_height: puzzleData.image_height,
+                  pieces: updatedPieces,
+                };
+
+                return of(updatedPuzzleData);
+              }),
+              catchError((uploadError) => {
+                console.error('Erreur upload pièces:', uploadError);
+                this.errorSnackbar.showError('Erreur lors de l\'upload des pièces');
+                return of(null);
+              })
+            );
           })
         );
       }),

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, OnInit, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, OnInit, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { ConfirmationDialogService } from '../../../../../../shared';
@@ -48,6 +48,7 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
 
   form: FormGroup;
   private isInitializing = false;
+  private lastInitialDataHash: string | null = null;
 
   // État de l'image
   readonly imageUrl = signal<string | null>(null);
@@ -57,6 +58,19 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
   readonly displayedImageHeight = signal<number>(0);
   readonly imageOffsetX = signal<number>(0);
   readonly imageOffsetY = signal<number>(0);
+  private imageLoaded = signal<boolean>(false);
+
+  // Signal qui devient true quand TOUS les éléments sont prêts pour dessiner
+  private readonly isReadyToDraw = computed(() => {
+    return (
+      this.imageLoaded() &&
+      this.displayedImageWidth() > 0 &&
+      this.displayedImageHeight() > 0 &&
+      this.ctx() !== null &&
+      this.imageUrl() !== null &&
+      this.pieces().length >= 0 // Juste pour que Angular recalcule quand les pièces changent
+    );
+  });
 
   // Fichier sélectionné
   private imageFile = signal<File | null>(null);
@@ -70,12 +84,23 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
   readonly polygonPoints = signal<{ x: number; y: number }[]>([]);
   readonly isCreatingPolygon = signal<boolean>(false);
 
-  // Canvas pour affichage
-  private ctx: CanvasRenderingContext2D | null = null;
+  // Canvas pour affichage - MAINTENANT UN SIGNAL pour que Angular le track
+  private ctx = signal<CanvasRenderingContext2D | null>(null);
   private resizeObserver?: ResizeObserver;
 
   constructor() {
     this.form = this.fb.group({});
+    
+    // Auto-redessinage quand tout est prêt
+    // Cette fonction s'exécutera automatiquement chaque fois que isReadyToDraw change
+    effect(() => {
+      if (this.isReadyToDraw()) {
+        // Petit délai pour s'assurer que le DOM est complètement rendu
+        setTimeout(() => {
+          this.drawCanvas();
+        }, 10);
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -86,7 +111,7 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
 
   ngAfterViewInit(): void {
     if (this.canvasElement?.nativeElement) {
-      this.ctx = this.canvasElement.nativeElement.getContext('2d');
+      this.ctx.set(this.canvasElement.nativeElement.getContext('2d'));
     }
 
     if (this.imageContainer?.nativeElement) {
@@ -97,7 +122,25 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
     }
 
     window.addEventListener('resize', this.handleResize.bind(this));
-    setTimeout(() => this.updateImageDimensions(), 100);
+    
+    // Charger les données initiales si elles existent et que le composant est prêt
+    if (this.initialData) {
+      const dataHash = this.getDataHash(this.initialData);
+      if (dataHash !== this.lastInitialDataHash || this.pieces().length === 0) {
+        this.lastInitialDataHash = dataHash;
+        setTimeout(() => {
+          this.loadInitialData();
+        }, 100);
+      } else {
+        setTimeout(() => this.updateImageDimensions(), 100);
+      }
+    } else {
+      // Juste appeler updateImageDimensions
+      // Le signal computed isReadyToDraw s'occupera du redessinage automatiquement
+      setTimeout(() => {
+        this.updateImageDimensions();
+      }, 100);
+    }
   }
 
   ngOnDestroy(): void {
@@ -113,8 +156,29 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['initialData'] && this.initialData && !this.isInitializing) {
-      this.loadInitialData();
+    if (changes['initialData']) {
+      // Créer un hash des données pour détecter les changements même si la référence ne change pas
+      const dataHash = this.initialData ? this.getDataHash(this.initialData) : null;
+      
+      if (dataHash !== this.lastInitialDataHash && this.initialData && !this.isInitializing) {
+        this.lastInitialDataHash = dataHash;
+        this.loadInitialData();
+      }
+    }
+  }
+  
+  private getDataHash(data: PuzzleData): string {
+    // Créer un hash simple basé sur les propriétés importantes
+    try {
+      return JSON.stringify({
+        image_url: data.image_url,
+        image_width: data.image_width,
+        image_height: data.image_height,
+        pieces_count: data.pieces?.length || 0,
+        pieces_ids: data.pieces?.map(p => p.id).sort().join(',') || '',
+      });
+    } catch {
+      return '';
     }
   }
 
@@ -130,18 +194,35 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
     this.imageHeight.set(this.initialData.image_height);
     this.imageFile.set(null);
 
-    const pieces: PieceInEdit[] = this.initialData.pieces.map(piece => ({
-      id: piece.id,
+    // Faire une copie profonde des pièces pour éviter les problèmes de référence
+    const pieces: PieceInEdit[] = (this.initialData.pieces || []).map(piece => ({
+      id: piece.id || crypto.randomUUID(),
       name: piece.name,
-      polygon_points: piece.polygon_points,
-      original_x: piece.original_x,
-      original_y: piece.original_y,
+      // Copie profonde du tableau polygon_points
+      polygon_points: Array.isArray(piece.polygon_points) 
+        ? piece.polygon_points.map(p => ({ x: p.x, y: p.y }))
+        : [],
+      original_x: piece.original_x ?? 0,
+      original_y: piece.original_y ?? 0,
       image_url: piece.image_url,
     }));
 
     this.pieces.set(pieces);
     this.isInitializing = false;
-    this.updateImageDimensions();
+    
+    // SIMPLIFIÉ : Juste mettre à jour les dimensions
+    // Le signal computed isReadyToDraw s'occupera du redessinage automatiquement
+    setTimeout(() => {
+      this.updateImageDimensions();
+      
+      // Vérifier si l'image est déjà chargée (cache)
+      const img = this.imageElement?.nativeElement;
+      if (img && img.complete && img.naturalWidth > 0) {
+        this.imageLoaded.set(true);
+      }
+      // Sinon, onImageLoad() sera appelé quand l'image se chargera
+    }, 100);
+    
     this.emitDataChange();
   }
 
@@ -169,6 +250,7 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
       this.pieces.set([]);
       this.polygonPoints.set([]);
       this.isCreatingPolygon.set(false);
+      this.imageLoaded.set(false);
 
       this.updateImageDimensions();
       this.emitDataChange();
@@ -189,7 +271,12 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
       if (!img.src) {
         return;
       }
-      img.onload = () => this.updateImageDimensions();
+      // Attendre que l'image soit chargée, puis redessiner
+      img.onload = () => {
+        this.imageLoaded.set(true);
+        this.updateImageDimensions();
+        // Le signal computed isReadyToDraw s'occupera du redessinage automatiquement
+      };
       return;
     }
 
@@ -222,7 +309,7 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
     if (this.canvasElement?.nativeElement) {
       this.canvasElement.nativeElement.width = displayedWidth;
       this.canvasElement.nativeElement.height = displayedHeight;
-      this.drawCanvas();
+      // Le signal computed isReadyToDraw s'occupera du redessinage automatiquement
     }
   }
 
@@ -290,7 +377,7 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
     this.pieces.update(pieces => [...pieces, newPiece]);
     this.isCreatingPolygon.set(false);
     this.polygonPoints.set([]);
-    this.drawCanvas();
+    // Le signal computed isReadyToDraw s'occupera du redessinage automatiquement
     this.emitDataChange();
   }
 
@@ -304,7 +391,7 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
         if (this.selectedPieceId() === pieceId) {
           this.selectedPieceId.set(null);
         }
-        this.drawCanvas();
+        // Le signal computed isReadyToDraw s'occupera du redessinage automatiquement
         this.emitDataChange();
       }
     });
@@ -317,27 +404,61 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
     this.emitDataChange();
   }
 
+  onImageLoad(): void {
+    this.imageLoaded.set(true);
+    this.updateImageDimensions();
+    // Le signal computed isReadyToDraw s'occupera du redessinage automatiquement
+  }
+
   private drawCanvas(): void {
-    if (!this.ctx || !this.imageUrl()) {
+    if (!this.ctx() || !this.imageUrl()) {
       return;
     }
 
     const width = this.displayedImageWidth();
     const height = this.displayedImageHeight();
 
+    if (width === 0 || height === 0) {
+      return;
+    }
+
     // Effacer le canvas
-    this.ctx.clearRect(0, 0, width, height);
+    this.ctx()!.clearRect(0, 0, width, height);
 
     // Dessiner l'image de fond
     const img = this.imageElement.nativeElement;
-    if (img.complete) {
-      this.ctx.drawImage(img, 0, 0, width, height);
+    if (img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      this.ctx()!.drawImage(img, 0, 0, width, height);
+    } else {
+      // Si l'image n'est pas encore chargée, attendre et redessiner
+      if (img && img.src) {
+        img.onload = () => {
+          if (this.ctx() && width > 0 && height > 0) {
+            this.ctx()!.clearRect(0, 0, width, height);
+            this.ctx()!.drawImage(img, 0, 0, width, height);
+            // Redessiner les polygones après le chargement de l'image
+            this.drawPolygons();
+          }
+        };
+        return;
+      }
+    }
+
+    // Dessiner les polygones
+    this.drawPolygons();
+  }
+
+  private drawPolygons(): void {
+    if (!this.ctx()) {
+      return;
     }
 
     // Dessiner les pièces validées
     const pieces = this.pieces();
     pieces.forEach(piece => {
-      this.drawPolygon(piece.polygon_points, piece.id === this.selectedPieceId() ? '#00ff00' : '#ff0000');
+      if (piece.polygon_points && piece.polygon_points.length > 0) {
+        this.drawPolygon(piece.polygon_points, piece.id === this.selectedPieceId() ? '#00ff00' : '#ff0000');
+      }
     });
 
     // Dessiner le polygone en cours de création
@@ -350,38 +471,73 @@ export class PuzzleFormComponent implements OnInit, OnChanges, AfterViewInit, On
   }
 
   private drawPolygon(points: { x: number; y: number }[], color: string): void {
-    if (!this.ctx || points.length < 2) {
+    if (!this.ctx() || points.length < 2) {
       return;
     }
 
     const width = this.displayedImageWidth();
     const height = this.displayedImageHeight();
 
-    this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
+    if (width === 0 || height === 0) {
+      return;
+    }
+
+    // Vérifier le format des points (relatif 0-1 ou absolu)
+    // Si les points sont > 1, ils sont probablement en coordonnées absolues
+    // et doivent être convertis en coordonnées relatives
+    const firstPoint = points[0];
+    const isAbsolute = firstPoint.x > 1 || firstPoint.y > 1;
+
+    this.ctx()!.strokeStyle = color;
+    this.ctx()!.lineWidth = 2;
+    this.ctx()!.beginPath();
 
     points.forEach((p, i) => {
-      const x = p.x * width;
-      const y = p.y * height;
-      if (i === 0) {
-        this.ctx!.moveTo(x, y);
+      let x: number;
+      let y: number;
+      
+      if (isAbsolute) {
+        // Convertir des coordonnées absolues (pixels) vers les coordonnées du canvas
+        // Les points sont en pixels de l'image originale, on doit les convertir
+        const scaleX = width / this.imageWidth();
+        const scaleY = height / this.imageHeight();
+        x = p.x * scaleX;
+        y = p.y * scaleY;
       } else {
-        this.ctx!.lineTo(x, y);
+        // Coordonnées relatives (0-1), conversion directe
+        x = p.x * width;
+        y = p.y * height;
+      }
+      
+      if (i === 0) {
+        this.ctx()!.moveTo(x, y);
+      } else {
+        this.ctx()!.lineTo(x, y);
       }
     });
 
-    this.ctx.closePath();
-    this.ctx.stroke();
+    this.ctx()!.closePath();
+    this.ctx()!.stroke();
 
     // Dessiner les points
     points.forEach(p => {
-      const x = p.x * width;
-      const y = p.y * height;
-      this.ctx!.fillStyle = color;
-      this.ctx!.beginPath();
-      this.ctx!.arc(x, y, 5, 0, 2 * Math.PI);
-      this.ctx!.fill();
+      let x: number;
+      let y: number;
+      
+      if (isAbsolute) {
+        const scaleX = width / this.imageWidth();
+        const scaleY = height / this.imageHeight();
+        x = p.x * scaleX;
+        y = p.y * scaleY;
+      } else {
+        x = p.x * width;
+        y = p.y * height;
+      }
+      
+      this.ctx()!.fillStyle = color;
+      this.ctx()!.beginPath();
+      this.ctx()!.arc(x, y, 5, 0, 2 * Math.PI);
+      this.ctx()!.fill();
     });
   }
 
