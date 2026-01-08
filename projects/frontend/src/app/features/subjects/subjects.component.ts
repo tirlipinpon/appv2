@@ -139,8 +139,11 @@ import {
               [routerLink]="['/game', game.id]">
               <div class="game-card-header">
                 <h3>{{ game.name }}</h3>
-                <div *ngIf="isGameCompleted(game.id)" class="completed-badge">
-                  <span class="check-icon">✓</span>
+                <div *ngIf="hasGameAttempted(game.id)" 
+                     class="completed-badge"
+                     [class.completed]="isGameCompleted(game.id)"
+                     [class.partial]="!isGameCompleted(game.id)">
+                  <span class="check-icon" *ngIf="isGameCompleted(game.id)">✓</span>
                   <span class="score-text">{{ getGameScore(game.id) }}%</span>
                 </div>
               </div>
@@ -173,8 +176,11 @@ import {
             [routerLink]="['/game', game.id]">
             <div class="game-card-header">
               <h3>{{ game.name }}</h3>
-              <div *ngIf="isGameCompleted(game.id)" class="completed-badge">
-                <span class="check-icon">✓</span>
+              <div *ngIf="hasGameAttempted(game.id)" 
+                   class="completed-badge"
+                   [class.completed]="isGameCompleted(game.id)"
+                   [class.partial]="!isGameCompleted(game.id)">
+                <span class="check-icon" *ngIf="isGameCompleted(game.id)">✓</span>
                 <span class="score-text">{{ getGameScore(game.id) }}%</span>
               </div>
             </div>
@@ -400,13 +406,21 @@ import {
       display: flex;
       align-items: center;
       gap: 0.25rem;
-      background: #4CAF50;
-      color: white;
       padding: 0.25rem 0.5rem;
       border-radius: 12px;
       font-size: 0.75rem;
       font-weight: 600;
       white-space: nowrap;
+    }
+
+    .completed-badge.completed {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .completed-badge.partial {
+      background: #FF9800;
+      color: white;
     }
 
     .check-icon {
@@ -1091,6 +1105,16 @@ export class SubjectsComponent implements OnInit {
   isGameCompleted(gameId: string): boolean {
     const score = this.gameScores().get(gameId);
     return score === 100;
+  }
+
+  /**
+   * Vérifie si un jeu a été tenté (a un score, même si ce n'est pas 100%)
+   */
+  hasGameAttempted(gameId: string): boolean {
+    const score = this.gameScores().get(gameId);
+    // Vérifier si le score existe et est > 0 (un score de 0 signifie pas de tentative réussie)
+    // Note: getGameScores ne retourne que les scores > 0 dans la Map
+    return score !== undefined && score !== null && score > 0;
   }
 
   /**

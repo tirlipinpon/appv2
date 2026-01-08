@@ -9,6 +9,7 @@ import { ChildAuthService } from '../../../../core/auth/child-auth.service';
 import { GameState } from '../../types/game.types';
 import { normalizeGameType } from '../../../../shared/utils/game-normalization.util';
 import { SPECIFIC_GAME_TYPES } from '@shared/utils/game-type.util';
+import { GameInfrastructure } from '../infrastructure/infrastructure';
 
 @Injectable({
   providedIn: 'root',
@@ -21,6 +22,7 @@ export class GameApplication {
   private readonly collection = inject(CollectionService);
   private readonly checkpoint = inject(CheckpointService);
   private readonly authService = inject(ChildAuthService);
+  private readonly infrastructure = inject(GameInfrastructure);
 
   async initializeGame(gameId: string): Promise<void> {
     await this.store.loadGame(gameId);
@@ -173,6 +175,93 @@ export class GameApplication {
       score: finalScore,
       completed: isSuccess,
     });
+  }
+
+  /**
+   * Sauvegarde le score partiel pour tous les jeux qui n'ont pas été complétés à 100%
+   * @param correctCount - Nombre de réponses correctes (pour jeux spécifiques)
+   * @param incorrectCount - Nombre de réponses incorrectes (pour jeux spécifiques)
+   * @param gameStateScore - Score du GameState (pour jeux génériques)
+   * @param totalQuestions - Nombre total de questions (pour jeux génériques)
+   * @param startedAt - Date de début du jeu
+   */
+  async savePartialScore(
+    correctCount?: number, 
+    incorrectCount?: number, 
+    gameStateScore?: number,
+    totalQuestions?: number,
+    startedAt?: Date
+  ): Promise<void> {
+    console.log('[savePartialScore] Début de la sauvegarde', { correctCount, incorrectCount, gameStateScore, totalQuestions });
+    
+    const game = this.store.currentGame();
+    const child = await this.authService.getCurrentChild();
+
+    if (!game || !child) {
+      console.log('[savePartialScore] Pas de jeu ou enfant', { game: !!game, child: !!child });
+      return;
+    }
+
+    console.log('[savePartialScore] Jeu et enfant trouvés', { gameId: game.id, childId: child.child_id });
+
+    const normalizedGameType = normalizeGameType(game.game_type);
+    const isSpecificGame = SPECIFIC_GAME_TYPES.some(type => normalizeGameType(type) === normalizedGameType);
+
+    console.log('[savePartialScore] Type de jeu', { gameType: game.game_type, normalizedGameType, isSpecificGame });
+
+    let finalScore: number;
+    let total: number;
+
+    if (isSpecificGame) {
+      // Pour les jeux spécifiques, utiliser les compteurs
+      if (correctCount === undefined || incorrectCount === undefined) {
+        console.log('[savePartialScore] Pas de données pour jeu spécifique');
+        return; // Pas de données disponibles
+      }
+      total = correctCount + incorrectCount;
+      if (total === 0) {
+        console.log('[savePartialScore] Aucune tentative pour jeu spécifique');
+        return; // Pas de tentatives, ne rien sauvegarder
+      }
+      finalScore = Math.round((correctCount / total) * 100);
+      console.log('[savePartialScore] Score calculé pour jeu spécifique', { correctCount, incorrectCount, total, finalScore });
+    } else {
+      // Pour les jeux génériques, utiliser le GameState
+      if (gameStateScore === undefined || totalQuestions === undefined || totalQuestions === 0) {
+        console.log('[savePartialScore] Pas de données pour jeu générique', { gameStateScore, totalQuestions });
+        return; // Pas de données disponibles
+      }
+      total = totalQuestions;
+      finalScore = Math.round((gameStateScore / totalQuestions) * 100);
+      console.log('[savePartialScore] Score calculé pour jeu générique', { gameStateScore, totalQuestions, finalScore });
+    }
+
+    const isSuccess = finalScore >= 60;
+    const duration = startedAt ? Date.now() - startedAt.getTime() : 0;
+
+    const attemptData = {
+      child_id: child.child_id,
+      game_id: game.id,
+      success: isSuccess,
+      score: finalScore,
+      duration_ms: duration,
+      responses_json: isSpecificGame 
+        ? { correctCount, incorrectCount, total }
+        : { score: gameStateScore, totalQuestions },
+      difficulty_level: 1,
+      completed_at: new Date().toISOString(),
+    };
+
+    console.log('[savePartialScore] Données à sauvegarder', attemptData);
+
+    try {
+      // Utiliser directement l'infrastructure pour éviter les problèmes avec rxMethod
+      const result = await this.infrastructure.saveGameAttempt(attemptData);
+      console.log('[savePartialScore] Score sauvegardé avec succès', result);
+    } catch (error) {
+      console.error('[savePartialScore] Erreur lors de la sauvegarde', error);
+      throw error;
+    }
   }
 
   getCurrentQuestion() {
