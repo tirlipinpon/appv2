@@ -63,11 +63,10 @@ BEGIN
 END $$;
 
 -- Créer la nouvelle contrainte (pas de IS NULL car NOT NULL avec DEFAULT '')
--- Note: La chaîne vide '' est autorisée car c'est la valeur par défaut
--- Pattern: '^(M[1-3]|P[1-6]|S[1-6]|Autre|)$' permet soit un niveau valide soit chaîne vide
+-- Pattern: '^(M[1-3]|P[1-6]|S[1-6]|Autre)$' rejette les chaînes vides (sans | avant $)
 ALTER TABLE teacher_assignments
   ADD CONSTRAINT teacher_assignments_school_level_check 
-  CHECK (school_level ~ '^(M[1-3]|P[1-6]|S[1-6]|Autre|)$');
+  CHECK (school_level ~ '^(M[1-3]|P[1-6]|S[1-6]|Autre)$');
 
 -- ============================================================================
 -- 3. CORRECTION: school_level_subjects.school_level
