@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector, runInInjectionContext } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { firstValueFrom, combineLatest } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
@@ -14,6 +14,7 @@ export class CollectionApplication {
   private readonly store = inject(CollectionStore);
   private readonly badgesStore = inject(BadgesStore);
   private readonly authService = inject(ChildAuthService);
+  private readonly injector = inject(Injector);
 
   async initialize(): Promise<void> {
     const child = await this.authService.getCurrentChild();
@@ -33,8 +34,13 @@ export class CollectionApplication {
    * Attend que tous les chargements soient terminés en utilisant les Observables des signaux
    */
   private async waitForLoadingComplete(): Promise<void> {
-    const collectionLoading$ = toObservable(this.store.loading);
-    const badgesLoading$ = toObservable(this.badgesStore.loading);
+    // Utiliser runInInjectionContext pour appeler toObservable dans un contexte d'injection
+    const collectionLoading$ = runInInjectionContext(this.injector, () => 
+      toObservable(this.store.loading)
+    );
+    const badgesLoading$ = runInInjectionContext(this.injector, () => 
+      toObservable(this.badgesStore.loading)
+    );
     
     // Attendre que les deux signaux loading soient à false
     // Utiliser combineLatest pour surveiller les deux en parallèle
