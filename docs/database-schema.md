@@ -25,7 +25,25 @@ Cette documentation décrit la structure complète de la base de données de l'a
 
 ### `profiles`
 
-Table principale des profils utilisateurs, liée à `auth.users` de Supabase.
+**Description :** Table principale des profils utilisateurs, liée à `auth.users` de Supabase. Cette table sert de point central pour tous les utilisateurs de l'application (parents, professeurs, administrateurs). Elle stocke les informations de base communes à tous les utilisateurs et gère les rôles multiples via un tableau de rôles.
+
+**Rôle métier :**
+
+- Centralise les informations de profil de tous les utilisateurs authentifiés
+- Gère le système de rôles multiples (un utilisateur peut être à la fois parent et professeur)
+- Stocke les métadonnées utilisateur et les préférences d'affichage
+
+**Utilisation :**
+
+- **Admin/Frontend :** Utilisée par `AuthService` et `ProfileService` pour récupérer et mettre à jour les profils utilisateurs
+- **Authentification :** Liée à `auth.users` via trigger automatique lors de l'inscription
+- **Gestion des rôles :** Le champ `roles` (tableau) permet de gérer plusieurs rôles par utilisateur (ex: `['parent', 'prof']`)
+
+**Relations clés :**
+
+- 1:1 avec `parents` (via `profile_id`)
+- 1:1 avec `teachers` (via `profile_id`)
+- 1:N avec `children` (via `parent_id` qui référence `profiles.id`)
 
 | Colonne        | Type          | Contraintes                       | Description                              |
 | -------------- | ------------- | --------------------------------- | ---------------------------------------- |
@@ -43,7 +61,24 @@ Table principale des profils utilisateurs, liée à `auth.users` de Supabase.
 
 ### `parents`
 
-Table des parents, liée à `profiles`.
+**Description :** Table des parents, liée à `profiles`. Stocke les informations détaillées des comptes parents, incluant leurs coordonnées et préférences. Chaque parent peut gérer plusieurs enfants.
+
+**Rôle métier :**
+
+- Gère les informations personnelles des parents (nom, téléphone, adresse)
+- Stocke les préférences utilisateur dans le champ JSONB `preferences`
+- Permet aux parents de gérer les profils de leurs enfants via la relation avec `children`
+
+**Utilisation :**
+
+- **Admin :** Utilisée dans l'interface parent pour afficher et modifier les informations du compte
+- **Gestion des enfants :** Les parents peuvent créer, modifier et activer/désactiver les profils de leurs enfants
+- **RLS :** Les parents ne peuvent accéder qu'à leurs propres données et celles de leurs enfants
+
+**Relations clés :**
+
+- 1:1 avec `profiles` (via `profile_id`)
+- 1:N avec `children` (via `parent_id` dans `children` qui référence `profiles.id`)
 
 | Colonne       | Type          | Contraintes                               | Description             |
 | ------------- | ------------- | ----------------------------------------- | ----------------------- |
@@ -65,7 +100,34 @@ Table des parents, liée à `profiles`.
 
 ### `children`
 
-Table des enfants, liée à `profiles` (parent) et `schools`.
+**Description :** Table des enfants, liée à `profiles` (parent) et `schools`. Cette table est centrale dans l'application car elle gère les profils des enfants qui utilisent l'interface frontend. Elle inclut un système d'authentification simplifié via PIN à 4 chiffres et génération d'avatar.
+
+**Rôle métier :**
+
+- Gère les profils des enfants qui utilisent l'application frontend
+- Système d'authentification simplifié : connexion via `firstname` + `login_pin` (4 chiffres)
+- Génération d'avatar via DiceBear avec `avatar_seed` et `avatar_style` (fun-emoji ou bottts)
+- Gère le niveau scolaire et l'école de l'enfant
+- Permet l'activation/désactivation des comptes enfants
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `ChildAuthService` pour l'authentification des enfants (connexion par prénom + PIN)
+- **Admin :** Utilisée par `ChildService` pour la gestion des profils enfants par les parents
+- **RLS spéciale :** Politique publique pour la connexion (lecture seule des enfants actifs avec `firstname` et `login_pin`)
+- **Filtrage :** Le champ `is_active` permet de désactiver temporairement un compte sans le supprimer
+
+**Relations clés :**
+
+- N:1 avec `profiles` (via `parent_id`)
+- N:1 avec `schools` (via `school_id`)
+- 1:N avec toutes les tables `frontend_*` (progression, tentatives, collectibles, etc.)
+- 1:N avec `child_subject_enrollments` et `child_subject_category_enrollments`
+
+**Cas d'usage spécifiques :**
+
+- Authentification enfant : `firstname` + `login_pin` pour connexion sans email
+- Vérification unicité : La combinaison `avatar_seed` + `login_pin` doit être unique
 
 | Colonne        | Type          | Contraintes                               | Description                          |
 | -------------- | ------------- | ----------------------------------------- | ------------------------------------ | ------ | ------ | --------------- |
@@ -92,7 +154,25 @@ Table des enfants, liée à `profiles` (parent) et `schools`.
 
 ### `teachers`
 
-Table des professeurs, liée à `profiles`.
+**Description :** Table des professeurs, liée à `profiles`. Stocke les informations détaillées des comptes professeurs, incluant leurs coordonnées et préférences de partage avec les parents.
+
+**Rôle métier :**
+
+- Gère les informations personnelles des professeurs (nom, biographie, téléphone)
+- Contrôle le partage d'informations avec les parents (`share_email`, `share_phone`)
+- Permet aux professeurs de créer et gérer des jeux, matières et affectations
+
+**Utilisation :**
+
+- **Admin :** Utilisée dans l'interface professeur pour afficher et modifier les informations du compte
+- **Création de contenu :** Les professeurs peuvent créer des jeux, matières, sous-catégories via leurs affectations
+- **Gestion des affectations :** Liée à `teacher_assignments` pour gérer les matières et classes enseignées
+
+**Relations clés :**
+
+- 1:1 avec `profiles` (via `profile_id`)
+- 1:N avec `teacher_assignments` (via `teacher_id`)
+- 1:N avec `questions` (via `teacher_id`)
 
 | Colonne       | Type          | Contraintes                               | Description                    |
 | ------------- | ------------- | ----------------------------------------- | ------------------------------ |
@@ -115,7 +195,26 @@ Table des professeurs, liée à `profiles`.
 
 ### `schools`
 
-Table des écoles.
+**Description :** Table des écoles. Gère les établissements scolaires où sont inscrits les enfants et où enseignent les professeurs.
+
+**Rôle métier :**
+
+- Référentiel des établissements scolaires
+- Permet d'organiser les enfants et professeurs par école
+- Stocke les informations de localisation (adresse, ville, pays)
+
+**Utilisation :**
+
+- **Admin :** Utilisée par `SchoolService` pour la gestion des écoles (création, modification, liste)
+- **Filtrage :** Utilisée pour filtrer les enfants et les affectations des professeurs par école
+- **Interface parent :** Permet aux parents de sélectionner l'école de leur enfant lors de la création du profil
+
+**Relations clés :**
+
+- 1:N avec `children` (via `school_id`)
+- 1:N avec `school_years` (via `school_id`)
+- 1:N avec `teacher_assignments` (via `school_id`)
+- 1:N avec `school_level_subjects` (via `school_id`)
 
 | Colonne      | Type          | Contraintes                               | Description                 |
 | ------------ | ------------- | ----------------------------------------- | --------------------------- |
@@ -134,7 +233,26 @@ Table des écoles.
 
 ### `school_years`
 
-Table des années scolaires.
+**Description :** Table des années scolaires. Gère les années scolaires pour organiser les classes et les inscriptions des enfants.
+
+**Rôle métier :**
+
+- Organise les années scolaires (ex: "2023-2024", "2024-2025")
+- Permet de filtrer les classes et inscriptions par année
+- Gère l'ordre d'affichage via `order_index`
+
+**Utilisation :**
+
+- **Admin :** Utilisée pour organiser les classes et les inscriptions des enfants par année scolaire
+- **Filtrage temporel :** Permet de filtrer les données par période scolaire
+- **Statut actif :** Le champ `is_active` permet de désactiver les années scolaires passées
+
+**Relations clés :**
+
+- N:1 avec `schools` (via `school_id`)
+- 1:N avec `classes` (via `school_year_id`)
+- 1:N avec `teacher_assignments` (via `school_year_id`)
+- 1:N avec `child_subject_enrollments` (via `school_year_id`)
 
 | Colonne       | Type          | Contraintes                               | Description         |
 | ------------- | ------------- | ----------------------------------------- | ------------------- |
@@ -152,7 +270,25 @@ Table des années scolaires.
 
 ### `classes`
 
-Table des classes.
+**Description :** Table des classes. Gère les classes d'élèves au sein des écoles et années scolaires.
+
+**Rôle métier :**
+
+- Organise les élèves en classes au sein d'une école et d'une année scolaire
+- Gère la capacité maximale des classes
+- Permet d'organiser les affectations des professeurs par classe
+
+**Utilisation :**
+
+- **Admin :** Utilisée pour organiser les élèves et les affectations des professeurs
+- **Gestion des affectations :** Liée à `teacher_assignments` pour affecter des professeurs à des classes spécifiques
+- **Métadonnées :** Le champ `metadata` (JSONB) permet de stocker des informations supplémentaires sur la classe
+
+**Relations clés :**
+
+- N:1 avec `schools` (via `school_id`)
+- N:1 avec `school_years` (via `school_year_id`)
+- 1:N avec `teacher_assignments` (via `class_id`)
 
 | Colonne          | Type          | Contraintes                               | Description                 |
 | ---------------- | ------------- | ----------------------------------------- | --------------------------- |
@@ -171,7 +307,35 @@ Table des classes.
 
 ### `teacher_assignments`
 
-Table des affectations des professeurs.
+**Description :** Table des affectations des professeurs. Cette table est centrale pour le système pédagogique car elle lie les professeurs aux matières, classes, écoles et niveaux scolaires qu'ils enseignent. Elle utilise le soft delete pour conserver l'historique.
+
+**Rôle métier :**
+
+- Gère les affectations des professeurs (quelle matière, quelle classe, quelle école, quel niveau)
+- Détermine quels jeux sont visibles pour un professeur (seuls les jeux des matières avec affectations actives sont accessibles)
+- Permet de gérer les rôles des professeurs (titulaire, remplaçant, etc.)
+- Utilise le soft delete (`deleted_at`) pour conserver l'historique sans supprimer définitivement
+
+**Utilisation :**
+
+- **Admin :** Utilisée par `TeacherAssignmentService` pour gérer les affectations des professeurs
+- **Filtrage des jeux :** Les jeux ne sont visibles que si la matière a au moins une affectation active (`deleted_at IS NULL`)
+- **Gestion des conflits :** Le système vérifie les affectations actives avec des niveaux différents pour éviter les doublons
+- **Réactivation :** Permet de réactiver une affectation supprimée en créant une nouvelle avec les mêmes paramètres
+
+**Relations clés :**
+
+- N:1 avec `teachers` (via `teacher_id`)
+- N:1 avec `schools` (via `school_id`)
+- N:1 avec `school_years` (via `school_year_id`)
+- N:1 avec `classes` (via `class_id`)
+- N:1 avec `subjects` (via `subject_id`)
+
+**Cas d'usage spécifiques :**
+
+- Un professeur peut avoir plusieurs affectations pour la même matière mais avec des niveaux différents
+- Les affectations supprimées (soft delete) peuvent être réactivées
+- Le système vérifie les conflits lors de la création d'affectations
 
 | Colonne          | Type          | Contraintes                               | Description                       |
 | ---------------- | ------------- | ----------------------------------------- | --------------------------------- | ------ | ------ | --------------- |
@@ -197,7 +361,34 @@ Table des affectations des professeurs.
 
 ### `subjects`
 
-Table des matières.
+**Description :** Table des matières. Gère le référentiel des matières scolaires (ex: Mathématiques, Français) et extra-scolaires (ex: Musique, Sport).
+
+**Rôle métier :**
+
+- Référentiel central des matières disponibles dans l'application
+- Distingue les matières scolaires, extra-scolaires et optionnelles via le champ `type`
+- Permet d'organiser les jeux et les inscriptions des enfants par matière
+
+**Utilisation :**
+
+- **Admin :** Utilisée par `SubjectService` pour la gestion des matières (création, modification, liste)
+- **Frontend :** Utilisée par `SubjectsInfrastructure` pour afficher les matières disponibles pour un enfant
+- **Filtrage :** Les matières sont filtrées selon les inscriptions de l'enfant (`child_subject_enrollments` avec `selected=true`)
+- **Gestion des jeux :** Les jeux peuvent être liés directement à une matière (sans sous-catégorie)
+
+**Relations clés :**
+
+- 1:N avec `subject_categories` (via `subject_id`)
+- 1:N avec `games` (via `subject_id`)
+- 1:N avec `questions` (via `subject_id`)
+- 1:N avec `school_level_subjects` (via `subject_id`)
+- 1:N avec `child_subject_enrollments` (via `subject_id`)
+- 1:N avec `frontend_bonus_games` (via `subject_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les matières peuvent avoir des sous-catégories (`subject_categories`) pour une organisation plus fine
+- Les matières peuvent être liées à des niveaux scolaires spécifiques via `school_level_subjects`
 
 | Colonne             | Type          | Contraintes                               | Description                 |
 | ------------------- | ------------- | ----------------------------------------- | --------------------------- | ------------ | --------------- |
@@ -216,7 +407,35 @@ Table des matières.
 
 ### `subject_categories`
 
-Table des catégories de matières (sous-catégories).
+**Description :** Table des catégories de matières (sous-catégories). Permet de subdiviser les matières en sous-catégories plus spécifiques (ex: Mathématiques → Addition, Soustraction, Multiplication).
+
+**Rôle métier :**
+
+- Organise les matières en sous-catégories pour une granularité plus fine
+- Permet de créer des jeux spécifiques à une sous-catégorie
+- Gère la progression des enfants par sous-catégorie (via `frontend_subject_category_progress`)
+- Permet de lier des collectibles à des sous-catégories
+
+**Utilisation :**
+
+- **Admin :** Utilisée par `SubjectCategoryService` pour la gestion des sous-catégories (création, modification, suppression, transfert)
+- **Frontend :** Utilisée pour afficher les sous-catégories d'une matière et organiser les jeux
+- **Progression :** La progression des enfants est suivie par sous-catégorie (étoiles, pourcentage de complétion)
+- **Transfert :** Les sous-catégories peuvent être transférées d'une matière à une autre (les jeux restent liés)
+
+**Relations clés :**
+
+- N:1 avec `subjects` (via `subject_id`)
+- 1:N avec `games` (via `subject_category_id`)
+- 1:N avec `frontend_collectibles` (via `subject_category_id`)
+- 1:N avec `frontend_subject_category_progress` (via `subject_category_id`)
+- 1:N avec `child_subject_category_enrollments` (via `subject_category_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les professeurs peuvent compter les enfants inscrits à une sous-catégorie avec filtres école/niveau
+- Les sous-catégories peuvent être transférées vers une autre matière (les jeux suivent)
+- RLS : Accès réservé aux professeurs pour la création/modification
 
 | Colonne       | Type          | Contraintes                                            | Description         |
 | ------------- | ------------- | ------------------------------------------------------ | ------------------- |
@@ -237,7 +456,29 @@ Table des catégories de matières (sous-catégories).
 
 ### `school_level_subjects`
 
-Table de liaison entre niveaux scolaires et matières.
+**Description :** Table de liaison entre niveaux scolaires et matières. Définit quelles matières sont disponibles et obligatoires pour chaque niveau scolaire dans chaque école.
+
+**Rôle métier :**
+
+- Lie les matières aux niveaux scolaires (M1-M3, P1-P6, S1-S6) par école
+- Détermine si une matière est obligatoire (`required=true`) ou optionnelle pour un niveau
+- Permet de personnaliser le programme par école et par niveau
+
+**Utilisation :**
+
+- **Admin :** Utilisée pour configurer le programme scolaire par école et par niveau
+- **Frontend :** Utilisée pour filtrer les matières disponibles selon le niveau scolaire de l'enfant
+- **Gestion des inscriptions :** Les matières obligatoires peuvent être automatiquement ajoutées aux inscriptions des enfants
+
+**Relations clés :**
+
+- N:1 avec `schools` (via `school_id`)
+- N:1 avec `subjects` (via `subject_id`)
+
+**Cas d'usage spécifiques :**
+
+- Une même matière peut être obligatoire pour certains niveaux et optionnelle pour d'autres
+- Permet de personnaliser le programme par école
 
 | Colonne        | Type          | Contraintes                               | Description         |
 | -------------- | ------------- | ----------------------------------------- | ------------------- | ------- | --------------- |
@@ -254,7 +495,31 @@ Table de liaison entre niveaux scolaires et matières.
 
 ### `child_subject_enrollments`
 
-Table des inscriptions des enfants aux matières.
+**Description :** Table des inscriptions des enfants aux matières. Gère les matières activées (`selected=true`) ou désactivées pour chaque enfant, par école et année scolaire.
+
+**Rôle métier :**
+
+- Détermine quelles matières sont activées pour un enfant (visible dans l'interface frontend)
+- Permet aux parents de sélectionner/désélectionner les matières pour leurs enfants
+- Lie les inscriptions à une école et une année scolaire spécifiques
+
+**Utilisation :**
+
+- **Admin :** Utilisée par `ParentSubjectService` pour gérer les matières activées pour un enfant
+- **Frontend :** Utilisée par `SubjectsInfrastructure` pour filtrer les matières affichées (seulement celles avec `selected=true`)
+- **Création automatique :** Les inscriptions peuvent être créées automatiquement lors de l'ajout d'un enfant à une école
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `schools` (via `school_id`)
+- N:1 avec `school_years` (via `school_year_id`)
+- N:1 avec `subjects` (via `subject_id`)
+
+**Cas d'usage spécifiques :**
+
+- Le champ `selected` détermine si la matière est visible dans l'interface enfant
+- Les inscriptions sont créées automatiquement pour les matières obligatoires du niveau scolaire
 
 | Colonne          | Type          | Contraintes                               | Description          |
 | ---------------- | ------------- | ----------------------------------------- | -------------------- |
@@ -273,7 +538,29 @@ Table des inscriptions des enfants aux matières.
 
 ### `child_subject_category_enrollments`
 
-Table des inscriptions des enfants aux catégories de matières.
+**Description :** Table des inscriptions des enfants aux catégories de matières. Gère les sous-catégories activées (`selected=true`) ou désactivées pour chaque enfant.
+
+**Rôle métier :**
+
+- Détermine quelles sous-catégories sont activées pour un enfant
+- Permet un contrôle fin de la progression de l'enfant par sous-catégorie
+- Utilisée pour filtrer les jeux disponibles dans l'interface frontend
+
+**Utilisation :**
+
+- **Admin :** Utilisée pour gérer les sous-catégories activées pour un enfant
+- **Frontend :** Utilisée pour filtrer les jeux et la progression par sous-catégorie
+- **RLS :** Accès réservé aux parents pour leurs enfants
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `subject_categories` (via `subject_category_id`)
+
+**Index :**
+
+- `idx_child_category_enrollments_child_id` : Optimise les requêtes par enfant
+- `idx_child_category_enrollments_category_id` : Optimise les requêtes par catégorie
 
 | Colonne               | Type          | Contraintes                                                         | Description            |
 | --------------------- | ------------- | ------------------------------------------------------------------- | ---------------------- |
@@ -297,7 +584,28 @@ Table des inscriptions des enfants aux catégories de matières.
 
 ### `game_types`
 
-Table des types de jeux.
+**Description :** Table des types de jeux. Référentiel des types de jeux disponibles dans l'application (QCM, Memory, Puzzle, Chronologie, etc.).
+
+**Rôle métier :**
+
+- Définit les types de jeux disponibles dans l'application
+- Stocke les métadonnées de chaque type (icône, couleur, description)
+- Utilisée pour catégoriser et styliser les jeux dans l'interface
+
+**Utilisation :**
+
+- **Admin :** Utilisée par `GameTypeService` pour récupérer la liste des types disponibles
+- **Frontend :** Utilisée par `GameTypeStyleService` pour appliquer les styles et icônes selon le type
+- **Statistiques :** Utilisée pour compter les jeux par type dans les statistiques
+
+**Relations clés :**
+
+- 1:N avec `games` (via `game_type_id`)
+
+**Cas d'usage spécifiques :**
+
+- Chaque type de jeu a une icône et une couleur associée pour l'affichage
+- Les types sont utilisés pour filtrer et organiser les jeux dans l'interface
 
 | Colonne       | Type          | Contraintes                               | Description                 |
 | ------------- | ------------- | ----------------------------------------- | --------------------------- |
@@ -316,7 +624,40 @@ Table des types de jeux.
 
 ### `games`
 
-Table principale des jeux.
+**Description :** Table principale des jeux. Stocke tous les jeux éducatifs créés par les professeurs. Un jeu doit être lié soit à une matière (`subject_id`) soit à une sous-catégorie (`subject_category_id`), mais pas les deux.
+
+**Rôle métier :**
+
+- Centralise tous les jeux éducatifs de l'application
+- Stocke les données spécifiques à chaque type de jeu dans `reponses` (JSONB)
+- Gère les aides pédagogiques (textes, images, vidéos) pour aider les enfants
+- Permet de créer des jeux variés : QCM, Memory, Puzzle, Chronologie, Vrai/Faux, etc.
+
+**Utilisation :**
+
+- **Admin :** Utilisée par `GameService` pour créer, modifier, supprimer et lister les jeux
+- **Frontend :** Utilisée par `GameInfrastructure` pour charger les jeux et sauvegarder les tentatives
+- **Filtrage :** Les jeux ne sont visibles que si la matière a au moins une affectation active (`teacher_assignments` avec `deleted_at IS NULL`)
+- **Statistiques :** Utilisée pour compter les jeux par type et par matière/catégorie
+
+**Relations clés :**
+
+- N:1 avec `subjects` (via `subject_id`) - optionnel
+- N:1 avec `subject_categories` (via `subject_category_id`) - optionnel
+- N:1 avec `game_types` (via `game_type_id`) - obligatoire
+- 1:N avec `frontend_game_attempts` (via `game_id`)
+- 1:N avec `frontend_game_variants` (via `game_id`)
+
+**Contraintes importantes :**
+
+- `games_subject_or_category_check` : Un jeu doit avoir soit `subject_id` soit `subject_category_id` (pas les deux, pas aucun)
+
+**Cas d'usage spécifiques :**
+
+- Les jeux liés à une matière sont affichés directement sous la matière
+- Les jeux liés à une sous-catégorie sont affichés sous la sous-catégorie
+- Le champ `reponses` (JSONB) stocke la structure spécifique à chaque type de jeu
+- Les aides (`aides`, `aide_image_url`, `aide_video_url`) sont affichées pour aider l'enfant
 
 | Colonne               | Type          | Contraintes                               | Description                                                       |
 | --------------------- | ------------- | ----------------------------------------- | ----------------------------------------------------------------- |
@@ -350,7 +691,31 @@ Table principale des jeux.
 
 ### `questions`
 
-Table des questions (pour les QCM, vrai/faux, etc.).
+**Description :** Table des questions (pour les QCM, vrai/faux, etc.). Stocke les questions réutilisables créées par les professeurs, qui peuvent être utilisées dans plusieurs jeux.
+
+**Rôle métier :**
+
+- Banque de questions réutilisables pour les professeurs
+- Supporte plusieurs types de questions (QCM, vrai/faux, texte, numérique)
+- Permet de gérer la difficulté des questions
+- Peut être liée à un professeur spécifique pour le suivi
+
+**Utilisation :**
+
+- **Admin :** Utilisée pour créer et gérer une banque de questions réutilisables
+- **Création de jeux :** Les questions peuvent être utilisées lors de la création de jeux
+- **Filtrage :** Les questions peuvent être filtrées par matière, type et difficulté
+
+**Relations clés :**
+
+- N:1 avec `subjects` (via `subject_id`)
+- N:1 avec `teachers` (via `teacher_id`) - optionnel
+
+**Cas d'usage spécifiques :**
+
+- Les questions peuvent être partagées entre plusieurs jeux
+- Le champ `options` (JSONB) stocke la structure spécifique à chaque type de question
+- Le champ `answer_key` (JSONB) stocke la réponse correcte selon le type
 
 | Colonne         | Type          | Contraintes                               | Description                                   |
 | --------------- | ------------- | ----------------------------------------- | --------------------------------------------- | ---------- | ---------- | ---------------- |
@@ -374,7 +739,33 @@ Table des questions (pour les QCM, vrai/faux, etc.).
 
 ### `frontend_game_attempts`
 
-Table des tentatives de jeux des enfants.
+**Description :** Table des tentatives de jeux des enfants. Enregistre chaque tentative de jeu d'un enfant avec le score, la durée, les réponses et le succès. Cette table est essentielle pour le suivi de la progression et les statistiques.
+
+**Rôle métier :**
+
+- Enregistre toutes les tentatives de jeux des enfants
+- Calcule les scores et le taux de réussite pour chaque jeu
+- Permet de suivre la progression de l'enfant (meilleur score, nombre de tentatives)
+- Utilisée pour calculer les étoiles et le pourcentage de complétion des sous-catégories
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `GameInfrastructure` pour sauvegarder les tentatives après chaque jeu
+- **Progression :** Utilisée par `ProgressionService` pour calculer la progression par sous-catégorie
+- **Statistiques :** Utilisée pour afficher les statistiques de jeu à l'enfant et aux parents
+- **Adaptation :** Utilisée par `AdaptiveDifficultyService` pour adapter la difficulté selon les performances
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `games` (via `game_id`)
+
+**Cas d'usage spécifiques :**
+
+- Le score est un pourcentage (0-100) calculé selon les réponses correctes
+- Le champ `responses_json` (JSONB) stocke toutes les réponses de l'enfant pour analyse
+- Le meilleur score par jeu est utilisé pour déterminer si un jeu est "réussi" (score = 100%)
+- Les tentatives échouées sont utilisées pour proposer des jeux à refaire
 
 | Colonne            | Type          | Contraintes                               | Description            |
 | ------------------ | ------------- | ----------------------------------------- | ---------------------- |
@@ -397,7 +788,33 @@ Table des tentatives de jeux des enfants.
 
 ### `frontend_subject_category_progress`
 
-Table de progression des enfants par catégorie de matière.
+**Description :** Table de progression des enfants par catégorie de matière. Suit la progression de chaque enfant pour chaque sous-catégorie avec les étoiles obtenues, le pourcentage de complétion et le statut de complétion.
+
+**Rôle métier :**
+
+- Suit la progression de l'enfant par sous-catégorie (étoiles, pourcentage, complétion)
+- Calcule automatiquement le pourcentage de complétion basé sur les jeux réussis (score = 100%)
+- Gère le système d'étoiles (0-3 étoiles) selon les performances
+- Détermine si une sous-catégorie est complétée (100% ou `completed=true`)
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `ProgressionService` pour mettre à jour la progression après chaque jeu
+- **Affichage :** Utilisée pour afficher les étoiles et le pourcentage de complétion dans l'interface
+- **Déblocage :** Utilisée pour vérifier les conditions de déblocage des collectibles et jeux bonus
+- **Calcul :** Le pourcentage est calculé comme : (jeux réussis / total jeux) × 100
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `subject_categories` (via `subject_category_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les étoiles sont calculées selon le score et le taux de réussite (3 étoiles = parfait, 2 = bien, 1 = passable, 0 = à refaire)
+- Le pourcentage de complétion est mis à jour automatiquement après chaque tentative
+- Une sous-catégorie est considérée complétée si `completed=true` OU `completion_percentage >= 100`
+- Utilisée pour débloquer les collectibles liés à la sous-catégorie
 
 | Colonne                 | Type          | Contraintes                               | Description               |
 | ----------------------- | ------------- | ----------------------------------------- | ------------------------- |
@@ -417,7 +834,29 @@ Table de progression des enfants par catégorie de matière.
 
 ### `frontend_game_variants`
 
-Table des variantes de jeux (pour différents niveaux de difficulté).
+**Description :** Table des variantes de jeux (pour différents niveaux de difficulté). Permet de créer plusieurs variantes d'un même jeu avec différents niveaux de difficulté (1-5).
+
+**Rôle métier :**
+
+- Gère les variantes de difficulté pour un même jeu
+- Permet d'adapter la difficulté selon le niveau de l'enfant
+- Stocke les données spécifiques à chaque variante dans `variant_data_json` (JSONB)
+
+**Utilisation :**
+
+- **Frontend :** Utilisée pour charger la variante appropriée selon le niveau de difficulté de l'enfant
+- **Adaptation :** Utilisée par `AdaptiveDifficultyService` pour proposer la bonne difficulté
+- **Progression :** Permet d'augmenter progressivement la difficulté selon les performances
+
+**Relations clés :**
+
+- N:1 avec `games` (via `game_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les variantes peuvent être activées/désactivées via `is_active`
+- Le niveau de difficulté va de 1 (facile) à 5 (très difficile)
+- Les données de chaque variante sont stockées dans `variant_data_json` (structure spécifique au type de jeu)
 
 | Colonne             | Type          | Contraintes                               | Description                |
 | ------------------- | ------------- | ----------------------------------------- | -------------------------- |
@@ -435,7 +874,31 @@ Table des variantes de jeux (pour différents niveaux de difficulté).
 
 ### `frontend_collectibles`
 
-Table des objets collectionnables.
+**Description :** Table des objets collectionnables. Définit les objets que les enfants peuvent débloquer en complétant des sous-catégories ou en atteignant certains objectifs.
+
+**Rôle métier :**
+
+- Gère le système de collection pour motiver les enfants
+- Définit les conditions de déblocage via `unlock_condition_json` (JSONB)
+- Permet de lier des collectibles à des sous-catégories spécifiques
+- Gère l'ordre d'affichage dans la collection
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `CollectionService` pour afficher les collectibles disponibles et débloqués
+- **Déblocage automatique :** Les collectibles sont débloqués automatiquement quand les conditions sont remplies
+- **Condition principale :** Compléter une sous-catégorie (`complete_subject_category`)
+
+**Relations clés :**
+
+- N:1 avec `subject_categories` (via `subject_category_id`) - optionnel
+
+**Cas d'usage spécifiques :**
+
+- Les collectibles sont débloqués automatiquement quand une sous-catégorie est complétée
+- Le champ `unlock_condition_json` permet de définir des conditions complexes (type, subject_category_id, etc.)
+- Les collectibles peuvent être activés/désactivés via `is_active`
+- L'ordre d'affichage est géré par `display_order`
 
 | Colonne                 | Type          | Contraintes                               | Description             |
 | ----------------------- | ------------- | ----------------------------------------- | ----------------------- |
@@ -456,7 +919,29 @@ Table des objets collectionnables.
 
 ### `frontend_child_collectibles`
 
-Table de liaison enfants/objets collectionnables (objets débloqués).
+**Description :** Table de liaison enfants/objets collectionnables (objets débloqués). Enregistre quels collectibles ont été débloqués par chaque enfant et à quel moment.
+
+**Rôle métier :**
+
+- Suit les collectibles débloqués par chaque enfant
+- Enregistre la date de déblocage pour afficher l'historique
+- Permet d'afficher la collection personnelle de l'enfant
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `CollectionService` pour afficher les collectibles débloqués par l'enfant
+- **Vérification :** Utilisée pour vérifier si un collectible est déjà débloqué avant de le débloquer à nouveau
+- **Affichage :** Utilisée pour afficher la collection personnelle dans l'interface enfant
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `frontend_collectibles` (via `collectible_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les collectibles sont débloqués automatiquement par le système quand les conditions sont remplies
+- La date de déblocage (`unlocked_at`) permet d'afficher l'ordre chronologique
 
 | Colonne          | Type          | Contraintes                               | Description           |
 | ---------------- | ------------- | ----------------------------------------- | --------------------- |
@@ -472,7 +957,30 @@ Table de liaison enfants/objets collectionnables (objets débloqués).
 
 ### `frontend_bonus_games`
 
-Table des jeux bonus.
+**Description :** Table des jeux bonus. Définit les mini-jeux bonus que les enfants peuvent débloquer en complétant des matières entières ou en atteignant certains objectifs.
+
+**Rôle métier :**
+
+- Gère les jeux bonus récompenses pour motiver les enfants
+- Définit les conditions de déblocage via `unlock_condition_json` (JSONB)
+- Stocke les données du jeu dans `game_data_json` (JSONB)
+- Permet de lier des jeux bonus à des matières spécifiques
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `BonusGamesService` pour afficher les jeux bonus disponibles et débloqués
+- **Déblocage :** Les jeux bonus sont débloqués quand toutes les sous-catégories d'une matière sont complétées
+- **Jouabilité :** Les jeux bonus peuvent être joués plusieurs fois (compteur `played_count`)
+
+**Relations clés :**
+
+- N:1 avec `subjects` (via `subject_id`) - optionnel
+
+**Cas d'usage spécifiques :**
+
+- Condition principale : Compléter toutes les sous-catégories d'une matière (`complete_subject`)
+- Les données du jeu sont stockées dans `game_data_json` (structure spécifique au type de jeu bonus)
+- Les jeux bonus peuvent être activés/désactivés via `is_active`
 
 | Colonne                 | Type          | Contraintes                               | Description             |
 | ----------------------- | ------------- | ----------------------------------------- | ----------------------- |
@@ -493,7 +1001,30 @@ Table des jeux bonus.
 
 ### `frontend_child_bonus_game_unlocks`
 
-Table de liaison enfants/jeux bonus (jeux débloqués).
+**Description :** Table de liaison enfants/jeux bonus (jeux débloqués). Enregistre quels jeux bonus ont été débloqués par chaque enfant, avec le nombre de parties jouées et la dernière date de jeu.
+
+**Rôle métier :**
+
+- Suit les jeux bonus débloqués par chaque enfant
+- Enregistre le nombre de parties jouées pour les statistiques
+- Permet de suivre l'engagement de l'enfant avec les jeux bonus
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `BonusGamesService` pour afficher les jeux bonus débloqués
+- **Compteur :** Le compteur `played_count` est incrémenté à chaque partie jouée
+- **Historique :** La date `last_played_at` permet de suivre l'activité récente
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `frontend_bonus_games` (via `bonus_game_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les jeux bonus sont débloqués automatiquement quand les conditions sont remplies
+- Le compteur `played_count` permet de suivre l'engagement de l'enfant
+- La date `last_played_at` est mise à jour à chaque partie
 
 | Colonne          | Type          | Contraintes                               | Description              |
 | ---------------- | ------------- | ----------------------------------------- | ------------------------ |
@@ -512,7 +1043,32 @@ Table de liaison enfants/jeux bonus (jeux débloqués).
 
 ### `frontend_themes`
 
-Table des thèmes visuels de l'application.
+**Description :** Table des thèmes visuels de l'application. Définit les thèmes personnalisables que les enfants peuvent débloquer et sélectionner pour personnaliser l'apparence de l'interface.
+
+**Rôle métier :**
+
+- Gère les thèmes visuels personnalisables de l'application
+- Définit les couleurs et formes via `shapes_colors_json` (JSONB)
+- Permet de filtrer les thèmes par niveau scolaire (`school_level_min`, `school_level_max`)
+- Gère les conditions de déblocage via `unlock_condition_json` (JSONB)
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `ThemesService` pour afficher les thèmes disponibles selon le niveau scolaire
+- **Sélection :** Les enfants peuvent sélectionner un thème parmi ceux débloqués
+- **Déblocage :** Les thèmes peuvent être débloqués selon le nombre total d'étoiles obtenues
+- **Par défaut :** Les thèmes avec `is_default=true` sont toujours disponibles
+
+**Relations clés :**
+
+- 1:N avec `frontend_child_themes` (via `theme_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les thèmes par défaut (`is_default=true`) sont toujours disponibles sans condition
+- Les thèmes peuvent être filtrés par niveau scolaire pour adapter l'apparence à l'âge
+- Les conditions de déblocage peuvent être basées sur le nombre total d'étoiles (`by_level` avec `min_stars`)
+- L'ordre d'affichage est géré par `display_order`
 
 | Colonne                 | Type          | Contraintes                               | Description                          |
 | ----------------------- | ------------- | ----------------------------------------- | ------------------------------------ |
@@ -534,7 +1090,30 @@ Table des thèmes visuels de l'application.
 
 ### `frontend_child_themes`
 
-Table de liaison enfants/thèmes (thèmes débloqués et sélectionnés).
+**Description :** Table de liaison enfants/thèmes (thèmes débloqués et sélectionnés). Enregistre quels thèmes ont été débloqués par chaque enfant et lequel est actuellement sélectionné.
+
+**Rôle métier :**
+
+- Suit les thèmes débloqués par chaque enfant
+- Gère le thème sélectionné (`is_selected=true`) pour appliquer l'apparence
+- Permet de débloquer automatiquement les thèmes quand les conditions sont remplies
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `ThemesService` pour afficher les thèmes débloqués et appliquer le thème sélectionné
+- **Sélection unique :** Un seul thème peut être sélectionné à la fois (les autres sont automatiquement désélectionnés)
+- **Déblocage automatique :** Les thèmes sont débloqués automatiquement quand les conditions sont remplies
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `frontend_themes` (via `theme_id`)
+
+**Cas d'usage spécifiques :**
+
+- Quand un enfant sélectionne un thème, tous les autres sont automatiquement désélectionnés
+- Si un thème n'est pas encore débloqué mais est sélectionné, il est automatiquement débloqué
+- La date de déblocage (`unlocked_at`) permet d'afficher l'historique
 
 | Colonne       | Type          | Contraintes                               | Description         |
 | ------------- | ------------- | ----------------------------------------- | ------------------- |
@@ -552,7 +1131,32 @@ Table de liaison enfants/thèmes (thèmes débloqués et sélectionnés).
 
 ### `frontend_child_mascot_state`
 
-Table de l'état de la mascotte de l'enfant (niveau, XP, évolution).
+**Description :** Table de l'état de la mascotte de l'enfant (niveau, XP, évolution). Gère le système de gamification avec une mascotte qui évolue selon les performances de l'enfant.
+
+**Rôle métier :**
+
+- Gère le système de mascotte pour motiver les enfants
+- Suit le niveau, l'XP et le stade d'évolution de la mascotte
+- Calcule automatiquement le niveau selon l'XP (formule : `floor(sqrt(xp / 100)) + 1`)
+- Gère l'évolution de la mascotte selon le niveau (5 stades d'évolution)
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `MascotService` pour afficher et mettre à jour l'état de la mascotte
+- **Gain d'XP :** L'XP est ajoutée après chaque jeu réussi (10-30 points selon le score)
+- **Évolution :** Le stade d'évolution est calculé automatiquement selon le niveau (1-5 stades)
+- **Apparence :** Le champ `current_appearance_json` stocke l'apparence actuelle (couleur, accessoires)
+
+**Relations clés :**
+
+- 1:1 avec `children` (via `child_id`, UNIQUE)
+
+**Cas d'usage spécifiques :**
+
+- L'XP est gagnée après chaque jeu réussi : base 10 points + bonus jusqu'à 20 points selon le score
+- Le niveau est calculé automatiquement : `floor(sqrt(xp / 100)) + 1`
+- Les stades d'évolution : 1 (niveau 1-4), 2 (niveau 5-9), 3 (niveau 10-14), 4 (niveau 15-19), 5 (niveau 20+)
+- Un état par défaut est créé automatiquement si inexistant (niveau 1, XP 0, stade 1)
 
 | Colonne                   | Type          | Contraintes                               | Description               |
 | ------------------------- | ------------- | ----------------------------------------- | ------------------------- |
@@ -572,7 +1176,32 @@ Table de l'état de la mascotte de l'enfant (niveau, XP, évolution).
 
 ### `frontend_child_checkpoints`
 
-Table des points de sauvegarde pour l'application enfant (sauvegarde hybride: auto + checkpoint).
+**Description :** Table des points de sauvegarde pour l'application enfant (sauvegarde hybride: auto + checkpoint). Permet de sauvegarder l'état de l'application à des moments clés (fin de jeu, fin de sous-catégorie) pour permettre la reprise de session.
+
+**Rôle métier :**
+
+- Gère les points de sauvegarde pour permettre la reprise de session
+- Sauvegarde l'état de l'application à des moments clés (fin de jeu, fin de sous-catégorie)
+- Permet de restaurer l'état de l'application après une fermeture inattendue
+- Système hybride : sauvegarde automatique + checkpoints explicites
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `CheckpointService` pour créer et récupérer les checkpoints
+- **Types de checkpoints :** `game_end` (fin de jeu), `subject_category_end` (fin de sous-catégorie)
+- **Récupération :** Le dernier checkpoint est récupéré au démarrage pour restaurer l'état
+- **Nettoyage :** Les anciens checkpoints peuvent être nettoyés (garde les N derniers)
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les checkpoints sont créés automatiquement à la fin de chaque jeu
+- Les checkpoints sont créés à la fin de chaque sous-catégorie complétée
+- Le champ `checkpoint_data_json` stocke toutes les données nécessaires pour restaurer l'état
+- Les anciens checkpoints peuvent être nettoyés automatiquement (garde les 10 derniers par défaut)
 
 | Colonne                | Type          | Contraintes                               | Description           |
 | ---------------------- | ------------- | ----------------------------------------- | --------------------- |
