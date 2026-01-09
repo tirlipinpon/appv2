@@ -1,4 +1,4 @@
-import { Component, inject, computed, effect } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ChildAuthService } from '../../../core/auth/child-auth.service';
@@ -105,24 +105,7 @@ export class AppLayoutComponent {
   protected readonly badgeNotification = inject(BadgeNotificationService);
 
   // Badge actuellement affiché
-  currentBadge = computed(() => {
-    const badge = this.badgeNotification.getCurrentBadge();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app-layout.component.ts:108',message:'currentBadge COMPUTED',data:{hasBadge:!!badge,badgeId:badge?.badge_id,badgeName:badge?.badge_name,isVisible:this.badgeNotification.isNotificationVisible()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
-    // #endregion
-    return badge;
-  });
-
-  constructor() {
-    // Surveiller les changements de badge
-    effect(() => {
-      const badge = this.currentBadge();
-      const isVisible = this.badgeNotification.isNotificationVisible();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app-layout.component.ts:115',message:'currentBadge EFFECT',data:{hasBadge:!!badge,badgeId:badge?.badge_id,isVisible},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
-      // #endregion
-    });
-  }
+  currentBadge = computed(() => this.badgeNotification.getCurrentBadge());
 
   /**
    * Gère la déconnexion de l'utilisateur

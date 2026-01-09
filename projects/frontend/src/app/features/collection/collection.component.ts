@@ -5,7 +5,7 @@ import { CollectionFilter } from './types/collection.types';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { BadgeVisualComponent } from '../../shared/components/badge-visual/badge-visual.component';
-import { BadgesService } from '../../../core/services/badges/badges.service';
+import { BadgesService } from '../../core/services/badges/badges.service';
 
 @Component({
   selector: 'app-collection',
@@ -15,15 +15,15 @@ import { BadgesService } from '../../../core/services/badges/badges.service';
     <div class="collection-container">
       <h1>Ma Collection</h1>
 
-      <div *ngIf="application.isLoading()" class="loading">
+      <div *ngIf="application.isLoading()()" class="loading">
         Chargement de ta collection...
       </div>
 
-      <div *ngIf="application.getError()" class="error">
-        {{ application.getError() }}
+      <div *ngIf="application.getError()()" class="error">
+        {{ application.getError()() }}
       </div>
 
-      <div *ngIf="!application.isLoading() && !application.getError()" class="collection-content">
+      <div *ngIf="!application.isLoading()() && !application.getError()()" class="collection-content">
         <!-- Statistiques -->
         <div class="collection-stats">
           <div class="stat-card">
@@ -108,7 +108,7 @@ import { BadgesService } from '../../../core/services/badges/badges.service';
       </div>
 
       <!-- Section Badges -->
-      <div class="badges-section" *ngIf="!application.isLoading() && !application.isLoadingBadges()">
+      <div class="badges-section" *ngIf="!application.isLoading()() && !application.isLoadingBadges()()">
         <h2>Mes Badges</h2>
 
         <!-- Statistiques badges -->
@@ -433,15 +433,7 @@ export class CollectionComponent implements OnInit {
   private readonly badgesService = inject(BadgesService);
 
   async ngOnInit(): Promise<void> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'collection.component.ts:435',message:'ngOnInit ENTRY',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
-    // #endregion
     await this.application.initialize();
-    // #region agent log
-    const badges = this.application.getBadges()();
-    const isLoading = this.application.isLoadingBadges()();
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'collection.component.ts:438',message:'ngOnInit AFTER INIT',data:{badgesCount:badges.length,isLoadingBadges:isLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
-    // #endregion
   }
 
   setFilter(filter: CollectionFilter): void {

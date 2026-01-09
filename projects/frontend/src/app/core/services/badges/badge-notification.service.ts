@@ -19,9 +19,6 @@ export class BadgeNotificationService {
    * Si une notification est déjà en cours, ajoute le badge à la file d'attente
    */
   showBadgeNotification(badge: NewlyUnlockedBadge, description?: string): Promise<void> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badge-notification.service.ts:21',message:'showBadgeNotification ENTRY',data:{badgeId:badge.badge_id,badgeName:badge.badge_name,badgeType:badge.badge_type,level:badge.level,value:badge.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-    // #endregion
     return new Promise((resolve) => {
       const badgeData: BadgeNotificationData = {
         badge_id: badge.badge_id,
@@ -34,9 +31,6 @@ export class BadgeNotificationService {
 
       // Si une notification est déjà visible, ajouter à la file d'attente
       if (this.isVisible()) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badge-notification.service.ts:34',message:'showBadgeNotification QUEUE',data:{badgeId:badge.badge_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-        // #endregion
         this.badgeQueue.update((queue) => [...queue, badgeData]);
         // Résoudre immédiatement car le badge sera affiché plus tard
         resolve();
@@ -44,9 +38,6 @@ export class BadgeNotificationService {
       }
 
       // Afficher immédiatement
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badge-notification.service.ts:42',message:'showBadgeNotification SHOW',data:{badgeId:badge.badge_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-      // #endregion
       this.currentBadge.set(badgeData);
       this.isVisible.set(true);
 

@@ -284,16 +284,9 @@ export class GameApplication {
    * Vérifie les nouveaux badges débloqués et affiche les notifications
    */
   private async checkAndNotifyBadges(childId: string, gameAttemptId: string): Promise<void> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:286',message:'checkAndNotifyBadges ENTRY',data:{childId,gameAttemptId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-    // #endregion
     try {
       // Récupérer les nouveaux badges débloqués via la fonction RPC
       const newBadges = await this.badgesService.getNewlyUnlockedBadges(childId, gameAttemptId);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:290',message:'checkAndNotifyBadges NEW BADGES',data:{childId,gameAttemptId,newBadgesCount:newBadges?.length||0,newBadges:newBadges||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-      // #endregion
       
       if (newBadges && newBadges.length > 0) {
         console.log('[GameApplication] Nouveaux badges débloqués:', newBadges);
@@ -304,23 +297,13 @@ export class GameApplication {
         // Afficher les notifications une par une (la file d'attente est gérée par le service)
         for (const badge of newBadges) {
           const badgeDefinition = allBadges.find(b => b.id === badge.badge_id);
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:300',message:'checkAndNotifyBadges SHOW NOTIFICATION',data:{badgeId:badge.badge_id,badgeName:badge.badge_name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-          // #endregion
           await this.badgeNotification.showBadgeNotification(
             badge,
             badgeDefinition?.description
           );
         }
-      } else {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:305',message:'checkAndNotifyBadges NO NEW BADGES',data:{childId,gameAttemptId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-        // #endregion
       }
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:308',message:'checkAndNotifyBadges ERROR',data:{childId,gameAttemptId,errorMessage:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-      // #endregion
       // Ne pas bloquer le flux si la vérification des badges échoue
       console.error('[GameApplication] Erreur lors de la vérification des badges:', error);
     }

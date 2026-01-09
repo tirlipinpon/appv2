@@ -42,11 +42,7 @@ export const BadgesStore = signalStore(
       const childBadges = state.childBadges();
       const badgeLevels = state.badgeLevels();
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:40',message:'badgesWithStatus COMPUTED',data:{badgesCount:badges.length,childBadgesCount:childBadges.length,badgeLevelsCount:badgeLevels.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
-
-      const result = badges.map((badge) => {
+      return badges.map((badge) => {
         // Trouver le badge débloqué le plus récent pour ce type
         const unlockedBadge = childBadges
           .filter((cb) => cb.badge_id === badge.id)
@@ -64,12 +60,6 @@ export const BadgesStore = signalStore(
           currentThreshold: badgeLevel ? badgeLevel.current_level : 1,
         } as BadgeWithStatus;
       });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:62',message:'badgesWithStatus RESULT',data:{resultCount:result.length,unlockedCount:result.filter(b=>b.isUnlocked).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
-
-      return result;
     },
     // Nombre de badges débloqués
     unlockedCount: () => state.childBadges().length,
@@ -86,32 +76,18 @@ export const BadgesStore = signalStore(
     // Charge tous les badges
     loadBadges: rxMethod<void>(
       pipe(
-        tap(() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:77',message:'loadBadges START',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-          // #endregion
-          patchState(store, { loading: true, error: null });
-        }),
+        tap(() => patchState(store, { loading: true, error: null })),
         switchMap(() =>
           infrastructure.loadAllBadges().then(
             (badges) => {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:83',message:'loadBadges SUCCESS',data:{badgesCount:badges.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-              // #endregion
               patchState(store, { badges, loading: false });
             },
             (error) => {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:87',message:'loadBadges ERROR',data:{errorMessage:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-              // #endregion
               patchState(store, { error: error.message, loading: false });
             }
           )
         ),
         catchError((error) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:92',message:'loadBadges CATCH',data:{errorMessage:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-          // #endregion
           patchState(store, { error: error.message, loading: false });
           return of(null);
         })
@@ -120,21 +96,13 @@ export const BadgesStore = signalStore(
     // Charge les badges d'un enfant
     loadChildBadges: rxMethod<string>(
       pipe(
-        tap((childId) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:97',message:'loadChildBadges START',data:{childId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-          // #endregion
-          patchState(store, { loading: true, error: null });
-        }),
+        tap(() => patchState(store, { loading: true, error: null })),
         switchMap((childId) =>
           Promise.all([
             infrastructure.loadChildBadges(childId),
             infrastructure.loadBadgeLevels(childId),
           ]).then(
             ([childBadges, badgeLevels]) => {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:106',message:'loadChildBadges SUCCESS',data:{childId,childBadgesCount:childBadges.length,badgeLevelsCount:badgeLevels.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-              // #endregion
               patchState(store, {
                 childBadges,
                 badgeLevels,
@@ -142,17 +110,11 @@ export const BadgesStore = signalStore(
               });
             },
             (error) => {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:113',message:'loadChildBadges ERROR',data:{childId,errorMessage:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-              // #endregion
               patchState(store, { error: error.message, loading: false });
             }
           )
         ),
         catchError((error) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges.store.ts:118',message:'loadChildBadges CATCH',data:{errorMessage:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-          // #endregion
           patchState(store, { error: error.message, loading: false });
           return of(null);
         })

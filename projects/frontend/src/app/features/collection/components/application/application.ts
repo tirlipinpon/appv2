@@ -1,4 +1,7 @@
 import { inject, Injectable } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { firstValueFrom, combineLatest } from 'rxjs';
+import { filter, take } from 'rxjs/operators';
 import { CollectionStore } from '../../store/index';
 import { BadgesStore } from '../../../badges/store/index';
 import { ChildAuthService } from '../../../../core/auth/child-auth.service';
@@ -13,27 +16,36 @@ export class CollectionApplication {
   private readonly authService = inject(ChildAuthService);
 
   async initialize(): Promise<void> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'collection.application.ts:15',message:'initialize ENTRY',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
     const child = await this.authService.getCurrentChild();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'collection.application.ts:17',message:'initialize CHILD CHECK',data:{hasChild:!!child,childId:child?.child_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
     if (child) {
       // Charger collectibles et badges en parallèle
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'collection.application.ts:20',message:'initialize LOADING START',data:{childId:child.child_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
-      await Promise.all([
-        this.store.loadCollection({ childId: child.child_id }),
-        this.badgesStore.loadBadges(),
-        this.badgesStore.loadChildBadges(child.child_id),
-      ]);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'collection.application.ts:25',message:'initialize LOADING COMPLETE',data:{childId:child.child_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
+      // Les rxMethod retournent void, donc on lance les chargements et on surveille les signaux loading
+      this.store.loadCollection({ childId: child.child_id });
+      this.badgesStore.loadBadges();
+      this.badgesStore.loadChildBadges(child.child_id);
+      
+      // Attendre que tous les chargements soient terminés en surveillant les signaux loading de manière réactive
+      await this.waitForLoadingComplete();
     }
+  }
+
+  /**
+   * Attend que tous les chargements soient terminés en utilisant les Observables des signaux
+   */
+  private async waitForLoadingComplete(): Promise<void> {
+    const collectionLoading$ = toObservable(this.store.loading);
+    const badgesLoading$ = toObservable(this.badgesStore.loading);
+    
+    // Attendre que les deux signaux loading soient à false
+    // Utiliser combineLatest pour surveiller les deux en parallèle
+    // filter pour ne prendre que quand les deux sont false
+    // take(1) pour compléter après la première émission valide
+    await firstValueFrom(
+      combineLatest([collectionLoading$, badgesLoading$]).pipe(
+        filter(([collectionLoading, badgesLoading]) => !collectionLoading && !badgesLoading),
+        take(1)
+      )
+    );
   }
 
   setFilter(filter: CollectionFilter): void {
