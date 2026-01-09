@@ -918,11 +918,9 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const gameTypeName = this.getGameTypeName(game.game_type_id);
-    const categoryId = duplicateData.subjectCategoryId 
-      ? duplicateData.subjectCategoryId
-      : (this.isCategoryContext() 
-        ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
-        : null);
+    // Utiliser directement la catégorie sélectionnée dans le formulaire de duplication
+    // Si null, cela signifie que l'utilisateur veut dupliquer vers la matière principale (sans sous-catégorie)
+    const categoryId = duplicateData.subjectCategoryId || null;
 
     const metadata = duplicateData.gameData.metadata || null;
     const imageUrl = metadata && typeof metadata === 'object' && 'image_url' in metadata
@@ -945,6 +943,14 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
         this.duplicateDialogOpen.set(false);
         this.gameToDuplicate.set(null);
         this.currentAssignment.set(null);
+        
+        // Recharger les jeux pour la destination de la duplication
+        // Si une catégorie est spécifiée, charger les jeux de la catégorie, sinon charger les jeux de la matière principale
+        if (categoryId) {
+          this.application.loadGamesBySubject(duplicateData.subjectId, categoryId);
+        } else {
+          this.application.loadGamesBySubject(duplicateData.subjectId);
+        }
       },
       error: (error) => {
         console.error('Erreur duplication:', error);
