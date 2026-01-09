@@ -15,9 +15,10 @@ Cette documentation décrit la structure complète de la base de données de l'a
 3. [Tables Matières et Catégories](#tables-matières-et-catégories)
 4. [Tables Jeux](#tables-jeux)
 5. [Tables Frontend](#tables-frontend)
-6. [Relations entre Tables](#relations-entre-tables)
-7. [Storage Buckets](#storage-buckets)
-8. [Politiques RLS](#politiques-rls)
+6. [Tables Badges - Système de gamification](#tables-badges---système-de-gamification)
+7. [Relations entre Tables](#relations-entre-tables)
+8. [Storage Buckets](#storage-buckets)
+9. [Politiques RLS](#politiques-rls)
 
 ---
 
@@ -1215,6 +1216,276 @@ Cette documentation décrit la structure complète de la base de données de l'a
 
 ---
 
+### `frontend_badges`
+
+**Description :** Table des badges disponibles (catalogue). Définit tous les badges que les enfants peuvent débloquer avec leurs descriptions, icônes et couleurs. Le système de badges récompense les enfants pour leurs accomplissements (première catégorie complétée, jeux parfaits, séries de réponses correctes, etc.).
+
+**Rôle métier :**
+
+- Catalogue de tous les badges disponibles dans l'application
+- Définit les types de badges et leurs caractéristiques visuelles (icône, couleur)
+- Permet d'activer/désactiver des badges sans les supprimer
+- Gère les métadonnées des badges (nom, description, image)
+
+**Utilisation :**
+
+- **Frontend :** Utilisée pour afficher la liste des badges disponibles dans la collection
+- **Déblocage :** Les badges sont débloqués automatiquement via les triggers PostgreSQL
+- **Affichage :** Les badges actifs (`is_active=true`) sont affichés dans l'interface
+
+**Relations clés :**
+
+- 1:N avec `frontend_child_badges` (via `badge_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les badges peuvent être désactivés temporairement via `is_active=false`
+- Chaque badge a un type unique (`badge_type`) qui détermine les conditions de déblocage
+- Les icônes et couleurs sont utilisées pour l'affichage visuel dans l'interface
+
+| Colonne       | Type          | Contraintes                               | Description           |
+| ------------- | ------------- | ----------------------------------------- | --------------------- |
+| `id`          | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique    |
+| `name`        | `text`        | NOT NULL                                  | Nom du badge          |
+| `description` | `text`        | NULLABLE                                  | Description du badge  |
+| `badge_type`  | `text`        | NOT NULL, CHECK                           | Type de badge         |
+| `icon_url`    | `text`        | NULLABLE                                  | URL de l'icône        |
+| `color_code`  | `text`        | NULLABLE                                  | Code couleur du badge |
+| `image_url`   | `text`        | NULLABLE                                  | URL de l'image        |
+| `is_active`   | `boolean`     | DEFAULT: `true`                           | Badge actif           |
+| `created_at`  | `timestamptz` | NULLABLE, DEFAULT: `now()`                | Date de création      |
+| `updated_at`  | `timestamptz` | NULLABLE, DEFAULT: `now()`                | Date de mise à jour   |
+
+**Types de badges :**
+
+- `first_category_complete` : Première catégorie complétée
+- `first_subject_complete` : Première matière complétée
+- `first_game_perfect` : Premier jeu parfait du 1er coup
+- `daily_streak_responses` : Réponses quotidiennes (5+ ou 7+)
+- `consecutive_correct` : Réponses consécutives correctes (5 ou 7)
+- `perfect_games_count` : Jeux parfaits cumulatifs (10 ou 13)
+
+**RLS:** Activé
+
+---
+
+### `frontend_child_badges`
+
+**Description :** Table des badges débloqués par enfant (historique avec niveaux). Enregistre quels badges ont été débloqués par chaque enfant, à quel niveau et avec quelle valeur obtenue. Un même badge peut être débloqué plusieurs fois à différents niveaux grâce au système de progression dynamique.
+
+**Rôle métier :**
+
+- Historique complet des badges débloqués par chaque enfant
+- Suit le niveau de déblocage pour chaque badge (progression dynamique)
+- Stocke la valeur obtenue lors du déblocage (ex: 10 jeux parfaits, 5 réponses consécutives)
+- Permet de débloquer le même badge plusieurs fois avec des seuils croissants
+
+**Utilisation :**
+
+- **Frontend :** Utilisée pour afficher les badges débloqués dans la collection
+- **Notification :** Utilisée pour afficher les notifications de nouveaux badges débloqués
+- **Progression :** Le niveau permet de suivre la progression de l'enfant pour chaque type de badge
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `frontend_badges` (via `badge_id`)
+
+**Cas d'usage spécifiques :**
+
+- Un même badge peut être débloqué plusieurs fois (une fois par niveau)
+- La contrainte UNIQUE sur `(child_id, badge_id, level)` permet plusieurs déblocages du même badge à différents niveaux
+- La valeur (`value`) est utilisée pour l'affichage visuel du badge (ex: "10 jeux parfaits")
+
+| Colonne       | Type          | Contraintes                               | Description         |
+| ------------- | ------------- | ----------------------------------------- | ------------------- |
+| `id`          | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique  |
+| `child_id`    | `uuid`        | NOT NULL, FK → `children.id`              | Enfant              |
+| `badge_id`    | `uuid`        | NOT NULL, FK → `frontend_badges.id`       | Badge               |
+| `unlocked_at` | `timestamptz` | DEFAULT: `now()`                          | Date de déblocage   |
+| `level`       | `integer`     | DEFAULT: `1`                              | Niveau de déblocage |
+| `value`       | `integer`     | NULLABLE                                  | Valeur obtenue      |
+| `created_at`  | `timestamptz` | DEFAULT: `now()`                          | Date de création    |
+
+**RLS:** Activé
+
+---
+
+### `frontend_badge_levels`
+
+**Description :** Table des niveaux de progression pour chaque badge. Suit le niveau actuel de progression pour chaque type de badge et chaque enfant. Permet de calculer les seuils dynamiques pour les prochains déblocages (valeurs croissantes de 30% par niveau).
+
+**Rôle métier :**
+
+- Suit la progression de l'enfant pour chaque type de badge
+- Calcule les seuils dynamiques pour les prochains déblocages
+- Permet de débloquer le même badge plusieurs fois avec des seuils croissants
+- Formule de progression : `base × 1.3^(niveau-1)`
+
+**Utilisation :**
+
+- **Backend :** Utilisée par les fonctions SQL pour calculer les seuils de déblocage
+- **Progression :** Le niveau est incrémenté après chaque déblocage
+- **Calcul :** Les seuils sont calculés dynamiquement selon le niveau actuel
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+
+**Cas d'usage spécifiques :**
+
+- Chaque type de badge a son propre niveau de progression
+- Le niveau est incrémenté automatiquement après chaque déblocage
+- Les seuils augmentent de 30% à chaque niveau (ex: 5 → 6.5 → 8.45 → ...)
+
+| Colonne            | Type          | Contraintes                               | Description               |
+| ------------------ | ------------- | ----------------------------------------- | ------------------------- |
+| `id`               | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique        |
+| `child_id`         | `uuid`        | NOT NULL, FK → `children.id`              | Enfant                    |
+| `badge_type`       | `text`        | NOT NULL                                  | Type de badge             |
+| `current_level`    | `integer`     | DEFAULT: `1`                              | Niveau actuel             |
+| `last_unlocked_at` | `timestamptz` | NULLABLE                                  | Date du dernier déblocage |
+| `created_at`       | `timestamptz` | DEFAULT: `now()`                          | Date de création          |
+| `updated_at`       | `timestamptz` | DEFAULT: `now()`                          | Date de mise à jour       |
+
+**RLS:** Activé
+
+---
+
+### `frontend_first_perfect_games`
+
+**Description :** Table de tracking des jeux parfaits du premier coup (pour Badge 3). Enregistre les jeux réussis à 100% en première tentative pour chaque catégorie. Un jeu ne peut être enregistré qu'une seule fois par catégorie.
+
+**Rôle métier :**
+
+- Suit les jeux réussis à 100% en première tentative
+- Permet de débloquer le badge "Parfait du premier coup"
+- Un jeu ne peut être compté qu'une seule fois par catégorie
+
+**Utilisation :**
+
+- **Backend :** Utilisée par la fonction `check_and_unlock_badges()` pour vérifier le badge 3
+- **Déblocage :** Le badge est débloqué automatiquement lors de la première tentative parfaite d'une catégorie
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `subject_categories` (via `subject_category_id`)
+- N:1 avec `games` (via `game_id`)
+
+| Colonne               | Type          | Contraintes                               | Description          |
+| --------------------- | ------------- | ----------------------------------------- | -------------------- |
+| `id`                  | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique   |
+| `child_id`            | `uuid`        | NOT NULL, FK → `children.id`              | Enfant               |
+| `subject_category_id` | `uuid`        | NOT NULL, FK → `subject_categories.id`    | Catégorie            |
+| `game_id`             | `uuid`        | NOT NULL, FK → `games.id`                 | Jeu                  |
+| `attempted_at`        | `timestamptz` | DEFAULT: `now()`                          | Date de la tentative |
+| `created_at`          | `timestamptz` | DEFAULT: `now()`                          | Date de création     |
+
+**RLS:** Activé
+
+---
+
+### `frontend_consecutive_responses`
+
+**Description :** Table de tracking des réponses consécutives correctes (pour Badges 5 et 5.1). Suit le nombre de réponses consécutives correctes pour chaque enfant. Le compteur est réinitialisé à 0 en cas d'erreur.
+
+**Rôle métier :**
+
+- Suit les séries de réponses correctes consécutives
+- Permet de débloquer les badges "Série sans erreur" (5 ou 7 consécutives)
+- Réinitialise le compteur en cas d'erreur
+
+**Utilisation :**
+
+- **Backend :** Utilisée par la fonction `track_daily_and_consecutive_responses()` pour suivre les séries
+- **Déblocage :** Les badges sont débloqués automatiquement quand le seuil est atteint
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+
+| Colonne               | Type          | Contraintes                               | Description                     |
+| --------------------- | ------------- | ----------------------------------------- | ------------------------------- |
+| `id`                  | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique              |
+| `child_id`            | `uuid`        | NOT NULL, FK → `children.id`              | Enfant                          |
+| `consecutive_count`   | `integer`     | DEFAULT: `0`                              | Nombre de réponses consécutives |
+| `consecutive_7_count` | `integer`     | DEFAULT: `0`                              | Compteur pour badge 7           |
+| `last_response_date`  | `timestamptz` | DEFAULT: `now()`                          | Date de la dernière réponse     |
+| `created_at`          | `timestamptz` | DEFAULT: `now()`                          | Date de création                |
+| `updated_at`          | `timestamptz` | DEFAULT: `now()`                          | Date de mise à jour             |
+
+**RLS:** Activé
+
+---
+
+### `frontend_daily_responses`
+
+**Description :** Table de tracking des réponses quotidiennes (pour Badges 4 et 4.1). Enregistre le nombre de bonnes réponses par jour pour chaque enfant. Les badges quotidiens peuvent être débloqués plusieurs fois (une fois par jour si la condition est remplie).
+
+**Rôle métier :**
+
+- Suit les bonnes réponses quotidiennes pour chaque enfant
+- Permet de débloquer les badges quotidiens (5+ ou 7+ réponses/jour)
+- Les badges quotidiens sont récurrents (peuvent être débloqués plusieurs fois)
+
+**Utilisation :**
+
+- **Backend :** Utilisée par la fonction `track_daily_and_consecutive_responses()` pour suivre les réponses quotidiennes
+- **Déblocage :** Les badges quotidiens sont débloqués automatiquement chaque jour si la condition est remplie
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+
+| Colonne                   | Type          | Contraintes                               | Description                    |
+| ------------------------- | ------------- | ----------------------------------------- | ------------------------------ |
+| `id`                      | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique             |
+| `child_id`                | `uuid`        | NOT NULL, FK → `children.id`              | Enfant                         |
+| `response_date`           | `date`        | NOT NULL                                  | Date UTC des réponses          |
+| `correct_responses_count` | `integer`     | DEFAULT: `0`                              | Nombre de bonnes réponses      |
+| `badge_4_unlocked`        | `boolean`     | DEFAULT: `false`                          | Badge 4 débloqué aujourd'hui   |
+| `badge_4_1_unlocked`      | `boolean`     | DEFAULT: `false`                          | Badge 4.1 débloqué aujourd'hui |
+| `created_at`              | `timestamptz` | DEFAULT: `now()`                          | Date de création               |
+| `updated_at`              | `timestamptz` | DEFAULT: `now()`                          | Date de mise à jour            |
+
+**RLS:** Activé
+
+---
+
+### `frontend_perfect_games_count`
+
+**Description :** Table de tracking des jeux parfaits cumulatifs (pour Badges 6 et 6.1). Suit le nombre total de jeux uniques réussis à 100% pour chaque enfant. Un jeu est compté une seule fois même s'il est réussi plusieurs fois.
+
+**Rôle métier :**
+
+- Suit le nombre total de jeux uniques réussis à 100%
+- Permet de débloquer les badges "Jeux parfaits" (10 ou 13 jeux)
+- Un jeu est compté une seule fois (meilleur score = 100%)
+
+**Utilisation :**
+
+- **Backend :** Utilisée par la fonction `track_daily_and_consecutive_responses()` pour compter les jeux parfaits
+- **Déblocage :** Les badges sont débloqués automatiquement quand le seuil est atteint
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+
+| Colonne               | Type          | Contraintes                               | Description                   |
+| --------------------- | ------------- | ----------------------------------------- | ----------------------------- |
+| `id`                  | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique            |
+| `child_id`            | `uuid`        | NOT NULL, FK → `children.id`              | Enfant                        |
+| `total_perfect_games` | `integer`     | DEFAULT: `0`                              | Nombre total de jeux parfaits |
+| `badge_6_unlocked`    | `boolean`     | DEFAULT: `false`                          | Badge 6 débloqué              |
+| `badge_6_1_unlocked`  | `boolean`     | DEFAULT: `false`                          | Badge 6.1 débloqué            |
+| `created_at`          | `timestamptz` | DEFAULT: `now()`                          | Date de création              |
+| `updated_at`          | `timestamptz` | DEFAULT: `now()`                          | Date de mise à jour           |
+
+**RLS:** Activé
+
+---
+
 ## Relations entre Tables
 
 ### Hiérarchie Utilisateurs
@@ -1272,7 +1543,13 @@ children
   ├── frontend_child_bonus_game_unlocks (1:N)
   ├── frontend_child_themes (1:N)
   ├── frontend_child_mascot_state (1:1)
-  └── frontend_child_checkpoints (1:N)
+  ├── frontend_child_checkpoints (1:N)
+  ├── frontend_child_badges (1:N)
+  ├── frontend_badge_levels (1:N)
+  ├── frontend_first_perfect_games (1:N)
+  ├── frontend_consecutive_responses (1:1)
+  ├── frontend_daily_responses (1:N)
+  └── frontend_perfect_games_count (1:1)
 ```
 
 ---

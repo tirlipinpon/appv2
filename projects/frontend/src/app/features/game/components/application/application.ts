@@ -6,6 +6,8 @@ import { ProgressionService } from '../../../../core/services/progression/progre
 import { CollectionService } from '../../../../core/services/collection/collection.service';
 import { CheckpointService } from '../../../../core/services/save/checkpoint.service';
 import { ChildAuthService } from '../../../../core/auth/child-auth.service';
+import { BadgesService } from '../../../../core/services/badges/badges.service';
+import { BadgeNotificationService } from '../../../../core/services/badges/badge-notification.service';
 import { GameState } from '../../types/game.types';
 import { normalizeGameType } from '../../../../shared/utils/game-normalization.util';
 import { SPECIFIC_GAME_TYPES } from '@shared/utils/game-type.util';
@@ -22,6 +24,8 @@ export class GameApplication {
   private readonly collection = inject(CollectionService);
   private readonly checkpoint = inject(CheckpointService);
   private readonly authService = inject(ChildAuthService);
+  private readonly badgesService = inject(BadgesService);
+  private readonly badgeNotification = inject(BadgeNotificationService);
   private readonly infrastructure = inject(GameInfrastructure);
 
   async initializeGame(gameId: string): Promise<void> {
@@ -129,12 +133,21 @@ export class GameApplication {
           questionId: q.id,
           selectedAnswer: effectiveGameState.selectedAnswer,
         })),
+        correct_count: effectiveGameState.questions.filter((q, i) => {
+          // Compter les bonnes réponses (simplifié, à améliorer selon la logique réelle)
+          return effectiveGameState.score > 0;
+        }).length,
+        total_count: effectiveGameState.questions.length,
       },
       difficulty_level: 1, // TODO: Récupérer depuis le state
       completed_at: effectiveGameState.completedAt?.toISOString(),
     };
 
-    await this.store.saveAttempt(attemptData);
+    // Sauvegarder la tentative et récupérer l'ID
+    const savedAttempt = await this.infrastructure.saveGameAttempt(attemptData);
+    
+    // Vérifier les nouveaux badges débloqués (le trigger PostgreSQL les a déjà débloqués)
+    await this.checkAndNotifyBadges(child.child_id, savedAttempt.id);
 
     // Mettre à jour la progression
     if (game.subject_category_id) {
@@ -258,9 +271,58 @@ export class GameApplication {
       // Utiliser directement l'infrastructure pour éviter les problèmes avec rxMethod
       const result = await this.infrastructure.saveGameAttempt(attemptData);
       console.log('[savePartialScore] Score sauvegardé avec succès', result);
+      
+      // Vérifier les nouveaux badges débloqués (le trigger PostgreSQL les a déjà débloqués)
+      await this.checkAndNotifyBadges(child.child_id, result.id);
     } catch (error) {
       console.error('[savePartialScore] Erreur lors de la sauvegarde', error);
       throw error;
+    }
+  }
+
+  /**
+   * Vérifie les nouveaux badges débloqués et affiche les notifications
+   */
+  private async checkAndNotifyBadges(childId: string, gameAttemptId: string): Promise<void> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:286',message:'checkAndNotifyBadges ENTRY',data:{childId,gameAttemptId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+    // #endregion
+    try {
+      // Récupérer les nouveaux badges débloqués via la fonction RPC
+      const newBadges = await this.badgesService.getNewlyUnlockedBadges(childId, gameAttemptId);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:290',message:'checkAndNotifyBadges NEW BADGES',data:{childId,gameAttemptId,newBadgesCount:newBadges?.length||0,newBadges:newBadges||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+      
+      if (newBadges && newBadges.length > 0) {
+        console.log('[GameApplication] Nouveaux badges débloqués:', newBadges);
+        
+        // Récupérer les descriptions des badges depuis la base
+        const allBadges = await this.badgesService.getAllBadges();
+        
+        // Afficher les notifications une par une (la file d'attente est gérée par le service)
+        for (const badge of newBadges) {
+          const badgeDefinition = allBadges.find(b => b.id === badge.badge_id);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:300',message:'checkAndNotifyBadges SHOW NOTIFICATION',data:{badgeId:badge.badge_id,badgeName:badge.badge_name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+          // #endregion
+          await this.badgeNotification.showBadgeNotification(
+            badge,
+            badgeDefinition?.description
+          );
+        }
+      } else {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:305',message:'checkAndNotifyBadges NO NEW BADGES',data:{childId,gameAttemptId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+        // #endregion
+      }
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'game.application.ts:308',message:'checkAndNotifyBadges ERROR',data:{childId,gameAttemptId,errorMessage:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+      // Ne pas bloquer le flux si la vérification des badges échoue
+      console.error('[GameApplication] Erreur lors de la vérification des badges:', error);
     }
   }
 

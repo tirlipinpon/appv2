@@ -4,11 +4,13 @@ import { CollectionApplication } from './components/application/application';
 import { CollectionFilter } from './types/collection.types';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
+import { BadgeVisualComponent } from '../../shared/components/badge-visual/badge-visual.component';
+import { BadgesService } from '../../../core/services/badges/badges.service';
 
 @Component({
   selector: 'app-collection',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent],
   template: `
     <div class="collection-container">
       <h1>Ma Collection</h1>
@@ -102,6 +104,63 @@ import { ProgressBarComponent } from '../../shared/components/progress-bar/progr
 
         <div *ngIf="application.getCollectibles()().length === 0" class="empty-state">
           <p>Aucun objet dans ta collection pour le moment.</p>
+        </div>
+      </div>
+
+      <!-- Section Badges -->
+      <div class="badges-section" *ngIf="!application.isLoading() && !application.isLoadingBadges()">
+        <h2>Mes Badges</h2>
+
+        <!-- Statistiques badges -->
+        <div class="badges-stats">
+          <div class="stat-card">
+            <div class="stat-value">{{ application.getBadgesUnlockedCount()() }}</div>
+            <div class="stat-label">Badges débloqués</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ application.getBadgesTotalCount()() }}</div>
+            <div class="stat-label">Total</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ application.getBadgesCompletionPercentage()() }}%</div>
+            <div class="stat-label">Complété</div>
+          </div>
+        </div>
+
+        <!-- Grille de badges -->
+        <div class="badges-grid">
+          <div
+            *ngFor="let badge of application.getBadges()()"
+            class="badge-card"
+            [class.unlocked]="badge.isUnlocked"
+            [class.locked]="!badge.isUnlocked"
+            [title]="getBadgeTooltip(badge)">
+            <div class="badge-visual-wrapper">
+              <app-badge-visual
+                [badgeType]="badge.badge_type"
+                [value]="badge.value"
+                [level]="badge.level"
+                [isUnlocked]="badge.isUnlocked"
+                size="medium"
+                [showIcon]="true">
+              </app-badge-visual>
+            </div>
+            <div class="badge-info">
+              <h3>{{ badge.name }}</h3>
+              <p *ngIf="badge.description">{{ badge.description }}</p>
+              <div *ngIf="badge.isUnlocked && badge.unlockedAt" class="unlocked-date">
+                Débloqué le {{ formatDate(badge.unlockedAt) }}
+                <span *ngIf="badge.level"> - Niveau {{ badge.level }}</span>
+              </div>
+              <div *ngIf="!badge.isUnlocked" class="locked-info">
+                <span *ngIf="getNextThreshold(badge)">Prochain seuil : {{ getNextThreshold(badge) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="application.getBadges()().length === 0" class="empty-state">
+          <p>Aucun badge disponible pour le moment.</p>
         </div>
       </div>
     </div>
@@ -275,13 +334,114 @@ import { ProgressBarComponent } from '../../shared/components/progress-bar/progr
       padding: 4rem 2rem;
       color: #999;
     }
+
+    /* Section Badges */
+    .badges-section {
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 2px solid var(--theme-border-color, #e0e0e0);
+    }
+
+    .badges-section h2 {
+      margin-bottom: 2rem;
+      color: var(--theme-text-color, #333);
+    }
+
+    .badges-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .badges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1.5rem;
+    }
+    @media (min-width: 768px) {
+      .badges-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 2rem;
+      }
+    }
+
+    .badge-card {
+      background: white;
+      border-radius: var(--theme-border-radius, 12px);
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      text-align: center;
+      cursor: help;
+    }
+
+    .badge-card.unlocked {
+      border: 2px solid var(--theme-primary-color, #4CAF50);
+    }
+
+    .badge-card.locked {
+      opacity: 0.7;
+    }
+
+    .badge-card.unlocked:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .badge-visual-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .badge-info {
+      text-align: center;
+    }
+
+    .badge-info h3 {
+      margin: 0 0 0.5rem 0;
+      color: var(--theme-text-color, #333);
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .badge-info p {
+      margin: 0 0 0.5rem 0;
+      color: #666;
+      font-size: 0.875rem;
+    }
+
+    .badge-info .unlocked-date {
+      font-size: 0.75rem;
+      color: var(--theme-primary-color, #4CAF50);
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+
+    .badge-info .locked-info {
+      font-size: 0.75rem;
+      color: #999;
+      font-style: italic;
+      margin-top: 0.5rem;
+    }
   `]
 })
 export class CollectionComponent implements OnInit {
   protected readonly application = inject(CollectionApplication);
+  private readonly badgesService = inject(BadgesService);
 
   async ngOnInit(): Promise<void> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'collection.component.ts:435',message:'ngOnInit ENTRY',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+    // #endregion
     await this.application.initialize();
+    // #region agent log
+    const badges = this.application.getBadges()();
+    const isLoading = this.application.isLoadingBadges()();
+    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'collection.component.ts:438',message:'ngOnInit AFTER INIT',data:{badgesCount:badges.length,isLoadingBadges:isLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+    // #endregion
   }
 
   setFilter(filter: CollectionFilter): void {
@@ -295,5 +455,41 @@ export class CollectionComponent implements OnInit {
       month: 'long',
       year: 'numeric',
     });
+  }
+
+  getBadgeTooltip(badge: any): string {
+    let tooltip = badge.description || badge.name;
+    if (badge.isUnlocked) {
+      tooltip += `\nDébloqué le ${this.formatDate(badge.unlockedAt!)}`;
+      if (badge.level) {
+        tooltip += ` - Niveau ${badge.level}`;
+      }
+      if (badge.value !== undefined) {
+        tooltip += `\nValeur obtenue : ${badge.value}`;
+      }
+    } else {
+      const threshold = this.getNextThreshold(badge);
+      if (threshold) {
+        tooltip += `\nProchain seuil : ${threshold}`;
+      }
+    }
+    return tooltip;
+  }
+
+  getNextThreshold(badge: any): number | null {
+    if (!badge.currentThreshold) {
+      return null;
+    }
+    // Calculer le seuil suivant selon le type de badge
+    const baseValues: Record<string, number> = {
+      perfect_games_count: 10,
+      daily_streak_responses: 5,
+      consecutive_correct: 5,
+    };
+    const baseValue = baseValues[badge.badge_type];
+    if (!baseValue) {
+      return null;
+    }
+    return this.badgesService.calculateBadgeThreshold(baseValue, badge.currentThreshold);
   }
 }
