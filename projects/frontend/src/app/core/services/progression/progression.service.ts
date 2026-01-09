@@ -163,6 +163,56 @@ export class ProgressionService {
   }
 
   /**
+   * Calcule le pourcentage de complétion basé sur les jeux résolus dans une matière principale
+   * Un jeu est considéré résolu si son meilleur score = 100%
+   */
+  async calculateSubjectCompletionPercentage(
+    childId: string,
+    subjectId: string
+  ): Promise<number> {
+    // Récupérer tous les jeux de la matière principale (sans sous-catégorie)
+    const { data: games, error: gamesError } = await this.supabase.client
+      .from('games')
+      .select('id')
+      .eq('subject_id', subjectId)
+      .is('subject_category_id', null);
+
+    if (gamesError) {
+      throw new Error(`Erreur lors de la récupération des jeux: ${gamesError.message}`);
+    }
+
+    const totalGames = games?.length || 0;
+    if (totalGames === 0) return 0;
+
+    // Récupérer les scores de tous les jeux pour cet enfant
+    const gameIds = games.map(g => g.id);
+    const { data: attempts, error: attemptsError } = await this.supabase.client
+      .from('frontend_game_attempts')
+      .select('game_id, score')
+      .eq('child_id', childId)
+      .in('game_id', gameIds);
+
+    if (attemptsError) {
+      throw new Error(`Erreur lors de la récupération des tentatives: ${attemptsError.message}`);
+    }
+
+    // Compter les jeux résolus (meilleur score = 100%)
+    const gameBestScores = new Map<string, number>();
+    if (attempts) {
+      for (const attempt of attempts) {
+        const currentBest = gameBestScores.get(attempt.game_id) || 0;
+        if (attempt.score > currentBest) {
+          gameBestScores.set(attempt.game_id, attempt.score);
+        }
+      }
+    }
+
+    const completedGames = Array.from(gameBestScores.values()).filter(score => score === 100).length;
+    
+    return Math.round((completedGames / totalGames) * 100);
+  }
+
+  /**
    * Détermine si une sous-matière est complétée
    */
   isSubjectCategoryCompleted(progress: SubjectCategoryProgress): boolean {

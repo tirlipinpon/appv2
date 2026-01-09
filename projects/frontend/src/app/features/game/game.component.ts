@@ -5,7 +5,7 @@ import { Subscription, from } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { GameApplication } from './components/application/application';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
-import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
+import { SubjectProgressComponent } from '../../shared/components/subject-progress/subject-progress.component';
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
 import { FeedbackData } from './services/feedback.service';
 import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent } from '@shared/games';
@@ -38,7 +38,7 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent, GameFeedbackMessageComponent, GameErrorModalComponent],
+  imports: [CommonModule, ChildButtonComponent, SubjectProgressComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent, GameFeedbackMessageComponent, GameErrorModalComponent],
   template: `
     <div class="game-container">
       <!-- Breadcrumb -->
@@ -76,12 +76,11 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
             </app-child-button>
           </div>
           <div class="header-center">
-            <app-progress-bar
-              [value]="categoryProgress()"
-              [max]="100"
+            <app-subject-progress
+              [gameId]="route.snapshot.paramMap.get('id')"
               [label]="'Progression'"
-              variant="primary">
-            </app-progress-bar>
+              [variant]="'primary'">
+            </app-subject-progress>
           </div>
           <div class="header-right">
             <div class="score-display">
@@ -590,7 +589,7 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
 })
 export class GameComponent implements OnInit, OnDestroy {
   protected readonly application = inject(GameApplication);
-  private readonly route = inject(ActivatedRoute);
+  readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly subjectsInfrastructure = inject(SubjectsInfrastructure);
   private readonly childAuthService = inject(ChildAuthService);
@@ -906,13 +905,22 @@ export class GameComponent implements OnInit, OnDestroy {
     const childId = child?.child_id;
     const game = this.application.getCurrentGame()();
     
-    if (!childId || !game?.subject_category_id) {
+    if (!childId || !game) {
       this.categoryProgress.set(0);
       return;
     }
     
     try {
-      const progress = await this.progression.calculateCategoryCompletionPercentage(childId, game.subject_category_id);
+      let progress = 0;
+      
+      if (game.subject_category_id) {
+        // Cas 1 : Sous-catégorie (subject_category_id présent)
+        progress = await this.progression.calculateCategoryCompletionPercentage(childId, game.subject_category_id);
+      } else if (game.subject_id) {
+        // Cas 2 : Matière principale (subject_id présent, subject_category_id null)
+        progress = await this.progression.calculateSubjectCompletionPercentage(childId, game.subject_id);
+      }
+      
       this.categoryProgress.set(progress);
     } catch (error) {
       console.error('Erreur lors du chargement de la progression:', error);
