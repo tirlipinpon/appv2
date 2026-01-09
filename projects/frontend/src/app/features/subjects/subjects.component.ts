@@ -9,6 +9,7 @@ import { StarRatingComponent } from '../../shared/components/star-rating/star-ra
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { GamesStatsDisplayComponent } from '@shared/components/games-stats-display/games-stats-display.component';
 import { GamesCounterComponent } from '@shared/components/games-counter/games-counter.component';
+import { ProgressBadgeComponent } from '@shared/components/progress-badge/progress-badge.component';
 import { GamesStatsService } from '@shared/services/games-stats/games-stats.service';
 import { GameTypeStyleService } from '@shared/services/game-type-style/game-type-style.service';
 import { Game } from '../../core/types/game.types';
@@ -37,6 +38,7 @@ import {
     BreadcrumbComponent,
     GamesStatsDisplayComponent,
     GamesCounterComponent,
+    ProgressBadgeComponent,
   ],
   template: `
     <div class="subjects-container">
@@ -139,13 +141,10 @@ import {
               [routerLink]="['/game', game.id]">
               <div class="game-card-header">
                 <h3>{{ game.name }}</h3>
-                <div *ngIf="hasGameAttempted(game.id)" 
-                     class="completed-badge"
-                     [class.completed]="isGameCompleted(game.id)"
-                     [class.partial]="!isGameCompleted(game.id)">
-                  <span class="check-icon" *ngIf="isGameCompleted(game.id)">✓</span>
-                  <span class="score-text">{{ getGameScore(game.id) }}%</span>
-                </div>
+                <app-progress-badge
+                  [score]="getGameScore(game.id)"
+                  [hasAttempted]="hasGameAttempted(game.id)">
+                </app-progress-badge>
               </div>
               <p *ngIf="game.description">{{ game.description }}</p>
               <div class="game-type-badge" [style.background-color]="getGameTypeStyle(game.game_type).bgColor" [style.color]="getGameTypeStyle(game.game_type).color">
@@ -176,13 +175,10 @@ import {
             [routerLink]="['/game', game.id]">
             <div class="game-card-header">
               <h3>{{ game.name }}</h3>
-              <div *ngIf="hasGameAttempted(game.id)" 
-                   class="completed-badge"
-                   [class.completed]="isGameCompleted(game.id)"
-                   [class.partial]="!isGameCompleted(game.id)">
-                <span class="check-icon" *ngIf="isGameCompleted(game.id)">✓</span>
-                <span class="score-text">{{ getGameScore(game.id) }}%</span>
-              </div>
+              <app-progress-badge
+                [score]="getGameScore(game.id)"
+                [hasAttempted]="hasGameAttempted(game.id)">
+              </app-progress-badge>
             </div>
             <p *ngIf="game.description">{{ game.description }}</p>
             <div class="game-type-badge" [style.background-color]="getGameTypeStyle(game.game_type).bgColor" [style.color]="getGameTypeStyle(game.game_type).color">
@@ -402,34 +398,6 @@ import {
       flex: 1;
     }
 
-    .completed-badge {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.25rem 0.5rem;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .completed-badge.completed {
-      background: #4CAF50;
-      color: white;
-    }
-
-    .completed-badge.partial {
-      background: #FF9800;
-      color: white;
-    }
-
-    .check-icon {
-      font-size: 0.875rem;
-    }
-
-    .score-text {
-      font-size: 0.75rem;
-    }
 
     .game-type-badge {
       margin-top: 0.75rem;
