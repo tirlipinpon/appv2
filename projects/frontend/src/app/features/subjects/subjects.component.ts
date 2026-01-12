@@ -115,9 +115,6 @@ import {
                   ✓ Terminé
                 </div>
               </div>
-              <div *ngIf="!category.progress" class="not-started">
-                Pas encore commencé
-              </div>
             </div>
           </div>
         </div>
@@ -328,11 +325,6 @@ import {
       width: fit-content;
     }
 
-    .not-started {
-      margin-top: 1rem;
-      color: #999;
-      font-size: 0.875rem;
-    }
 
     .games-view {
       margin-top: 2rem;
