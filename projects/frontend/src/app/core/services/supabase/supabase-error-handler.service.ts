@@ -52,7 +52,11 @@ export class SupabaseErrorHandlerService {
   /**
    * Gère une erreur Supabase
    * Déconnecte automatiquement et redirige vers login si c'est une erreur d'authentification
-   * Vérifie d'abord si la session est vraiment expirée avant de déconnecter
+   * 
+   * IMPORTANT: On déconnecte toujours sur 401/403 car ces erreurs indiquent que le serveur
+   * rejette le token. Même si le token n'a pas expiré localement, il peut avoir été révoqué
+   * côté serveur (suspension de compte, changement de politique de sécurité, etc.).
+   * Si c'était une erreur temporaire (réseau), l'utilisateur pourra simplement se reconnecter.
    */
   async handleError(error: { status?: number; code?: string; message?: string } | null | undefined): Promise<void> {
     // Éviter les boucles infinies
@@ -70,22 +74,30 @@ export class SupabaseErrorHandlerService {
 
     try {
       // Logger l'erreur pour debugging
-      console.error('Erreur d\'authentification détectée:', {
+      console.error('Erreur d\'authentification détectée (401/403). Déconnexion automatique:', {
         status: error?.status,
         code: error?.code,
         message: error?.message,
         error,
       });
 
-      // Vérifier si la session est vraiment expirée avant de déconnecter
-      // Cela évite de déconnecter sur des erreurs temporaires ou des problèmes réseau
-      const isSessionValid = await this.authService.isSessionValid();
-      
-      if (!isSessionValid) {
-        // La session est vraiment expirée, déconnecter proprement
-        await this.authService.logout();
+      // Toujours déconnecter sur 401/403 car ces erreurs indiquent que le serveur rejette le token
+      // Même si le token n'a pas expiré localement, il peut avoir été révoqué côté serveur
+      await this.authService.logout();
 
-        // Rediriger vers login (seulement si pas déjà sur /login)
+      // Rediriger vers login (seulement si pas déjà sur /login)
+      const currentUrl = this.router.url;
+      if (!currentUrl.includes('/login')) {
+        this.router.navigate(['/login'], {
+          queryParams: {
+            reason: 'session_expired',
+          },
+        });
+      }
+    } catch (handlerError) {
+      console.error('Erreur lors de la gestion de l\'erreur d\'authentification:', handlerError);
+      // Même en cas d'erreur lors de la déconnexion, essayer de rediriger vers login
+      try {
         const currentUrl = this.router.url;
         if (!currentUrl.includes('/login')) {
           this.router.navigate(['/login'], {
@@ -94,13 +106,9 @@ export class SupabaseErrorHandlerService {
             },
           });
         }
-      } else {
-        // La session est encore valide, c'est probablement une erreur temporaire
-        // Ne pas déconnecter, juste logger l'erreur
-        console.warn('Erreur 401/403 détectée mais la session est encore valide. Erreur probablement temporaire.');
+      } catch (navError) {
+        console.error('Impossible de rediriger vers /login:', navError);
       }
-    } catch (handlerError) {
-      console.error('Erreur lors de la gestion de l\'erreur d\'authentification:', handlerError);
     } finally {
       // Réinitialiser le flag après un court délai pour éviter les boucles
       setTimeout(() => {
