@@ -7,10 +7,11 @@ import { normalizeGame } from '../../../../shared/utils/game-normalization.util'
   providedIn: 'root',
 })
 export class GameInfrastructure {
-  private readonly supabase = inject(SupabaseService);
+  private readonly supabaseService = inject(SupabaseService);
+  private readonly supabase = this.supabaseService.client;
 
   async loadGame(gameId: string): Promise<Game | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = await this.supabase
       .from('games')
       .select(`
         *,
@@ -28,14 +29,25 @@ export class GameInfrastructure {
   }
 
   async saveGameAttempt(attempt: Partial<GameAttempt>): Promise<GameAttempt> {
-    const { data, error } = await this.supabase.client
-      .from('frontend_game_attempts')
-      .insert(attempt)
-      .select()
-      .single();
+    // Utiliser executeWithErrorHandling pour gérer les erreurs d'authentification de manière appropriée
+    const result = await this.supabaseService.executeWithErrorHandling(async () => {
+      return await this.supabase
+        .from('frontend_game_attempts')
+        .insert(attempt)
+        .select()
+        .single();
+    });
 
-    if (error) throw error;
-    return data;
+    if (result.error) {
+      console.error('[GameInfrastructure] Erreur lors de la sauvegarde de la tentative:', result.error);
+      throw result.error;
+    }
+
+    if (!result.data) {
+      throw new Error('Aucune donnée retournée lors de la sauvegarde de la tentative');
+    }
+
+    return result.data;
   }
 }
 

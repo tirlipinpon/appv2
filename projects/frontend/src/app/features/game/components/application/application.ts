@@ -29,6 +29,9 @@ export class GameApplication {
   private readonly infrastructure = inject(GameInfrastructure);
 
   async initializeGame(gameId: string): Promise<void> {
+    // Réinitialiser le cache des badges affichés pour permettre l'affichage des badges dans cette nouvelle session
+    this.badgeNotification.clearDisplayedBadgesCache();
+    
     await this.store.loadGame(gameId);
     const game = this.store.currentGame();
     if (game) {

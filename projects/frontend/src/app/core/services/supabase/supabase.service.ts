@@ -56,26 +56,9 @@ export class SupabaseService {
       // 2. Exécuter la requête
       const response = await originalFetch(url, options);
       
-      // 3. Intercepter la réponse pour détecter les erreurs d'authentification
-      if (response.status === 401 || response.status === 403) {
-        // Essayer de parser le body pour obtenir plus d'infos sur l'erreur
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let errorData: { status: number; code?: string; message?: string; [key: string]: any } = { status: response.status };
-        try {
-          const clonedResponse = response.clone();
-          const text = await clonedResponse.text();
-          if (text) {
-            errorData = { ...errorData, ...JSON.parse(text) };
-          }
-        } catch {
-          // Si on ne peut pas parser, utiliser juste le status
-        }
-        
-        // Gérer l'erreur d'authentification (déconnexion + redirection)
-        this.errorHandler.handleError(errorData).catch((err) => {
-          console.error('Erreur lors de la gestion de l\'erreur:', err);
-        });
-      }
+      // 3. Ne pas intercepter les erreurs ici pour éviter de consommer le stream de réponse
+      // Les erreurs seront gérées par Supabase et ensuite par executeWithErrorHandling() si utilisé
+      // ou par le code appelant qui peut gérer l'erreur de manière appropriée
       
       return response;
     };

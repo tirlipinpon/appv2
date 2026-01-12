@@ -52,6 +52,7 @@ export class SupabaseErrorHandlerService {
   /**
    * Gère une erreur Supabase
    * Déconnecte automatiquement et redirige vers login si c'est une erreur d'authentification
+   * Vérifie d'abord si la session est vraiment expirée avant de déconnecter
    */
   async handleError(error: { status?: number; code?: string; message?: string } | null | undefined): Promise<void> {
     // Éviter les boucles infinies
@@ -76,17 +77,27 @@ export class SupabaseErrorHandlerService {
         error,
       });
 
-      // Déconnecter l'utilisateur
-      await this.authService.logout();
+      // Vérifier si la session est vraiment expirée avant de déconnecter
+      // Cela évite de déconnecter sur des erreurs temporaires ou des problèmes réseau
+      const isSessionValid = await this.authService.isSessionValid();
+      
+      if (!isSessionValid) {
+        // La session est vraiment expirée, déconnecter proprement
+        await this.authService.logout();
 
-      // Rediriger vers login (seulement si pas déjà sur /login)
-      const currentUrl = this.router.url;
-      if (!currentUrl.includes('/login')) {
-        this.router.navigate(['/login'], {
-          queryParams: {
-            reason: 'session_expired',
-          },
-        });
+        // Rediriger vers login (seulement si pas déjà sur /login)
+        const currentUrl = this.router.url;
+        if (!currentUrl.includes('/login')) {
+          this.router.navigate(['/login'], {
+            queryParams: {
+              reason: 'session_expired',
+            },
+          });
+        }
+      } else {
+        // La session est encore valide, c'est probablement une erreur temporaire
+        // Ne pas déconnecter, juste logger l'erreur
+        console.warn('Erreur 401/403 détectée mais la session est encore valide. Erreur probablement temporaire.');
       }
     } catch (handlerError) {
       console.error('Erreur lors de la gestion de l\'erreur d\'authentification:', handlerError);
