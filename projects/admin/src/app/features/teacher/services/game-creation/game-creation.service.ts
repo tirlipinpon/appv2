@@ -151,10 +151,20 @@ export class GameCreationService {
     const autoName = this.generateAutoName(gameTypeName, question);
     const filteredAides = aides?.filter((a) => a && a.trim()) || null;
 
+    // Normaliser categoryId : convertir les chaînes vides en null
+    const normalizedCategoryId = categoryId && typeof categoryId === 'string' && categoryId.trim() ? categoryId.trim() : null;
+
+    console.log('🔍 GameCreationService - createGameWithImage:', {
+      categoryId,
+      normalizedCategoryId,
+      subjectId,
+      willUseCategory: !!normalizedCategoryId
+    });
+
     // Construire les données de base du jeu
     const baseGameData: GameCreate = {
-      subject_id: categoryId ? null : subjectId,
-      subject_category_id: categoryId || null,
+      subject_id: normalizedCategoryId ? null : subjectId,
+      subject_category_id: normalizedCategoryId,
       game_type_id: gameTypeId,
       name: autoName,
       instructions: instructions || null,
@@ -531,9 +541,12 @@ export class GameCreationService {
     const autoName = this.generateAutoName(gameTypeName, question);
     const filteredAides = aides?.filter((a) => a && a.trim()) || null;
 
+    // Normaliser categoryId : convertir les chaînes vides en null
+    const normalizedCategoryId = categoryId && categoryId.trim() ? categoryId.trim() : null;
+
     const baseGameData: GameCreate = {
-      subject_id: categoryId ? null : subjectId,
-      subject_category_id: categoryId || null,
+      subject_id: normalizedCategoryId ? null : subjectId,
+      subject_category_id: normalizedCategoryId,
       game_type_id: gameTypeId,
       name: autoName,
       instructions: instructions || null,

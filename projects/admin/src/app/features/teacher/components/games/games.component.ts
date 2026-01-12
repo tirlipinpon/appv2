@@ -98,7 +98,10 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly selectedCategoryId = signal<string | null>(null);
   readonly isCategoryContext = computed(() => {
     // Si on a un categoryId dans les query params, on est en mode "gestion d'une sous-catégorie spécifique"
-    return this.route.snapshot.queryParamMap.get('categoryId') !== null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryIdFromUrl = urlParams.get('categoryId');
+    const categoryIdFromSnapshot = this.route.snapshot.queryParamMap.get('categoryId');
+    return categoryIdFromUrl !== null || categoryIdFromSnapshot !== null;
   });
   
   // Signals pour la duplication
@@ -573,9 +576,32 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const gameTypeId = (v['game_type_id'] as string) || '';
     const gameTypeName = this.selectedGameTypeName();
-    const categoryId = this.isCategoryContext() 
-      ? (this.route.snapshot.queryParamMap.get('categoryId') || this.selectedCategoryId())
-      : this.selectedCategoryId();
+    
+    // Récupérer categoryId : vérifier l'URL directement, puis query params, puis signal, puis select
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryIdFromUrl = urlParams.get('categoryId');
+    const queryParamCategoryId = this.route.snapshot.queryParamMap.get('categoryId');
+    const selectElement = document.getElementById('category_id') as HTMLSelectElement | null;
+    const categoryIdFromSelect = selectElement?.value?.trim() || null;
+    
+    // Normaliser : convertir les chaînes vides en null
+    const normalizedFromUrl = categoryIdFromUrl && categoryIdFromUrl.trim() ? categoryIdFromUrl.trim() : null;
+    const normalizedQueryParam = queryParamCategoryId && queryParamCategoryId.trim() ? queryParamCategoryId.trim() : null;
+    const normalizedSelected = this.selectedCategoryId() && this.selectedCategoryId()!.trim() ? this.selectedCategoryId()!.trim() : null;
+    const normalizedFromSelect = categoryIdFromSelect && categoryIdFromSelect.trim() ? categoryIdFromSelect.trim() : null;
+    
+    // Priorité : URL directe > query params > signal > select
+    const categoryId = normalizedFromUrl || normalizedQueryParam || normalizedSelected || normalizedFromSelect;
+    console.log('🔍 Debug création jeu:', {
+      isCategoryContext: this.isCategoryContext(),
+      categoryIdFromUrl: normalizedFromUrl,
+      queryParamCategoryId: normalizedQueryParam,
+      selectedCategoryId: normalizedSelected,
+      categoryIdFromSelect: normalizedFromSelect,
+      finalCategoryId: categoryId,
+      subjectId,
+      currentUrl: window.location.href
+    });
 
     this.gameCreationService.createGameWithImage({
       gameTypeId,
@@ -984,6 +1010,8 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onCategoryChange(categoryId: string | null): void {
-    this.selectedCategoryId.set(categoryId);
+    // Normaliser : convertir les chaînes vides en null
+    const normalized = categoryId && categoryId.trim() ? categoryId.trim() : null;
+    this.selectedCategoryId.set(normalized);
   }
 }

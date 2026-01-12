@@ -42,7 +42,7 @@ export class ProgressionService {
       .select('*')
       .eq('child_id', childId)
       .eq('subject_category_id', subjectCategoryId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       // Mettre à jour

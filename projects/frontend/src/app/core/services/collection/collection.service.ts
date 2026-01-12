@@ -98,7 +98,7 @@ export class CollectionService {
         .eq('child_id', childId)
         .eq('subject_category_id', condition['subject_category_id'])
         .eq('completed', true)
-        .single();
+        .maybeSingle();
 
       return data !== null;
     }

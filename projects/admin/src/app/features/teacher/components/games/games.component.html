@@ -1,252 +1,306 @@
 <div class="games-container">
-  <a (click)="navigateToSubject($event)" class="btn-back">← Retour à la matière</a>
+  <a (click)="navigateToSubject($event)" class="btn-back"
+    >← Retour à la matière</a
+  >
   <h1>Gestion des jeux</h1>
-  
+
   @if (currentSubjectName()) {
-    <div class="subject-info">
-      <h2>Matière : {{ currentSubjectName() }}</h2>
-      @if (selectedCategoryId() && categories().length > 0) {
-        @for (category of categories(); track category.id) {
-          @if (category.id === selectedCategoryId()) {
-            <p class="category-info">Sous-catégorie : <strong>{{ category.name }}</strong></p>
-          }
-        }
-      }
-    </div>
+  <div class="subject-info">
+    <h2>Matière : {{ currentSubjectName() }}</h2>
+    @if (selectedCategoryId() && categories().length > 0) { @for (category of
+    categories(); track category.id) { @if (category.id ===
+    selectedCategoryId()) {
+    <p class="category-info">
+      Sous-catégorie : <strong>{{ category.name }}</strong>
+    </p>
+    } } }
+  </div>
   }
 
   <!-- Section Génération IA -->
   <section class="ai-generation-section collapsible-section">
     <div class="section-header" (click)="toggleAIGeneration()">
       <h3>🤖 Génération de jeux par IA</h3>
-      <button type="button" class="toggle-btn" [attr.aria-expanded]="isAIGenerationExpanded()">
-        {{ isAIGenerationExpanded() ? '−' : '+' }}
+      <button
+        type="button"
+        class="toggle-btn"
+        [attr.aria-expanded]="isAIGenerationExpanded()"
+      >
+        {{ isAIGenerationExpanded() ? "−" : "+" }}
       </button>
     </div>
     @if (isAIGenerationExpanded()) {
-      <div class="section-content">
-        <app-ai-game-generator-form
-          [subjectId]="subjectId()!"
-          [subjectName]="currentSubjectName()"
-          [schoolYearLabel]="schoolYearLabel()"
-          [isGenerating]="isGenerating()"
-          [generationProgress]="generationProgress()"
-          [generatedCount]="generatedGames().length"
-          [gameTypes]="gameTypes()"
-          (generate)="onGenerateGamesWithAI($event)">
-        </app-ai-game-generator-form>
+    <div class="section-content">
+      <app-ai-game-generator-form
+        [subjectId]="subjectId()!"
+        [subjectName]="currentSubjectName()"
+        [schoolYearLabel]="schoolYearLabel()"
+        [isGenerating]="isGenerating()"
+        [generationProgress]="generationProgress()"
+        [generatedCount]="generatedGames().length"
+        [gameTypes]="gameTypes()"
+        (generate)="onGenerateGamesWithAI($event)"
+      >
+      </app-ai-game-generator-form>
 
-        <app-ai-generated-preview
-          [generatedGames]="generatedGames()"
-          [gameTypes]="gameTypes()"
-          (edit)="onEditGeneratedGame($event)"
-          (remove)="onRemoveGeneratedGame($event)"
-          (updateGame)="onUpdateGeneratedGame($event)"
-          (saveAll)="onSaveAllGeneratedGames()"
-          (cancelAll)="onCancelAllGeneratedGames()">
-        </app-ai-generated-preview>
-      </div>
+      <app-ai-generated-preview
+        [generatedGames]="generatedGames()"
+        [gameTypes]="gameTypes()"
+        (edit)="onEditGeneratedGame($event)"
+        (remove)="onRemoveGeneratedGame($event)"
+        (updateGame)="onUpdateGeneratedGame($event)"
+        (saveAll)="onSaveAllGeneratedGames()"
+        (cancelAll)="onCancelAllGeneratedGames()"
+      >
+      </app-ai-generated-preview>
+    </div>
     }
   </section>
 
   <div class="game-form-section collapsible-section">
-    <div class="section-header" 
-         (click)="toggleManualCreation()"
-         [class.game-type-qcm]="isGameType(selectedGameTypeName(), 'qcm')"
-         [class.game-type-case-vide]="isGameType(selectedGameTypeName(), 'case vide')"
-         [class.game-type-reponse-libre]="isGameType(selectedGameTypeName(), 'reponse libre')"
-         [class.game-type-liens]="isGameType(selectedGameTypeName(), 'liens')"
-         [class.game-type-chronologie]="isGameType(selectedGameTypeName(), 'chronologie')"
-         [class.game-type-vrai-faux]="isGameType(selectedGameTypeName(), 'vrai/faux')"
-         [class.game-type-memory]="isGameType(selectedGameTypeName(), 'memory')"
-         [class.game-type-simon]="isGameType(selectedGameTypeName(), 'simon')"
-         [style.color]="getSelectedGameTypeStyle().colorCode"
-         [style.border-left-color]="getSelectedGameTypeStyle().colorCode">
+    <div
+      class="section-header"
+      (click)="toggleManualCreation()"
+      [class.game-type-qcm]="isGameType(selectedGameTypeName(), 'qcm')"
+      [class.game-type-case-vide]="
+        isGameType(selectedGameTypeName(), 'case vide')
+      "
+      [class.game-type-reponse-libre]="
+        isGameType(selectedGameTypeName(), 'reponse libre')
+      "
+      [class.game-type-liens]="isGameType(selectedGameTypeName(), 'liens')"
+      [class.game-type-chronologie]="
+        isGameType(selectedGameTypeName(), 'chronologie')
+      "
+      [class.game-type-vrai-faux]="
+        isGameType(selectedGameTypeName(), 'vrai/faux')
+      "
+      [class.game-type-memory]="isGameType(selectedGameTypeName(), 'memory')"
+      [class.game-type-simon]="isGameType(selectedGameTypeName(), 'simon')"
+      [style.color]="getSelectedGameTypeStyle().colorCode"
+      [style.border-left-color]="getSelectedGameTypeStyle().colorCode"
+    >
       <h3>
         @if (selectedGameTypeName()) {
-          <span class="game-type-icon">{{ getSelectedGameTypeStyle().icon }}</span>
+        <span class="game-type-icon">{{
+          getSelectedGameTypeStyle().icon
+        }}</span>
         }
-        {{ isEditing() ? '✏️ Modifier le jeu' : '➕ Créer un nouveau jeu' }}
+        {{ isEditing() ? "✏️ Modifier le jeu" : "➕ Créer un nouveau jeu" }}
       </h3>
-      <button type="button" class="toggle-btn" [attr.aria-expanded]="isManualCreationExpanded()">
-        {{ isManualCreationExpanded() ? '−' : '+' }}
+      <button
+        type="button"
+        class="toggle-btn"
+        [attr.aria-expanded]="isManualCreationExpanded()"
+      >
+        {{ isManualCreationExpanded() ? "−" : "+" }}
       </button>
     </div>
     @if (isManualCreationExpanded()) {
-      <div class="section-content">
-        <form [formGroup]="gameForm" (ngSubmit)="isEditing() ? update() : create()">
-      <div class="form-group">
-        <label for="game_type_id">Type de jeu *</label>
-        <select id="game_type_id" formControlName="game_type_id" (change)="onGameTypeChange()">
-          <option value="">Sélectionner un type</option>
-          @for (gt of gameTypes(); track gt.id) {
+    <div class="section-content">
+      <form
+        [formGroup]="gameForm"
+        (ngSubmit)="isEditing() ? update() : create()"
+      >
+        <div class="form-group">
+          <label for="game_type_id">Type de jeu *</label>
+          <select
+            id="game_type_id"
+            formControlName="game_type_id"
+            (change)="onGameTypeChange()"
+          >
+            <option value="">Sélectionner un type</option>
+            @for (gt of gameTypes(); track gt.id) {
             <option [value]="gt.id">{{ gt.name }}</option>
+            }
+          </select>
+          @if (gameForm.get('game_type_id')?.hasError('required') &&
+          gameForm.get('game_type_id')?.touched) {
+          <span class="error-message"> Le type de jeu est requis. </span>
           }
-        </select>
-        @if (gameForm.get('game_type_id')?.hasError('required') && gameForm.get('game_type_id')?.touched) {
-          <span class="error-message">
-            Le type de jeu est requis.
-          </span>
-        }
-      </div>
+        </div>
 
-      <div class="form-group">
-        <label for="category_id">Sous-catégorie (optionnel)</label>
-        @if (isCategoryContext()) {
+        <div class="form-group">
+          <label for="category_id">Sous-catégorie (optionnel)</label>
+          @if (isCategoryContext()) {
           <!-- Mode "gestion d'une sous-catégorie spécifique" : champ désactivé -->
-          <select 
-            id="category_id" 
+          <select
+            id="category_id"
             [value]="selectedCategoryId() || ''"
-            disabled>
-            @if (selectedCategoryId() && categories().length > 0) {
-              @for (category of categories(); track category.id) {
-                @if (category.id === selectedCategoryId()) {
-                  <option [value]="category.id">{{ category.name }}</option>
-                }
-              }
-            } @else {
-              <option value="">Sous-catégorie sélectionnée</option>
+            disabled
+          >
+            @if (selectedCategoryId() && categories().length > 0) { @for
+            (category of categories(); track category.id) { @if (category.id ===
+            selectedCategoryId()) {
+            <option [value]="category.id">{{ category.name }}</option>
+            } } } @else {
+            <option value="">Sous-catégorie sélectionnée</option>
             }
           </select>
           <small class="form-hint">
-            <strong>Mode sous-catégorie :</strong> Les jeux créés seront automatiquement liés à cette sous-catégorie.
+            <strong>Mode sous-catégorie :</strong> Les jeux créés seront
+            automatiquement liés à cette sous-catégorie.
           </small>
-        } @else if (categories().length > 0) {
+          } @else if (categories().length > 0) {
           <!-- Mode normal : on peut choisir la sous-catégorie -->
-          <select 
-            id="category_id" 
+          <select
+            id="category_id"
             [value]="selectedCategoryId() || ''"
-            (change)="onCategoryChange($any($event.target).value || null)">
+            (change)="onCategoryChange($any($event.target)?.value || null)"
+          >
             <option value="">Aucune (jeu directement sur la matière)</option>
             @for (category of categories(); track category.id) {
-              <option [value]="category.id">{{ category.name }}</option>
+            <option [value]="category.id">{{ category.name }}</option>
             }
           </select>
-          <small class="form-hint">Si vous sélectionnez une sous-catégorie, le jeu sera lié à cette sous-catégorie plutôt qu'à la matière directement. Sinon, le jeu sera lié directement à la matière.</small>
-        } @else {
+          <small class="form-hint"
+            >Si vous sélectionnez une sous-catégorie, le jeu sera lié à cette
+            sous-catégorie plutôt qu'à la matière directement. Sinon, le jeu
+            sera lié directement à la matière.</small
+          >
+          } @else {
           <!-- Aucune sous-catégorie disponible -->
-          <select 
-            id="category_id" 
-            [value]="''"
-            disabled>
+          <select id="category_id" [value]="''" disabled>
             <option value="">Aucune sous-catégorie disponible</option>
           </select>
           <small class="form-hint">
-            <strong>Note :</strong> Le jeu sera créé directement pour la matière. Pour créer des sous-catégories, allez dans la page de gestion de la matière.
+            <strong>Note :</strong> Le jeu sera créé directement pour la
+            matière. Pour créer des sous-catégories, allez dans la page de
+            gestion de la matière.
           </small>
-        }
-      </div>
+          }
+        </div>
 
-      <!-- Champs globaux (instructions, question, aides) -->
-      <app-game-global-fields
-        [initialData]="initialGlobalFields()"
-        (dataChange)="onGlobalFieldsChange($event)"
-        (validityChange)="onGlobalFieldsValidityChange()">
-      </app-game-global-fields>
+        <!-- Champs globaux (instructions, question, aides) -->
+        <app-game-global-fields
+          [initialData]="initialGlobalFields()"
+          (dataChange)="onGlobalFieldsChange($event)"
+          (validityChange)="onGlobalFieldsValidityChange()"
+        >
+        </app-game-global-fields>
 
-      <!-- Composants spécifiques selon le type de jeu -->
-      @if (selectedGameTypeName()) {
+        <!-- Composants spécifiques selon le type de jeu -->
+        @if (selectedGameTypeName()) {
         <div class="game-specific-form">
           <!-- Case vide -->
           @if (isGameType(selectedGameTypeName(), 'case vide')) {
-            <app-case-vide-form
-              [initialData]="getInitialDataForCaseVide()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-case-vide-form>
+          <app-case-vide-form
+            [initialData]="getInitialDataForCaseVide()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-case-vide-form>
           }
 
           <!-- Réponse libre -->
           @if (isGameType(selectedGameTypeName(), 'reponse libre')) {
-            <app-reponse-libre-form
-              [initialData]="getInitialDataForReponseLibre()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-reponse-libre-form>
+          <app-reponse-libre-form
+            [initialData]="getInitialDataForReponseLibre()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-reponse-libre-form>
           }
 
           <!-- Liens -->
           @if (isGameType(selectedGameTypeName(), 'liens')) {
-            <app-liens-form
-              [initialData]="getInitialDataForLiens()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-liens-form>
+          <app-liens-form
+            [initialData]="getInitialDataForLiens()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-liens-form>
           }
 
           <!-- Chronologie -->
           @if (isGameType(selectedGameTypeName(), 'chronologie')) {
-            <app-chronologie-form
-              [initialData]="getInitialDataForChronologie()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-chronologie-form>
+          <app-chronologie-form
+            [initialData]="getInitialDataForChronologie()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-chronologie-form>
           }
 
           <!-- QCM -->
           @if (isGameType(selectedGameTypeName(), 'qcm')) {
-            <app-qcm-form
-              [initialData]="getInitialDataForQcm()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-qcm-form>
+          <app-qcm-form
+            [initialData]="getInitialDataForQcm()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-qcm-form>
           }
 
           <!-- Vrai/Faux -->
           @if (isGameType(selectedGameTypeName(), 'vrai/faux')) {
-            <app-vrai-faux-form
-              [initialData]="getInitialDataForVraiFaux()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-vrai-faux-form>
+          <app-vrai-faux-form
+            [initialData]="getInitialDataForVraiFaux()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-vrai-faux-form>
           }
 
           <!-- Memory -->
           @if (isGameType(selectedGameTypeName(), 'memory')) {
-            <app-memory-form
-              [initialData]="getInitialDataForMemory()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-memory-form>
+          <app-memory-form
+            [initialData]="getInitialDataForMemory()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-memory-form>
           }
 
           <!-- Simon -->
           @if (isGameType(selectedGameTypeName(), 'simon')) {
-            <app-simon-form
-              [initialData]="getInitialDataForSimon()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-simon-form>
+          <app-simon-form
+            [initialData]="getInitialDataForSimon()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-simon-form>
           }
 
           <!-- Image Interactive (Click) -->
-          @if (isGameTypeOneOf(selectedGameTypeName(), 'click', 'image interactive')) {
-            <app-image-interactive-form
-              [initialData]="initialDataForImageInteractive()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-image-interactive-form>
+          @if (isGameTypeOneOf(selectedGameTypeName(), 'click', 'image
+          interactive')) {
+          <app-image-interactive-form
+            [initialData]="initialDataForImageInteractive()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-image-interactive-form>
           }
 
           <!-- Puzzle -->
           @if (isGameType(selectedGameTypeName(), 'puzzle')) {
-            <app-puzzle-form
-              [initialData]="initialDataForPuzzle()"
-              (dataChange)="onGameDataChange($event)"
-              (validityChange)="onGameValidityChange($event)">
-            </app-puzzle-form>
+          <app-puzzle-form
+            [initialData]="initialDataForPuzzle()"
+            (dataChange)="onGameDataChange($event)"
+            (validityChange)="onGameValidityChange($event)"
+          >
+          </app-puzzle-form>
           }
         </div>
-      }
+        }
 
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="gameForm.invalid || isLoading() || !gameSpecificValid()">
-          {{ isEditing() ? 'Enregistrer' : 'Créer' }}
-        </button>
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="gameForm.invalid || isLoading() || !gameSpecificValid()"
+          >
+            {{ isEditing() ? "Enregistrer" : "Créer" }}
+          </button>
           @if (isEditing()) {
-            <button type="button" class="btn btn-secondary" (click)="cancelEdit()">
-              Annuler
-            </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="cancelEdit()"
+          >
+            Annuler
+          </button>
           }
         </div>
       </form>
@@ -258,54 +312,59 @@
   <section class="games-list-section collapsible-section">
     <div class="section-header" (click)="toggleGamesList()">
       <h3>📋 Mes jeux ({{ games().length }})</h3>
-      <app-games-stats-display 
-        [subjectId]="subjectId() || null" 
-        [categoryId]="selectedCategoryId() || null">
+      <app-games-stats-display
+        [subjectId]="subjectId() || null"
+        [categoryId]="selectedCategoryId() || null"
+      >
       </app-games-stats-display>
-      <button type="button" class="toggle-btn" [attr.aria-expanded]="isGamesListExpanded()">
-        {{ isGamesListExpanded() ? '−' : '+' }}
+      <button
+        type="button"
+        class="toggle-btn"
+        [attr.aria-expanded]="isGamesListExpanded()"
+      >
+        {{ isGamesListExpanded() ? "−" : "+" }}
       </button>
     </div>
     @if (isGamesListExpanded()) {
-      <div class="section-content">
-        @if (isLoading()) {
-          <div class="loading">Chargement...</div>
-        }
-        @if (!isLoading() && games().length === 0) {
-          <div class="empty-state">
-            <p>Aucun jeu créé pour cette matière.</p>
-          </div>
-        }
-        @if (!isLoading() && games().length > 0) {
-          <ul class="games-list">
-            @for (game of games(); track game.id) {
-              <app-game-card
-                [game]="game"
-                [gameTypeName]="getGameTypeName(game.game_type_id)"
-                [gameTypes]="gameTypes()"
-                (update)="updateGameFromCard($event.gameId, $event.updates)"
-                (delete)="delete($event)"
-                (duplicate)="openDuplicateDialog($event)">
-              </app-game-card>
-            }
-          </ul>
-        }
+    <div class="section-content">
+      @if (isLoading()) {
+      <div class="loading">Chargement...</div>
+      } @if (!isLoading() && games().length === 0) {
+      <div class="empty-state">
+        <p>Aucun jeu créé pour cette matière.</p>
       </div>
+      } @if (!isLoading() && games().length > 0) {
+      <ul class="games-list">
+        @for (game of games(); track game.id) {
+        <app-game-card
+          [game]="game"
+          [gameTypeName]="getGameTypeName(game.game_type_id)"
+          [gameTypes]="gameTypes()"
+          (update)="updateGameFromCard($event.gameId, $event.updates)"
+          (delete)="delete($event)"
+          (duplicate)="openDuplicateDialog($event)"
+        >
+        </app-game-card>
+        }
+      </ul>
+      }
+    </div>
     }
   </section>
 
   <!-- Dialog de duplication -->
   @if (duplicateDialogOpen() && gameToDuplicate()) {
-    <app-duplicate-game-dialog
-      [game]="gameToDuplicate()!"
-      [currentAssignment]="currentAssignment()"
-      [availableSchools]="availableSchoolsForTeacher()"
-      [availableAssignments]="subjectsStore.assignments()"
-      [availableSubjects]="subjects()"
-      [gameTypes]="gameTypes()"
-      [gameTypeName]="getGameTypeName(gameToDuplicate()!.game_type_id)"
-      (confirm)="onDuplicateGame($event)"
-      (cancel)="onCancelDuplicate()">
-    </app-duplicate-game-dialog>
+  <app-duplicate-game-dialog
+    [game]="gameToDuplicate()!"
+    [currentAssignment]="currentAssignment()"
+    [availableSchools]="availableSchoolsForTeacher()"
+    [availableAssignments]="subjectsStore.assignments()"
+    [availableSubjects]="subjects()"
+    [gameTypes]="gameTypes()"
+    [gameTypeName]="getGameTypeName(gameToDuplicate()!.game_type_id)"
+    (confirm)="onDuplicateGame($event)"
+    (cancel)="onCancelDuplicate()"
+  >
+  </app-duplicate-game-dialog>
   }
 </div>
