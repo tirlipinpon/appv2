@@ -126,9 +126,12 @@ import {
         <div *ngIf="subjectGames().length > 0" class="subject-games-section">
           <div class="games-header">
             <h3>Jeux de la matière</h3>
-            <div class="games-counter">
-              {{ getRemainingSubjectGamesCount() }}/{{ getTotalSubjectGamesCount() }} jeux restants
-            </div>
+            <app-games-counter
+              [subjectId]="selectedSubjectId()"
+              [childId]="getCurrentChildId()"
+              [remaining]="getRemainingSubjectGamesCount()"
+              [total]="getTotalSubjectGamesCount()">
+            </app-games-counter>
             <app-games-stats-display 
               [subjectId]="selectedSubjectId()" 
               [childId]="getCurrentChildId()" />
@@ -159,9 +162,12 @@ import {
       <!-- Jeux d'une sous-matière sélectionnée -->
       <div *ngIf="selectedCategoryId()" class="games-view">
         <div class="games-header" *ngIf="!loadingGames() && categoryGames().length > 0">
-          <div class="games-counter">
-            {{ getRemainingGamesCount() }}/{{ getTotalGamesCount() }} jeux restants
-          </div>
+          <app-games-counter
+            [categoryId]="selectedCategoryId()"
+            [childId]="getCurrentChildId()"
+            [remaining]="getRemainingGamesCount()"
+            [total]="getTotalGamesCount()">
+          </app-games-counter>
           <app-games-stats-display 
             [categoryId]="selectedCategoryId()" 
             [childId]="getCurrentChildId()" />
@@ -341,14 +347,6 @@ import {
       gap: 1rem;
     }
 
-    .games-counter {
-      background: var(--theme-primary-color, #4CAF50);
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
 
     .games-grid {
       display: grid;

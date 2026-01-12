@@ -15,7 +15,7 @@ import { GamesStatsService } from '../../services/games-stats/games-stats.servic
   imports: [CommonModule],
   template: `
     @if (counterText()) {
-      <div class="games-counter">
+      <div class="games-counter" [class.completed]="isCompleted()">
         {{ counterText() }}
       </div>
     }
@@ -29,6 +29,11 @@ import { GamesStatsService } from '../../services/games-stats/games-stats.servic
       font-size: 0.875rem;
       font-weight: 600;
       display: inline-block;
+    }
+
+    .games-counter.completed {
+      background: #2196F3;
+      color: white;
     }
   `]
 })
@@ -48,6 +53,12 @@ export class GamesCounterComponent {
   // Si fournis, ces valeurs sont utilisées au lieu de calculer depuis les stats
   readonly remaining = input<number | null>(null);
   readonly total = input<number | null>(null);
+
+  // Vérifie si tous les jeux sont complétés (remaining === 0)
+  readonly isCompleted = computed(() => {
+    const remaining = this.remaining();
+    return remaining !== null && remaining === 0;
+  });
 
   // Texte du compteur calculé
   readonly counterText = computed(() => {

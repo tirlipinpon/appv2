@@ -11,15 +11,34 @@ export class BadgeNotificationService {
   private readonly currentBadge = signal<BadgeNotificationData | null>(null);
   private readonly isVisible = signal<boolean>(false);
 
+  // Cache des badges déjà affichés dans cette session (pour éviter les doublons)
+  private readonly displayedBadges = new Set<string>();
+
   // Observable pour savoir si une notification est en cours
   readonly hasNotifications = computed(() => this.badgeQueue().length > 0 || this.isVisible());
 
   /**
    * Affiche une notification de badge débloqué
    * Si une notification est déjà en cours, ajoute le badge à la file d'attente
+   * Évite d'afficher deux fois le même badge dans la même session
    */
   showBadgeNotification(badge: NewlyUnlockedBadge, description?: string): Promise<void> {
     return new Promise((resolve) => {
+      // Créer une clé unique pour ce badge (badge_id + unlocked_at si disponible)
+      const badgeKey = badge.unlocked_at 
+        ? `${badge.badge_id}-${badge.unlocked_at}`
+        : `${badge.badge_id}-${Date.now()}`;
+
+      // Si le badge a déjà été affiché, ne pas l'afficher à nouveau
+      if (this.displayedBadges.has(badgeKey)) {
+        console.log('[BadgeNotification] Badge déjà affiché, ignoré:', badge.badge_name);
+        resolve();
+        return;
+      }
+
+      // Marquer le badge comme affiché
+      this.displayedBadges.add(badgeKey);
+
       const badgeData: BadgeNotificationData = {
         badge_id: badge.badge_id,
         badge_name: badge.badge_name,
@@ -97,5 +116,13 @@ export class BadgeNotificationService {
       this.waitForClose();
       this.waitForClose = null;
     }
+  }
+
+  /**
+   * Vide le cache des badges déjà affichés
+   * Utile pour réinitialiser entre les sessions de jeu
+   */
+  clearDisplayedBadgesCache(): void {
+    this.displayedBadges.clear();
   }
 }

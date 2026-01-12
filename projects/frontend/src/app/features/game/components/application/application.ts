@@ -176,6 +176,11 @@ export class GameApplication {
         }
       );
 
+      // Attendre un peu pour que le trigger sur frontend_subject_category_progress s'exécute
+      // puis vérifier à nouveau les badges débloqués (notamment "Première catégorie complétée")
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await this.checkAndNotifyBadges(child.child_id, savedAttempt.id);
+
       // Vérifier et débloquer les collectibles
       if (isSuccess) {
         await this.collection.checkAndUnlockCollectibles(child.child_id, game.subject_category_id);

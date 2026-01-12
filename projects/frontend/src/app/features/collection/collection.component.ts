@@ -15,6 +15,63 @@ import { BadgesService } from '../../core/services/badges/badges.service';
     <div class="collection-container">
       <h1>Ma Collection</h1>
 
+      <!-- Section Badges -->
+      <div class="badges-section" *ngIf="!application.isLoading()() && !application.isLoadingBadges()()">
+        <h2>Mes Badges</h2>
+
+        <!-- Statistiques badges -->
+        <div class="badges-stats">
+          <div class="stat-card">
+            <div class="stat-value">{{ application.getBadgesUnlockedCount()() }}</div>
+            <div class="stat-label">Badges débloqués</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ application.getBadgesTotalCount()() }}</div>
+            <div class="stat-label">Total</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ application.getBadgesCompletionPercentage()() }}%</div>
+            <div class="stat-label">Complété</div>
+          </div>
+        </div>
+
+        <!-- Grille de badges -->
+        <div class="badges-grid">
+          <div
+            *ngFor="let badge of application.getBadges()()"
+            class="badge-card"
+            [class.unlocked]="badge.isUnlocked"
+            [class.locked]="!badge.isUnlocked"
+            [title]="getBadgeTooltip(badge)">
+            <div class="badge-visual-wrapper">
+              <app-badge-visual
+                [badgeType]="badge.badge_type"
+                [value]="badge.value"
+                [level]="badge.level"
+                [isUnlocked]="badge.isUnlocked"
+                size="medium"
+                [showIcon]="true">
+              </app-badge-visual>
+            </div>
+            <div class="badge-info">
+              <h3>{{ badge.name }}</h3>
+              <p *ngIf="badge.description">{{ badge.description }}</p>
+              <div *ngIf="badge.isUnlocked && badge.unlockedAt" class="unlocked-date">
+                Débloqué le {{ formatDate(badge.unlockedAt) }}
+                <span *ngIf="badge.level"> - Niveau {{ badge.level }}</span>
+              </div>
+              <div *ngIf="!badge.isUnlocked" class="locked-info">
+                <span *ngIf="getNextThreshold(badge)">Prochain seuil : {{ getNextThreshold(badge) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="application.getBadges()().length === 0" class="empty-state">
+          <p>Aucun badge disponible pour le moment.</p>
+        </div>
+      </div>
+
       <div *ngIf="application.isLoading()()" class="loading">
         Chargement de ta collection...
       </div>
@@ -104,63 +161,6 @@ import { BadgesService } from '../../core/services/badges/badges.service';
 
         <div *ngIf="application.getCollectibles()().length === 0" class="empty-state">
           <p>Aucun objet dans ta collection pour le moment.</p>
-        </div>
-      </div>
-
-      <!-- Section Badges -->
-      <div class="badges-section" *ngIf="!application.isLoading()() && !application.isLoadingBadges()()">
-        <h2>Mes Badges</h2>
-
-        <!-- Statistiques badges -->
-        <div class="badges-stats">
-          <div class="stat-card">
-            <div class="stat-value">{{ application.getBadgesUnlockedCount()() }}</div>
-            <div class="stat-label">Badges débloqués</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ application.getBadgesTotalCount()() }}</div>
-            <div class="stat-label">Total</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ application.getBadgesCompletionPercentage()() }}%</div>
-            <div class="stat-label">Complété</div>
-          </div>
-        </div>
-
-        <!-- Grille de badges -->
-        <div class="badges-grid">
-          <div
-            *ngFor="let badge of application.getBadges()()"
-            class="badge-card"
-            [class.unlocked]="badge.isUnlocked"
-            [class.locked]="!badge.isUnlocked"
-            [title]="getBadgeTooltip(badge)">
-            <div class="badge-visual-wrapper">
-              <app-badge-visual
-                [badgeType]="badge.badge_type"
-                [value]="badge.value"
-                [level]="badge.level"
-                [isUnlocked]="badge.isUnlocked"
-                size="medium"
-                [showIcon]="true">
-              </app-badge-visual>
-            </div>
-            <div class="badge-info">
-              <h3>{{ badge.name }}</h3>
-              <p *ngIf="badge.description">{{ badge.description }}</p>
-              <div *ngIf="badge.isUnlocked && badge.unlockedAt" class="unlocked-date">
-                Débloqué le {{ formatDate(badge.unlockedAt) }}
-                <span *ngIf="badge.level"> - Niveau {{ badge.level }}</span>
-              </div>
-              <div *ngIf="!badge.isUnlocked" class="locked-info">
-                <span *ngIf="getNextThreshold(badge)">Prochain seuil : {{ getNextThreshold(badge) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div *ngIf="application.getBadges()().length === 0" class="empty-state">
-          <p>Aucun badge disponible pour le moment.</p>
         </div>
       </div>
     </div>
@@ -337,9 +337,10 @@ import { BadgesService } from '../../core/services/badges/badges.service';
 
     /* Section Badges */
     .badges-section {
-      margin-top: 4rem;
-      padding-top: 2rem;
-      border-top: 2px solid var(--theme-border-color, #e0e0e0);
+      margin-top: 2rem;
+      margin-bottom: 4rem;
+      padding-bottom: 2rem;
+      border-bottom: 2px solid var(--theme-border-color, #e0e0e0);
     }
 
     .badges-section h2 {
