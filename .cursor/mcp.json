@@ -1,15 +1,11 @@
-{
-    "mcpServers":  {
-                       "supabase":  {
-                                        "url":  "https://mcp.supabase.com/mcp?project_ref=piaahwlfyvezdfnzoxeb\u0026features=database%2Cdebugging%2Cfunctions%2Cdevelopment%2Cbranching%2Cstorage%2Caccount%2Cdocs"
-                                    },
-                       "angular-cli":  {
-                                           "args":  [
-                                                        "-y",
-                                                        "@angular/cli",
-                                                        "mcp"
-                                                    ],
-                                           "command":  "npx"
-                                       }
-                   }
+﻿{
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=piaahwlfyvezdfnzoxeb&features=database%2Cdebugging%2Cfunctions%2Cdevelopment%2Cbranching%2Cstorage%2Caccount%2Cdocs"
+    },
+    "angular-cli": {
+      "command": "npx",
+      "args": ["-y", "@angular/cli", "mcp"]
+    }
+  }
 }
