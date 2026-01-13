@@ -40,11 +40,18 @@ export class ConsecutiveGameDaysService {
    * Recalcule et retourne l'état frais immédiatement (pour UX)
    * Appelle la fonction RPC qui recalcule et retourne l'état avec badges débloqués
    * @param childId ID de l'enfant
-   * @returns Le statut formaté avec badges débloqués
+   * @returns Le statut formaté avec badges débloqués (seulement les NOUVEAUX)
    */
   async recalculateAndGetStatus(
     childId: string
   ): Promise<ConsecutiveGameDaysStatus & { badgesUnlocked: UnlockedBadge[] }> {
+    // 1. Récupérer les badges débloqués AVANT le déblocage (pour comparer après)
+    const badgesBefore = await this.getBadgeUnlocks(childId);
+    const badgesBeforeSet = new Set(
+      badgesBefore.map((b) => `${b.badge_id}-${b.level}`)
+    );
+
+    // 2. Recalculer les jours consécutifs
     const { data, error } = await this.supabase.client.rpc(
       'recalculate_and_get_consecutive_days',
       {
@@ -60,7 +67,47 @@ export class ConsecutiveGameDaysService {
 
     const result = data as RecalculateConsecutiveDaysResult;
 
-    return this.transformToStatus(result);
+    // 3. Débloquer le badge si nécessaire (la fonction RPC ne le fait pas automatiquement)
+    try {
+      const { error: unlockError } = await this.supabase.client.rpc(
+        'unlock_consecutive_game_days_badge',
+        {
+          p_child_id: childId,
+        }
+      );
+      if (unlockError) {
+        console.warn(
+          '[ConsecutiveGameDaysService] Erreur lors du déblocage du badge:',
+          unlockError
+        );
+      }
+    } catch (unlockError) {
+      // Ne pas bloquer si le déblocage échoue (peut être déjà débloqué ou fonction non disponible)
+      console.warn(
+        '[ConsecutiveGameDaysService] Erreur lors du déblocage du badge:',
+        unlockError
+      );
+    }
+
+    // 4. Récupérer les badges débloqués APRÈS le déblocage
+    const badgesAfter = await this.getBadgeUnlocks(childId);
+
+    // 5. Filtrer pour ne garder que les NOUVEAUX badges débloqués
+    const newBadgesUnlocked = badgesAfter.filter(
+      (badge) => !badgesBeforeSet.has(`${badge.badge_id}-${badge.level}`)
+    );
+
+    // 6. Transformer le résultat avec seulement les nouveaux badges débloqués
+    const status = this.transformToStatus(result);
+    return {
+      ...status,
+      badgesUnlocked: newBadgesUnlocked.map((badge) => ({
+        badge_id: badge.badge_id,
+        level: badge.level,
+        value: badge.value,
+        unlocked_at: badge.unlocked_at,
+      })),
+    };
   }
 
   /**

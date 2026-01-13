@@ -9,6 +9,7 @@ import { ChildAuthService } from '../../../../core/auth/child-auth.service';
 import { BadgesService } from '../../../../core/services/badges/badges.service';
 import { BadgeNotificationService } from '../../../../core/services/badges/badge-notification.service';
 import { ConsecutiveGameDaysService } from '../../../../core/services/badges/consecutive-game-days.service';
+import { BadgesStore } from '../../../badges/store/index';
 import { GameState } from '../../types/game.types';
 import { normalizeGameType } from '../../../../shared/utils/game-normalization.util';
 import { SPECIFIC_GAME_TYPES } from '@shared/utils/game-type.util';
@@ -28,6 +29,7 @@ export class GameApplication {
   private readonly badgesService = inject(BadgesService);
   private readonly badgeNotification = inject(BadgeNotificationService);
   private readonly consecutiveGameDaysService = inject(ConsecutiveGameDaysService);
+  private readonly badgesStore = inject(BadgesStore);
   private readonly infrastructure = inject(GameInfrastructure);
 
   async initializeGame(gameId: string): Promise<void> {
@@ -306,6 +308,9 @@ export class GameApplication {
       
       if (status.badgesUnlocked && status.badgesUnlocked.length > 0) {
         console.log('[GameApplication] Nouveaux badges jours consécutifs débloqués:', status.badgesUnlocked);
+        
+        // Recharger le store des badges pour mettre à jour l'UI
+        this.badgesStore.loadChildBadges(childId);
         
         // Récupérer les descriptions des badges depuis la base
         const allBadges = await this.badgesService.getAllBadges();
