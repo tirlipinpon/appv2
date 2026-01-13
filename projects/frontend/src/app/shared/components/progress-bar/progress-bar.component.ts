@@ -1,16 +1,18 @@
-import { Component, input, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-progress-bar',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
     <div class="progress-bar-container">
-      <div class="progress-bar-label" *ngIf="label()">
-        {{ label() }}
-        <span class="progress-percentage">{{ percentage() }}%</span>
-      </div>
+      @if (label()) {
+        <div class="progress-bar-label">
+          {{ label() }}
+          <span class="progress-percentage">{{ percentage() }}%</span>
+        </div>
+      }
       <div class="progress-bar-wrapper">
         <div
           class="progress-bar-fill"

@@ -1,14 +1,15 @@
-import { Component, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { ChildButtonComponent } from '../child-button/child-button.component';
 import { GameFeedbackMessageComponent } from '../../../features/game/components/game-feedback-message/game-feedback-message.component';
 
 @Component({
   selector: 'app-game-error-modal',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, GameFeedbackMessageComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ChildButtonComponent, GameFeedbackMessageComponent],
   template: `
-    <div *ngIf="visible()" class="modal-overlay" (click)="onOverlayClick()">
+    @if (visible()) {
+      <div class="modal-overlay" (click)="onOverlayClick()">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <!-- Message de feedback -->
         <app-game-feedback-message
@@ -35,8 +36,9 @@ import { GameFeedbackMessageComponent } from '../../../features/game/components/
             Passer au suivant
           </app-child-button>
         </div>
+        </div>
       </div>
-    </div>
+    }
   `,
   styles: [`
     .modal-overlay {

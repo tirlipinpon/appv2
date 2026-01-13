@@ -1,5 +1,4 @@
-import { Component, inject, OnInit, effect, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, effect, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SubjectsApplication } from './components/application/application';
 import { SubjectsInfrastructure } from './components/infrastructure/infrastructure';
@@ -30,8 +29,8 @@ import {
 @Component({
   selector: 'app-subjects',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     RouterLink,
     ProgressBarComponent,
     StarRatingComponent,
@@ -45,25 +44,32 @@ import {
       <!-- Breadcrumb -->
       <app-breadcrumb [items]="breadcrumbItems()" />
 
-      <div *ngIf="isLoading()" class="loading">
-        Chargement...
-      </div>
+      @if (isLoading()) {
+        <div class="loading">
+          Chargement...
+        </div>
+      }
 
-      <div *ngIf="error()" class="error">
-        {{ error() }}
-      </div>
+      @if (error()) {
+        <div class="error">
+          {{ error() }}
+        </div>
+      }
 
       <!-- Liste des matières -->
-      <div class="subjects-grid" *ngIf="!isLoading() && !selectedSubjectId()">
-        <div
-          *ngFor="let subject of filteredSubjects()"
-          class="subject-card"
-          (click)="selectSubject(subject.id)"
-          (keydown.enter)="selectSubject(subject.id)"
-          tabindex="0"
-          role="button">
-          <h2>{{ subject.name }}</h2>
-          <p *ngIf="subject.description">{{ subject.description }}</p>
+      @if (!isLoading() && !selectedSubjectId()) {
+        <div class="subjects-grid">
+          @for (subject of filteredSubjects(); track subject.id) {
+            <div
+              class="subject-card"
+              (click)="selectSubject(subject.id)"
+              (keydown.enter)="selectSubject(subject.id)"
+              tabindex="0"
+              role="button">
+              <h2>{{ subject.name }}</h2>
+              @if (subject.description) {
+                <p>{{ subject.description }}</p>
+              }
           <app-games-counter 
             [subjectId]="subject.id"
             [categoryIds]="getCategoryIdsForSubject(subject.id)"
@@ -71,56 +77,69 @@ import {
             [remaining]="getRemainingGamesForSubject(subject.id)?.remaining ?? null"
             [total]="getRemainingGamesForSubject(subject.id)?.total ?? null">
           </app-games-counter>
+            </div>
+          }
         </div>
-      </div>
+      }
 
       <!-- Sous-matières d'une matière sélectionnée -->
-      <div *ngIf="selectedSubjectId() && selectedSubject() && !selectedCategoryId()" class="categories-view">
-        
-        <!-- Catégories (sous-matières) -->
-        <div *ngIf="filteredCategories().length > 0" class="categories-section">
-          <h3>Sous-matières</h3>
-          <div class="categories-grid">
-            <div
-              *ngFor="let category of filteredCategories()"
-              class="category-card"
-              (click)="selectCategory(category.id)"
-              (keydown.enter)="selectCategory(category.id)"
-              tabindex="0"
-              role="button">
-              <h3>{{ category.name }}</h3>
-              <p *ngIf="category.description">{{ category.description }}</p>
+      @if (selectedSubjectId() && selectedSubject() && !selectedCategoryId()) {
+        <div class="categories-view">
+          
+          <!-- Catégories (sous-matières) -->
+          @if (filteredCategories().length > 0) {
+            <div class="categories-section">
+              <h3>Sous-matières</h3>
+              <div class="categories-grid">
+                @for (category of filteredCategories(); track category.id) {
+                  <div
+                    class="category-card"
+                    (click)="selectCategory(category.id)"
+                    (keydown.enter)="selectCategory(category.id)"
+                    tabindex="0"
+                    role="button">
+                    <h3>{{ category.name }}</h3>
+                    @if (category.description) {
+                      <p>{{ category.description }}</p>
+                    }
               <app-games-counter 
                 [categoryId]="category.id"
                 [childId]="getCurrentChildId()"
                 [remaining]="getRemainingGamesForCategory(category.id)?.remaining ?? null"
                 [total]="getRemainingGamesForCategory(category.id)?.total ?? null">
               </app-games-counter>
-              <app-games-stats-display 
-                [categoryId]="category.id" 
-                [childId]="getCurrentChildId()" />
-              <div *ngIf="category.progress" class="category-progress">
-                <app-progress-bar
-                  [value]="category.progress.completion_percentage"
-                  [max]="100"
-                  [label]="'Progression'"
-                  variant="primary">
-                </app-progress-bar>
-                <app-star-rating
-                  [rating]="category.progress.stars_count"
-                  [maxStars]="3"
-                  [showText]="true">
-                </app-star-rating>
-                <div *ngIf="category.progress.completed" class="completed-badge">
-                  ✓ Terminé
-                </div>
+                    <app-games-stats-display 
+                      [categoryId]="category.id" 
+                      [childId]="getCurrentChildId()" />
+                    @if (category.progress) {
+                      <div class="category-progress">
+                        <app-progress-bar
+                          [value]="category.progress.completion_percentage"
+                          [max]="100"
+                          [label]="'Progression'"
+                          variant="primary">
+                        </app-progress-bar>
+                        <app-star-rating
+                          [rating]="category.progress.stars_count"
+                          [maxStars]="3"
+                          [showText]="true">
+                        </app-star-rating>
+                        @if (category.progress.completed) {
+                          <div class="completed-badge">
+                            ✓ Terminé
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
               </div>
             </div>
-          </div>
-        </div>
+          }
 
-        <!-- Jeux directs de la matière -->
-        <div *ngIf="subjectGames().length > 0" class="subject-games-section">
+          <!-- Jeux directs de la matière -->
+          @if (subjectGames().length > 0) {
+            <div class="subject-games-section">
           <div class="games-header">
             <h3>Jeux de la matière</h3>
             <app-games-counter
@@ -132,33 +151,40 @@ import {
             <app-games-stats-display 
               [subjectId]="selectedSubjectId()" 
               [childId]="getCurrentChildId()" />
-          </div>
-          <div class="games-grid">
-            <div
-              *ngFor="let game of sortedSubjectGames()"
-              class="game-card"
-              [class.completed]="isGameCompleted(game.id)"
-              [routerLink]="['/game', game.id]">
-              <div class="game-card-header">
-                <h3>{{ game.name }}</h3>
-                <app-progress-badge
-                  [score]="getGameScore(game.id)"
-                  [hasAttempted]="hasGameAttempted(game.id)">
-                </app-progress-badge>
-              </div>
-              <p *ngIf="game.description">{{ game.description }}</p>
+            </div>
+            <div class="games-grid">
+              @for (game of sortedSubjectGames(); track game.id) {
+                <div
+                  class="game-card"
+                  [class.completed]="isGameCompleted(game.id)"
+                  [routerLink]="['/game', game.id]">
+                  <div class="game-card-header">
+                    <h3>{{ game.name }}</h3>
+                    <app-progress-badge
+                      [score]="getGameScore(game.id)"
+                      [hasAttempted]="hasGameAttempted(game.id)">
+                    </app-progress-badge>
+                  </div>
+                  @if (game.description) {
+                    <p>{{ game.description }}</p>
+                  }
               <div class="game-type-badge" [style.background-color]="getGameTypeStyle(game.game_type).bgColor" [style.color]="getGameTypeStyle(game.game_type).color">
                 <span class="game-type-icon">{{ getGameTypeStyle(game.game_type).icon }}</span>
-                <span class="game-type-label">{{ getGameTypeStyle(game.game_type).label }}</span>
+                  <span class="game-type-label">{{ getGameTypeStyle(game.game_type).label }}</span>
+                </div>
               </div>
-            </div>
+            }
           </div>
+            </div>
+          }
         </div>
-      </div>
+      }
 
       <!-- Jeux d'une sous-matière sélectionnée -->
-      <div *ngIf="selectedCategoryId()" class="games-view">
-        <div class="games-header" *ngIf="!loadingGames() && categoryGames().length > 0">
+      @if (selectedCategoryId()) {
+        <div class="games-view">
+          @if (!loadingGames() && categoryGames().length > 0) {
+            <div class="games-header">
           <app-games-counter
             [categoryId]="selectedCategoryId()"
             [childId]="getCurrentChildId()"
@@ -167,33 +193,44 @@ import {
           </app-games-counter>
           <app-games-stats-display 
             [categoryId]="selectedCategoryId()" 
-            [childId]="getCurrentChildId()" />
-        </div>
-        <div *ngIf="loadingGames()" class="loading">Chargement des jeux...</div>
-        <div class="games-grid" *ngIf="!loadingGames()">
-          <div
-            *ngFor="let game of sortedGames()"
-            class="game-card"
-            [class.completed]="isGameCompleted(game.id)"
-            [routerLink]="['/game', game.id]">
-            <div class="game-card-header">
-              <h3>{{ game.name }}</h3>
-              <app-progress-badge
-                [score]="getGameScore(game.id)"
-                [hasAttempted]="hasGameAttempted(game.id)">
-              </app-progress-badge>
+              [childId]="getCurrentChildId()" />
             </div>
-            <p *ngIf="game.description">{{ game.description }}</p>
+          }
+          @if (loadingGames()) {
+            <div class="loading">Chargement des jeux...</div>
+          }
+          @if (!loadingGames()) {
+            <div class="games-grid">
+              @for (game of sortedGames(); track game.id) {
+                <div
+                  class="game-card"
+                  [class.completed]="isGameCompleted(game.id)"
+                  [routerLink]="['/game', game.id]">
+                  <div class="game-card-header">
+                    <h3>{{ game.name }}</h3>
+                    <app-progress-badge
+                      [score]="getGameScore(game.id)"
+                      [hasAttempted]="hasGameAttempted(game.id)">
+                    </app-progress-badge>
+                  </div>
+                  @if (game.description) {
+                    <p>{{ game.description }}</p>
+                  }
             <div class="game-type-badge" [style.background-color]="getGameTypeStyle(game.game_type).bgColor" [style.color]="getGameTypeStyle(game.game_type).color">
               <span class="game-type-icon">{{ getGameTypeStyle(game.game_type).icon }}</span>
-              <span class="game-type-label">{{ getGameTypeStyle(game.game_type).label }}</span>
+                  <span class="game-type-label">{{ getGameTypeStyle(game.game_type).label }}</span>
+                </div>
+              </div>
+            }
             </div>
-          </div>
+          }
+          @if (!loadingGames() && categoryGames().length === 0) {
+            <div class="empty-state">
+              <p>Aucun jeu disponible pour cette sous-matière.</p>
+            </div>
+          }
         </div>
-        <div *ngIf="!loadingGames() && categoryGames().length === 0" class="empty-state">
-          <p>Aucun jeu disponible pour cette sous-matière.</p>
-        </div>
-      </div>
+      }
     </div>
   `,
   styles: [`

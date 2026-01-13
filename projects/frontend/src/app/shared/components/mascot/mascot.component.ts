@@ -1,11 +1,11 @@
-import { Component, input, effect, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, effect, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MascotService } from '../../../core/services/mascot/mascot.service';
 
 @Component({
   selector: 'app-mascot',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
     <div class="mascot-container" [class]="'level-' + (mascotLevel() || 1)">
       <div class="mascot-avatar" [style.background-color]="mascotColor()">
@@ -16,17 +16,25 @@ import { MascotService } from '../../../core/services/mascot/mascot.service';
           </div>
           <div class="mascot-mouth"></div>
         </div>
-        <div class="mascot-accessories" *ngIf="mascotAccessories()">
-          <span *ngFor="let acc of mascotAccessories()" [class]="'accessory ' + acc">★</span>
+        @if (mascotAccessories()) {
+          <div class="mascot-accessories">
+            @for (acc of mascotAccessories()!; track acc) {
+              <span [class]="'accessory ' + acc">★</span>
+            }
+          </div>
+        }
+      </div>
+      @if (showInfo()) {
+        <div class="mascot-info">
+          <div class="mascot-name">{{ mascotName() || 'Mon Ami' }}</div>
+          <div class="mascot-level">Niveau {{ mascotLevel() || 1 }}</div>
         </div>
-      </div>
-      <div class="mascot-info" *ngIf="showInfo()">
-        <div class="mascot-name">{{ mascotName() || 'Mon Ami' }}</div>
-        <div class="mascot-level">Niveau {{ mascotLevel() || 1 }}</div>
-      </div>
-      <div class="mascot-tooltip" *ngIf="tooltip()">
-        {{ tooltip() }}
-      </div>
+      }
+      @if (tooltip()) {
+        <div class="mascot-tooltip">
+          {{ tooltip() }}
+        </div>
+      }
     </div>
   `,
   styles: [`

@@ -1,26 +1,31 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { BonusGamesApplication } from './components/application/application';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 
 @Component({
   selector: 'app-bonus-games',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ChildButtonComponent],
   template: `
     <div class="bonus-games-container">
       <h1>Mini-Jeux Bonus</h1>
       <p class="subtitle">Débloque des mini-jeux amusants en complétant des matières !</p>
 
-      <div *ngIf="application.isLoading()" class="loading">
-        Chargement des mini-jeux...
-      </div>
+      @if (application.isLoading()) {
+        <div class="loading">
+          Chargement des mini-jeux...
+        </div>
+      }
 
-      <div *ngIf="application.getError()" class="error">
-        {{ application.getError() }}
-      </div>
+      @if (application.getError()) {
+        <div class="error">
+          {{ application.getError() }}
+        </div>
+      }
 
-      <div *ngIf="!application.isLoading() && !application.getError()" class="bonus-games-content">
+      @if (!application.isLoading() && !application.getError()) {
+        <div class="bonus-games-content">
         <!-- Statistiques -->
         <div class="stats-bar">
           <div class="stat">
@@ -33,50 +38,66 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
           </div>
         </div>
 
-        <!-- Liste des mini-jeux -->
-        <div class="games-grid">
-          <div
-            *ngFor="let game of application.getGames()()"
-            class="game-card"
-            [class.unlocked]="game.isUnlocked"
-            [class.locked]="!game.isUnlocked">
-            <div class="game-image">
-              <img
-                *ngIf="game.image_url"
-                [src]="game.image_url"
-                [alt]="game.name"
-                [class]="game.isUnlocked ? '' : 'locked-image'">
-              <div *ngIf="!game.image_url" class="placeholder-image">
-                🎮
+          <!-- Liste des mini-jeux -->
+          <div class="games-grid">
+            @for (game of application.getGames()(); track game.id) {
+              <div
+                class="game-card"
+                [class.unlocked]="game.isUnlocked"
+                [class.locked]="!game.isUnlocked">
+                <div class="game-image">
+                  @if (game.image_url) {
+                    <img
+                      [src]="game.image_url"
+                      [alt]="game.name"
+                      [class]="game.isUnlocked ? '' : 'locked-image'">
+                  }
+                  @if (!game.image_url) {
+                    <div class="placeholder-image">
+                      🎮
+                    </div>
+                  }
+                  @if (!game.isUnlocked) {
+                    <div class="lock-overlay">
+                      🔒
+                    </div>
+                  }
+                </div>
+                <div class="game-info">
+                  <h3>{{ game.name }}</h3>
+                  @if (game.description) {
+                    <p>{{ game.description }}</p>
+                  }
+                  @if (game.isUnlocked && game.unlockData) {
+                    <div class="game-stats">
+                      <span>Joué {{ game.unlockData.played_count }} fois</span>
+                    </div>
+                  }
+                  @if (!game.isUnlocked) {
+                    <div class="locked-message">
+                      Complète une matière pour débloquer ce mini-jeu
+                    </div>
+                  }
+                  @if (game.isUnlocked) {
+                    <app-child-button
+                      (buttonClick)="playGame(game.id)"
+                      variant="primary"
+                      size="medium">
+                      Jouer
+                    </app-child-button>
+                  }
+                </div>
               </div>
-              <div *ngIf="!game.isUnlocked" class="lock-overlay">
-                🔒
-              </div>
-            </div>
-            <div class="game-info">
-              <h3>{{ game.name }}</h3>
-              <p *ngIf="game.description">{{ game.description }}</p>
-              <div *ngIf="game.isUnlocked && game.unlockData" class="game-stats">
-                <span>Joué {{ game.unlockData.played_count }} fois</span>
-              </div>
-              <div *ngIf="!game.isUnlocked" class="locked-message">
-                Complète une matière pour débloquer ce mini-jeu
-              </div>
-              <app-child-button
-                *ngIf="game.isUnlocked"
-                (buttonClick)="playGame(game.id)"
-                variant="primary"
-                size="medium">
-                Jouer
-              </app-child-button>
-            </div>
+            }
           </div>
-        </div>
 
-        <div *ngIf="application.getGames()().length === 0" class="empty-state">
-          <p>Aucun mini-jeu bonus disponible pour le moment.</p>
+          @if (application.getGames()().length === 0) {
+            <div class="empty-state">
+              <p>Aucun mini-jeu bonus disponible pour le moment.</p>
+            </div>
+          }
         </div>
-      </div>
+      }
     </div>
   `,
   styles: [`

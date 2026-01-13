@@ -1,5 +1,4 @@
-import { Component, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 
 export interface BreadcrumbItem {
   label: string;
@@ -10,9 +9,11 @@ export interface BreadcrumbItem {
 @Component({
   selector: 'app-breadcrumb',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
-    <nav class="breadcrumb" *ngIf="items().length > 0">
+    @if (items().length > 0) {
+      <nav class="breadcrumb">
       @for (item of items(); track $index) {
         @if ($index > 0) {
           <span class="breadcrumb-separator">›</span>
@@ -30,7 +31,8 @@ export interface BreadcrumbItem {
           </a>
         }
       }
-    </nav>
+      </nav>
+    }
   `,
   styles: [`
     .breadcrumb {

@@ -1,6 +1,6 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, OnDestroy, signal, computed, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { JsonPipe } from '@angular/common';
 import { Subscription, from } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { GameApplication } from './components/application/application';
@@ -38,22 +38,28 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, SubjectProgressComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent, GameFeedbackMessageComponent, GameErrorModalComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ChildButtonComponent, SubjectProgressComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent, GameFeedbackMessageComponent, GameErrorModalComponent, JsonPipe],
   template: `
     <div class="game-container">
       <!-- Breadcrumb -->
       <app-breadcrumb [items]="breadcrumbItems()" />
       
-      <div *ngIf="application.isLoading()()" class="loading">
-        Chargement du jeu...
-      </div>
+      @if (application.isLoading()()) {
+        <div class="loading">
+          Chargement du jeu...
+        </div>
+      }
 
-      <div *ngIf="application.getError()()" class="error">
-        {{ application.getError()() }}
-      </div>
+      @if (application.getError()()) {
+        <div class="error">
+          {{ application.getError()() }}
+        </div>
+      }
 
       <!-- Debug: Afficher les infos du jeu si chargé mais pas de contenu -->
-      <div *ngIf="!application.isLoading()() && !application.getError()() && application.getCurrentGame()() && !gameData() && !isGenericGame()" class="error">
+      @if (!application.isLoading()() && !application.getError()() && application.getCurrentGame()() && !gameData() && !isGenericGame()) {
+        <div class="error">
         <p>Jeu chargé mais données manquantes.</p>
         <p>Type de jeu: {{ gameType() || 'non défini' }}</p>
         <p>Jeu: {{ application.getCurrentGame()()?.name || 'sans nom' }}</p>
@@ -62,9 +68,11 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
           <summary>Détails du jeu (cliquez pour voir)</summary>
           <pre>{{ application.getCurrentGame()() | json }}</pre>
         </details>
-      </div>
+        </div>
+      }
 
-      <div *ngIf="!application.isLoading()() && !application.getError()() && application.getCurrentGame()() && (gameData() || isGenericGame())" class="game-content">
+      @if (!application.isLoading()() && !application.getError()() && application.getCurrentGame()() && (gameData() || isGenericGame())) {
+        <div class="game-content">
         <!-- En-tête avec progression -->
         <div class="game-header">
           <div class="header-left">
@@ -239,14 +247,16 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
           </app-reponse-libre-game>
         } @else if (isGenericGame() && application.getCurrentQuestion()()) {
           <!-- Jeux génériques avec questions/réponses -->
-          <div class="game-info-container" *ngIf="application.getCurrentGame()()">
+          @if (application.getCurrentGame()()) {
+            <div class="game-info-container">
             @if (application.getCurrentGame()()!.name) {
               <h1 class="game-name">{{ application.getCurrentGame()()!.name }}</h1>
             }
             @if (application.getCurrentGame()()!.instructions) {
               <p class="game-instructions">{{ application.getCurrentGame()()!.instructions }}</p>
             }
-          </div>
+            </div>
+          }
           <div class="question-container">
             <div class="question-number">
               Question {{ (application.getGameState()()?.currentQuestionIndex ?? 0) + 1 }} / {{ (application.getGameState()()?.questions?.length ?? 0) }}
@@ -280,58 +290,66 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
           </div>
 
           <div class="answers-container">
-            <button
-              *ngFor="let answer of application.getCurrentQuestion()()?.answers; let i = index"
-              class="answer-button"
-              [class.selected]="selectedAnswer() === i"
-              [class.correct]="showFeedback() && feedback()?.isCorrect && correctAnswer() === i"
-              [class.incorrect]="showFeedback() && !feedback()?.isCorrect && selectedAnswer() === i"
-              [disabled]="showFeedback()"
-              (click)="selectAnswer(i)">
-              {{ answer }}
-            </button>
+            @for (answer of application.getCurrentQuestion()()?.answers || []; track $index; let i = $index) {
+              <button
+                class="answer-button"
+                [class.selected]="selectedAnswer() === i"
+                [class.correct]="showFeedback() && feedback()?.isCorrect && correctAnswer() === i"
+                [class.incorrect]="showFeedback() && !feedback()?.isCorrect && selectedAnswer() === i"
+                [disabled]="showFeedback()"
+                (click)="selectAnswer(i)">
+                {{ answer }}
+              </button>
+            }
           </div>
         }
 
         <!-- Feedback - Masqué si le modal d'erreur est affiché -->
-        <app-game-feedback-message
-          *ngIf="showFeedback() && feedback() && !shouldShowErrorModal()"
+        @if (showFeedback() && feedback() && !shouldShowErrorModal()) {
+          <app-game-feedback-message
           [isCorrect]="feedback()?.isCorrect ?? false"
           [successRate]="currentGameSuccessRate()"
           [gameType]="normalizedGameType()"
           [explanation]="feedback()?.explanation"
-          [correctCount]="getCorrectCountForDisplay()"
-          [incorrectCount]="getIncorrectCountForDisplay()">
-        </app-game-feedback-message>
+            [correctCount]="getCorrectCountForDisplay()"
+            [incorrectCount]="getIncorrectCountForDisplay()">
+          </app-game-feedback-message>
+        }
 
         <!-- Boutons d'action - Masqués si le jeu est complété (le modal gère la navigation) -->
-        <div class="actions-container" *ngIf="!isGameCompleted() || !showCompletionScreen()">
-          <app-child-button
-            *ngIf="!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()) || (isVraiFauxGame() && canSubmitVraiFaux()))"
-            (buttonClick)="isCaseVideGame() ? submitCaseVide() : (isLiensGame() ? submitLiens() : (isVraiFauxGame() ? submitVraiFaux() : submitAnswer()))"
-            variant="primary"
-            size="large">
-            Valider
-          </app-child-button>
-          <!-- Bouton "Passer" pour permettre de passer à la question suivante sans validation -->
-          <app-child-button
-            *ngIf="!showFeedback() && !isGameCompleted()"
-            (buttonClick)="skipQuestion()"
-            variant="secondary"
-            size="large">
-            Passer
-          </app-child-button>
-          <!-- Bouton "Réessayer" pour les jeux spécifiques avec réponse incorrecte - masqué car géré par game-error-actions -->
-          <!-- Bouton "Question suivante" pour les jeux génériques -->
-          <app-child-button
-            *ngIf="showFeedback() && !isGameCompleted() && isGenericGame()"
-            (buttonClick)="goToNextQuestion()"
-            variant="primary"
-            size="large">
-            Question suivante
-          </app-child-button>
-        </div>
+        @if (!isGameCompleted() || !showCompletionScreen()) {
+          <div class="actions-container">
+            @if (!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()) || (isVraiFauxGame() && canSubmitVraiFaux()))) {
+              <app-child-button
+                (buttonClick)="isCaseVideGame() ? submitCaseVide() : (isLiensGame() ? submitLiens() : (isVraiFauxGame() ? submitVraiFaux() : submitAnswer()))"
+                variant="primary"
+                size="large">
+                Valider
+              </app-child-button>
+            }
+            <!-- Bouton "Passer" pour permettre de passer à la question suivante sans validation -->
+            @if (!showFeedback() && !isGameCompleted()) {
+              <app-child-button
+                (buttonClick)="skipQuestion()"
+                variant="secondary"
+                size="large">
+                Passer
+              </app-child-button>
+            }
+            <!-- Bouton "Réessayer" pour les jeux spécifiques avec réponse incorrecte - masqué car géré par game-error-actions -->
+            <!-- Bouton "Question suivante" pour les jeux génériques -->
+            @if (showFeedback() && !isGameCompleted() && isGenericGame()) {
+              <app-child-button
+                (buttonClick)="goToNextQuestion()"
+                variant="primary"
+                size="large">
+                Question suivante
+              </app-child-button>
+            }
+          </div>
+        }
       </div>
+    }
 
       <!-- Modal de fin de jeu -->
       <app-completion-modal

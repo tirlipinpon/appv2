@@ -1,12 +1,12 @@
-import { Component, input, computed, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { BadgeType } from '../../../core/types/badge.types';
 import { BadgeDesignService } from '../../../core/services/badges/badge-design.service';
 
 @Component({
   selector: 'app-badge-visual',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
     <div
       class="badge-visual"
@@ -20,21 +20,29 @@ import { BadgeDesignService } from '../../../core/services/badges/badge-design.s
       <!-- Forme géométrique de base -->
       <div class="badge-shape" [class]="'shape-' + design().shape">
         <!-- Icône du badge -->
-        <div class="badge-icon" *ngIf="showIcon()">{{ design().icon }}</div>
+        @if (showIcon()) {
+          <div class="badge-icon">{{ design().icon }}</div>
+        }
         
         <!-- Chiffre central (valeur obtenue) -->
-        <div class="badge-value" *ngIf="value() !== undefined && value() !== null">
-          {{ value() }}
-        </div>
+        @if (value() !== undefined && value() !== null) {
+          <div class="badge-value">
+            {{ value() }}
+          </div>
+        }
         
         <!-- Niveau (petit badge en haut à droite) -->
-        <div class="badge-level" *ngIf="isUnlocked() && level()">
-          N{{ level() }}
-        </div>
+        @if (isUnlocked() && level()) {
+          <div class="badge-level">
+            N{{ level() }}
+          </div>
+        }
       </div>
       
       <!-- Effet de brillance pour badges débloqués -->
-      <div class="badge-shine" *ngIf="isUnlocked()"></div>
+      @if (isUnlocked()) {
+        <div class="badge-shine"></div>
+      }
     </div>
   `,
   styles: [`

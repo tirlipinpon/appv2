@@ -1,5 +1,4 @@
-import { Component, input, effect, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ProgressionService } from '../../../core/services/progression/progression.service';
 import { ChildAuthService } from '../../../core/auth/child-auth.service';
 import { SupabaseService } from '../../../core/services/supabase/supabase.service';
@@ -12,7 +11,8 @@ import { ProgressBarComponent } from '../progress-bar/progress-bar.component';
 @Component({
   selector: 'app-subject-progress',
   standalone: true,
-  imports: [CommonModule, ProgressBarComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ProgressBarComponent],
   template: `
     <app-progress-bar
       [value]="progress()"

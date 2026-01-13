@@ -1,5 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { SettingsApplication } from './components/application/application';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { Theme } from '../../core/types/game.types';
@@ -7,7 +6,8 @@ import { Theme } from '../../core/types/game.types';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
     <div class="settings-container">
       <h1>Paramètres</h1>
@@ -28,7 +28,8 @@ import { Theme } from '../../core/types/game.types';
             <span class="slider"></span>
           </label>
         </div>
-        <div class="setting-item" *ngIf="application.areSoundsEnabled()">
+        @if (application.areSoundsEnabled()) {
+          <div class="setting-item">
           <div class="setting-label">
             <span>Volume</span>
             <p class="setting-description">Ajuste le volume des sons</p>
@@ -43,42 +44,57 @@ import { Theme } from '../../core/types/game.types';
               class="volume-slider">
             <span class="volume-value">{{ Math.round(application.getVolume() * 100) }}%</span>
           </div>
-        </div>
+          </div>
+        }
       </section>
 
       <!-- Section Thèmes -->
       <section class="settings-section">
         <h2>🎨 Thèmes</h2>
-        <div *ngIf="themesLoading()" class="loading">Chargement des thèmes...</div>
-        <div class="themes-grid" *ngIf="!themesLoading()">
-          <div
-            *ngFor="let theme of availableThemes()"
-            class="theme-card"
-            [class.selected]="isThemeSelected(theme.id)"
-            [class.unlocked]="isThemeUnlocked(theme.id)"
-            [class.locked]="!isThemeUnlocked(theme.id)"
-            (click)="selectTheme(theme.id)">
-            <div class="theme-preview" [style.background]="getThemeColor(theme)">
-              <div class="theme-shape" *ngFor="let shape of getThemeShapes(theme)"></div>
-            </div>
-            <div class="theme-info">
-              <h3>{{ theme.name }}</h3>
-              <div *ngIf="!isThemeUnlocked(theme.id)" class="locked-badge">🔒 Verrouillé</div>
-            </div>
+        @if (themesLoading()) {
+          <div class="loading">Chargement des thèmes...</div>
+        }
+        @if (!themesLoading()) {
+          <div class="themes-grid">
+            @for (theme of availableThemes(); track theme.id) {
+              <div
+                class="theme-card"
+                [class.selected]="isThemeSelected(theme.id)"
+                [class.unlocked]="isThemeUnlocked(theme.id)"
+                [class.locked]="!isThemeUnlocked(theme.id)"
+                (click)="selectTheme(theme.id)">
+                <div class="theme-preview" [style.background]="getThemeColor(theme)">
+                  @for (shape of getThemeShapes(theme); track shape) {
+                    <div class="theme-shape"></div>
+                  }
+                </div>
+                <div class="theme-info">
+                  <h3>{{ theme.name }}</h3>
+                  @if (!isThemeUnlocked(theme.id)) {
+                    <div class="locked-badge">🔒 Verrouillé</div>
+                  }
+                </div>
+              </div>
+            }
           </div>
-        </div>
+        }
       </section>
 
       <!-- Section Statistiques -->
       <section class="settings-section">
         <h2>📊 Mes Statistiques</h2>
-        <div *ngIf="application.isLoading()" class="loading">
-          Chargement de tes statistiques...
-        </div>
-        <div *ngIf="application.getError()" class="error">
-          {{ application.getError() }}
-        </div>
-        <div *ngIf="!application.isLoading() && !application.getError() && application.getStatistics()()" class="stats-details">
+        @if (application.isLoading()) {
+          <div class="loading">
+            Chargement de tes statistiques...
+          </div>
+        }
+        @if (application.getError()) {
+          <div class="error">
+            {{ application.getError() }}
+          </div>
+        }
+        @if (!application.isLoading() && !application.getError() && application.getStatistics()()) {
+          <div class="stats-details">
           <div class="stat-row">
             <span class="stat-label">Jeux joués</span>
             <span class="stat-value">{{ application.getStatistics()()?.total_games_played || 0 }}</span>
@@ -107,7 +123,8 @@ import { Theme } from '../../core/types/game.types';
             <span class="stat-label">Mini-jeux bonus</span>
             <span class="stat-value">{{ application.getStatistics()()?.bonus_games_unlocked_count || 0 }}</span>
           </div>
-        </div>
+          </div>
+        }
       </section>
 
       <!-- Section Informations -->

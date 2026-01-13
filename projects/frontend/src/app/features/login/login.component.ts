@@ -1,5 +1,4 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
@@ -7,7 +6,8 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ReactiveFormsModule],
   template: `
     <div class="login-container">
       <h1>Connexion</h1>
@@ -32,16 +32,24 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
             maxlength="4"
             [disabled]="isLoading"
           />
-          <div *ngIf="pinInvalid" class="error-message">
-            {{ pinErrorMessage }}
+          @if (pinInvalid) {
+            <div class="error-message">
+              {{ pinErrorMessage }}
+            </div>
+          }
+        </div>
+        @if (errorMessage) {
+          <div class="error-message global-error">
+            {{ errorMessage }}
           </div>
-        </div>
-        <div *ngIf="errorMessage" class="error-message global-error">
-          {{ errorMessage }}
-        </div>
+        }
         <button type="submit" (click)="onLogin($event)" [disabled]="!firstnameControl.valid || !pinControl.valid || isLoading">
-          <span *ngIf="!isLoading">Se connecter</span>
-          <span *ngIf="isLoading">Connexion...</span>
+          @if (!isLoading) {
+            <span>Se connecter</span>
+          }
+          @if (isLoading) {
+            <span>Connexion...</span>
+          }
         </button>
       </form>
     </div>

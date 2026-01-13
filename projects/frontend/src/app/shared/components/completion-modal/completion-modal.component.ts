@@ -1,5 +1,4 @@
-import { Component, input, output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { ChildButtonComponent } from '../child-button/child-button.component';
 
 export interface CompletionModalAction {
@@ -20,46 +19,60 @@ export interface CompletionModalData {
 @Component({
   selector: 'app-completion-modal',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ChildButtonComponent],
   template: `
-    <div *ngIf="visible()" class="modal-overlay" (click)="onOverlayClick()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
-        <!-- Titre -->
-        <h1 *ngIf="title()" class="modal-title">
-          {{ title() }}
-        </h1>
+    @if (visible()) {
+      <div class="modal-overlay" (click)="onOverlayClick()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <!-- Titre -->
+          @if (title()) {
+            <h1 class="modal-title">
+              {{ title() }}
+            </h1>
+          }
 
-        <!-- Score -->
-        <div *ngIf="score() !== null && score() !== undefined" class="score-section">
-          <div class="score-value">{{ score() }}%</div>
-          <div class="score-label">{{ scoreLabel() || 'Score final' }}</div>
+          <!-- Score -->
+          @if (score() !== null && score() !== undefined) {
+            <div class="score-section">
+              <div class="score-value">{{ score() }}%</div>
+              <div class="score-label">{{ scoreLabel() || 'Score final' }}</div>
+            </div>
+          }
+
+          <!-- Message principal -->
+          @if (message()) {
+            <div class="modal-message">
+              {{ message() }}
+            </div>
+          }
+
+          <!-- Informations supplémentaires -->
+          @if (additionalInfo()) {
+            <div class="additional-info">
+              {{ additionalInfo() }}
+            </div>
+          }
+
+          <!-- Actions -->
+          @if (actions() && actions()!.length > 0) {
+            <div class="modal-actions">
+              @for (action of actions()!; track action.label) {
+                <app-child-button
+                  (buttonClick)="action.action()"
+                  [variant]="action.variant || 'primary'"
+                  size="large">
+                  {{ action.label }}
+                </app-child-button>
+              }
+            </div>
+          }
+
+          <!-- Contenu personnalisé via ng-content -->
+          <ng-content></ng-content>
         </div>
-
-        <!-- Message principal -->
-        <div *ngIf="message()" class="modal-message">
-          {{ message() }}
-        </div>
-
-        <!-- Informations supplémentaires -->
-        <div *ngIf="additionalInfo()" class="additional-info">
-          {{ additionalInfo() }}
-        </div>
-
-        <!-- Actions -->
-        <div *ngIf="actions() && actions()!.length > 0" class="modal-actions">
-          <app-child-button
-            *ngFor="let action of actions()"
-            (buttonClick)="action.action()"
-            [variant]="action.variant || 'primary'"
-            size="large">
-            {{ action.label }}
-          </app-child-button>
-        </div>
-
-        <!-- Contenu personnalisé via ng-content -->
-        <ng-content></ng-content>
       </div>
-    </div>
+    }
   `,
   styles: [`
     .modal-overlay {

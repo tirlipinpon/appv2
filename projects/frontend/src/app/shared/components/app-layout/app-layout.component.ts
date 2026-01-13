@@ -1,5 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ChildAuthService } from '../../../core/auth/child-auth.service';
 import { BadgeNotificationService } from '../../../core/services/badges/badge-notification.service';
@@ -8,7 +7,8 @@ import { BadgeNotificationModalComponent } from '../badge-notification-modal/bad
 @Component({
   selector: 'app-app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, BadgeNotificationModalComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, BadgeNotificationModalComponent],
   template: `
     <div class="app-layout">
       <header class="app-header">
@@ -26,16 +26,17 @@ import { BadgeNotificationModalComponent } from '../badge-notification-modal/bad
       </main>
       
       <!-- Modal de notification de badge -->
-      <app-badge-notification-modal
-        *ngIf="currentBadge()"
-        [visible]="badgeNotification.isNotificationVisible()"
-        [badgeName]="currentBadge()!.badge_name"
-        [badgeType]="currentBadge()!.badge_type"
-        [level]="currentBadge()!.level"
-        [value]="currentBadge()!.value"
-        [description]="currentBadge()!.description"
-        (continueClick)="onBadgeNotificationContinue()">
-      </app-badge-notification-modal>
+      @if (currentBadge()) {
+        <app-badge-notification-modal
+          [visible]="badgeNotification.isNotificationVisible()"
+          [badgeName]="currentBadge()!.badge_name"
+          [badgeType]="currentBadge()!.badge_type"
+          [level]="currentBadge()!.level"
+          [value]="currentBadge()!.value"
+          [description]="currentBadge()!.description"
+          (continueClick)="onBadgeNotificationContinue()">
+        </app-badge-notification-modal>
+      }
     </div>
   `,
   styles: [`

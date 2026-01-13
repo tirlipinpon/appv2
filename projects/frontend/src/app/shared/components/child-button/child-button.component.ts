@@ -1,10 +1,10 @@
-import { Component, input, EventEmitter, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, EventEmitter, Output, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-child-button',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
     <button
       [class]="'child-button ' + (variant() || 'primary') + ' ' + (size() || 'medium')"

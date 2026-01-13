@@ -1,5 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DashboardApplication } from './components/application/application';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
@@ -10,8 +9,8 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 @Component({
   selector: 'app-dashboard',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     RouterLink,
     MascotComponent,
     ProgressBarComponent,
@@ -28,15 +27,20 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
         </app-mascot>
       </div>
 
-      <div *ngIf="application.isLoading()" class="loading">
-        Chargement de tes statistiques...
-      </div>
+      @if (application.isLoading()) {
+        <div class="loading">
+          Chargement de tes statistiques...
+        </div>
+      }
 
-      <div *ngIf="application.getError()" class="error">
-        {{ application.getError() }}
-      </div>
+      @if (application.getError()) {
+        <div class="error">
+          {{ application.getError() }}
+        </div>
+      }
 
-      <div *ngIf="!application.isLoading() && !application.getError() && application.getStatistics()()" class="dashboard-content">
+      @if (!application.isLoading() && !application.getError() && application.getStatistics()()) {
+        <div class="dashboard-content">
         <!-- Statistiques principales -->
         <div class="stats-grid">
           <div class="stat-card games">
@@ -81,33 +85,38 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
         </div>
 
         <!-- Récompenses récentes -->
-        <div class="rewards-section" *ngIf="application.getRecentCollectibles()().length > 0">
-          <h2>Objets récemment débloqués</h2>
-          <div class="rewards-carousel">
-            <div
-              *ngFor="let collectible of application.getRecentCollectibles()()"
-              class="reward-card">
-              <div class="reward-image">
-                <img
-                  *ngIf="collectible.collectible?.image_url"
-                  [src]="collectible.collectible.image_url"
-                  [alt]="collectible.collectible.name">
-                <div *ngIf="!collectible.collectible?.image_url" class="placeholder-image">
-                  {{ collectible.collectible?.name?.charAt(0) || '?' }}
+        @if (application.getRecentCollectibles()().length > 0) {
+          <div class="rewards-section">
+            <h2>Objets récemment débloqués</h2>
+            <div class="rewards-carousel">
+              @for (collectible of application.getRecentCollectibles()(); track collectible.unlocked_at) {
+                <div class="reward-card">
+                  <div class="reward-image">
+                    @if (collectible.collectible?.image_url) {
+                      <img
+                        [src]="collectible.collectible.image_url"
+                        [alt]="collectible.collectible.name">
+                    }
+                    @if (!collectible.collectible?.image_url) {
+                      <div class="placeholder-image">
+                        {{ collectible.collectible?.name?.charAt(0) || '?' }}
+                      </div>
+                    }
+                  </div>
+                  <div class="reward-info">
+                    <h4>{{ collectible.collectible?.name || 'Objet' }}</h4>
+                    <p class="reward-date">Débloqué le {{ formatDate(collectible.unlocked_at) }}</p>
+                  </div>
                 </div>
-              </div>
-              <div class="reward-info">
-                <h4>{{ collectible.collectible?.name || 'Objet' }}</h4>
-                <p class="reward-date">Débloqué le {{ formatDate(collectible.unlocked_at) }}</p>
-              </div>
+              }
+            </div>
+            <div class="view-all">
+              <app-child-button [routerLink]="['/collection']" variant="secondary" size="medium">
+                Voir toute ma collection
+              </app-child-button>
             </div>
           </div>
-          <div class="view-all">
-            <app-child-button [routerLink]="['/collection']" variant="secondary" size="medium">
-              Voir toute ma collection
-            </app-child-button>
-          </div>
-        </div>
+        }
 
         <!-- Actions rapides -->
         <div class="quick-actions">
@@ -124,14 +133,17 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
             </app-child-button>
           </div>
         </div>
-      </div>
+        </div>
+      }
 
-      <div *ngIf="!application.isLoading() && !application.getStatistics()()" class="empty-state">
-        <p>Commence à jouer pour voir tes statistiques !</p>
-        <app-child-button [routerLink]="['/subjects']" variant="primary" size="large">
-          Choisir une matière
-        </app-child-button>
-      </div>
+      @if (!application.isLoading() && !application.getStatistics()()) {
+        <div class="empty-state">
+          <p>Commence à jouer pour voir tes statistiques !</p>
+          <app-child-button [routerLink]="['/subjects']" variant="primary" size="large">
+            Choisir une matière
+          </app-child-button>
+        </div>
+      }
     </div>
   `,
   styles: [`

@@ -1,5 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CollectionApplication } from './components/application/application';
 import { CollectionFilter } from './types/collection.types';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
@@ -11,80 +10,100 @@ import { BadgesService } from '../../core/services/badges/badges.service';
 @Component({
   selector: 'app-collection',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent, BadgeLevelIndicatorComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent, BadgeLevelIndicatorComponent],
   template: `
     <div class="collection-container">
       <h1>Ma Collection</h1>
 
       <!-- Section Badges -->
-      <div class="badges-section" *ngIf="!application.isLoading()() && !application.isLoadingBadges()()">
-        <h2>Mes Badges</h2>
+      @if (!application.isLoading()() && !application.isLoadingBadges()()) {
+        <div class="badges-section">
+          <h2>Mes Badges</h2>
 
-        <!-- Statistiques badges -->
-        <div class="badges-stats">
-          <div class="stat-card">
-            <div class="stat-value">{{ application.getBadgesUnlockedCount()() }}</div>
-            <div class="stat-label">Badges débloqués</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ application.getBadgesTotalCount()() }}</div>
-            <div class="stat-label">Total</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ application.getBadgesCompletionPercentage()() }}%</div>
-            <div class="stat-label">Complété</div>
-          </div>
-        </div>
-
-        <!-- Grille de badges -->
-        <div class="badges-grid">
-          <div
-            *ngFor="let badge of application.getBadges()()"
-            class="badge-card"
-            [class.unlocked]="badge.isUnlocked"
-            [class.locked]="!badge.isUnlocked"
-            [title]="getBadgeTooltip(badge)">
-            <div class="badge-visual-wrapper">
-              <app-badge-visual
-                [badgeType]="badge.badge_type"
-                [value]="badge.value"
-                [level]="badge.level"
-                [isUnlocked]="badge.isUnlocked"
-                size="medium"
-                [showIcon]="true">
-              </app-badge-visual>
-              <app-badge-level-indicator
-                *ngIf="badge.isUnlocked && badge.level"
-                [level]="badge.level">
-              </app-badge-level-indicator>
+          <!-- Statistiques badges -->
+          <div class="badges-stats">
+            <div class="stat-card">
+              <div class="stat-value">{{ application.getBadgesUnlockedCount()() }}</div>
+              <div class="stat-label">Badges débloqués</div>
             </div>
-            <div class="badge-info">
-              <h3>{{ badge.name }}</h3>
-              <p *ngIf="badge.description">{{ badge.description }}</p>
-              <div *ngIf="badge.isUnlocked && badge.unlockedAt" class="unlocked-date">
-                Débloqué le {{ formatDate(badge.unlockedAt) }}
-              </div>
-              <div *ngIf="!badge.isUnlocked" class="locked-info">
-                <span *ngIf="getNextThreshold(badge)">Prochain seuil : {{ getNextThreshold(badge) }}</span>
-              </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ application.getBadgesTotalCount()() }}</div>
+              <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ application.getBadgesCompletionPercentage()() }}%</div>
+              <div class="stat-label">Complété</div>
             </div>
           </div>
+
+          <!-- Grille de badges -->
+          <div class="badges-grid">
+            @for (badge of application.getBadges()(); track badge.id) {
+              <div
+                class="badge-card"
+                [class.unlocked]="badge.isUnlocked"
+                [class.locked]="!badge.isUnlocked"
+                [title]="getBadgeTooltip(badge)">
+                <div class="badge-visual-wrapper">
+                  <app-badge-visual
+                    [badgeType]="badge.badge_type"
+                    [value]="badge.value"
+                    [level]="badge.level"
+                    [isUnlocked]="badge.isUnlocked"
+                    size="medium"
+                    [showIcon]="true">
+                  </app-badge-visual>
+                  @if (badge.isUnlocked && badge.level) {
+                    <app-badge-level-indicator
+                      [level]="badge.level">
+                    </app-badge-level-indicator>
+                  }
+                </div>
+                <div class="badge-info">
+                  <h3>{{ badge.name }}</h3>
+                  @if (badge.description) {
+                    <p>{{ badge.description }}</p>
+                  }
+                  @if (badge.isUnlocked && badge.unlockedAt) {
+                    <div class="unlocked-date">
+                      Débloqué le {{ formatDate(badge.unlockedAt) }}
+                    </div>
+                  }
+                  @if (!badge.isUnlocked) {
+                    <div class="locked-info">
+                      @if (getNextThreshold(badge)) {
+                        <span>Prochain seuil : {{ getNextThreshold(badge) }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (application.getBadges()().length === 0) {
+            <div class="empty-state">
+              <p>Aucun badge disponible pour le moment.</p>
+            </div>
+          }
         </div>
+      }
 
-        <div *ngIf="application.getBadges()().length === 0" class="empty-state">
-          <p>Aucun badge disponible pour le moment.</p>
+      @if (application.isLoading()()) {
+        <div class="loading">
+          Chargement de ta collection...
         </div>
-      </div>
+      }
 
-      <div *ngIf="application.isLoading()()" class="loading">
-        Chargement de ta collection...
-      </div>
+      @if (application.getError()()) {
+        <div class="error">
+          {{ application.getError()() }}
+        </div>
+      }
 
-      <div *ngIf="application.getError()()" class="error">
-        {{ application.getError()() }}
-      </div>
-
-      <div *ngIf="!application.isLoading()() && !application.getError()()" class="collection-content">
+      @if (!application.isLoading()() && !application.getError()()) {
+        <div class="collection-content">
         <!-- Statistiques -->
         <div class="collection-stats">
           <div class="stat-card">
@@ -133,40 +152,53 @@ import { BadgesService } from '../../core/services/badges/badges.service';
           </app-child-button>
         </div>
 
-        <!-- Grille d'objets -->
-        <div class="collectibles-grid">
-          <div
-            *ngFor="let collectible of application.getCollectibles()()"
-            class="collectible-card"
-            [class.unlocked]="collectible.isUnlocked"
-            [class.locked]="!collectible.isUnlocked">
-            <div class="collectible-image">
-              <img
-                *ngIf="collectible.image_url"
-                [src]="collectible.image_url"
-                [alt]="collectible.name"
-                [class]="collectible.isUnlocked ? '' : 'locked-image'">
-              <div *ngIf="!collectible.image_url" class="placeholder-image">
-                {{ collectible.name.charAt(0) }}
+          <!-- Grille d'objets -->
+          <div class="collectibles-grid">
+            @for (collectible of application.getCollectibles()(); track collectible.id) {
+              <div
+                class="collectible-card"
+                [class.unlocked]="collectible.isUnlocked"
+                [class.locked]="!collectible.isUnlocked">
+                <div class="collectible-image">
+                  @if (collectible.image_url) {
+                    <img
+                      [src]="collectible.image_url"
+                      [alt]="collectible.name"
+                      [class]="collectible.isUnlocked ? '' : 'locked-image'">
+                  }
+                  @if (!collectible.image_url) {
+                    <div class="placeholder-image">
+                      {{ collectible.name.charAt(0) }}
+                    </div>
+                  }
+                  @if (!collectible.isUnlocked) {
+                    <div class="lock-overlay">
+                      🔒
+                    </div>
+                  }
+                </div>
+                <div class="collectible-info">
+                  <h3>{{ collectible.name }}</h3>
+                  @if (collectible.description) {
+                    <p>{{ collectible.description }}</p>
+                  }
+                  @if (collectible.isUnlocked && collectible.unlockedAt) {
+                    <div class="unlocked-date">
+                      Débloqué le {{ formatDate(collectible.unlockedAt) }}
+                    </div>
+                  }
+                </div>
               </div>
-              <div *ngIf="!collectible.isUnlocked" class="lock-overlay">
-                🔒
-              </div>
-            </div>
-            <div class="collectible-info">
-              <h3>{{ collectible.name }}</h3>
-              <p *ngIf="collectible.description">{{ collectible.description }}</p>
-              <div *ngIf="collectible.isUnlocked && collectible.unlockedAt" class="unlocked-date">
-                Débloqué le {{ formatDate(collectible.unlockedAt) }}
-              </div>
-            </div>
+            }
           </div>
-        </div>
 
-        <div *ngIf="application.getCollectibles()().length === 0" class="empty-state">
-          <p>Aucun objet dans ta collection pour le moment.</p>
+          @if (application.getCollectibles()().length === 0) {
+            <div class="empty-state">
+              <p>Aucun objet dans ta collection pour le moment.</p>
+            </div>
+          }
         </div>
-      </div>
+      }
     </div>
   `,
   styles: [`

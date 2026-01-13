@@ -1,22 +1,25 @@
-import { Component, input, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-star-rating',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
     <div class="star-rating">
-      <span
-        *ngFor="let star of starsArray(); let i = index"
-        class="star"
-        [class.filled]="i < rating()"
-        [class.half]="i === rating() - 0.5">
-        ★
-      </span>
-      <span class="rating-text" *ngIf="showText()">
-        {{ rating() }}/{{ maxStars() }}
-      </span>
+      @for (star of starsArray(); track $index; let i = $index) {
+        <span
+          class="star"
+          [class.filled]="i < rating()"
+          [class.half]="i === rating() - 0.5">
+          ★
+        </span>
+      }
+      @if (showText()) {
+        <span class="rating-text">
+          {{ rating() }}/{{ maxStars() }}
+        </span>
+      }
     </div>
   `,
   styles: [`

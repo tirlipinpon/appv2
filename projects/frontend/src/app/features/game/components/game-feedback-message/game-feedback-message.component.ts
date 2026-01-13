@@ -1,11 +1,11 @@
-import { Component, input, computed, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { GameFeedbackMessageService, GameFeedbackMessage } from '../../services/game-feedback-message.service';
 
 @Component({
   selector: 'app-game-feedback-message',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
     <div 
       class="feedback-message-container"
@@ -15,16 +15,22 @@ import { GameFeedbackMessageService, GameFeedbackMessage } from '../../services/
       [class.needs-improvement]="feedback()?.variant === 'needs-improvement'">
       <div class="feedback-header">
         <div class="feedback-content">
-          <span class="feedback-emoji" *ngIf="feedback()?.emoji">{{ feedback()?.emoji }}</span>
+          @if (feedback()?.emoji) {
+            <span class="feedback-emoji">{{ feedback()?.emoji }}</span>
+          }
           <span class="feedback-text">{{ feedback()?.message }}</span>
         </div>
-        <div *ngIf="shouldShowBadge()" class="success-rate-badge">
-          {{ formattedSuccessRate() }}
+        @if (shouldShowBadge()) {
+          <div class="success-rate-badge">
+            {{ formattedSuccessRate() }}
+          </div>
+        }
+      </div>
+      @if (explanation()) {
+        <div class="feedback-explanation">
+          {{ explanation() }}
         </div>
-      </div>
-      <div *ngIf="explanation()" class="feedback-explanation">
-        {{ explanation() }}
-      </div>
+      }
     </div>
   `,
   styles: [`

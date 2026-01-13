@@ -1,5 +1,4 @@
-import { Component, input, output, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, output, signal, effect, ChangeDetectionStrategy } from '@angular/core';
 import { ChildButtonComponent } from '../child-button/child-button.component';
 import { BadgeVisualComponent } from '../badge-visual/badge-visual.component';
 import { BadgeType } from '../../../core/types/badge.types';
@@ -16,20 +15,25 @@ export interface BadgeNotificationData {
 @Component({
   selector: 'app-badge-notification-modal',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, BadgeVisualComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ChildButtonComponent, BadgeVisualComponent],
   template: `
-    <div *ngIf="visible()" class="modal-overlay" (click)="onOverlayClick()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
-        <!-- Animation de célébration -->
-        <div class="celebration" *ngIf="visible()">
-          <div 
-            class="confetti" 
-            *ngFor="let confetti of confettiArray()"
-            [style.--confetti-color]="confetti.color"
-            [style.--confetti-x]="confetti.x"
-            [style.--confetti-delay]="confetti.delay + 's'">
-          </div>
-        </div>
+    @if (visible()) {
+      <div class="modal-overlay" (click)="onOverlayClick()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <!-- Animation de célébration -->
+          @if (visible()) {
+            <div class="celebration">
+              @for (confetti of confettiArray(); track confetti.x) {
+                <div 
+                  class="confetti" 
+                  [style.--confetti-color]="confetti.color"
+                  [style.--confetti-x]="confetti.x"
+                  [style.--confetti-delay]="confetti.delay + 's'">
+                </div>
+              }
+            </div>
+          }
 
         <!-- Titre -->
         <h1 class="modal-title">
@@ -48,39 +52,46 @@ export interface BadgeNotificationData {
           </app-badge-visual>
         </div>
 
-        <!-- Nom du badge -->
-        <div class="badge-name">
-          {{ badgeName() }}
-        </div>
-
-        <!-- Description -->
-        <div *ngIf="description()" class="badge-description">
-          {{ description() }}
-        </div>
-
-        <!-- Informations supplémentaires -->
-        <div class="badge-info">
-          <div *ngIf="value() !== undefined && value() !== null" class="info-item">
-            <span class="info-label">Valeur obtenue :</span>
-            <span class="info-value">{{ value() }}</span>
+          <!-- Nom du badge -->
+          <div class="badge-name">
+            {{ badgeName() }}
           </div>
-          <div *ngIf="level()" class="info-item">
-            <span class="info-label">Niveau :</span>
-            <span class="info-value">N{{ level() }}</span>
-          </div>
-        </div>
 
-        <!-- Bouton continuer -->
-        <div class="modal-actions">
-          <app-child-button
-            (buttonClick)="onContinue()"
-            variant="primary"
-            size="large">
-            Continuer
-          </app-child-button>
+          <!-- Description -->
+          @if (description()) {
+            <div class="badge-description">
+              {{ description() }}
+            </div>
+          }
+
+          <!-- Informations supplémentaires -->
+          <div class="badge-info">
+            @if (value() !== undefined && value() !== null) {
+              <div class="info-item">
+                <span class="info-label">Valeur obtenue :</span>
+                <span class="info-value">{{ value() }}</span>
+              </div>
+            }
+            @if (level()) {
+              <div class="info-item">
+                <span class="info-label">Niveau :</span>
+                <span class="info-value">N{{ level() }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Bouton continuer -->
+          <div class="modal-actions">
+            <app-child-button
+              (buttonClick)="onContinue()"
+              variant="primary"
+              size="large">
+              Continuer
+            </app-child-button>
+          </div>
         </div>
       </div>
-    </div>
+    }
   `,
   styles: [`
     .modal-overlay {
@@ -301,7 +312,7 @@ export class BadgeNotificationModalComponent {
   overlayClick = output<void>();
 
   // Génération de confettis pour l'animation
-  confettiArray = signal<Array<{ color: string; x: number; delay: number }>>([]);
+  confettiArray = signal<{ color: string; x: number; delay: number }[]>([]);
   private readonly confettiColors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#54A0FF', '#FF9FF3'];
 
   constructor() {
@@ -315,7 +326,7 @@ export class BadgeNotificationModalComponent {
 
   private generateConfetti(): void {
     const count = 30;
-    const confetti: Array<{ color: string; x: number; delay: number }> = [];
+    const confetti: { color: string; x: number; delay: number }[] = [];
     for (let i = 0; i < count; i++) {
       confetti.push({
         color: this.confettiColors[Math.floor(Math.random() * this.confettiColors.length)],
