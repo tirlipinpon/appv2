@@ -4,7 +4,11 @@ import { ChildAuthService } from '../../auth/child-auth.service';
 
 /**
  * Service pour gérer les erreurs Supabase de manière centralisée
- * Détecte les erreurs d'authentification (401, 403) et déconnecte automatiquement
+ * 
+ * Rôle : Détecte les erreurs d'authentification (401, 403) et déconnecte automatiquement l'enfant.
+ * Utilisé par SupabaseService pour intercepter les erreurs après chaque requête Supabase.
+ * 
+ * Flux : Erreur 401/403 → Détection → Déconnexion → Redirection vers /login
  */
 @Injectable({
   providedIn: 'root',
@@ -12,10 +16,18 @@ import { ChildAuthService } from '../../auth/child-auth.service';
 export class SupabaseErrorHandlerService {
   private readonly authService = inject(ChildAuthService);
   private readonly router = inject(Router);
-  private isHandlingError = false; // Éviter les boucles infinies
+  private isHandlingError = false; // Éviter les boucles infinies lors de la gestion d'erreurs
 
   /**
    * Vérifie si une erreur est une erreur d'authentification (401 ou 403)
+   * 
+   * Vérifie :
+   * - Le status HTTP (401, 403)
+   * - Le code PostgrestError (PGRST301, PGRST302)
+   * - Le message d'erreur (contient "unauthorized", "forbidden", "jwt", "token")
+   * 
+   * @param error - Erreur à vérifier
+   * @returns true si c'est une erreur d'authentification, false sinon
    */
   isAuthError(error: { status?: number; code?: string; message?: string } | null | undefined): boolean {
     // Vérifier le status HTTP

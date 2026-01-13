@@ -6,7 +6,20 @@ import { ErrorSnackbarService } from '../services/snackbar/error-snackbar.servic
 
 /**
  * Intercepteur HTTP pour capturer toutes les erreurs HTTP
- * Normalise les erreurs et les affiche via ErrorSnackbarService
+ * 
+ * Rôle : Normalise les erreurs HTTP et les affiche via ErrorSnackbarService.
+ * S'exécute automatiquement pour toutes les requêtes HTTP de l'application admin.
+ * 
+ * Flux : Erreur HTTP → Normalisation → Affichage snackbar → Propagation
+ * 
+ * Codes HTTP gérés :
+ * - 0 : Connexion impossible
+ * - 400 : Requête invalide
+ * - 401 : Non authentifié (redirection vers /login gérée par authGuard)
+ * - 403 : Permissions insuffisantes
+ * - 404 : Ressource non trouvée
+ * - 500 : Erreur serveur
+ * - 503 : Service indisponible
  */
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
   const errorHandler = inject(ErrorHandlerService);
