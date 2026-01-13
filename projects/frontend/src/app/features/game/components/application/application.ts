@@ -8,6 +8,7 @@ import { CheckpointService } from '../../../../core/services/save/checkpoint.ser
 import { ChildAuthService } from '../../../../core/auth/child-auth.service';
 import { BadgesService } from '../../../../core/services/badges/badges.service';
 import { BadgeNotificationService } from '../../../../core/services/badges/badge-notification.service';
+import { ConsecutiveGameDaysService } from '../../../../core/services/badges/consecutive-game-days.service';
 import { GameState } from '../../types/game.types';
 import { normalizeGameType } from '../../../../shared/utils/game-normalization.util';
 import { SPECIFIC_GAME_TYPES } from '@shared/utils/game-type.util';
@@ -26,6 +27,7 @@ export class GameApplication {
   private readonly authService = inject(ChildAuthService);
   private readonly badgesService = inject(BadgesService);
   private readonly badgeNotification = inject(BadgeNotificationService);
+  private readonly consecutiveGameDaysService = inject(ConsecutiveGameDaysService);
   private readonly infrastructure = inject(GameInfrastructure);
 
   async initializeGame(gameId: string): Promise<void> {
@@ -148,6 +150,9 @@ export class GameApplication {
 
     // Sauvegarder la tentative et récupérer l'ID
     const savedAttempt = await this.infrastructure.saveGameAttempt(attemptData);
+    
+    // Recalculer les jours consécutifs et vérifier les badges débloqués
+    await this.checkAndNotifyConsecutiveDaysBadges(child.child_id);
     
     // Vérifier les nouveaux badges débloqués (le trigger PostgreSQL les a déjà débloqués)
     await this.checkAndNotifyBadges(child.child_id, savedAttempt.id);
@@ -280,11 +285,50 @@ export class GameApplication {
       const result = await this.infrastructure.saveGameAttempt(attemptData);
       console.log('[savePartialScore] Score sauvegardé avec succès', result);
       
+      // Recalculer les jours consécutifs et vérifier les badges débloqués
+      await this.checkAndNotifyConsecutiveDaysBadges(child.child_id);
+      
       // Vérifier les nouveaux badges débloqués (le trigger PostgreSQL les a déjà débloqués)
       await this.checkAndNotifyBadges(child.child_id, result.id);
     } catch (error) {
       console.error('[savePartialScore] Erreur lors de la sauvegarde', error);
       throw error;
+    }
+  }
+
+  /**
+   * Vérifie les badges de jours consécutifs débloqués et affiche les notifications
+   */
+  private async checkAndNotifyConsecutiveDaysBadges(childId: string): Promise<void> {
+    try {
+      // Recalculer et récupérer l'état frais avec badges débloqués
+      const status = await this.consecutiveGameDaysService.recalculateAndGetStatus(childId);
+      
+      if (status.badgesUnlocked && status.badgesUnlocked.length > 0) {
+        console.log('[GameApplication] Nouveaux badges jours consécutifs débloqués:', status.badgesUnlocked);
+        
+        // Récupérer les descriptions des badges depuis la base
+        const allBadges = await this.badgesService.getAllBadges();
+        const consecutiveBadge = allBadges.find(b => b.badge_type === 'consecutive_game_days');
+        
+        // Afficher les notifications pour chaque niveau débloqué
+        for (const unlockedBadge of status.badgesUnlocked) {
+          await this.badgeNotification.showBadgeNotification(
+            {
+              badge_id: unlockedBadge.badge_id,
+              badge_name: consecutiveBadge?.name || 'Jours consécutifs de jeu',
+              badge_type: 'consecutive_game_days',
+              level: unlockedBadge.level,
+              value: unlockedBadge.value,
+              unlocked_at: unlockedBadge.unlocked_at,
+            },
+            consecutiveBadge?.description
+          );
+        }
+      }
+    } catch (error) {
+      // Ne pas bloquer le flux si la vérification des badges échoue
+      console.error('[GameApplication] Erreur lors de la vérification des badges jours consécutifs:', error);
     }
   }
 

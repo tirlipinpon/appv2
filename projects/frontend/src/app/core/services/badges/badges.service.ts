@@ -1,12 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../supabase/supabase.service';
 import { Badge, ChildBadge, BadgeLevel, NewlyUnlockedBadge } from '../../types/badge.types';
+import {
+  ConsecutiveGameDaysStatus,
+} from '../../types/consecutive-game-days.types';
+import { ConsecutiveGameDaysService } from './consecutive-game-days.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class BadgesService {
   private readonly supabase = inject(SupabaseService);
+  private readonly consecutiveGameDaysService = inject(ConsecutiveGameDaysService);
 
   /**
    * Récupère tous les badges actifs
@@ -110,5 +115,16 @@ export class BadgesService {
    */
   calculateBadgeThreshold(baseValue: number, level: number): number {
     return Math.floor(baseValue * Math.pow(1.3, level - 1));
+  }
+
+  /**
+   * Récupère le statut des jours consécutifs de jeu
+   * @param childId ID de l'enfant
+   * @returns Le statut formaté ou null si pas encore de données
+   */
+  async getConsecutiveGameDaysStatus(
+    childId: string
+  ): Promise<ConsecutiveGameDaysStatus | null> {
+    return this.consecutiveGameDaysService.getConsecutiveGameDaysStatus(childId);
   }
 }

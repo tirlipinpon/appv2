@@ -1264,6 +1264,7 @@ Cette documentation décrit la structure complète de la base de données de l'a
 - `daily_streak_responses` : Réponses quotidiennes (5+ ou 7+)
 - `consecutive_correct` : Réponses consécutives correctes (5 ou 7)
 - `perfect_games_count` : Jeux parfaits cumulatifs (10 ou 13)
+- `consecutive_game_days` : Jours consécutifs de jeu (avec niveaux progressifs)
 
 **RLS:** Activé
 
@@ -1453,6 +1454,51 @@ Cette documentation décrit la structure complète de la base de données de l'a
 
 ---
 
+### `frontend_consecutive_game_days`
+
+**Description :** Table de tracking des jours consécutifs de jeu (pour Badge 7). Suit la série actuelle (`current_streak`), la meilleure série jamais atteinte (`max_streak`), et le niveau actuel du badge. Le système débloque automatiquement des niveaux selon la formule : **Niveau = Jours Consécutifs - 1**.
+
+**Rôle métier** :
+- Suit les jours consécutifs de jeu pour chaque enfant
+- Calcule automatiquement le niveau selon la série actuelle
+- Conserve la meilleure série jamais atteinte (même si la série est brisée)
+- Réinitialise la série si gap > 1 jour sans jeu
+
+**Utilisation** :
+- **Frontend :** Utilisée par `ConsecutiveGameDaysService` pour afficher le statut des jours consécutifs
+- **Déblocage :** Les badges sont débloqués automatiquement via trigger quand un nouveau niveau est atteint
+- **Optimisation :** Le trigger utilise une logique optimisée en 3 cas (même jour = skip, jour suivant = incrément simple, gap = recalcul complet)
+
+**Relations clés** :
+- 1:1 avec `children` (via `child_id`, UNIQUE)
+
+**Cas d'usage spécifiques** :
+- Premier jeu : Crée l'enregistrement avec `current_streak = 1`, `current_level = 0`
+- Jeu même jour : Skip le calcul (optimisation performance)
+- Jeu jour suivant : Incrément simple (optimisation performance)
+- Gap > 1 jour : Recalcul complet pour détecter la série brisée
+- Les niveaux débloqués restent dans `frontend_child_badges` même si la série est brisée
+
+| Colonne          | Type          | Contraintes                               | Description                          |
+| ----------------- | ------------- | ----------------------------------------- | ------------------------------------ |
+| `id`              | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique                   |
+| `child_id`        | `uuid`        | NOT NULL, UNIQUE, FK → `children.id`      | Enfant                               |
+| `current_streak`  | `integer`     | DEFAULT: `0`, CHECK: `>= 0`              | Série actuelle (0 si brisée)         |
+| `max_streak`      | `integer`     | DEFAULT: `0`, CHECK: `>= 0`               | Meilleure série jamais atteinte      |
+| `current_level`   | `integer`     | DEFAULT: `0`, CHECK: `>= 0`               | Niveau actuel (formule: streak - 1)  |
+| `last_game_date`  | `date`        | NULLABLE                                  | Dernière date de jeu (DATE uniquement) |
+| `created_at`      | `timestamptz` | DEFAULT: `now()`                          | Date de création                     |
+| `updated_at`      | `timestamptz` | DEFAULT: `now()`                          | Date de mise à jour                  |
+
+**RLS:** Activé
+
+**Index:**
+- `idx_consecutive_game_days_child_id` sur `child_id`
+- `idx_consecutive_game_days_last_game_date` sur `last_game_date`
+- `idx_consecutive_game_days_updated_at` sur `updated_at`
+
+---
+
 ### `frontend_perfect_games_count`
 
 **Description :** Table de tracking des jeux parfaits cumulatifs (pour Badges 6 et 6.1). Suit le nombre total de jeux uniques réussis à 100% pour chaque enfant. Un jeu est compté une seule fois même s'il est réussi plusieurs fois.
@@ -1549,7 +1595,8 @@ children
   ├── frontend_first_perfect_games (1:N)
   ├── frontend_consecutive_responses (1:1)
   ├── frontend_daily_responses (1:N)
-  └── frontend_perfect_games_count (1:1)
+  ├── frontend_perfect_games_count (1:1)
+  └── frontend_consecutive_game_days (1:1)
 ```
 
 ---

@@ -89,6 +89,41 @@ import { BadgesService } from '../../core/services/badges/badges.service';
         </div>
       }
 
+      <!-- Section Jours Consécutifs -->
+      @if (application.consecutiveGameDaysStatus()) {
+        <div class="consecutive-days-section">
+          <h2>🔥 Ma Série de Jours</h2>
+          <div class="streak-stats">
+            <div class="stat-card">
+              <div class="stat-value">{{ application.consecutiveGameDaysStatus()!.currentStreak }}</div>
+              <div class="stat-label">Jours consécutifs</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ application.consecutiveGameDaysStatus()!.maxStreak }}</div>
+              <div class="stat-label">Meilleure série</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ application.consecutiveGameDaysStatus()!.currentLevel }}</div>
+              <div class="stat-label">Niveau actuel</div>
+            </div>
+          </div>
+          @if (application.consecutiveGameDaysStatus()!.isActive) {
+            <div class="streak-active">
+              ✅ Série active ! Continue demain pour débloquer le niveau {{ application.consecutiveGameDaysStatus()!.currentLevel + 1 }}
+            </div>
+          } @else {
+            <div class="streak-broken">
+              ⚠️ Série brisée. Rejoue aujourd'hui pour recommencer !
+            </div>
+          }
+          @if (application.consecutiveGameDaysStatus()!.nextLevelDays > 0) {
+            <div class="next-level-info">
+              <p>Prochain niveau : {{ application.consecutiveGameDaysStatus()!.nextLevelDays }} jours consécutifs</p>
+            </div>
+          }
+        </div>
+      }
+
       @if (application.isLoading()()) {
         <div class="loading">
           Chargement de ta collection...
@@ -463,6 +498,60 @@ import { BadgesService } from '../../core/services/badges/badges.service';
       font-style: italic;
       margin-top: 0.5rem;
     }
+
+    /* Section Jours Consécutifs */
+    .consecutive-days-section {
+      margin-top: 2rem;
+      margin-bottom: 4rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      border-radius: var(--theme-border-radius, 12px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .consecutive-days-section h2 {
+      margin-bottom: 1.5rem;
+      color: var(--theme-text-color, #333);
+      text-align: center;
+    }
+
+    .streak-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .streak-active {
+      background: #4CAF50;
+      color: white;
+      padding: 1rem;
+      border-radius: var(--theme-border-radius, 8px);
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .streak-broken {
+      background: #FF9800;
+      color: white;
+      padding: 1rem;
+      border-radius: var(--theme-border-radius, 8px);
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .next-level-info {
+      text-align: center;
+      color: #666;
+      font-size: 0.875rem;
+      margin-top: 1rem;
+    }
+
+    .next-level-info p {
+      margin: 0;
+    }
   `]
 })
 export class CollectionComponent implements OnInit {
@@ -506,6 +595,16 @@ export class CollectionComponent implements OnInit {
   }
 
   getNextThreshold(badge: any): number | null {
+    // Pour consecutive_game_days, la formule est différente : Niveau = Jours - 1
+    // Donc le prochain niveau nécessite currentStreak + 1 jours
+    if (badge.badge_type === 'consecutive_game_days') {
+      const status = this.application.consecutiveGameDaysStatus();
+      if (status) {
+        return status.nextLevelDays;
+      }
+      return null;
+    }
+    
     if (!badge.currentThreshold) {
       return null;
     }

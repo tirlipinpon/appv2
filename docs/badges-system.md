@@ -39,6 +39,7 @@ interface Badge {
 - `daily_streak_responses` : Réponses quotidiennes (5+ ou 7+)
 - `consecutive_correct` : Réponses consécutives correctes (5 ou 7)
 - `perfect_games_count` : Jeux parfaits cumulatifs (10 ou 13)
+- `consecutive_game_days` : Jours consécutifs de jeu (avec niveaux progressifs)
 
 ### `frontend_child_badges` - Badges débloqués
 
@@ -231,6 +232,41 @@ interface BadgeLevel {
 - Niveau 1 : 13 jeux (base)
 - Niveau 2 : 16.9 → 17 jeux
 - Etc.
+
+### Badge 7 : Jours consécutifs de jeu
+
+**Type** : `consecutive_game_days`
+
+**Condition** :
+- Jouer plusieurs jours consécutifs
+- Formule : **Niveau = Jours Consécutifs - 1**
+- Niveau 1 : 2 jours consécutifs
+- Niveau 2 : 3 jours consécutifs
+- Niveau 3 : 4 jours consécutifs
+- Etc.
+
+**Déblocage** : Automatique via trigger `trigger_update_consecutive_game_days` après chaque tentative de jeu.
+
+**Tracking** : Table `frontend_consecutive_game_days` avec `current_streak`, `max_streak`, `current_level`.
+
+**Règles** :
+- Deux jours sont consécutifs s'ils se suivent directement (lundi → mardi)
+- La série doit se terminer aujourd'hui ou hier pour rester active
+- Si plus d'un jour sans jeu → série réinitialisée à 0
+- Supprimer les doublons (pas compter 2 fois si l'enfant joue 2x le même jour)
+- Si pas de jeu depuis 2 jours → niveau revient à 0
+- Peut rejouer le même jour → pas d'impact sur la série
+- Les niveaux une fois débloqués restent dans l'historique
+- Tracker la meilleure série atteinte (`max_streak`) séparément
+
+**Optimisation performance** :
+- **Même jour** : Skip le calcul (pas de changement possible)
+- **Jour suivant** : Incrément simple (pas de recalcul complet)
+- **Gap > 1 jour** : Recalcul complet (nécessaire pour détecter les gaps)
+
+**Niveaux** : Système de niveaux progressifs (un niveau par jour consécutif supplémentaire).
+
+**Valeur** : Nombre de jours consécutifs obtenus.
 
 ## Système de niveaux et progression dynamique
 

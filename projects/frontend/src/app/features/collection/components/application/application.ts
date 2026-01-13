@@ -6,6 +6,9 @@ import { CollectionStore } from '../../store/index';
 import { BadgesStore } from '../../../badges/store/index';
 import { ChildAuthService } from '../../../../core/auth/child-auth.service';
 import { CollectionFilter } from '../../types/collection.types';
+import { ConsecutiveGameDaysService } from '../../../../core/services/badges/consecutive-game-days.service';
+import { ConsecutiveGameDaysStatus } from '../../../../core/types/consecutive-game-days.types';
+import { signal } from '@angular/core';
 
 @Injectable({
   providedIn: 'root',
@@ -14,7 +17,12 @@ export class CollectionApplication {
   private readonly store = inject(CollectionStore);
   private readonly badgesStore = inject(BadgesStore);
   private readonly authService = inject(ChildAuthService);
+  private readonly consecutiveGameDaysService = inject(ConsecutiveGameDaysService);
   private readonly injector = inject(Injector);
+  
+  // Signal pour le statut des jours consécutifs
+  private readonly _consecutiveGameDaysStatus = signal<ConsecutiveGameDaysStatus | null>(null);
+  readonly consecutiveGameDaysStatus = this._consecutiveGameDaysStatus.asReadonly();
 
   async initialize(): Promise<void> {
     const child = await this.authService.getCurrentChild();
@@ -24,6 +32,15 @@ export class CollectionApplication {
       this.store.loadCollection({ childId: child.child_id });
       this.badgesStore.loadBadges();
       this.badgesStore.loadChildBadges(child.child_id);
+      
+      // Charger le statut des jours consécutifs
+      try {
+        const status = await this.consecutiveGameDaysService.getConsecutiveGameDaysStatus(child.child_id);
+        this._consecutiveGameDaysStatus.set(status);
+      } catch (error) {
+        console.error('[CollectionApplication] Erreur lors du chargement du statut des jours consécutifs:', error);
+        this._consecutiveGameDaysStatus.set(null);
+      }
       
       // Attendre que tous les chargements soient terminés en surveillant les signaux loading de manière réactive
       await this.waitForLoadingComplete();
