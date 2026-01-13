@@ -9,6 +9,7 @@ import { ChildAuthService } from '../../../../core/auth/child-auth.service';
 import { BadgesService } from '../../../../core/services/badges/badges.service';
 import { BadgeNotificationService } from '../../../../core/services/badges/badge-notification.service';
 import { ConsecutiveGameDaysService } from '../../../../core/services/badges/consecutive-game-days.service';
+import { DailyActivityService } from '../../../../core/services/badges/daily-activity.service';
 import { BadgesStore } from '../../../badges/store/index';
 import { GameState } from '../../types/game.types';
 import { normalizeGameType } from '../../../../shared/utils/game-normalization.util';
@@ -29,6 +30,7 @@ export class GameApplication {
   private readonly badgesService = inject(BadgesService);
   private readonly badgeNotification = inject(BadgeNotificationService);
   private readonly consecutiveGameDaysService = inject(ConsecutiveGameDaysService);
+  private readonly dailyActivityService = inject(DailyActivityService);
   private readonly badgesStore = inject(BadgesStore);
   private readonly infrastructure = inject(GameInfrastructure);
 
@@ -90,14 +92,18 @@ export class GameApplication {
     let effectiveGameState: GameState;
     if (!gameState) {
       if (isSpecificGame) {
+        // Pour les jeux spécifiques, essayer de récupérer le startedAt du store
+        // Sinon, utiliser une durée minimale de 30 secondes pour éviter duration = 0
+        const fallbackCompletedAt = new Date();
+        const fallbackStartedAt = new Date(fallbackCompletedAt.getTime() - 30000); // 30 secondes avant
         effectiveGameState = {
           currentQuestionIndex: 0,
           questions: [],
           selectedAnswer: null,
           score: 0,
           isCompleted: true,
-          startedAt: new Date(),
-          completedAt: new Date(),
+          startedAt: fallbackStartedAt,
+          completedAt: fallbackCompletedAt,
         };
       } else {
         // Pour les jeux non spécifiques sans gameState, on ne peut pas continuer
@@ -105,6 +111,14 @@ export class GameApplication {
       }
     } else {
       effectiveGameState = gameState;
+      // S'assurer que completedAt est défini si le jeu est complété OU si completeGame est appelé (le jeu est considéré comme complété)
+      if (!effectiveGameState.completedAt) {
+        effectiveGameState = {
+          ...effectiveGameState,
+          isCompleted: true,
+          completedAt: new Date(),
+        };
+      }
     }
     
     let finalScore: number;
@@ -147,6 +161,7 @@ export class GameApplication {
         total_count: effectiveGameState.questions.length,
       },
       difficulty_level: 1, // TODO: Récupérer depuis le state
+      started_at: effectiveGameState.startedAt?.toISOString(),
       completed_at: effectiveGameState.completedAt?.toISOString(),
     };
 
@@ -155,6 +170,9 @@ export class GameApplication {
     
     // Recalculer les jours consécutifs et vérifier les badges débloqués
     await this.checkAndNotifyConsecutiveDaysBadges(child.child_id);
+    
+    // Vérifier le badge Activité Quotidienne
+    await this.checkAndNotifyDailyActivityBadges(child.child_id);
     
     // Vérifier les nouveaux badges débloqués (le trigger PostgreSQL les a déjà débloqués)
     await this.checkAndNotifyBadges(child.child_id, savedAttempt.id);
@@ -277,6 +295,7 @@ export class GameApplication {
         ? { correctCount, incorrectCount, total }
         : { score: gameStateScore, totalQuestions },
       difficulty_level: 1,
+      started_at: startedAt?.toISOString(),
       completed_at: new Date().toISOString(),
     };
 
@@ -290,11 +309,64 @@ export class GameApplication {
       // Recalculer les jours consécutifs et vérifier les badges débloqués
       await this.checkAndNotifyConsecutiveDaysBadges(child.child_id);
       
+      // Vérifier le badge Activité Quotidienne
+      await this.checkAndNotifyDailyActivityBadges(child.child_id);
+      
       // Vérifier les nouveaux badges débloqués (le trigger PostgreSQL les a déjà débloqués)
       await this.checkAndNotifyBadges(child.child_id, result.id);
     } catch (error) {
       console.error('[savePartialScore] Erreur lors de la sauvegarde', error);
       throw error;
+    }
+  }
+
+  /**
+   * Vérifie le badge Activité Quotidienne débloqué et affiche les notifications
+   */
+  private async checkAndNotifyDailyActivityBadges(childId: string): Promise<void> {
+    try {
+      // Recalculer et récupérer l'état frais avec nouveaux niveaux débloqués
+      const status = await this.dailyActivityService.recalculateAndGetStatus(childId);
+      
+      if (status.newLevelsUnlocked && status.newLevelsUnlocked.length > 0) {
+        console.log('[GameApplication] Nouveaux niveaux badge Activité Quotidienne débloqués:', status.newLevelsUnlocked);
+        
+        // Récupérer les descriptions des badges depuis la base
+        const allBadges = await this.badgesService.getAllBadges();
+        const dailyActivityBadge = allBadges.find(b => b.badge_type === 'daily_activity');
+        
+        // Si plusieurs niveaux débloqués, afficher une notification groupée
+        if (status.newLevelsUnlocked.length > 1) {
+          const levelsText = status.newLevelsUnlocked.join(', ');
+          await this.badgeNotification.showBadgeNotification(
+            {
+              badge_id: dailyActivityBadge?.id || '',
+              badge_name: dailyActivityBadge?.name || 'Activité Quotidienne',
+              badge_type: 'daily_activity',
+              level: status.maxLevelToday,
+              value: status.totalActiveMinutes,
+              unlocked_at: new Date().toISOString(),
+            },
+            `Tu as débloqué les niveaux ${levelsText} du badge Activité Quotidienne!`
+          );
+        } else {
+          // Un seul niveau débloqué
+          await this.badgeNotification.showBadgeNotification(
+            {
+              badge_id: dailyActivityBadge?.id || '',
+              badge_name: dailyActivityBadge?.name || 'Activité Quotidienne',
+              badge_type: 'daily_activity',
+              level: status.newLevelsUnlocked[0],
+              value: status.totalActiveMinutes,
+              unlocked_at: new Date().toISOString(),
+            },
+            dailyActivityBadge?.description
+          );
+        }
+      }
+    } catch (error) {
+      // Ne pas bloquer le flux si la vérification des badges échoue
+      console.error('[GameApplication] Erreur lors de la vérification du badge Activité Quotidienne:', error);
     }
   }
 

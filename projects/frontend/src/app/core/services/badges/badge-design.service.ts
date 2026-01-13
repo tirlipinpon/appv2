@@ -45,6 +45,10 @@ export class BadgeDesignService {
       base: '#4CAF50',
       levels: ['#4CAF50', '#3E8E41', '#2E6B32', '#1F4A23', '#0F2914'],
     },
+    daily_activity: {
+      base: '#FF6B6B',
+      levels: ['#FF6B6B', '#E55555', '#CC4040', '#B32B2B', '#991616'],
+    },
   };
 
   // Icônes par type de badge
@@ -56,6 +60,7 @@ export class BadgeDesignService {
     first_subject_complete: '⭐',
     first_game_perfect: '💯',
     consecutive_game_days: '🔥',
+    daily_activity: '🎯',
   };
 
   /**
@@ -105,6 +110,7 @@ export class BadgeDesignService {
       first_subject_complete: 'crown', // Couronne
       first_game_perfect: 'diamond', // Diamant
       consecutive_game_days: 'circle', // Cercle avec bordure
+      daily_activity: 'medal', // Médaille circulaire
     };
 
     return shapes[badgeType] || 'circle';

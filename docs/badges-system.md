@@ -40,6 +40,7 @@ interface Badge {
 - `consecutive_correct` : Réponses consécutives correctes (5 ou 7)
 - `perfect_games_count` : Jeux parfaits cumulatifs (10 ou 13)
 - `consecutive_game_days` : Jours consécutifs de jeu (avec niveaux progressifs)
+- `daily_activity` : Activité quotidienne (temps de jeu + nombre de jeux)
 
 ### `frontend_child_badges` - Badges débloqués
 
@@ -268,6 +269,56 @@ interface BadgeLevel {
 
 **Valeur** : Nombre de jours consécutifs obtenus.
 
+### Badge 8 : Activité Quotidienne
+
+**Type** : `daily_activity`
+
+**Condition** :
+- Combiner temps de jeu actif (minutes) ET nombre de jeux complétés dans la même journée
+- Les deux conditions doivent être remplies simultanément (ET logique)
+- Badge récurrent (peut être débloqué plusieurs fois, une fois par jour)
+
+**Formule des niveaux** :
+- **Niveau N** : `Temps = 30 + (N-1) × 5` minutes **ET** `Jeux = 3 + (N-1) × 1` jeux
+- Niveau 1 : 30 minutes ET 3 jeux
+- Niveau 2 : 35 minutes ET 4 jeux
+- Niveau 3 : 40 minutes ET 5 jeux
+- Niveau 4 : 45 minutes ET 6 jeux
+- Etc.
+
+**Déblocage** : Automatique via trigger `trigger_update_daily_activity_badge` après chaque tentative de jeu.
+
+**Tracking** : Table `frontend_daily_activity_tracking` avec :
+- `total_active_minutes` : Temps total de jeu actif du jour (calculé depuis `duration_ms` des tentatives)
+- `total_games_completed` : Nombre de jeux complétés du jour
+- `max_level_daily` : Niveau maximal atteint aujourd'hui
+- `activity_date` : Date de l'activité
+- `last_check_date` : Dernière date de vérification
+
+**Calcul du temps actif** :
+- Somme des durées de toutes les tentatives complétées du jour
+- Durée = `EXTRACT(EPOCH FROM (completed_at - started_at)) / 60` (en minutes, arrondi)
+- Ignore les durées négatives (anomalies)
+
+**Règles** :
+- Le badge est calculé et débloqué automatiquement après chaque tentative de jeu
+- Tous les niveaux atteints dans la journée sont débloqués simultanément (1 à N)
+- Le badge peut être redébloqué chaque jour (récurrent)
+- Les niveaux sont débloqués uniquement si les deux conditions sont remplies (temps ET jeux)
+
+**Niveaux** : Système de niveaux progressifs avec seuils croissants pour temps et jeux.
+
+**Valeur** : Objet JSONB avec `{ minutes, games, level }` stockant les valeurs obtenues.
+
+**Fonctions SQL** :
+- `calculate_daily_activity_badge(p_child_id, p_game_date)` : Calcule les compteurs du jour
+- `determine_max_daily_level(p_total_minutes, p_total_games)` : Détermine le niveau maximal atteint
+- `unlock_daily_activity_levels(...)` : Débloque les niveaux du badge
+- `calculate_and_unlock_daily_activity_badge(p_child_id, p_game_date)` : Calcule et débloque en une seule opération
+- `get_daily_activity_status(p_child_id, p_game_date)` : Récupère l'état complet du badge
+
+**Service Frontend** : `DailyActivityService` dans `projects/frontend/src/app/core/services/badges/daily-activity.service.ts`
+
 ## Système de niveaux et progression dynamique
 
 ### Formule de calcul des seuils
@@ -352,6 +403,21 @@ RETURNS TABLE (
 - Badge 5.1 : Réponses consécutives (7)
 - Badge 6 : Jeux parfaits cumulatifs (10)
 - Badge 6.1 : Jeux parfaits cumulatifs (13)
+
+### Trigger : Badge Activité Quotidienne
+
+**Fonction** : `update_daily_activity_badge_trigger()`
+
+**Déclenchement** : Après insertion dans `frontend_game_attempts`
+
+**Badge vérifié** :
+- Badge 8 : Activité Quotidienne (temps de jeu + nombre de jeux)
+
+**Logique** :
+1. Calcule le temps actif total et le nombre de jeux complétés du jour
+2. Détermine le niveau maximal atteint selon les deux critères
+3. Débloque tous les niveaux de 1 à N si les conditions sont remplies
+4. Met à jour `frontend_daily_activity_tracking`
 
 **Paramètres** :
 ```sql
@@ -453,6 +519,31 @@ interface PerfectGamesCount {
 - Un jeu est compté une seule fois (meilleur score = 100%)
 - Le compteur est incrémenté uniquement si le jeu n'a pas encore été compté
 
+### `frontend_daily_activity_tracking`
+
+**Rôle** : Suit l'activité quotidienne (temps de jeu et nombre de jeux) pour chaque enfant et chaque jour.
+
+**Structure** :
+```typescript
+interface DailyActivityTracking {
+  id: string;
+  child_id: string;
+  activity_date: Date;              // Date de l'activité (DATE uniquement)
+  total_active_minutes: number;     // Temps total de jeu actif du jour (en minutes)
+  total_games_completed: number;    // Nombre de jeux complétés du jour
+  max_level_daily: number;          // Niveau maximal atteint aujourd'hui
+  last_check_date: Date;           // Dernière date de vérification
+  created_at: string;
+  updated_at: string;
+}
+```
+
+**Logique** :
+- Une entrée par enfant et par jour (contrainte UNIQUE sur `child_id, activity_date`)
+- Le temps actif est calculé depuis `duration_ms` des tentatives complétées
+- Les niveaux sont débloqués automatiquement si les conditions sont remplies
+- Le badge peut être redébloqué chaque jour (récurrent)
+
 ## Affichage et notifications
 
 ### Service : BadgesService
@@ -464,6 +555,25 @@ interface PerfectGamesCount {
 - Chargement des badges débloqués par enfant
 - Notification des nouveaux badges débloqués
 
+### Service : ConsecutiveGameDaysService
+
+**Localisation** : `projects/frontend/src/app/core/services/badges/consecutive-game-days.service.ts`
+
+**Fonctionnalités** :
+- Récupération de l'état des jours consécutifs
+- Recalcul et déblocage automatique des badges
+- Vérification des badges nouvellement débloqués (comparaison avant/après)
+
+### Service : DailyActivityService
+
+**Localisation** : `projects/frontend/src/app/core/services/badges/daily-activity.service.ts`
+
+**Fonctionnalités** :
+- Récupération de l'état de l'activité quotidienne
+- Recalcul et déblocage automatique des niveaux
+- Calcul des exigences par niveau
+- Détection des nouveaux niveaux débloqués
+
 ### Service : BadgeNotificationService
 
 **Localisation** : `projects/frontend/src/app/core/services/badges/badge-notification.service.ts`
@@ -472,6 +582,7 @@ interface PerfectGamesCount {
 - Affichage de notifications visuelles lors du déblocage
 - Modal de notification avec animation
 - Son de notification (optionnel)
+- Gestion de la file d'attente des notifications
 
 ### Composant : BadgeVisual
 

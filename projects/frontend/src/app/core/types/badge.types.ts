@@ -7,7 +7,8 @@ export type BadgeType =
   | 'daily_streak_responses'
   | 'consecutive_correct'
   | 'perfect_games_count'
-  | 'consecutive_game_days';
+  | 'consecutive_game_days'
+  | 'daily_activity';
 
 export interface Badge {
   id: string;

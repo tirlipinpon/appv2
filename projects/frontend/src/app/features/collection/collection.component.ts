@@ -1,4 +1,6 @@
-import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { CollectionApplication } from './components/application/application';
 import { CollectionFilter } from './types/collection.types';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
@@ -6,14 +8,22 @@ import { ProgressBarComponent } from '../../shared/components/progress-bar/progr
 import { BadgeVisualComponent } from '../../shared/components/badge-visual/badge-visual.component';
 import { BadgeLevelIndicatorComponent } from '../../shared/components/badge-level-indicator/badge-level-indicator.component';
 import { BadgesService } from '../../core/services/badges/badges.service';
+import { DailyActivityCardComponent } from '../../shared/components/daily-activity-card/daily-activity-card.component';
 
 @Component({
   selector: 'app-collection',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent, BadgeLevelIndicatorComponent],
+  imports: [ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent, BadgeLevelIndicatorComponent, DailyActivityCardComponent],
   template: `
     <div class="collection-container">
       <h1>Ma Collection</h1>
+
+      <!-- Section Activité Quotidienne -->
+      @if (application.dailyActivityStatus()) {
+        <app-daily-activity-card
+          [status]="application.dailyActivityStatus()!">
+        </app-daily-activity-card>
+      }
 
       <!-- Section Badges -->
       @if (!application.isLoading()() && !application.isLoadingBadges()()) {
@@ -554,12 +564,33 @@ import { BadgesService } from '../../core/services/badges/badges.service';
     }
   `]
 })
-export class CollectionComponent implements OnInit {
+export class CollectionComponent implements OnInit, OnDestroy {
   protected readonly application = inject(CollectionApplication);
   private readonly badgesService = inject(BadgesService);
+  private readonly router = inject(Router);
+  private navigationSubscription?: Subscription;
+
+  constructor() {
+    // Écouter les événements de navigation pour recharger les données quand on revient sur /collection
+    this.navigationSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event: NavigationEnd) => {
+        // Si on navigue vers /collection, recharger les données
+        if (event.urlAfterRedirects.includes('/collection')) {
+          this.application.initialize();
+        }
+      });
+  }
 
   async ngOnInit(): Promise<void> {
     await this.application.initialize();
+  }
+
+  ngOnDestroy(): void {
+    // Nettoyer la souscription pour éviter les fuites mémoire
+    if (this.navigationSubscription) {
+      this.navigationSubscription.unsubscribe();
+    }
   }
 
   setFilter(filter: CollectionFilter): void {

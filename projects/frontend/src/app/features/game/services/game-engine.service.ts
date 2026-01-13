@@ -27,13 +27,14 @@ export class GameEngineService {
     // Charger ou générer les questions
     const questions = await this.loadQuestions(game, variant, difficultyLevel);
 
+    const startedAt = new Date();
     return {
       currentQuestionIndex: 0,
       questions,
       selectedAnswer: null,
       score: 0,
       isCompleted: false,
-      startedAt: new Date(),
+      startedAt: startedAt,
     };
   }
 
@@ -101,13 +102,14 @@ export class GameEngineService {
   nextQuestion(state: GameState): GameState {
     const nextIndex = state.currentQuestionIndex + 1;
     const isCompleted = nextIndex >= state.questions.length;
+    const completedAt = isCompleted ? new Date() : undefined;
 
     return {
       ...state,
       currentQuestionIndex: nextIndex,
       selectedAnswer: null,
       isCompleted,
-      completedAt: isCompleted ? new Date() : undefined,
+      completedAt: completedAt,
     };
   }
 
