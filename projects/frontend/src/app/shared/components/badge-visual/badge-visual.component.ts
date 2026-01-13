@@ -94,19 +94,23 @@ import { BadgeDesignService } from '../../../core/services/badges/badge-design.s
 
     /* Forme : Étoile */
     .shape-star {
-      clip-path: polygon(
-        50% 0%,
-        61% 35%,
-        98% 35%,
-        68% 57%,
-        79% 91%,
-        50% 70%,
-        21% 91%,
-        32% 57%,
-        2% 35%,
-        39% 35%
-      );
-    }
+  clip-path: polygon(
+    50% 0%,
+    72% 28%,
+    100% 40%,
+    78% 65%,
+    92% 100%,
+    50% 85%,
+    8% 100%,
+    22% 65%,
+    0% 40%,
+    28% 28%
+  );
+}
+
+
+
+
 
     /* Forme : Hexagone */
     .shape-hexagon {
@@ -159,11 +163,12 @@ import { BadgeDesignService } from '../../../core/services/badges/badge-design.s
     }
 
     .badge-value {
-      font-size: 2.5rem;
+      font-size: 2.2rem;
       font-weight: 700;
       color: white;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
       line-height: 1;
+      padding: 0.2rem 0;
     }
 
     .badge-level {

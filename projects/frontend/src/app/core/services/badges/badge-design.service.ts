@@ -46,8 +46,8 @@ export class BadgeDesignService {
       levels: ['#4CAF50', '#3E8E41', '#2E6B32', '#1F4A23', '#0F2914'],
     },
     daily_activity: {
-      base: '#FF6B6B',
-      levels: ['#FF6B6B', '#E55555', '#CC4040', '#B32B2B', '#991616'],
+      base: '#9B59B6',
+      levels: ['#9B59B6', '#8E44AD', '#7D3C98', '#6C3483', '#5B2C6F'],
     },
   };
 
@@ -60,7 +60,7 @@ export class BadgeDesignService {
     first_subject_complete: '⭐',
     first_game_perfect: '💯',
     consecutive_game_days: '🔥',
-    daily_activity: '🎯',
+    daily_activity: '⏱️',
   };
 
   /**
@@ -110,7 +110,7 @@ export class BadgeDesignService {
       first_subject_complete: 'crown', // Couronne
       first_game_perfect: 'diamond', // Diamant
       consecutive_game_days: 'circle', // Cercle avec bordure
-      daily_activity: 'medal', // Médaille circulaire
+      daily_activity: 'star', // Étoile à 5 branches
     };
 
     return shapes[badgeType] || 'circle';
