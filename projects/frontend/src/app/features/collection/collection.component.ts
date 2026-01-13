@@ -5,12 +5,13 @@ import { CollectionFilter } from './types/collection.types';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { BadgeVisualComponent } from '../../shared/components/badge-visual/badge-visual.component';
+import { BadgeLevelIndicatorComponent } from '../../shared/components/badge-level-indicator/badge-level-indicator.component';
 import { BadgesService } from '../../core/services/badges/badges.service';
 
 @Component({
   selector: 'app-collection',
   standalone: true,
-  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent],
+  imports: [CommonModule, ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent, BadgeLevelIndicatorComponent],
   template: `
     <div class="collection-container">
       <h1>Ma Collection</h1>
@@ -52,13 +53,16 @@ import { BadgesService } from '../../core/services/badges/badges.service';
                 size="medium"
                 [showIcon]="true">
               </app-badge-visual>
+              <app-badge-level-indicator
+                *ngIf="badge.isUnlocked && badge.level"
+                [level]="badge.level">
+              </app-badge-level-indicator>
             </div>
             <div class="badge-info">
               <h3>{{ badge.name }}</h3>
               <p *ngIf="badge.description">{{ badge.description }}</p>
               <div *ngIf="badge.isUnlocked && badge.unlockedAt" class="unlocked-date">
                 Débloqué le {{ formatDate(badge.unlockedAt) }}
-                <span *ngIf="badge.level"> - Niveau {{ badge.level }}</span>
               </div>
               <div *ngIf="!badge.isUnlocked" class="locked-info">
                 <span *ngIf="getNextThreshold(badge)">Prochain seuil : {{ getNextThreshold(badge) }}</span>
@@ -395,6 +399,7 @@ import { BadgesService } from '../../core/services/badges/badges.service';
       justify-content: center;
       align-items: center;
       margin-bottom: 1rem;
+      position: relative;
     }
 
     .badge-info {
