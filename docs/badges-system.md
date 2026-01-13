@@ -279,11 +279,12 @@ interface BadgeLevel {
 - Badge récurrent (peut être débloqué plusieurs fois, une fois par jour)
 
 **Formule des niveaux** :
-- **Niveau N** : `Temps = 30 + (N-1) × 5` minutes **ET** `Jeux = 3 + (N-1) × 1` jeux
-- Niveau 1 : 30 minutes ET 3 jeux
-- Niveau 2 : 35 minutes ET 4 jeux
-- Niveau 3 : 40 minutes ET 5 jeux
-- Niveau 4 : 45 minutes ET 6 jeux
+- **Niveau N** : `Temps = 5 + (N-1) × 2` minutes **ET** `Jeux = 3 + (N-1) × 1` jeux
+- Niveau 1 : 5 minutes ET 3 jeux
+- Niveau 2 : 7 minutes ET 4 jeux
+- Niveau 3 : 9 minutes ET 5 jeux
+- Niveau 4 : 11 minutes ET 6 jeux
+- Niveau 5 : 13 minutes ET 7 jeux
 - Etc.
 
 **Déblocage** : Automatique via trigger `trigger_update_daily_activity_badge` après chaque tentative de jeu.

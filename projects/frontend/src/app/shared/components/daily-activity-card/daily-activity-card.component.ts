@@ -7,12 +7,11 @@ import { DailyActivityStatus } from '../../../core/types/daily-activity.types';
 import { formatMinutes, formatGames, getStatusLabel } from '../../utils/daily-activity.util';
 import { CommonModule } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { BadgeVisualComponent } from '../badge-visual/badge-visual.component';
 
 @Component({
   selector: 'app-daily-activity-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, MatProgressBarModule, BadgeVisualComponent],
+  imports: [CommonModule, MatProgressBarModule],
   template: `
     <div class="daily-activity-card" [class]="'status-' + status().status">
       <div class="card-header">
@@ -65,40 +64,15 @@ import { BadgeVisualComponent } from '../badge-visual/badge-visual.component';
           </div>
         }
 
-        <!-- Badges débloqués aujourd'hui -->
-        @if (status().levelsUnlockedToday.length > 0) {
-          <div class="unlocked-levels">
-            <h3>Niveaux débloqués aujourd'hui</h3>
-            <div class="levels-grid">
-              @for (level of status().levelsUnlockedToday; track level) {
-                <div class="level-badge">
-                  <app-badge-visual
-                    [badgeType]="'daily_activity'"
-                    [level]="level"
-                    [isUnlocked]="true"
-                    size="small"
-                    [showIcon]="false">
-                  </app-badge-visual>
-                  <span class="level-number">N{{ level }}</span>
-                </div>
-              }
-            </div>
-          </div>
-        }
-
         <!-- Message d'encouragement -->
         @if (status().status === 'not_started') {
           <div class="encouragement-message">
             <p>🎮 Commence à jouer pour débloquer ton premier niveau !</p>
-            <p class="requirement">Objectif : {{ formatMinutes(10) }} et {{ formatGames(3) }}</p>
+            <p class="requirement">Objectif : {{ formatMinutes(5) }} et {{ formatGames(3) }}</p>
           </div>
         } @else if (status().status === 'in_progress') {
           <div class="encouragement-message">
             <p>💪 Continue comme ça ! Tu es sur la bonne voie.</p>
-          </div>
-        } @else if (status().status === 'active') {
-          <div class="encouragement-message success">
-            <p>🎉 Excellent ! Tu as débloqué le niveau {{ status().maxLevelToday }} aujourd'hui !</p>
           </div>
         }
       </div>
@@ -232,35 +206,6 @@ import { BadgeVisualComponent } from '../badge-visual/badge-visual.component';
       gap: 4px;
     }
 
-    .unlocked-levels {
-      margin-bottom: 20px;
-    }
-
-    .unlocked-levels h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-
-    .levels-grid {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .level-badge {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .level-number {
-      font-size: 0.75rem;
-      font-weight: 600;
-      opacity: 0.9;
-    }
-
     .encouragement-message {
       text-align: center;
       padding: 16px;
@@ -274,10 +219,6 @@ import { BadgeVisualComponent } from '../badge-visual/badge-visual.component';
       margin: 0 0 8px 0;
       font-size: 1rem;
       font-weight: 600;
-    }
-
-    .encouragement-message.success {
-      background: rgba(76, 175, 80, 0.2);
     }
 
     .requirement {

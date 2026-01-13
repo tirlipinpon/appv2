@@ -117,7 +117,7 @@ export class DailyActivityService {
   calculateLevelRequirements(level: number): DailyActivityLevel {
     return {
       level,
-      minutesRequired: 10 + (level - 1) * 5,
+      minutesRequired: 5 + (level - 1) * 2,
       gamesRequired: 3 + (level - 1) * 1,
     };
   }

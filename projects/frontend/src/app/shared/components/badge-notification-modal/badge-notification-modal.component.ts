@@ -1,4 +1,4 @@
-import { Component, input, output, signal, effect, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, signal, effect, computed, ChangeDetectionStrategy } from '@angular/core';
 import { ChildButtonComponent } from '../child-button/child-button.component';
 import { BadgeVisualComponent } from '../badge-visual/badge-visual.component';
 import { BadgeType } from '../../../core/types/badge.types';
@@ -8,7 +8,7 @@ export interface BadgeNotificationData {
   badge_name: string;
   badge_type: BadgeType;
   level: number;
-  value: number;
+  value: number | object; // JSONB: peut être un nombre ou un objet (pour daily_activity)
   description?: string;
 }
 
@@ -65,10 +65,10 @@ export interface BadgeNotificationData {
 
           <!-- Informations supplémentaires -->
           <div class="badge-info">
-            @if (value() !== undefined && value() !== null) {
+            @if (formattedValue() !== undefined && formattedValue() !== null) {
               <div class="info-item">
                 <span class="info-label">Valeur obtenue :</span>
-                <span class="info-value">{{ value() }}</span>
+                <span class="info-value">{{ formattedValue() }}</span>
               </div>
             }
             @if (level()) {
@@ -303,7 +303,7 @@ export class BadgeNotificationModalComponent {
   badgeName = input<string>('');
   badgeType = input.required<BadgeType>();
   level = input<number | undefined>(undefined);
-  value = input<number | undefined>(undefined);
+  value = input<number | object | undefined>(undefined);
   description = input<string | undefined>(undefined);
   closeOnOverlayClick = input<boolean>(false);
 
@@ -313,6 +313,38 @@ export class BadgeNotificationModalComponent {
   // Génération de confettis pour l'animation
   confettiArray = signal<{ color: string; x: number; delay: number }[]>([]);
   private readonly confettiColors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#54A0FF', '#FF9FF3'];
+
+  // Formater la valeur selon le type de badge
+  formattedValue = computed(() => {
+    const val = this.value();
+    if (val === undefined || val === null) {
+      return undefined;
+    }
+    
+    // Si c'est un nombre, retourner directement
+    if (typeof val === 'number') {
+      return val;
+    }
+    
+    // Si c'est un objet (JSONB), formater selon le type de badge
+    if (typeof val === 'object' && val !== null) {
+      if (this.badgeType() === 'daily_activity') {
+        // Pour daily_activity, afficher les minutes et jeux
+        const activity = val as { minutes?: number; games?: number; level?: number };
+        if (activity.minutes !== undefined && activity.games !== undefined) {
+          return `${activity.minutes} min, ${activity.games} jeux`;
+        }
+      }
+      // Pour les autres badges avec objet, essayer d'extraire une valeur numérique
+      const numValue = (val as any).value ?? (val as any).count ?? Object.values(val)[0];
+      if (typeof numValue === 'number') {
+        return numValue;
+      }
+    }
+    
+    // Par défaut, convertir en string
+    return String(val);
+  });
 
   constructor() {
     // Générer les confettis quand la modal devient visible

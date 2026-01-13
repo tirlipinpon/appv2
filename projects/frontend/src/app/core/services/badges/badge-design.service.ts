@@ -69,7 +69,7 @@ export class BadgeDesignService {
   generateBadgeDesign(
     badgeType: BadgeType,
     level: number = 1,
-    value?: number
+    value?: number | object
   ): BadgeDesign {
     return {
       shape: this.getShapeForBadge(badgeType),

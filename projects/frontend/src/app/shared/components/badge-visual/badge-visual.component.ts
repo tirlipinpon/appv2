@@ -24,9 +24,9 @@ import { BadgeDesignService } from '../../../core/services/badges/badge-design.s
         }
         
         <!-- Chiffre central (valeur obtenue) -->
-        @if (value() !== undefined && value() !== null) {
+        @if (formattedValue() !== undefined && formattedValue() !== null) {
           <div class="badge-value">
-            {{ value() }}
+            {{ formattedValue() }}
           </div>
         }
         
@@ -212,11 +212,43 @@ export class BadgeVisualComponent {
 
   // Inputs
   badgeType = input.required<BadgeType>();
-  value = input<number | undefined>(undefined);
+  value = input<number | object | undefined>(undefined);
   level = input<number | undefined>(undefined);
   isUnlocked = input<boolean>(false);
   size = input<'small' | 'medium' | 'large'>('medium');
   showIcon = input<boolean>(true);
+
+  // Formater la valeur selon le type de badge
+  formattedValue = computed(() => {
+    const val = this.value();
+    if (val === undefined || val === null) {
+      return undefined;
+    }
+    
+    // Si c'est un nombre, retourner directement
+    if (typeof val === 'number') {
+      return val;
+    }
+    
+    // Si c'est un objet (JSONB), formater selon le type de badge
+    if (typeof val === 'object' && val !== null) {
+      if (this.badgeType() === 'daily_activity') {
+        // Pour daily_activity, afficher les minutes
+        const activity = val as { minutes?: number; games?: number; level?: number };
+        if (activity.minutes !== undefined) {
+          return activity.minutes;
+        }
+      }
+      // Pour les autres badges avec objet, essayer d'extraire une valeur numérique
+      const numValue = (val as any).value ?? (val as any).count ?? Object.values(val)[0];
+      if (typeof numValue === 'number') {
+        return numValue;
+      }
+    }
+    
+    // Par défaut, retourner undefined (ne pas afficher)
+    return undefined;
+  });
 
   // Design calculé
   design = computed(() => {
@@ -224,7 +256,7 @@ export class BadgeVisualComponent {
     return this.designService.generateBadgeDesign(
       this.badgeType(),
       level,
-      this.value()
+      this.formattedValue()
     );
   });
 

@@ -50,7 +50,7 @@ export function calculateLevelRequirements(level: number): {
   games: number;
 } {
   return {
-    minutes: 10 + (level - 1) * 5,
+    minutes: 5 + (level - 1) * 2,
     games: 3 + (level - 1) * 1,
   };
 }

@@ -29,7 +29,7 @@ export interface ChildBadge {
   badge_id: string;
   unlocked_at: string;
   level: number;
-  value?: number;
+  value?: number | object; // JSONB: peut être un nombre ou un objet (pour daily_activity)
   created_at: string;
 }
 
@@ -47,7 +47,7 @@ export interface BadgeWithStatus extends Badge {
   isUnlocked: boolean;
   unlockedAt?: string;
   level?: number;
-  value?: number;
+  value?: number | object; // JSONB: peut être un nombre ou un objet (pour daily_activity)
   currentThreshold?: number;
 }
 
@@ -56,6 +56,6 @@ export interface NewlyUnlockedBadge {
   badge_name: string;
   badge_type: BadgeType;
   level: number;
-  value: number;
+  value: number | object; // JSONB: peut être un nombre ou un objet (pour daily_activity)
   unlocked_at: string;
 }
