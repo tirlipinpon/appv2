@@ -3,7 +3,6 @@ import { GameFeedbackMessageService, GameFeedbackMessage } from '../../services/
 
 @Component({
   selector: 'app-game-feedback-message',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [],
   template: `

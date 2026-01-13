@@ -5,7 +5,6 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
 
 @Component({
   selector: 'app-login',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule],
   template: `

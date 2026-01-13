@@ -14,7 +14,6 @@ export interface BadgeNotificationData {
 
 @Component({
   selector: 'app-badge-notification-modal',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ChildButtonComponent, BadgeVisualComponent],
   template: `

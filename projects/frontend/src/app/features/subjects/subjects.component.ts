@@ -28,7 +28,6 @@ import {
 
 @Component({
   selector: 'app-subjects',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,

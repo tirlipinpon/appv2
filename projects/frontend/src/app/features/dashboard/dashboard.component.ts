@@ -8,7 +8,6 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 
 @Component({
   selector: 'app-dashboard',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,

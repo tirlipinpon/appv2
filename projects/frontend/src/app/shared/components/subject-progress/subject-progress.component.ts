@@ -10,7 +10,6 @@ import { ProgressBarComponent } from '../progress-bar/progress-bar.component';
  */
 @Component({
   selector: 'app-subject-progress',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ProgressBarComponent],
   template: `

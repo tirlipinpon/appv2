@@ -4,7 +4,6 @@ import { GameFeedbackMessageComponent } from '../../../features/game/components/
 
 @Component({
   selector: 'app-game-error-modal',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ChildButtonComponent, GameFeedbackMessageComponent],
   template: `

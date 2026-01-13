@@ -4,7 +4,6 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 
 @Component({
   selector: 'app-bonus-games',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ChildButtonComponent],
   template: `

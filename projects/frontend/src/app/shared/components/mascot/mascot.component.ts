@@ -3,7 +3,6 @@ import { MascotService } from '../../../core/services/mascot/mascot.service';
 
 @Component({
   selector: 'app-mascot',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [],
   template: `

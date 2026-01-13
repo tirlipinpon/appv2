@@ -18,7 +18,6 @@ export interface CompletionModalData {
 
 @Component({
   selector: 'app-completion-modal',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ChildButtonComponent],
   template: `

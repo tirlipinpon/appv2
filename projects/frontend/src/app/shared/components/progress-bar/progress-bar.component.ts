@@ -2,7 +2,6 @@ import { Component, input, computed, ChangeDetectionStrategy } from '@angular/co
 
 @Component({
   selector: 'app-progress-bar',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [],
   template: `

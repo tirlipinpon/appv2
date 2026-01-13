@@ -9,7 +9,6 @@ import { BadgesService } from '../../core/services/badges/badges.service';
 
 @Component({
   selector: 'app-collection',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent, BadgeLevelIndicatorComponent],
   template: `

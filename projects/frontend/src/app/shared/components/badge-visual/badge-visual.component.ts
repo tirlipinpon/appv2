@@ -4,7 +4,6 @@ import { BadgeDesignService } from '../../../core/services/badges/badge-design.s
 
 @Component({
   selector: 'app-badge-visual',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [],
   template: `

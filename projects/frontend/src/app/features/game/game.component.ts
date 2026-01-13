@@ -37,7 +37,6 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
 
 @Component({
   selector: 'app-game',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ChildButtonComponent, SubjectProgressComponent, CompletionModalComponent, QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent, BreadcrumbComponent, GameFeedbackMessageComponent, GameErrorModalComponent, JsonPipe],
   template: `

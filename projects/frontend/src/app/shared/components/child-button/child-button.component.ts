@@ -1,8 +1,7 @@
-import { Component, input, EventEmitter, Output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-child-button',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [],
   template: `
@@ -80,6 +79,6 @@ export class ChildButtonComponent {
   size = input<'small' | 'medium' | 'large'>('medium');
   disabled = input<boolean>(false);
   type = input<'button' | 'submit' | 'reset'>('button');
-  @Output() buttonClick = new EventEmitter<MouseEvent>();
+  buttonClick = output<MouseEvent>();
 }
 

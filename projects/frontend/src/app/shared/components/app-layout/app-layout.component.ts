@@ -6,7 +6,6 @@ import { BadgeNotificationModalComponent } from '../badge-notification-modal/bad
 
 @Component({
   selector: 'app-app-layout',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, BadgeNotificationModalComponent],
   template: `

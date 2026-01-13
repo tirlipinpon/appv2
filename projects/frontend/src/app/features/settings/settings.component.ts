@@ -5,7 +5,6 @@ import { Theme } from '../../core/types/game.types';
 
 @Component({
   selector: 'app-settings',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [],
   template: `
