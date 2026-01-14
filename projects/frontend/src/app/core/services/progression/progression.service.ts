@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../supabase/supabase.service';
-import { SubjectCategoryProgress } from '../../types/game.types';
+import { SubjectCategoryProgress, SubjectProgress } from '../../types/game.types';
 
 @Injectable({
   providedIn: 'root',
@@ -44,16 +44,41 @@ export class ProgressionService {
       .eq('subject_category_id', subjectCategoryId)
       .maybeSingle();
 
+    // Calculer le nouveau pourcentage si fourni
+    const newCompletionPercentage = updates.completionPercentage ?? existing?.completion_percentage ?? 0;
+    
+    // Vérifier si c'est une nouvelle complétion (passe de < 100% à 100%)
+    const wasCompleted = existing?.completion_percentage >= 100;
+    const isNowCompleted = newCompletionPercentage >= 100;
+    const isNewCompletion = !wasCompleted && isNowCompleted;
+
+    // Préparer les données de mise à jour
+    const updateData: any = {
+      completed: updates.completed ?? existing?.completed ?? false,
+      stars_count: updates.starsCount ?? existing?.stars_count ?? 0,
+      completion_percentage: newCompletionPercentage,
+      last_played_at: new Date().toISOString(),
+    };
+
+    // Si nouvelle complétion, incrémenter completion_count
+    if (isNewCompletion) {
+      const currentCompletionCount = existing?.completion_count ?? 0;
+      updateData.completion_count = currentCompletionCount + 1;
+      updateData.stars_count = updateData.completion_count; // stars_count = completion_count
+      updateData.last_completed_at = new Date().toISOString();
+    } else {
+      // Conserver les valeurs existantes si pas de nouvelle complétion
+      updateData.completion_count = existing?.completion_count ?? 0;
+      if (existing?.last_completed_at) {
+        updateData.last_completed_at = existing.last_completed_at;
+      }
+    }
+
     if (existing) {
       // Mettre à jour
       const { data, error } = await this.supabase.client
         .from('frontend_subject_category_progress')
-        .update({
-          completed: updates.completed ?? existing.completed,
-          stars_count: updates.starsCount ?? existing.stars_count,
-          completion_percentage: updates.completionPercentage ?? existing.completion_percentage,
-          last_played_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', existing.id)
         .select()
         .single();
@@ -70,10 +95,12 @@ export class ProgressionService {
         .insert({
           child_id: childId,
           subject_category_id: subjectCategoryId,
-          completed: updates.completed ?? false,
-          stars_count: updates.starsCount ?? 0,
-          completion_percentage: updates.completionPercentage ?? 0,
-          last_played_at: new Date().toISOString(),
+          completed: updateData.completed,
+          stars_count: updateData.stars_count,
+          completion_percentage: updateData.completion_percentage,
+          completion_count: updateData.completion_count,
+          last_completed_at: updateData.last_completed_at,
+          last_played_at: updateData.last_played_at,
         })
         .select()
         .single();
@@ -281,6 +308,199 @@ export class ProgressionService {
 
     // Retourner l'intersection
     return gameIds.filter((id) => categoryGameIds.includes(id));
+  }
+
+  /**
+   * Vérifie et incrémente le completion_count si c'est une nouvelle complétion.
+   * Appelé après avoir calculé le nouveau completion_percentage.
+   *
+   * @param childId ID de l'enfant
+   * @param subjectCategoryId ID de la sous-matière
+   * @param newCompletionPercentage Nouveau pourcentage de complétion
+   * @returns true si une nouvelle étoile a été gagnée
+   */
+  async checkAndIncrementCompletion(
+    childId: string,
+    subjectCategoryId: string,
+    newCompletionPercentage: number
+  ): Promise<boolean> {
+    // Récupérer la progression actuelle
+    const { data: existing } = await this.supabase.client
+      .from('frontend_subject_category_progress')
+      .select('completion_percentage, completion_count')
+      .eq('child_id', childId)
+      .eq('subject_category_id', subjectCategoryId)
+      .maybeSingle();
+
+    if (!existing) {
+      return false;
+    }
+
+    // Vérifier si c'est une nouvelle complétion (passe de < 100% à 100%)
+    const wasCompleted = existing.completion_percentage >= 100;
+    const isNowCompleted = newCompletionPercentage >= 100;
+    const isNewCompletion = !wasCompleted && isNowCompleted;
+
+    if (isNewCompletion) {
+      // Incrémenter completion_count et mettre à jour stars_count
+      const newCompletionCount = (existing.completion_count ?? 0) + 1;
+      
+      const { error } = await this.supabase.client
+        .from('frontend_subject_category_progress')
+        .update({
+          completion_count: newCompletionCount,
+          stars_count: newCompletionCount,
+          last_completed_at: new Date().toISOString(),
+        })
+        .eq('child_id', childId)
+        .eq('subject_category_id', subjectCategoryId);
+
+      if (error) {
+        throw new Error(`Erreur lors de l'incrémentation du completion_count: ${error.message}`);
+      }
+
+      return true; // Nouvelle étoile gagnée
+    }
+
+    return false; // Pas de nouvelle étoile
+  }
+
+  /**
+   * Récupère la progression d'une matière principale
+   */
+  async getSubjectProgress(childId: string, subjectId: string): Promise<SubjectProgress | null> {
+    const { data, error } = await this.supabase.client
+      .from('frontend_subject_progress')
+      .select('*')
+      .eq('child_id', childId)
+      .eq('subject_id', subjectId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Erreur lors de la récupération de la progression de la matière: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
+   * Met à jour la progression d'une matière principale
+   */
+  async updateSubjectProgress(
+    childId: string,
+    subjectId: string,
+    updates: {
+      completionPercentage?: number;
+    }
+  ): Promise<SubjectProgress> {
+    // Récupérer la progression existante
+    const existing = await this.getSubjectProgress(childId, subjectId);
+
+    // Calculer le nouveau pourcentage
+    const newCompletionPercentage = updates.completionPercentage ?? existing?.completion_percentage ?? 0;
+    
+    // Vérifier si c'est une nouvelle complétion
+    const wasCompleted = (existing?.completion_percentage ?? 0) >= 100;
+    const isNowCompleted = newCompletionPercentage >= 100;
+    const isNewCompletion = !wasCompleted && isNowCompleted;
+
+    // Préparer les données de mise à jour
+    const updateData: any = {
+      completion_percentage: newCompletionPercentage,
+      last_played_at: new Date().toISOString(),
+    };
+
+    // Si nouvelle complétion, incrémenter completion_count
+    if (isNewCompletion) {
+      const currentCompletionCount = existing?.completion_count ?? 0;
+      updateData.completion_count = currentCompletionCount + 1;
+      updateData.stars_count = updateData.completion_count;
+      updateData.last_completed_at = new Date().toISOString();
+    } else {
+      updateData.completion_count = existing?.completion_count ?? 0;
+      updateData.stars_count = updateData.completion_count;
+      if (existing?.last_completed_at) {
+        updateData.last_completed_at = existing.last_completed_at;
+      }
+    }
+
+    if (existing) {
+      // Mettre à jour
+      const { data, error } = await this.supabase.client
+        .from('frontend_subject_progress')
+        .update(updateData)
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Erreur lors de la mise à jour de la progression de la matière: ${error.message}`);
+      }
+
+      return data;
+    } else {
+      // Créer
+      const { data, error } = await this.supabase.client
+        .from('frontend_subject_progress')
+        .insert({
+          child_id: childId,
+          subject_id: subjectId,
+          completion_count: updateData.completion_count,
+          stars_count: updateData.stars_count,
+          completion_percentage: updateData.completion_percentage,
+          last_completed_at: updateData.last_completed_at,
+          last_played_at: updateData.last_played_at,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Erreur lors de la création de la progression de la matière: ${error.message}`);
+      }
+
+      return data;
+    }
+  }
+
+  /**
+   * Vérifie et incrémente le completion_count d'une matière si c'est une nouvelle complétion
+   */
+  async checkAndIncrementSubjectCompletion(
+    childId: string,
+    subjectId: string,
+    newCompletionPercentage: number
+  ): Promise<boolean> {
+    const existing = await this.getSubjectProgress(childId, subjectId);
+
+    if (!existing) {
+      return false;
+    }
+
+    const wasCompleted = existing.completion_percentage >= 100;
+    const isNowCompleted = newCompletionPercentage >= 100;
+    const isNewCompletion = !wasCompleted && isNowCompleted;
+
+    if (isNewCompletion) {
+      const newCompletionCount = (existing.completion_count ?? 0) + 1;
+      
+      const { error } = await this.supabase.client
+        .from('frontend_subject_progress')
+        .update({
+          completion_count: newCompletionCount,
+          stars_count: newCompletionCount,
+          last_completed_at: new Date().toISOString(),
+        })
+        .eq('child_id', childId)
+        .eq('subject_id', subjectId);
+
+      if (error) {
+        throw new Error(`Erreur lors de l'incrémentation du completion_count de la matière: ${error.message}`);
+      }
+
+      return true;
+    }
+
+    return false;
   }
 }
 

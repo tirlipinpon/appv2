@@ -6,11 +6,13 @@ import { pipe, switchMap, catchError, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { SubjectsInfrastructure } from '../components/infrastructure/infrastructure';
 import { Subject, SubjectCategoryWithProgress } from '../types/subject.types';
+import { SubjectProgress } from '../../../core/types/game.types';
 
 interface SubjectsState {
   subjects: Subject[];
   selectedSubjectId: string | null;
   categories: SubjectCategoryWithProgress[];
+  subjectProgress: Map<string, SubjectProgress>; // Map<subjectId, SubjectProgress>
   loading: boolean;
   error: string | null;
   childId: string | null;
@@ -20,6 +22,7 @@ const initialState: SubjectsState = {
   subjects: [],
   selectedSubjectId: null,
   categories: [],
+  subjectProgress: new Map(),
   loading: false,
   error: null,
   childId: null,
@@ -90,6 +93,8 @@ export const SubjectsStore = signalStore(
                     completed: progress.completed,
                     stars_count: progress.stars_count,
                     completion_percentage: progress.completion_percentage,
+                    completion_count: progress.completion_count,
+                    last_completed_at: progress.last_completed_at,
                     last_played_at: progress.last_played_at,
                   } : undefined,
                 };
@@ -111,6 +116,41 @@ export const SubjectsStore = signalStore(
         loading: false, 
         error: null 
       });
+    },
+    async loadSubjectProgress(subjectId: string): Promise<void> {
+      const childId = store.childId();
+      if (!childId) return;
+
+      try {
+        const progress = await infrastructure.loadSubjectProgress(childId, subjectId);
+        if (progress) {
+          const currentMap = new Map(store.subjectProgress());
+          currentMap.set(subjectId, progress);
+          patchState(store, { subjectProgress: currentMap });
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Erreur lors du chargement de la progression';
+        patchState(store, { error: errorMessage });
+      }
+    },
+    async loadSubjectsProgress(subjectIds: string[]): Promise<void> {
+      const childId = store.childId();
+      if (!childId || subjectIds.length === 0) return;
+
+      try {
+        const progressList = await infrastructure.loadSubjectsProgress(childId, subjectIds);
+        const currentMap = new Map(store.subjectProgress());
+        progressList.forEach(progress => {
+          currentMap.set(progress.subject_id, progress);
+        });
+        patchState(store, { subjectProgress: currentMap });
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Erreur lors du chargement des progressions';
+        patchState(store, { error: errorMessage });
+      }
+    },
+    getSubjectProgress(subjectId: string): SubjectProgress | null {
+      return store.subjectProgress().get(subjectId) || null;
     },
   }))
 );

@@ -442,3 +442,130 @@ sequenceDiagram
 **Calcul** :
 - `consecutive_count` : 5 → 0 (réinitialisé)
 - Pas de badge débloqué
+
+## Clignotement des nouvelles étoiles
+
+### Vue d'ensemble
+
+Quand un enfant gagne une nouvelle étoile (complétion à 100%), cette étoile **clignote** dans tous les endroits où elle apparaît pendant toute la session pour bien montrer où elle a été gagnée.
+
+### Service : SessionStarService
+
+**Localisation** : `projects/frontend/src/app/core/services/session-star/session-star.service.ts`
+
+**Responsabilité** : Gérer le clignotement des nouvelles étoiles avec un `setInterval` unique synchronisé.
+
+**Mécanisme** :
+- Utilise un **setInterval unique** pour toutes les étoiles (toggle toutes les 500ms)
+- Signal réactif `blinkingState` (true/false) pour synchroniser tous les composants
+- Set des clés des étoiles qui doivent clignoter : `"category:uuid"` ou `"subject:uuid"`
+- Le `setInterval` est détruit à la fin de la session (pas de persistance)
+
+**Méthodes principales** :
+
+1. `markStarAsNew(type, id)` : Marque une étoile comme nouvelle et démarre le clignotement
+2. `isStarBlinking(type, id)` : Vérifie si une étoile doit clignoter
+3. `startBlinking()` : Démarre le setInterval (automatique si pas déjà démarré)
+4. `stopBlinking()` : Arrête le clignotement et nettoie les ressources
+
+**Structure** :
+```typescript
+@Injectable({ providedIn: 'root' })
+export class SessionStarService implements OnDestroy {
+  readonly newStarsBlinking = signal<Set<string>>(new Set());
+  readonly blinkingState = signal<boolean>(true);
+  private intervalId: number | null = null;
+  private readonly BLINK_INTERVAL = 500; // 500ms
+}
+```
+
+### Animation CSS
+
+**Classes CSS** :
+- `.star-blink-active` : Étoile visible (opacity 1, scale 1.2, drop-shadow)
+- `.star-blink-inactive` : Étoile semi-transparente (opacity 0.4, scale 1)
+
+**Animation** :
+- Toggle toutes les 500ms entre `active` et `inactive`
+- Transition fluide de 0.3s pour éviter les saccades
+- Drop-shadow doré/argenté pour mettre en valeur
+
+**Styles** :
+```scss
+.star-blink-active {
+  opacity: 1;
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 8px currentColor);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.star-blink-inactive {
+  opacity: 0.4;
+  transform: scale(1);
+  filter: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+```
+
+### Utilisation dans les composants
+
+**Composant** : `StarsDisplayComponent`
+
+Chaque étoile vérifie si elle doit clignoter via `SessionStarService.isStarBlinking()` et applique les classes CSS selon `blinkingState()`.
+
+**Template** :
+```html
+<span 
+  class="star" 
+  [class.star-blink-active]="isStarBlinking(i)"
+  [class.star-blink-inactive]="isStarBlinking(i) && !isBlinkingActive()"
+  [style.color]="starColor()">
+  ★
+</span>
+```
+
+### Détection d'une nouvelle étoile
+
+**Dans `game.component.ts`** :
+
+1. **Avant complétion** : Récupérer le `stars_count` actuel
+2. **Après complétion** : Recharger la progression et comparer
+3. **Si augmentation** : 
+   - Marquer l'étoile comme nouvelle : `sessionStarService.markStarAsNew()`
+   - Définir `starEarned = true` pour l'animation dans le modal
+   - Le clignotement démarre automatiquement
+
+**Code** :
+```typescript
+// Avant completeGame()
+const previousStarsCount = categoryProgress?.stars_count ?? 0;
+
+// Après completeGame() et rechargement
+const currentStarsCount = categoryProgress?.stars_count ?? 0;
+
+if (currentStarsCount > previousStarsCount) {
+  // Nouvelle étoile gagnée
+  this.sessionStarService.markStarAsNew('category', categoryId);
+  this.starEarned.set(true);
+}
+```
+
+### Nettoyage
+
+**Dans `AppComponent.ngOnDestroy()`** :
+
+```typescript
+ngOnDestroy(): void {
+  this.sessionStarService.stopBlinking();
+}
+```
+
+Le `setInterval` est détruit et le Set est vidé. Pas de persistance entre sessions.
+
+### Avantages
+
+- **Simple** : Un seul setInterval pour toutes les étoiles
+- **Performant** : Pas de localStorage, pas de timestamp
+- **Réactif** : Tous les composants se mettent à jour via signals
+- **Synchronisé** : Toutes les nouvelles étoiles clignotent en même temps
+- **Propre** : Nettoyage automatique à la fin de session

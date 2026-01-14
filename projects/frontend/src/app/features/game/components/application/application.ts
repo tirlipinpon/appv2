@@ -213,6 +213,32 @@ export class GameApplication {
       if (isSuccess) {
         await this.collection.checkAndUnlockCollectibles(child.child_id, game.subject_category_id);
       }
+    } else if (game.subject_id) {
+      // Mettre à jour la progression de la matière principale
+      try {
+        const completionPercentage = await this.progression.calculateSubjectCompletionPercentage(
+          child.child_id,
+          game.subject_id
+        );
+
+        // La matière est complétée si tous les jeux sont résolus (100%)
+        const subjectCompleted = completionPercentage === 100;
+
+        await this.progression.updateSubjectProgress(
+          child.child_id,
+          game.subject_id,
+          {
+            completionPercentage: completionPercentage,
+          }
+        );
+
+        // Attendre un peu pour que le trigger s'exécute
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await this.checkAndNotifyBadges(child.child_id, savedAttempt.id);
+      } catch (error) {
+        // Ne pas bloquer l'affichage du modal si la mise à jour de la progression échoue
+        console.error('Erreur lors de la mise à jour de la progression de la matière:', error);
+      }
     }
 
     // Créer un checkpoint

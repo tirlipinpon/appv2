@@ -1,10 +1,10 @@
-import { Component, inject, OnInit, effect, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, inject, OnInit, OnDestroy, effect, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Router, RouterLink, NavigationEnd } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { SubjectsApplication } from './components/application/application';
 import { SubjectsInfrastructure } from './components/infrastructure/infrastructure';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
-import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
-import { StarRatingComponent } from '../../shared/components/star-rating/star-rating.component';
+import { StarsDisplayComponent } from '../../shared/components/stars-display/stars-display.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { GamesStatsDisplayComponent } from '@shared/components/games-stats-display/games-stats-display.component';
 import { GamesCounterComponent } from '@shared/components/games-counter/games-counter.component';
@@ -12,6 +12,7 @@ import { ProgressBadgeComponent } from '@shared/components/progress-badge/progre
 import { GamesStatsService } from '@shared/services/games-stats/games-stats.service';
 import { GameTypeStyleService } from '@shared/services/game-type-style/game-type-style.service';
 import { Game } from '../../core/types/game.types';
+import { SubjectCategoryWithProgress } from './types/subject.types';
 import {
   GAME_TYPE_QCM,
   GAME_TYPE_MEMORY,
@@ -31,8 +32,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
-    ProgressBarComponent,
-    StarRatingComponent,
+    StarsDisplayComponent,
     BreadcrumbComponent,
     GamesStatsDisplayComponent,
     GamesCounterComponent,
@@ -76,6 +76,15 @@ import {
             [remaining]="getRemainingGamesForSubject(subject.id)?.remaining ?? null"
             [total]="getRemainingGamesForSubject(subject.id)?.total ?? null">
           </app-games-counter>
+              <app-stars-display 
+                [count]="getSubjectTotalStars(subject.id)"
+                [type]="'subject'"
+                [entityId]="subject.id"
+                color="silver"
+                orientation="vertical"
+                position="absolute"
+                alignment="right">
+              </app-stars-display>
             </div>
           }
         </div>
@@ -110,26 +119,15 @@ import {
                     <app-games-stats-display 
                       [categoryId]="category.id" 
                       [childId]="getCurrentChildId()" />
-                    @if (category.progress) {
-                      <div class="category-progress">
-                        <app-progress-bar
-                          [value]="category.progress.completion_percentage"
-                          [max]="100"
-                          [label]="'Progression'"
-                          variant="primary">
-                        </app-progress-bar>
-                        <app-star-rating
-                          [rating]="category.progress.stars_count"
-                          [maxStars]="3"
-                          [showText]="true">
-                        </app-star-rating>
-                        @if (category.progress.completed) {
-                          <div class="completed-badge">
-                            ✓ Terminé
-                          </div>
-                        }
-                      </div>
-                    }
+                    <app-stars-display 
+                      [count]="getCategoryStars(category.id)"
+                      [type]="'category'"
+                      [entityId]="category.id"
+                      color="gold"
+                      orientation="vertical"
+                      position="absolute"
+                      alignment="right">
+                    </app-stars-display>
                   </div>
                 }
               </div>
@@ -272,6 +270,7 @@ import {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       cursor: pointer;
       transition: all 0.2s ease;
+      position: relative;
     }
 
     .subject-card:hover {
@@ -331,6 +330,7 @@ import {
       text-decoration: none;
       color: inherit;
       display: block;
+      position: relative;
     }
 
     .category-card:hover {
@@ -454,13 +454,14 @@ import {
     }
   `]
 })
-export class SubjectsComponent implements OnInit {
+export class SubjectsComponent implements OnInit, OnDestroy {
   protected readonly application = inject(SubjectsApplication);
   readonly authService = inject(ChildAuthService);
   private readonly infrastructure = inject(SubjectsInfrastructure);
   private readonly router = inject(Router);
   private readonly gamesStatsService = inject(GamesStatsService);
   private readonly gameTypeStyleService = inject(GameTypeStyleService);
+  private routerSubscription?: Subscription;
 
   selectedSubjectId = signal<string | null>(null);
   selectedCategoryId = signal<string | null>(null);
@@ -470,7 +471,7 @@ export class SubjectsComponent implements OnInit {
   loadingGames = signal<boolean>(false);
 
   // Signal pour stocker les catégories par matière (pour le filtrage)
-  categoriesBySubject = signal<Map<string, any[]>>(new Map());
+  categoriesBySubject = signal<Map<string, SubjectCategoryWithProgress[]>>(new Map());
 
   // Signaux pour stocker les jeux par catégorie et par matière (pour calculer les restants)
   gamesByCategory = signal<Map<string, Game[]>>(new Map());
@@ -768,6 +769,61 @@ export class SubjectsComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     await this.application.initialize();
     
+    // Charger les progressions de toutes les matières
+    await this.application.loadAllSubjectsProgress();
+    
+    // Charger les progressions de toutes les catégories
+    await this.application.loadAllCategoriesProgress();
+    
+    // Écouter les événements de navigation pour recharger la progression quand on revient sur /subjects
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe(async (event: NavigationEnd) => {
+        // Si on navigue vers /subjects, recharger la progression
+        if (event.urlAfterRedirects.startsWith('/subjects')) {
+          await this.application.loadAllSubjectsProgress();
+          await this.application.loadAllCategoriesProgress();
+          
+          // Recharger les progressions des catégories dans categoriesBySubject
+          const child = this.authService.getCurrentChild();
+          if (child) {
+            const categoriesMap = new Map(this.categoriesBySubject());
+            for (const [subjectId, categories] of categoriesMap.entries()) {
+              if (categories.length > 0) {
+                const categoryIds = categories.map((cat: { id: string }) => cat.id);
+                const progressList = await this.infrastructure.loadChildProgress(child.child_id, categoryIds);
+                const updatedCategories: SubjectCategoryWithProgress[] = categories.map(cat => {
+                  const progress = progressList.find(p => p.subject_category_id === cat.id);
+                  return {
+                    ...cat,
+                    progress: progress ? {
+                      completed: progress.completed,
+                      stars_count: progress.stars_count,
+                      completion_percentage: progress.completion_percentage,
+                      completion_count: progress.completion_count,
+                      last_completed_at: progress.last_completed_at,
+                      last_played_at: progress.last_played_at,
+                    } : cat.progress,
+                  } as SubjectCategoryWithProgress;
+                });
+                categoriesMap.set(subjectId, updatedCategories);
+              }
+            }
+            this.categoriesBySubject.set(categoriesMap);
+          }
+          
+          // Recharger aussi la progression des catégories si une matière est sélectionnée
+          const subjectId = this.selectedSubjectId();
+          if (subjectId) {
+            await this.application.selectSubject(subjectId);
+          } else {
+            // Si aucune matière n'est sélectionnée, recharger les progressions de toutes les matières
+            // pour s'assurer que les étoiles s'affichent correctement dans les cartes
+            await this.application.loadAllSubjectsProgress();
+          }
+        }
+      });
+    
     // Vérifier le state du router pour la navigation automatique
     const state = history.state as { subjectId?: string; categoryId?: string } | null;
     
@@ -784,6 +840,12 @@ export class SubjectsComponent implements OnInit {
         // Nettoyer le state après utilisation
         history.replaceState({}, '');
       }
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
     }
   }
 
@@ -844,8 +906,30 @@ export class SubjectsComponent implements OnInit {
       subjectIds.map(async (subjectId: string) => {
         try {
           const categories = await this.infrastructure.loadSubjectCategories(subjectId);
+          
+          // Charger les progressions des catégories
+          let categoriesWithProgress: SubjectCategoryWithProgress[] = categories.map(cat => ({ ...cat, progress: undefined }));
+          if (categories.length > 0) {
+            const categoryIds = categories.map((cat: { id: string }) => cat.id);
+            const progressList = await this.infrastructure.loadChildProgress(childId, categoryIds);
+            categoriesWithProgress = categories.map(cat => {
+              const progress = progressList.find(p => p.subject_category_id === cat.id);
+              return {
+                ...cat,
+                progress: progress ? {
+                  completed: progress.completed,
+                  stars_count: progress.stars_count,
+                  completion_percentage: progress.completion_percentage,
+                  completion_count: progress.completion_count,
+                  last_completed_at: progress.last_completed_at,
+                  last_played_at: progress.last_played_at,
+                } : undefined,
+              } as SubjectCategoryWithProgress;
+            });
+          }
+          
           const currentMap = new Map(this.categoriesBySubject());
-          currentMap.set(subjectId, categories);
+          currentMap.set(subjectId, categoriesWithProgress);
           this.categoriesBySubject.set(currentMap);
           
           // Charger les stats pour ces catégories
@@ -1198,5 +1282,77 @@ export class SubjectsComponent implements OnInit {
     }
 
     return { remaining: remainingGames, total: totalGames };
+  }
+
+  /**
+   * Retourne le nombre d'étoiles d'une catégorie
+   * Retourne 1 si la catégorie est complétée, 0 sinon (pas le nombre total de complétions)
+   */
+  getCategoryStars(categoryId: string): number {
+    // Chercher dans les catégories de la matière sélectionnée
+    const category = this.categories().find(cat => cat.id === categoryId);
+    if (category?.progress) {
+      // Retourner 1 si complétée, 0 sinon
+      const isCompleted = category.progress.completed || (category.progress.completion_percentage ?? 0) >= 100;
+      return isCompleted ? 1 : 0;
+    }
+    
+    // Si pas trouvé, chercher dans toutes les catégories chargées (categoriesBySubject)
+    const categoriesMap = this.categoriesBySubject();
+    for (const categories of categoriesMap.values()) {
+      const foundCategory = categories.find(cat => cat.id === categoryId);
+      if (foundCategory?.progress) {
+        // Retourner 1 si complétée, 0 sinon
+        const isCompleted = foundCategory.progress.completed || (foundCategory.progress.completion_percentage ?? 0) >= 100;
+        return isCompleted ? 1 : 0;
+      }
+    }
+    
+    return 0;
+  }
+
+  /**
+   * Calcule le total d'étoiles pour une matière (matière + sous-matières)
+   * Retourne 1 étoile par sous-matière complétée + 1 étoile si la matière elle-même est complétée
+   */
+  getSubjectTotalStars(subjectId: string): number {
+    let totalStars = 0;
+    
+    // 1. Étoile de la matière principale si elle est complétée
+    const subjectProgress = this.application.getSubjectProgress(subjectId);
+    if (subjectProgress) {
+      const isSubjectCompleted = subjectProgress.completed || (subjectProgress.completion_percentage ?? 0) >= 100;
+      if (isSubjectCompleted) {
+        totalStars += 1;
+      }
+    }
+    
+    // 2. Ajouter 1 étoile par sous-matière complétée
+    // Utiliser categoriesBySubject pour récupérer les catégories de cette matière spécifique
+    const categoriesForSubject = this.categoriesBySubject().get(subjectId) || [];
+    categoriesForSubject.forEach(category => {
+      if (category.progress) {
+        const isCategoryCompleted = category.progress.completed || (category.progress.completion_percentage ?? 0) >= 100;
+        if (isCategoryCompleted) {
+          totalStars += 1;
+        }
+      }
+    });
+    
+    // Si pas trouvé dans categoriesBySubject, essayer this.categories() (pour la matière sélectionnée)
+    if (categoriesForSubject.length === 0) {
+      const categories = this.categories();
+      // Vérifier que les catégories appartiennent bien à cette matière
+      categories.forEach(category => {
+        if (category.subject_id === subjectId && category.progress) {
+          const isCategoryCompleted = category.progress.completed || (category.progress.completion_percentage ?? 0) >= 100;
+          if (isCategoryCompleted) {
+            totalStars += 1;
+          }
+        }
+      });
+    }
+    
+    return totalStars;
   }
 }

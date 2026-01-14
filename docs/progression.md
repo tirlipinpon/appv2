@@ -2,10 +2,11 @@
 
 ## Vue d'ensemble
 
-La progression est suivie par **sous-catégorie** (subject category) pour chaque enfant. Elle comprend :
-- **Étoiles** (0-3) : Selon les performances
+La progression est suivie par **sous-catégorie** (subject category) et **matière principale** (subject) pour chaque enfant. Elle comprend :
+- **Étoiles multiples** : Une étoile par complétion à 100% (pas de limite max)
 - **Pourcentage de complétion** (0-100%) : Basé sur les jeux réussis
 - **Statut de complétion** : `completed=true` si complétée
+- **Compteur de complétions** : `completion_count` compte le nombre de fois qu'une matière/catégorie a été complétée
 
 ## Table de progression
 
@@ -18,15 +19,21 @@ interface SubjectCategoryProgress {
   child_id: string;
   subject_category_id: string;
   completed: boolean;              // Catégorie complétée
-  stars_count: number;             // Nombre d'étoiles (0-3)
+  stars_count: number;             // Nombre total d'étoiles (égal à completion_count)
   completion_percentage: number;   // Pourcentage de complétion (0-100)
+  completion_count: number;        // Nombre de fois complétée à 100%
+  last_completed_at?: string;      // Date de la dernière complétion à 100%
   last_played_at?: string;         // Dernière date de jeu
   created_at: string;
   updated_at: string;
 }
 ```
 
-**Contrainte** : `stars_count` entre 0 et 3, `completion_percentage` entre 0 et 100.
+**Contraintes** : 
+- `stars_count >= 0` (plus de limite max, une étoile par complétion)
+- `completion_count >= 0`
+- `completion_percentage` entre 0 et 100
+- `stars_count = completion_count` (une étoile par complétion)
 
 ## Calcul du pourcentage de complétion
 
@@ -90,38 +97,131 @@ async calculateCategoryCompletionPercentage(
 }
 ```
 
-## Calcul des étoiles
+## Système d'étoiles multiples
 
-### Système d'étoiles (0-3)
+### Vue d'ensemble
 
-Les étoiles sont calculées selon le **score** et le **taux de réussite** :
+Le système d'étoiles a évolué pour permettre **plusieurs étoiles** par matière/sous-matière :
+- **Une étoile par complétion** : Chaque fois qu'une matière/sous-matière atteint 100%, une nouvelle étoile est ajoutée
+- **Pas de limite** : Le nombre d'étoiles peut dépasser 3 (contrairement à l'ancien système)
+- **Réinitialisation** : Quand de nouveaux jeux sont ajoutés, l'enfant peut gagner une nouvelle étoile en complétant à nouveau
 
+### Calcul des étoiles
+
+**Formule** : `stars_count = completion_count`
+
+- **`completion_count`** : Nombre de fois qu'une matière/sous-matière a été complétée à 100%
+- **`stars_count`** : Nombre total d'étoiles (égal à `completion_count`)
+- **Incrémentation** : Quand `completion_percentage` passe de < 100% à 100%, `completion_count` est incrémenté
+
+### Détection d'une nouvelle complétion
+
+Une nouvelle complétion est détectée quand :
+1. `completion_percentage` passe de < 100% à 100%
+2. Le nombre total de jeux a changé (nouveaux jeux ajoutés) OU
+3. C'est la première fois que la matière/catégorie atteint 100%
+
+**Logique** :
 ```typescript
-calculateStars(score: number, maxScore: number, successRate: number): number {
-  if (successRate === 1.0 && score === maxScore) {
-    return 3; // Parfait : 100% de réussite et score maximum
-  } else if (successRate >= 0.8) {
-    return 2; // Bien : 80%+ de réussite
-  } else if (successRate >= 0.5) {
-    return 1; // Passable : 50%+ de réussite
-  }
-  return 0; // À refaire : moins de 50% de réussite
+// Dans ProgressionService.updateProgress()
+const wasCompleted = existing.completion_percentage >= 100;
+const isNowCompleted = newCompletionPercentage >= 100;
+const isNewCompletion = !wasCompleted && isNowCompleted;
+
+if (isNewCompletion) {
+  completion_count = existing.completion_count + 1;
+  stars_count = completion_count;
+  last_completed_at = new Date();
 }
 ```
 
-**Critères** :
-- **3 étoiles** : Taux de réussite = 100% ET score = score maximum
-- **2 étoiles** : Taux de réussite ≥ 80%
-- **1 étoile** : Taux de réussite ≥ 50%
-- **0 étoile** : Taux de réussite < 50%
+### Table de progression des matières
 
-### Calcul du taux de réussite
+#### `frontend_subject_progress`
 
-Le taux de réussite peut être calculé de différentes manières selon le contexte :
+Nouvelle table pour suivre la progression des **matières principales** (sans sous-catégories).
 
-1. **Par tentative** : `(réponses correctes / total réponses)`
-2. **Par jeu** : `(meilleur score / 100)`
-3. **Par catégorie** : `(jeux réussis / total jeux)`
+**Structure** :
+```typescript
+interface SubjectProgress {
+  id: string;
+  child_id: string;
+  subject_id: string;
+  completion_count: number;        // Nombre de fois complétée
+  stars_count: number;              // Nombre total d'étoiles (égal à completion_count)
+  completion_percentage: number;    // Pourcentage de complétion (0-100)
+  last_completed_at?: string;       // Date de la dernière complétion
+  last_played_at?: string;          // Dernière date de jeu
+  created_at: string;
+  updated_at: string;
+}
+```
+
+**Contraintes** :
+- `completion_count >= 0`
+- `stars_count >= 0`
+- `completion_percentage` entre 0 et 100
+- UNIQUE `(child_id, subject_id)`
+
+### Affichage des étoiles
+
+**Composant** : `StarsDisplayComponent` (composant partagé)
+
+**Localisation** : `projects/frontend/src/app/shared/components/stars-display/stars-display.component.ts`
+
+**Fonctionnalités** :
+- Affichage vertical des étoiles sur le côté droit des cartes
+- Couleurs différentes : Or (#FFD700) pour sous-matières, Argent (#C0C0C0) pour matières
+- Clignotement des nouvelles étoiles gagnées pendant la session
+
+**Utilisation** :
+```html
+<!-- Pour les sous-matières -->
+<app-stars-display 
+  [count]="getCategoryStars(category.id)"
+  [type]="'category'"
+  [entityId]="category.id"
+  color="gold"
+  orientation="vertical"
+  position="absolute"
+  alignment="right">
+</app-stars-display>
+
+<!-- Pour les matières (somme matière + sous-matières) -->
+<app-stars-display 
+  [count]="getSubjectTotalStars(subject.id)"
+  [type]="'subject'"
+  [entityId]="subject.id"
+  color="silver"
+  orientation="vertical"
+  position="absolute"
+  alignment="right">
+</app-stars-display>
+```
+
+### Calcul du total d'étoiles pour une matière
+
+Pour une matière principale, le total d'étoiles = **étoiles de la matière + somme des étoiles de toutes ses sous-matières**.
+
+```typescript
+calculateSubjectTotalStars(subjectId: string): number {
+  // Étoiles de la matière principale
+  let totalStars = subjectProgress?.stars_count ?? 0;
+  
+  // Ajouter les étoiles des sous-matières
+  categories.forEach(category => {
+    if (category.progress) {
+      totalStars += category.progress.stars_count ?? 0;
+    }
+  });
+  
+  return totalStars;
+}
+```
+
+### Ancien système d'étoiles (déprécié)
+
+L'ancien système calculait les étoiles selon le score et le taux de réussite (0-3 étoiles). Ce système est remplacé par le système d'étoiles multiples où une étoile = une complétion à 100%.
 
 ## Mise à jour de la progression
 
@@ -428,6 +528,27 @@ EXECUTE FUNCTION update_progress_after_attempt();
 - Jeux réussis : 3
 - Total jeux : 3
 - Pourcentage : `(3 / 3) × 100 = 100%`
-- Étoiles : 3 (parfait)
+- Étoiles : 1 (première complétion)
+- `completion_count` : 1
 - Complétion : `completed = true` OU `completion_percentage >= 100`
 - Déblocage : Collectibles et badges associés
+
+### Exemple 3 : Nouvelle complétion après ajout de jeux
+
+**Scénario** : L'enfant a complété une sous-matière (1 étoile). Le professeur ajoute 5 nouveaux jeux.
+
+**État initial** :
+- `completion_count` : 1
+- `stars_count` : 1
+- `completion_percentage` : 100%
+
+**Après ajout de 5 nouveaux jeux** :
+- `completion_percentage` : `(3 / 8) × 100 = 37.5%` (3 jeux complétés sur 8)
+- `completion_count` : 1 (conservé, ne diminue jamais)
+- `stars_count` : 1 (conservé)
+
+**Après complétion des 5 nouveaux jeux** :
+- `completion_percentage` : `(8 / 8) × 100 = 100%`
+- `completion_count` : 2 (incrémenté car nouvelle complétion)
+- `stars_count` : 2 (égal à completion_count)
+- **Nouvelle étoile gagnée** : Animation dans le modal + clignotement dans les cartes

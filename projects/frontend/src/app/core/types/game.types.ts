@@ -43,6 +43,22 @@ export interface SubjectCategoryProgress {
   completed: boolean;
   stars_count: number;
   completion_percentage: number;
+  completion_count: number;
+  last_completed_at?: string;
+  last_played_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubjectProgress {
+  id: string;
+  child_id: string;
+  subject_id: string;
+  completion_count: number;
+  stars_count: number;
+  completion_percentage: number;
+  completed: boolean;
+  last_completed_at?: string;
   last_played_at?: string;
   created_at: string;
   updated_at: string;

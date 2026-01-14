@@ -53,6 +53,20 @@ export interface CompletionModalData {
             </div>
           }
 
+          <!-- Animation d'étoile (apparaît puis disparaît) -->
+          @if (starEarned()) {
+            <div class="star-animation-container">
+              <div class="star-earned-message">
+                ⭐ Tu as remporté une étoile {{ starType() === 'category' ? 'dans cette sous-matière' : 'dans cette matière' }} !
+              </div>
+              <div 
+                class="star-icon" 
+                [style.color]="starColor() === 'gold' ? '#FFD700' : '#C0C0C0'">
+                ★
+              </div>
+            </div>
+          }
+
           <!-- Actions -->
           @if (actions() && actions()!.length > 0) {
             <div class="modal-actions">
@@ -171,6 +185,62 @@ export interface CompletionModalData {
       flex-wrap: wrap;
     }
 
+    .star-animation-container {
+      margin: 2rem 0;
+      text-align: center;
+      animation: starPulse 2s ease-in-out;
+    }
+
+    .star-earned-message {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--theme-primary-color, #4CAF50);
+      margin-bottom: 1rem;
+    }
+
+    .star-icon {
+      font-size: 4rem;
+      animation: starSpin 1s ease-in-out, starFadeOut 2s ease-in-out 1s forwards;
+      display: inline-block;
+      line-height: 1;
+    }
+
+    @keyframes starPulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    @keyframes starSpin {
+      0% {
+        transform: rotate(0deg) scale(0);
+        opacity: 0;
+      }
+      50% {
+        transform: rotate(180deg) scale(1.2);
+        opacity: 1;
+      }
+      100% {
+        transform: rotate(360deg) scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes starFadeOut {
+      0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.5) translateY(-20px);
+      }
+    }
+
     @media (max-width: 480px) {
       .modal-content {
         padding: 2rem 1.5rem;
@@ -191,6 +261,14 @@ export interface CompletionModalData {
       .modal-actions {
         flex-direction: column;
       }
+
+      .star-icon {
+        font-size: 3rem;
+      }
+
+      .star-earned-message {
+        font-size: 1.125rem;
+      }
     }
   `]
 })
@@ -203,6 +281,11 @@ export class CompletionModalComponent {
   additionalInfo = input<string | null>(null);
   actions = input<CompletionModalAction[] | null>(null);
   closeOnOverlayClick = input<boolean>(true);
+  
+  // Nouveaux inputs pour l'animation d'étoile
+  starEarned = input<boolean>(false);
+  starColor = input<'gold' | 'silver'>('gold');
+  starType = input<'category' | 'subject'>('category');
 
   overlayClick = output<void>();
 

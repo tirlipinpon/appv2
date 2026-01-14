@@ -3,8 +3,9 @@ import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { SupabaseService } from '../../../../core/services/supabase/supabase.service';
 import { CacheService } from '../../../../core/services/cache/cache.service';
+import { ProgressionService } from '../../../../core/services/progression/progression.service';
 import { Subject, SubjectCategory } from '../../types/subject.types';
-import { SubjectCategoryProgress, Game } from '../../../../core/types/game.types';
+import { SubjectCategoryProgress, SubjectProgress, Game } from '../../../../core/types/game.types';
 import { normalizeGame } from '../../../../shared/utils/game-normalization.util';
 import { shuffleArray } from '../../../../shared/utils/array.util';
 import type { PostgrestError } from '@supabase/supabase-js';
@@ -15,6 +16,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 export class SubjectsInfrastructure {
   private readonly supabase = inject(SupabaseService);
   private readonly cache = inject(CacheService);
+  private readonly progressionService = inject(ProgressionService);
 
   async loadSubjects(childId: string | null = null): Promise<Subject[]> {
     if (!childId) {
@@ -311,6 +313,57 @@ export class SubjectsInfrastructure {
         return { stats, total, error: null };
       })
     );
+  }
+
+  /**
+   * Charge la progression d'une matière principale pour un enfant
+   */
+  async loadSubjectProgress(childId: string, subjectId: string): Promise<SubjectProgress | null> {
+    const { data, error } = await this.supabase.client
+      .from('frontend_subject_progress')
+      .select('*')
+      .eq('child_id', childId)
+      .eq('subject_id', subjectId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Erreur lors de la récupération de la progression de la matière: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  /**
+   * Charge les progressions de plusieurs matières pour un enfant
+   */
+  async loadSubjectsProgress(childId: string, subjectIds: string[]): Promise<SubjectProgress[]> {
+    if (subjectIds.length === 0) return [];
+
+    const { data, error } = await this.supabase.client
+      .from('frontend_subject_progress')
+      .select('*')
+      .eq('child_id', childId)
+      .in('subject_id', subjectIds);
+
+    if (error) {
+      throw new Error(`Erreur lors de la récupération des progressions des matières: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Met à jour la progression d'une matière principale
+   */
+  async updateSubjectProgress(
+    childId: string,
+    subjectId: string,
+    updates: {
+      completionPercentage?: number;
+      completed?: boolean;
+    }
+  ): Promise<SubjectProgress> {
+    return this.progressionService.updateSubjectProgress(childId, subjectId, updates);
   }
 }
 

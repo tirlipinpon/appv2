@@ -795,8 +795,9 @@ Cette documentation décrit la structure complète de la base de données de l'a
 
 - Suit la progression de l'enfant par sous-catégorie (étoiles, pourcentage, complétion)
 - Calcule automatiquement le pourcentage de complétion basé sur les jeux réussis (score = 100%)
-- Gère le système d'étoiles (0-3 étoiles) selon les performances
+- Gère le système d'étoiles multiples (une étoile par complétion à 100%, pas de limite max)
 - Détermine si une sous-catégorie est complétée (100% ou `completed=true`)
+- Compte le nombre de fois qu'une sous-catégorie a été complétée (`completion_count`)
 
 **Utilisation :**
 
@@ -812,24 +813,93 @@ Cette documentation décrit la structure complète de la base de données de l'a
 
 **Cas d'usage spécifiques :**
 
-- Les étoiles sont calculées selon le score et le taux de réussite (3 étoiles = parfait, 2 = bien, 1 = passable, 0 = à refaire)
+- Les étoiles sont calculées selon le nombre de complétions (`stars_count = completion_count`)
+- Une nouvelle étoile est ajoutée chaque fois que la sous-catégorie atteint 100% (même si de nouveaux jeux sont ajoutés)
 - Le pourcentage de complétion est mis à jour automatiquement après chaque tentative
 - Une sous-catégorie est considérée complétée si `completed=true` OU `completion_percentage >= 100`
 - Utilisée pour débloquer les collectibles liés à la sous-catégorie
+- Le `completion_count` ne diminue jamais, permettant de suivre l'historique des complétions
 
-| Colonne                 | Type          | Contraintes                               | Description               |
-| ----------------------- | ------------- | ----------------------------------------- | ------------------------- |
-| `id`                    | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique        |
-| `child_id`              | `uuid`        | NOT NULL, FK → `children.id`              | Enfant                    |
-| `subject_category_id`   | `uuid`        | NOT NULL, FK → `subject_categories.id`    | Catégorie                 |
-| `completed`             | `boolean`     | DEFAULT: `false`                          | Catégorie complétée       |
-| `stars_count`           | `integer`     | DEFAULT: `0`, CHECK: `0-3`                | Nombre d'étoiles (0-3)    |
-| `completion_percentage` | `integer`     | DEFAULT: `0`, CHECK: `0-100`              | Pourcentage de complétion |
-| `last_played_at`        | `timestamptz` | NULLABLE                                  | Dernière date de jeu      |
-| `created_at`            | `timestamptz` | NULLABLE, DEFAULT: `now()`                | Date de création          |
-| `updated_at`            | `timestamptz` | NULLABLE, DEFAULT: `now()`                | Date de mise à jour       |
+| Colonne                 | Type          | Contraintes                               | Description                                    |
+| ----------------------- | ------------- | ----------------------------------------- | ---------------------------------------------- |
+| `id`                    | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique                             |
+| `child_id`              | `uuid`        | NOT NULL, FK → `children.id`              | Enfant                                         |
+| `subject_category_id`   | `uuid`        | NOT NULL, FK → `subject_categories.id`    | Catégorie                                      |
+| `completed`             | `boolean`     | DEFAULT: `false`                          | Catégorie complétée                             |
+| `stars_count`           | `integer`     | DEFAULT: `0`, CHECK: `>= 0`                | Nombre total d'étoiles (égal à completion_count) |
+| `completion_percentage` | `integer`     | DEFAULT: `0`, CHECK: `0-100`              | Pourcentage de complétion                       |
+| `completion_count`      | `integer`     | DEFAULT: `0`, CHECK: `>= 0`                | Nombre de fois complétée à 100%                |
+| `last_completed_at`     | `timestamptz` | NULLABLE                                  | Date de la dernière complétion à 100%          |
+| `last_played_at`        | `timestamptz` | NULLABLE                                  | Dernière date de jeu                           |
+| `created_at`            | `timestamptz` | NULLABLE, DEFAULT: `now()`                | Date de création                                |
+| `updated_at`            | `timestamptz` | NULLABLE, DEFAULT: `now()`                | Date de mise à jour                            |
 
 **RLS:** Activé
+
+---
+
+### `frontend_subject_progress`
+
+**Description :** Table de progression des enfants par matière principale. Suit la progression de chaque enfant pour chaque matière avec les étoiles obtenues, le pourcentage de complétion et le statut de complétion. Similaire à `frontend_subject_category_progress` mais pour les matières principales (sans sous-catégories).
+
+**Rôle métier :**
+
+- Suit la progression de l'enfant par matière principale (étoiles, pourcentage, complétion)
+- Calcule automatiquement le pourcentage de complétion basé sur les jeux réussis (score = 100%)
+- Gère le système d'étoiles multiples (une étoile par complétion à 100%, pas de limite max)
+- Détermine si une matière est complétée (100% ou `completed=true`)
+- Compte le nombre de fois qu'une matière a été complétée (`completion_count`)
+
+**Utilisation :**
+
+- **Frontend :** Utilisée par `ProgressionService` pour mettre à jour la progression après chaque jeu
+- **Affichage :** Utilisée pour afficher les étoiles et le pourcentage de complétion dans l'interface
+- **Calcul total :** Le total d'étoiles d'une matière = étoiles de la matière + somme des étoiles de ses sous-matières
+- **Calcul :** Le pourcentage est calculé comme : (jeux réussis / total jeux) × 100
+
+**Relations clés :**
+
+- N:1 avec `children` (via `child_id`)
+- N:1 avec `subjects` (via `subject_id`)
+
+**Cas d'usage spécifiques :**
+
+- Les étoiles sont calculées selon le nombre de complétions (`stars_count = completion_count`)
+- Une nouvelle étoile est ajoutée chaque fois que la matière atteint 100% (même si de nouveaux jeux sont ajoutés)
+- Le pourcentage de complétion est mis à jour automatiquement après chaque tentative
+- Une matière est considérée complétée si `completed=true` OU `completion_percentage >= 100`
+- Le `completion_count` ne diminue jamais, permettant de suivre l'historique des complétions
+
+| Colonne                 | Type          | Contraintes                               | Description                                    |
+| ----------------------- | ------------- | ----------------------------------------- | ---------------------------------------------- |
+| `id`                    | `uuid`        | PRIMARY KEY, DEFAULT: `gen_random_uuid()` | Identifiant unique                             |
+| `child_id`              | `uuid`        | NOT NULL, FK → `children.id`              | Enfant                                         |
+| `subject_id`            | `uuid`        | NOT NULL, FK → `subjects.id`              | Matière                                        |
+| `completion_count`      | `integer`     | DEFAULT: `0`, CHECK: `>= 0`                | Nombre de fois complétée à 100%                |
+| `stars_count`           | `integer`     | DEFAULT: `0`, CHECK: `>= 0`                | Nombre total d'étoiles (égal à completion_count) |
+| `completion_percentage` | `integer`     | DEFAULT: `0`, CHECK: `0-100`              | Pourcentage de complétion                       |
+| `last_completed_at`     | `timestamptz` | NULLABLE                                  | Date de la dernière complétion à 100%          |
+| `last_played_at`        | `timestamptz` | NULLABLE                                  | Dernière date de jeu                           |
+| `created_at`            | `timestamptz` | NULLABLE, DEFAULT: `now()`                | Date de création                                |
+| `updated_at`            | `timestamptz` | NULLABLE, DEFAULT: `now()`                | Date de mise à jour                             |
+
+**Contraintes :**
+
+- UNIQUE `(child_id, subject_id)` : Un seul enregistrement de progression par enfant et matière
+
+**Index :**
+
+- `idx_frontend_subject_progress_child_id` sur `child_id`
+- `idx_frontend_subject_progress_subject_id` sur `subject_id`
+- `idx_frontend_subject_progress_completed` sur `completion_percentage` WHERE `completion_percentage >= 100`
+
+**RLS:** Activé
+
+**Policies RLS :**
+
+- **Children can view their own progress** : SELECT pour tous (public)
+- **Children can insert their own progress** : INSERT pour tous (public)
+- **Children can update their own progress** : UPDATE pour tous (public)
 
 ---
 
@@ -1585,6 +1655,7 @@ children
   ├── child_subject_category_enrollments (1:N)
   ├── frontend_game_attempts (1:N)
   ├── frontend_subject_category_progress (1:N)
+  ├── frontend_subject_progress (1:N)
   ├── frontend_child_collectibles (1:N)
   ├── frontend_child_bonus_game_unlocks (1:N)
   ├── frontend_child_themes (1:N)
