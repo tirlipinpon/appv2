@@ -265,7 +265,6 @@ export class BonusGamesComponent implements OnInit {
 
   playGame(gameId: string): void {
     // TODO: Implémenter le lancement du mini-jeu
-    console.log('Jouer au mini-jeu:', gameId);
     alert('Fonctionnalité de jeu à venir !');
   }
 }

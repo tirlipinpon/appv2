@@ -117,8 +117,6 @@ export class ChildAuthService {
     
     // Note : Pas besoin d'appeler supabase.auth.signOut() car on utilise un JWT manuel
     // Le JWT est stocké dans sessionStorage et sera supprimé par clearSession()
-    
-    console.log('Déconnexion complète effectuée');
   }
 
   /**
@@ -225,7 +223,6 @@ export class ChildAuthService {
     
     if (now - lastActivity > INACTIVITY_TIMEOUT) {
       // Session expirée par inactivité (1h sans activité), nettoyer
-      console.log('Session expirée par inactivité (1h sans activité)');
       this.clearSession();
       return false;
     }
@@ -236,7 +233,6 @@ export class ChildAuthService {
     
     if (now - createdAt > ABSOLUTE_TIMEOUT) {
       // Session expirée par durée absolue (8h depuis création), nettoyer
-      console.log('Session expirée par durée absolue (8h depuis création)');
       this.clearSession();
       return false;
     }
@@ -498,7 +494,6 @@ export class ChildAuthService {
 
       // Si l'enfant n'existe pas ou n'est pas actif, déconnecter
       if (!data || !data.is_active) {
-        console.log('Enfant désactivé ou inexistant, déconnexion automatique');
         await this.logout();
         return false;
       }
@@ -526,8 +521,6 @@ export class ChildAuthService {
       // Valider la session avec le backend
       await this.validateSessionWithBackend();
     }, VALIDATION_INTERVAL_MS);
-
-    console.log('Validation périodique démarrée (toutes les 10 minutes)');
   }
 
   /**
@@ -537,7 +530,6 @@ export class ChildAuthService {
     if (this.validationInterval) {
       clearInterval(this.validationInterval);
       this.validationInterval = null;
-      console.log('Validation périodique arrêtée');
     }
   }
 }

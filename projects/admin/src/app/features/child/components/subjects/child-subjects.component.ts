@@ -301,7 +301,6 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
             if (availableSubjects.error) {
               console.error('Error loading available subjects:', availableSubjects.error);
             }
-            console.log('Available subjects loaded:', availableSubjects.subjects?.length, availableSubjects.subjects);
             this.availableSubjects.set(availableSubjects.subjects || []);
             
             // Charger les professeurs pour toutes les matières disponibles
@@ -314,7 +313,6 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
             if (enrollments.error) {
               console.error('Error loading enrollments:', enrollments.error);
             }
-            console.log('Enrollments loaded:', enrollments.enrollments?.length, enrollments.enrollments);
             const allEnrollments = enrollments.enrollments || [];
             this.enrollments.set(allEnrollments.map(e => ({ 
               subject_id: e.subject_id, 
@@ -360,7 +358,6 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
             if (categoryEnrollments.error) {
               console.error('Error loading category enrollments:', categoryEnrollments.error);
             }
-            console.log('Category enrollments loaded:', categoryEnrollments.enrollments?.length, categoryEnrollments.enrollments);
             this.categoryEnrollments.set(categoryEnrollments.enrollments || []);
             
             // Charger les catégories pour toutes les matières en BATCH (optimisation)
@@ -752,7 +749,6 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
     const c = this.child();
     const schoolId = c?.school_id || null;
     
-    console.log('🔍 Searching subjects for query:', trimmed, 'schoolId:', schoolId);
     this.parentSvc.searchSubjects(trimmed, schoolId).subscribe({
       next: ({ subjects, error }) => {
         if (error) {
@@ -761,12 +757,9 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
           return;
         }
         
-        console.log('📋 Search results:', subjects?.length || 0, subjects);
-        
         // Exclure celles déjà dans "Matières activées" (selectedSubjects)
         const selectedSubjectIds = new Set(this.selectedSubjects().map(s => s.id));
         const filtered = (subjects || []).filter(s => !selectedSubjectIds.has(s.id));
-        console.log('✅ Filtered search results (excluding selected):', filtered.length, filtered);
         this.searchResults.set(filtered);
       },
       error: (err) => {
@@ -783,13 +776,6 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
       return;
     }
     
-    console.log('➕ Adding searched subject:', {
-      child_id: c.id,
-      school_id: c.school_id,
-      subject_id: subjectId,
-      selected: true
-    });
-    
     this.parentSvc.upsertEnrollment({ 
       child_id: c.id, 
       school_id: c.school_id, 
@@ -803,8 +789,6 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
           this.errorSnackbar.showError(`Erreur lors de l'ajout de la matière: ${error.message || 'Erreur inconnue'}`);
           return;
         }
-        
-        console.log('✅ Subject added successfully:', enrollment);
         
         // Mettre à jour la liste locale des enrollments
         const list = this.enrollments();
@@ -968,7 +952,6 @@ export class ChildSubjectsComponent implements OnInit, OnDestroy {
         
         // Mettre à jour avec les nouveaux professeurs
         teachersBySubject.forEach((teachers, subjectId) => {
-          console.log(`[loadTeachersForSubjects] Professeurs chargés pour matière ${subjectId}:`, teachers.map(t => t.fullname));
           updatedTeachers.set(subjectId, teachers);
         });
         

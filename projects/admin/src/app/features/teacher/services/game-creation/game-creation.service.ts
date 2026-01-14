@@ -154,13 +154,6 @@ export class GameCreationService {
     // Normaliser categoryId : convertir les chaînes vides en null
     const normalizedCategoryId = categoryId && typeof categoryId === 'string' && categoryId.trim() ? categoryId.trim() : null;
 
-    console.log('🔍 GameCreationService - createGameWithImage:', {
-      categoryId,
-      normalizedCategoryId,
-      subjectId,
-      willUseCategory: !!normalizedCategoryId
-    });
-
     // Construire les données de base du jeu
     const baseGameData: GameCreate = {
       subject_id: normalizedCategoryId ? null : subjectId,

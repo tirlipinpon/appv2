@@ -123,15 +123,8 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
     const authServiceRole = this.authService.activeRole$();
     const currentRole = this.activeRole();
     
-    console.log('[Header] Synchronisation rôle actif:', { 
-      authServiceRole, 
-      currentRole,
-      areEqual: authServiceRole === currentRole 
-    });
-    
     // Mettre à jour le signal local seulement si différent
     if (authServiceRole !== currentRole) {
-      console.log('[Header] Mise à jour du rôle actif:', authServiceRole);
       this.activeRole.set(authServiceRole);
     }
   });
@@ -145,10 +138,7 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
     // Si aucun rôle actif défini mais que l'utilisateur a des rôles, utiliser le premier rôle disponible
     const effectiveRole = role || (p?.roles && p.roles.length > 0 ? p.roles[0] : null);
     
-    console.log('[Header] Effect déclenché:', { isAuth, role, effectiveRole, roles: p?.roles });
-    
     if (!isAuth) {
-      console.log('[Header] Utilisateur non authentifié');
       return;
     }
 
@@ -170,7 +160,6 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
       // Si aucun rôle actif défini mais que l'utilisateur a des rôles, utiliser le premier rôle disponible
       if (!role && profile?.roles && profile.roles.length > 0) {
         role = profile.roles[0];
-        console.log('[Header] Aucun rôle actif défini, utilisation du premier rôle disponible:', role);
       }
       
       this.activeRole.set(role);
@@ -206,17 +195,9 @@ export class AppHeaderComponent implements OnInit, OnDestroy {
         // Si aucun rôle actif défini mais que l'utilisateur a des rôles, utiliser le premier rôle disponible
         if (!authServiceRole && !currentRole && profile?.roles && profile.roles.length > 0) {
           const firstRole = profile.roles[0];
-          console.log('[Header] Aucun rôle actif défini dans la subscription, utilisation du premier rôle disponible:', firstRole);
           // L'effect se chargera de synchroniser, mais on peut aussi le définir directement dans AuthService
           this.authService.setActiveRole(firstRole);
         }
-        
-        console.log('[Header] Profil changé:', { 
-          hasProfile: !!profile, 
-          currentRole,
-          authServiceRole,
-          roles: profile?.roles 
-        });
       } else {
         // Si l'utilisateur n'est pas connecté, s'assurer que le profil est null
         this.profile.set(null);

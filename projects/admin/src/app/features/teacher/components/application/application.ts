@@ -42,7 +42,6 @@ export class Application {
     this.assignmentStore.loadSubjects();
   }
   loadSubjectsForSchoolLevel(schoolId: string, schoolLevel: string): void {
-    console.log('[Application] loadSubjectsForSchoolLevel', { schoolId, schoolLevel });
     this.assignmentStore.loadSubjectsForSchoolLevel({ schoolId, schoolLevel });
   }
   createSubject(subjectData: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): void {

@@ -53,7 +53,6 @@ export class DailyActivityService {
     childId: string
   ): Promise<DailyActivityStatus & { newLevelsUnlocked: number[] }> {
     const today = new Date().toISOString().split('T')[0];
-    console.log('[DailyActivityService] Recalcul pour childId:', childId, 'date:', today);
     
     // D'abord, forcer le recalcul en appelant calculate_and_unlock_daily_activity_badge
     const { data: calcData, error: calcError } = await this.supabase.client.rpc(
@@ -71,8 +70,6 @@ export class DailyActivityService {
       );
     }
 
-    console.log('[DailyActivityService] Résultat du calcul:', calcData);
-
     // La fonction RPC retourne une TABLE, donc calcData est un tableau
     // On prend le premier élément (il ne devrait y en avoir qu'un)
     const calcResult = Array.isArray(calcData) && calcData.length > 0 
@@ -80,7 +77,6 @@ export class DailyActivityService {
       : null;
     
     const newLevelsUnlocked = calcResult?.levels_unlocked || [];
-    console.log('[DailyActivityService] Nouveaux niveaux débloqués:', newLevelsUnlocked);
 
     // Ensuite, récupérer l'état complet avec get_daily_activity_status
     const { data: statusData, error: statusError } = await this.supabase.client.rpc(
@@ -98,10 +94,7 @@ export class DailyActivityService {
       );
     }
 
-    console.log('[DailyActivityService] Données du statut (brut):', JSON.stringify(statusData, null, 2));
     const status = this.transformRPCToStatus(statusData as DailyActivityStatusRPC);
-    console.log('[DailyActivityService] Statut transformé:', status);
-    console.log('[DailyActivityService] totalActiveMinutes:', status.totalActiveMinutes, 'type:', typeof status.totalActiveMinutes);
 
     return {
       ...status,
@@ -130,9 +123,6 @@ export class DailyActivityService {
   private transformRPCToStatus(
     rpcData: DailyActivityStatusRPC
   ): DailyActivityStatus {
-    console.log('[DailyActivityService] transformRPCToStatus - rpcData:', rpcData);
-    console.log('[DailyActivityService] transformRPCToStatus - total_active_minutes:', rpcData?.total_active_minutes, 'type:', typeof rpcData?.total_active_minutes);
-    
     const result = {
       activityDate: new Date(rpcData.activity_date),
       totalActiveMinutes: rpcData.total_active_minutes,
@@ -150,8 +140,6 @@ export class DailyActivityService {
       progressPercentage: rpcData.progress_percentage,
       status: rpcData.status as 'active' | 'in_progress' | 'not_started',
     };
-    
-    console.log('[DailyActivityService] transformRPCToStatus - result:', result);
     
     return result;
   }

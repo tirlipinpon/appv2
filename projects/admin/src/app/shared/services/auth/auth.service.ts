@@ -110,9 +110,6 @@ export class AuthService {
   }
 
   async signUp(email: string, password: string, roles: string[]): Promise<SignupResult> {
-    console.group('🔵 [AUTH] signUp() - START');
-    console.log('📤 Input:', { email, roles, rolesType: typeof roles, rolesIsArray: Array.isArray(roles) });
-    
     try {
       const signUpOptions = {
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
@@ -120,7 +117,6 @@ export class AuthService {
           roles: roles // Stocker les rôles dans les metadata de l'utilisateur
         }
       };
-      console.log('📤 SignUp Options:', signUpOptions);
       
       const { data, error } = await this.supabaseService.client.auth.signUp({
         email,
@@ -128,35 +124,11 @@ export class AuthService {
         options: signUpOptions
       });
 
-      console.log('📥 SignUp Response:', { 
-        hasData: !!data, 
-        hasUser: !!data?.user, 
-        hasSession: !!data?.session,
-        user: data?.user ? {
-          id: data.user.id,
-          email: data.user.email,
-          user_metadata: data.user.user_metadata,
-          app_metadata: data.user.app_metadata
-        } : null,
-        error: error ? {
-          message: error.message,
-          status: 'status' in error ? (error as { status?: number }).status : undefined,
-          name: 'name' in error ? (error as { name?: string }).name : undefined,
-          code: 'code' in error ? (error as { code?: string }).code : undefined
-        } : null
-      });
-
       if (error) {
         // Vérifier si c'est une erreur "already registered"
         const isAlreadyRegistered = error.message?.includes('already registered') || 
                                      error.message?.includes('User already registered') ||
                                      error.message?.includes('already exists');
-        
-        console.log('❌ [AUTH] signUp() - Error detected:', {
-          isAlreadyRegistered,
-          errorMessage: error.message,
-          errorStatus: error.status
-        });
         
         if (isAlreadyRegistered) {
           // Vérifier si l'utilisateur a déjà ce rôle
@@ -186,8 +158,6 @@ export class AuthService {
       // PROBLÈME : Supabase peut créer un NOUVEL utilisateur avec le même email au lieu de retourner une erreur
       // SOLUTION : Vérifier si un autre utilisateur avec le même email existe déjà dans auth.users via RPC
       if (data.user && !data.session) {
-        console.log('⚠️ [AUTH] signUp() - User created but no session, checking if email already exists...');
-        
         // Utiliser la fonction RPC pour vérifier si un AUTRE utilisateur avec le même email existe déjà
         // On exclut l'utilisateur qui vient d'être créé pour éviter les faux positifs
         const { data: emailExists, error: checkError } = await this.supabaseService.client
@@ -252,67 +222,43 @@ export class AuthService {
       return { user: data.user, error: null };
     } catch (error) {
       console.error('💥 [AUTH] signUp() - Exception:', error);
-      console.groupEnd();
       return { user: null, error: this.normalizeError(error, 'Erreur inconnue lors de l\'inscription') };
     }
   }
 
   async createProfileWithRoles(userId: string, roles: string[]): Promise<ProfileMutationResult> {
-    console.group('🟢 [AUTH] createProfileWithRoles() - START');
-    console.log('📤 Input:', { userId, roles, rolesType: typeof roles, rolesIsArray: Array.isArray(roles) });
-    
     try {
       // Vérifier d'abord si le profil existe déjà
-      console.log('🔍 [AUTH] Checking if profile exists...');
       const { data: existingProfile, error: checkError } = await this.supabaseService.client
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      console.log('📥 [AUTH] Profile check result:', {
-        existingProfile,
-        checkError,
-        existingRoles: existingProfile?.roles
-      });
-
       // Si le profil existe déjà, utiliser add_role_to_profile pour chaque rôle
       if (existingProfile && !checkError) {
-        console.log('✅ [AUTH] Profile exists, adding roles one by one...');
         for (const role of roles) {
           // Vérifier si le rôle existe déjà
           const roleExists = existingProfile.roles.includes(role);
-          console.log(`🔍 [AUTH] Role '${role}':`, { roleExists, existingRoles: existingProfile.roles });
           
           if (!roleExists) {
-            console.log(`➕ [AUTH] Adding role '${role}'...`);
             const { data: addData, error: addError } = await this.supabaseService.client
               .rpc('add_role_to_profile', {
                 user_id: userId,
                 new_role: role
               });
             
-            console.log(`📥 [AUTH] add_role_to_profile('${role}') result:`, { addData, addError });
-            
             if (addError) {
               console.error(`❌ [AUTH] Error adding role ${role}:`, addError);
-            } else {
-              console.log(`✅ [AUTH] Role '${role}' added successfully`);
             }
-          } else {
-            console.log(`⏭️ [AUTH] Role '${role}' already exists, skipping`);
           }
         }
         // Recharger le profil
-        console.log('🔄 [AUTH] Reloading profile...');
         const profile = await this.getProfile();
-        console.log('📥 [AUTH] Final profile:', profile);
-        console.groupEnd();
         return { profile, error: null };
       }
 
       // Si le profil n'existe pas, utiliser create_profile_after_signup
-      console.log('🆕 [AUTH] Profile does not exist, creating with create_profile_after_signup...');
       const { data, error } = await this.supabaseService.client
         .rpc('create_profile_after_signup', {
           user_id: userId,
@@ -320,23 +266,16 @@ export class AuthService {
           metadata_json: null
         });
 
-      console.log('📥 [AUTH] create_profile_after_signup result:', { data, error });
-
       if (error) {
         console.error('❌ [AUTH] create_profile_after_signup error:', error);
-        console.groupEnd();
         return { profile: null, error };
       }
 
       // Recharger le profil
-      console.log('🔄 [AUTH] Reloading profile...');
       const profile = await this.getProfile();
-      console.log('📥 [AUTH] Final profile:', profile);
-      console.groupEnd();
       return { profile, error: null };
     } catch (error) {
       console.error('💥 [AUTH] createProfileWithRoles() - Exception:', error);
-      console.groupEnd();
       return { profile: null, error: this.normalizeError(error, 'Erreur lors de la création du profil') };
     }
   }
@@ -479,7 +418,6 @@ export class AuthService {
         if (profileData && (!profileData.roles || profileData.roles.length === 0)) {
           const rolesFromMetadata = (user.user_metadata?.['roles'] as string[] | undefined) || [];
           if (rolesFromMetadata.length > 0) {
-            console.log('[AuthService] Profile has no roles, but user_metadata has roles. Adding roles...', rolesFromMetadata);
             // Ajouter les rôles au profil
             await this.createProfileWithRoles(user.id, rolesFromMetadata);
             // Recharger le profil pour obtenir la version mise à jour (sans passer par getProfile pour éviter les récursions)
@@ -534,43 +472,30 @@ export class AuthService {
   }
 
   async addRoleToProfile(newRole: string): Promise<ProfileMutationResult> {
-    console.group('🟡 [AUTH] addRoleToProfile() - START');
     const user = this.getCurrentUser();
-    console.log('📤 Input:', { newRole, userId: user?.id, userEmail: user?.email });
     
     if (!user) {
       console.error('❌ [AUTH] User not authenticated');
-      console.groupEnd();
       return { profile: null, error: { message: 'User not authenticated', code: 'user_not_authenticated' } };
     }
 
     try {
-      // Récupérer le profil actuel avant
-      const currentProfile = await this.getProfile();
-      console.log('📥 [AUTH] Current profile before:', currentProfile);
-      
       const { data, error } = await this.supabaseService.client
         .rpc('add_role_to_profile', {
           user_id: user.id,
           new_role: newRole
         });
 
-      console.log('📥 [AUTH] add_role_to_profile RPC result:', { data, error });
-
       if (error) {
         console.error('❌ [AUTH] add_role_to_profile error:', error);
-        console.groupEnd();
         return { profile: null, error };
       }
 
       // Recharger le profil
       const updatedProfile = await this.getProfile();
-      console.log('📥 [AUTH] Updated profile after:', updatedProfile);
-      console.groupEnd();
       return { profile: updatedProfile, error: null };
     } catch (error) {
       console.error('💥 [AUTH] addRoleToProfile() - Exception:', error);
-      console.groupEnd();
       return { profile: null, error: this.normalizeError(error, 'Erreur lors de l\'ajout du rôle') };
     }
   }
@@ -614,7 +539,6 @@ export class AuthService {
     try {
       const savedRole = localStorage.getItem(`activeRole_${user.id}`);
       if (savedRole && profile.roles.includes(savedRole)) {
-        console.log('[AuthService] Restauration du rôle actif:', savedRole);
         this.activeRoleSignal.set(savedRole);
       } else if (profile.roles.length === 1) {
         // Si un seul rôle, le définir automatiquement

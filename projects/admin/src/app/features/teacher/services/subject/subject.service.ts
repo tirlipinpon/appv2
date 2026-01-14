@@ -61,9 +61,6 @@ export class SubjectService {
    */
   getSubjectsForSchoolLevel(schoolId: string, schoolLevel: string): Observable<{ subjects: Subject[]; error: PostgrestError | null }> {
     const client = this.supabaseService.client;
-    if (SubjectService.DEBUG) {
-      console.log('[SubjectService:getSubjectsForSchoolLevel] params', { schoolId, schoolLevel });
-    }
 
     return from(Promise.all([
       client
@@ -87,11 +84,6 @@ export class SubjectService {
           (linksRes.error as PostgrestError | null) ||
           (extrasRes.error as PostgrestError | null) ||
           null;
-        if (SubjectService.DEBUG) {
-          console.log('[SubjectService:getSubjectsForSchoolLevel] results', {
-            linksCount: linkRows.length,
-            extrasCount: extraSubjects.length,
-            subjectsCount: subjects.length,
             firstSubjects: subjects.slice(0, 5).map(s => ({ id: s.id, name: s.name })),
             error,
           });

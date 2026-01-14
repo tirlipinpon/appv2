@@ -51,9 +51,7 @@ export class CollectionApplication {
       
       // Charger le statut de l'activité quotidienne en forçant le recalcul
       try {
-        console.log('[CollectionApplication] Recalcul de l\'activité quotidienne pour child:', child.child_id);
         const activityResult = await this.dailyActivityService.recalculateAndGetStatus(child.child_id);
-        console.log('[CollectionApplication] Résultat du recalcul:', activityResult);
         
         // Extraire uniquement les propriétés de DailyActivityStatus (newLevelsUnlocked est déjà dans DailyActivityStatus)
         const activityStatus: DailyActivityStatus = {
@@ -67,13 +65,10 @@ export class CollectionApplication {
           progressPercentage: activityResult.progressPercentage,
           status: activityResult.status,
         };
-        console.log('[CollectionApplication] Mise à jour du signal avec:', activityStatus);
         this._dailyActivityStatus.set(activityStatus);
-        console.log('[CollectionApplication] Signal mis à jour, valeur actuelle:', this._dailyActivityStatus());
         
         // Si de nouveaux niveaux ont été débloqués, afficher une notification
         if (activityStatus.newLevelsUnlocked && activityStatus.newLevelsUnlocked.length > 0) {
-          console.log('[CollectionApplication] Nouveaux niveaux débloqués:', activityStatus.newLevelsUnlocked);
           // TODO: Afficher une notification de badge débloqué si nécessaire
         }
       } catch (error) {

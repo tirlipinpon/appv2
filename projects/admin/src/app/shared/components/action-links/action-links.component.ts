@@ -29,13 +29,10 @@ export class ActionLinksComponent {
       event.stopPropagation();
     }
     if (action) {
-      console.log('[ActionLinks] Calling action');
       action();
-      console.log('[ActionLinks] Action called');
       // Forcer la détection de changement après l'action
       setTimeout(() => {
         this.cdr.detectChanges();
-        console.log('[ActionLinks] Change detection triggered');
       }, 0);
     }
   }

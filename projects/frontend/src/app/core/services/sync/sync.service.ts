@@ -36,7 +36,6 @@ export class SyncService {
 
     // Ici, on pourrait synchroniser les données mises en file d'attente
     // Par exemple, les tentatives de jeux, la progression, etc.
-    console.log('Synchronisation des données en attente...');
   }
 }
 

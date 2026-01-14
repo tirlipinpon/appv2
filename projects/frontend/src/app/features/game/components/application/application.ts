@@ -257,22 +257,15 @@ export class GameApplication {
     totalQuestions?: number,
     startedAt?: Date
   ): Promise<void> {
-    console.log('[savePartialScore] Début de la sauvegarde', { correctCount, incorrectCount, gameStateScore, totalQuestions });
-    
     const game = this.store.currentGame();
     const child = await this.authService.getCurrentChild();
 
     if (!game || !child) {
-      console.log('[savePartialScore] Pas de jeu ou enfant', { game: !!game, child: !!child });
       return;
     }
 
-    console.log('[savePartialScore] Jeu et enfant trouvés', { gameId: game.id, childId: child.child_id });
-
     const normalizedGameType = normalizeGameType(game.game_type);
     const isSpecificGame = SPECIFIC_GAME_TYPES.some(type => normalizeGameType(type) === normalizedGameType);
-
-    console.log('[savePartialScore] Type de jeu', { gameType: game.game_type, normalizedGameType, isSpecificGame });
 
     let finalScore: number;
     let total: number;
@@ -280,25 +273,20 @@ export class GameApplication {
     if (isSpecificGame) {
       // Pour les jeux spécifiques, utiliser les compteurs
       if (correctCount === undefined || incorrectCount === undefined) {
-        console.log('[savePartialScore] Pas de données pour jeu spécifique');
         return; // Pas de données disponibles
       }
       total = correctCount + incorrectCount;
       if (total === 0) {
-        console.log('[savePartialScore] Aucune tentative pour jeu spécifique');
         return; // Pas de tentatives, ne rien sauvegarder
       }
       finalScore = Math.round((correctCount / total) * 100);
-      console.log('[savePartialScore] Score calculé pour jeu spécifique', { correctCount, incorrectCount, total, finalScore });
     } else {
       // Pour les jeux génériques, utiliser le GameState
       if (gameStateScore === undefined || totalQuestions === undefined || totalQuestions === 0) {
-        console.log('[savePartialScore] Pas de données pour jeu générique', { gameStateScore, totalQuestions });
         return; // Pas de données disponibles
       }
       total = totalQuestions;
       finalScore = Math.round((gameStateScore / totalQuestions) * 100);
-      console.log('[savePartialScore] Score calculé pour jeu générique', { gameStateScore, totalQuestions, finalScore });
     }
 
     const isSuccess = finalScore >= 60;
@@ -318,12 +306,9 @@ export class GameApplication {
       completed_at: new Date().toISOString(),
     };
 
-    console.log('[savePartialScore] Données à sauvegarder', attemptData);
-
     try {
       // Utiliser directement l'infrastructure pour éviter les problèmes avec rxMethod
       const result = await this.infrastructure.saveGameAttempt(attemptData);
-      console.log('[savePartialScore] Score sauvegardé avec succès', result);
       
       // Recalculer les jours consécutifs et vérifier les badges débloqués
       await this.checkAndNotifyConsecutiveDaysBadges(child.child_id);
@@ -348,7 +333,6 @@ export class GameApplication {
       const status = await this.dailyActivityService.recalculateAndGetStatus(childId);
       
       if (status.newLevelsUnlocked && status.newLevelsUnlocked.length > 0) {
-        console.log('[GameApplication] Nouveaux niveaux badge Activité Quotidienne débloqués:', status.newLevelsUnlocked);
         
         // Récupérer les descriptions des badges depuis la base
         const allBadges = await this.badgesService.getAllBadges();
@@ -398,7 +382,6 @@ export class GameApplication {
       const status = await this.consecutiveGameDaysService.recalculateAndGetStatus(childId);
       
       if (status.badgesUnlocked && status.badgesUnlocked.length > 0) {
-        console.log('[GameApplication] Nouveaux badges jours consécutifs débloqués:', status.badgesUnlocked);
         
         // Recharger le store des badges pour mettre à jour l'UI
         this.badgesStore.loadChildBadges(childId);
@@ -437,7 +420,6 @@ export class GameApplication {
       const newBadges = await this.badgesService.getNewlyUnlockedBadges(childId, gameAttemptId);
       
       if (newBadges && newBadges.length > 0) {
-        console.log('[GameApplication] Nouveaux badges débloqués:', newBadges);
         
         // Récupérer les descriptions des badges depuis la base
         const allBadges = await this.badgesService.getAllBadges();

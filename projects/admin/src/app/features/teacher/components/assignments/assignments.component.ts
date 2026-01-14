@@ -41,9 +41,7 @@ export class AssignmentsComponent implements OnInit {
   
   // Méthode pour ouvrir le modal
   openAssignmentDialog(): void {
-    console.log('[AssignmentsComponent] openAssignmentDialog called');
     this.showAssignmentDialog.set(true);
-    console.log('[AssignmentsComponent] showAssignmentDialog set to:', this.showAssignmentDialog());
     // Forcer la détection de changement
     this.cdr.detectChanges();
   }
@@ -132,7 +130,6 @@ export class AssignmentsComponent implements OnInit {
     // Vérifier si on doit ouvrir le modal automatiquement via query param
     const addParam = this.route.snapshot.queryParamMap.get('add');
     if (addParam === 'true') {
-      console.log('[AssignmentsComponent] Opening dialog from query param');
       this.showAssignmentDialog.set(true);
       this.cdr.detectChanges();
     }
@@ -140,9 +137,7 @@ export class AssignmentsComponent implements OnInit {
     // Écouter les changements de query params pour réagir lors de la navigation
     this.route.queryParamMap.subscribe(params => {
       const addParam = params.get('add');
-      console.log('[AssignmentsComponent] Query param changed:', addParam);
       if (addParam === 'true') {
-        console.log('[AssignmentsComponent] Opening dialog from query param change');
         this.showAssignmentDialog.set(true);
         this.cdr.detectChanges();
       } else if (addParam === 'false') {

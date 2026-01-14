@@ -75,7 +75,6 @@ export class Infrastructure {
   }
 
   getSubjectsForSchoolLevel(schoolId: string, schoolLevel: string): Observable<{ subjects: Subject[]; error: PostgrestError | null }> {
-    console.log('[Infrastructure] getSubjectsForSchoolLevel → call', { schoolId, schoolLevel });
     return this.subjectService.getSubjectsForSchoolLevel(schoolId, schoolLevel);
   }
 

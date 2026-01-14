@@ -29,16 +29,6 @@ export class GameInfrastructure {
   }
 
   async saveGameAttempt(attempt: Partial<GameAttempt>): Promise<GameAttempt> {
-    console.log('[GameInfrastructure] Sauvegarde de la tentative:', {
-      child_id: attempt.child_id,
-      game_id: attempt.game_id,
-      started_at: attempt.started_at,
-      completed_at: attempt.completed_at,
-      duration_ms: attempt.duration_ms,
-      score: attempt.score,
-      success: attempt.success,
-    });
-    
     // Utiliser executeWithErrorHandling pour gérer les erreurs d'authentification de manière appropriée
     const result = await this.supabaseService.executeWithErrorHandling(async () => {
       return await this.supabase
@@ -57,7 +47,6 @@ export class GameInfrastructure {
       throw new Error('Aucune donnée retournée lors de la sauvegarde de la tentative');
     }
 
-    console.log('[GameInfrastructure] Tentative sauvegardée avec succès:', result.data);
     return result.data;
   }
 }

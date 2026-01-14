@@ -249,7 +249,6 @@ export class SubjectCategoryService {
    */
   transferCategory(categoryId: string, newSubjectId: string): Observable<{ category: SubjectCategory | null; error: PostgrestError | null }> {
     if (SubjectCategoryService.DEBUG) {
-      console.log('[SubjectCategoryService:transferCategory]', { categoryId, newSubjectId });
     }
 
     // D'abord récupérer la sous-catégorie à transférer
@@ -300,7 +299,6 @@ export class SubjectCategoryService {
             }
 
             if (SubjectCategoryService.DEBUG) {
-              console.log('[SubjectCategoryService:transferCategory] Transfert réussi');
             }
 
             return {

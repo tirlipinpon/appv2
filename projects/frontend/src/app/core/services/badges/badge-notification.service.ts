@@ -31,7 +31,6 @@ export class BadgeNotificationService {
 
       // Si le badge a déjà été affiché, ne pas l'afficher à nouveau
       if (this.displayedBadges.has(badgeKey)) {
-        console.log('[BadgeNotification] Badge déjà affiché, ignoré:', badge.badge_name);
         resolve();
         return;
       }

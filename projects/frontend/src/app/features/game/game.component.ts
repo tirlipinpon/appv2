@@ -1108,16 +1108,12 @@ export class GameComponent implements OnInit, OnDestroy {
         }
       }
       
-      console.log(`[onCaseVideValidated] Cases comptées - Correct: ${correctCases}, Incorrect: ${incorrectCases}`);
-      
       // Ajouter les comptes réels
       this.correctAnswersCount.update(count => count + correctCases);
       this.incorrectAnswersCount.update(count => count + incorrectCases);
       
       // Stocker le dernier score validé pour la sauvegarde
       this.lastValidatedScore.set({ correct: correctCases, incorrect: incorrectCases });
-      
-      console.log(`[onCaseVideValidated] Compteurs mis à jour - Correct: ${this.correctAnswersCount()}, Incorrect: ${this.incorrectAnswersCount()}`);
       
       // Sauvegarder immédiatement le score partiel si la réponse est incorrecte
       if (!isValid) {
@@ -1667,13 +1663,11 @@ export class GameComponent implements OnInit, OnDestroy {
   private async savePartialScoreIfNeeded(): Promise<void> {
     // Ne sauvegarder que si le jeu n'a pas été complété
     if (this.gameCompleted()) {
-      console.log('[savePartialScoreIfNeeded] Jeu déjà complété, pas de sauvegarde partielle');
       return;
     }
 
     const game = this.application.getCurrentGame()();
     if (!game) {
-      console.log('[savePartialScoreIfNeeded] Pas de jeu, pas de sauvegarde');
       return;
     }
 
@@ -1692,10 +1686,6 @@ export class GameComponent implements OnInit, OnDestroy {
       const correct = this.correctAnswersCount();
       const incorrect = this.incorrectAnswersCount();
       
-      console.log(`[savePartialScoreIfNeeded] Jeu spécifique - Compteurs directs: Correct: ${correct}, Incorrect: ${incorrect}`);
-      console.log(`[savePartialScoreIfNeeded] Jeu spécifique - Display: Correct: ${correctDisplay}, Incorrect: ${incorrectDisplay}`);
-      console.log(`[savePartialScoreIfNeeded] Jeu spécifique - Dernier score validé:`, lastScore);
-      
       // Priorité : dernier score validé > display > compteurs directs
       let finalCorrect: number;
       let finalIncorrect: number;
@@ -1703,17 +1693,13 @@ export class GameComponent implements OnInit, OnDestroy {
       if (lastScore && (lastScore.correct > 0 || lastScore.incorrect > 0)) {
         finalCorrect = lastScore.correct;
         finalIncorrect = lastScore.incorrect;
-        console.log(`[savePartialScoreIfNeeded] Utilisation du dernier score validé: ${finalCorrect}/${finalIncorrect}`);
       } else if (correctDisplay + incorrectDisplay > 0) {
         finalCorrect = correctDisplay;
         finalIncorrect = incorrectDisplay;
-        console.log(`[savePartialScoreIfNeeded] Utilisation des valeurs display: ${finalCorrect}/${finalIncorrect}`);
       } else if (correct + incorrect > 0) {
         finalCorrect = correct;
         finalIncorrect = incorrect;
-        console.log(`[savePartialScoreIfNeeded] Utilisation des compteurs directs: ${finalCorrect}/${finalIncorrect}`);
       } else {
-        console.log('[savePartialScoreIfNeeded] Aucune tentative trouvée, pas de sauvegarde');
         return;
       }
       
@@ -1721,11 +1707,7 @@ export class GameComponent implements OnInit, OnDestroy {
       
       // Sauvegarder seulement si il y a eu des tentatives
       if (finalTotal > 0) {
-        console.log(`[savePartialScoreIfNeeded] Sauvegarde du score partiel pour jeu spécifique: ${finalCorrect}/${finalTotal} (${Math.round((finalCorrect / finalTotal) * 100)}%)`);
         await this.application.savePartialScore(finalCorrect, finalIncorrect, undefined, undefined, startedAt);
-        console.log('[savePartialScoreIfNeeded] Score partiel sauvegardé avec succès');
-      } else {
-        console.log('[savePartialScoreIfNeeded] Aucune tentative (total à 0), pas de sauvegarde');
       }
     } else {
       // Pour les jeux génériques, utiliser le GameState
@@ -1733,18 +1715,10 @@ export class GameComponent implements OnInit, OnDestroy {
         const score = gameState.score || 0;
         const totalQuestions = gameState.questions.length;
         
-        console.log(`[savePartialScoreIfNeeded] Jeu générique - Score: ${score}, Total questions: ${totalQuestions}, Index: ${gameState.currentQuestionIndex}`);
-        
         // Sauvegarder seulement si il y a eu au moins une question répondue
         if (gameState.currentQuestionIndex > 0 || score > 0) {
-          console.log(`[savePartialScoreIfNeeded] Sauvegarde du score partiel pour jeu générique: ${score}/${totalQuestions} (${Math.round((score / totalQuestions) * 100)}%)`);
           await this.application.savePartialScore(undefined, undefined, score, totalQuestions, startedAt);
-          console.log('[savePartialScoreIfNeeded] Score partiel sauvegardé avec succès');
-        } else {
-          console.log('[savePartialScoreIfNeeded] Aucune question répondue, pas de sauvegarde');
         }
-      } else {
-        console.log('[savePartialScoreIfNeeded] Pas de GameState ou pas de questions');
       }
     }
   }

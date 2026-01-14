@@ -406,11 +406,6 @@ export class SubjectsInfrastructure {
 
     // Exécuter la requête
     const { data: assignments, error: assignmentsError } = await query;
-    
-    console.log(`[getTeachersForSubject] Résultat pour matière ${subjectId}:`, {
-      assignments: assignments?.length || 0,
-      error: assignmentsError
-    });
 
     if (assignmentsError) {
       console.error('[getTeachersForSubject] Erreur lors de la récupération des affectations:', assignmentsError);
@@ -418,7 +413,6 @@ export class SubjectsInfrastructure {
     }
 
     if (!assignments || assignments.length === 0) {
-      console.log(`[getTeachersForSubject] Aucune affectation trouvée pour la matière ${subjectId}`);
       return [];
     }
 
@@ -445,7 +439,6 @@ export class SubjectsInfrastructure {
     }
 
     if (!teachers || teachers.length === 0) {
-      console.log(`[getTeachersForSubject] Aucun professeur trouvé pour les IDs:`, teacherIds);
       return [];
     }
 
@@ -491,7 +484,6 @@ export class SubjectsInfrastructure {
       }
     }
 
-    console.log(`[getTeachersForSubject] Profs trouvés pour la matière ${subjectId}:`, teacherNames);
     return teacherNames;
   }
 

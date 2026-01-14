@@ -64,7 +64,6 @@ export class AutoSaveService {
   private async executeSave(operation: SaveOperation): Promise<void> {
     // Cette méthode sera implémentée selon le type d'opération
     // Par exemple, sauvegarder dans Supabase
-    console.log('Sauvegarde automatique:', operation);
   }
 
   /**

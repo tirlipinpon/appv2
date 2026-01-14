@@ -82,26 +82,10 @@ export class SubjectsComponent implements OnInit {
                           currentDesc !== (subj.description || '') ||
                           currentType !== subj.type;
         
-        console.log('[SubjectsComponent] Effect: vérification', {
-          sid,
-          subjectFound: !!subj,
-          currentName,
-          subjectName: subj.name,
-          shouldFill,
-          formExists: !!this.subjectForm
-        });
-        
         if (shouldFill) {
-          console.log('[SubjectsComponent] Effect: remplissage du formulaire depuis le store', subj);
           this.fillFormFromSubject(subj);
-        } else {
-          console.log('[SubjectsComponent] Effect: formulaire déjà rempli, pas de changement nécessaire');
         }
-      } else {
-        console.warn('[SubjectsComponent] Effect: sujet non trouvé dans le store avec ID:', sid, 'Liste:', list.map(s => ({ id: s.id, name: s.name })));
       }
-    } else {
-      console.log('[SubjectsComponent] Effect: conditions non remplies', { sid, listLength: list.length });
     }
   });
 
@@ -113,10 +97,6 @@ export class SubjectsComponent implements OnInit {
   });
 
   constructor() {
-    // Écouter les changements du formulaire pour déboguer
-    this.subjectForm.get('name')?.valueChanges.subscribe(value => {
-      console.log('[SubjectsComponent] name valueChanges:', value);
-    });
   }
 
   linkForm = this.fb.group({
@@ -146,8 +126,6 @@ export class SubjectsComponent implements OnInit {
     this.store.loadSubjects();
     const id = this.route.snapshot.paramMap.get('id');
     this.subjectId.set(id);
-    
-    console.log('[SubjectsComponent] Initialisation avec subjectId:', id);
 
     // Préselection via query params (ex: depuis le dashboard/affectations)
     const q = this.route.snapshot.queryParamMap;
@@ -205,10 +183,7 @@ export class SubjectsComponent implements OnInit {
       // Le formulaire est déjà initialisé à ce stade, pas besoin de setTimeout
       const s = this.subjects().find(x => x.id === id);
       if (s) {
-        console.log('[SubjectsComponent] Remplissage depuis le store (immédiat)', s);
         this.fillFormFromSubject(s);
-      } else {
-        console.log('[SubjectsComponent] Sujet non trouvé dans le store, chargement depuis l\'infrastructure');
       }
 
       // Toujours charger depuis l'infra pour s'assurer d'avoir les données à jour
@@ -221,10 +196,7 @@ export class SubjectsComponent implements OnInit {
         
         const found = (subjects || []).find(x => x.id === id);
         if (found) {
-          console.log('[SubjectsComponent] Remplissage depuis l\'infrastructure', found);
           this.fillFormFromSubject(found);
-        } else {
-          console.warn('[SubjectsComponent] Sujet non trouvé avec l\'ID:', id);
         }
       });
       
@@ -279,14 +251,12 @@ export class SubjectsComponent implements OnInit {
     const id = this.subjectId();
     if (!id || !this.subjectForm.valid) return;
     const v = this.subjectForm.value;
-    console.log('[SubjectsComponent] update subject submit', { id, payload: v });
     const updates = {
       name: ((v.name || '').trim() || undefined) as string | undefined,
       description: (v.description || undefined) as string | undefined,
       type: v.type as Subject['type'],
     };
     this.infra.updateSubject(id, updates).subscribe(({ subject, error }) => {
-      console.log('[SubjectsComponent] update subject result', { error, subject });
       if (error) {
         this.errorSnackbar.showError(error.message || 'Erreur lors de la mise à jour de la matière');
         return;
@@ -379,15 +349,11 @@ export class SubjectsComponent implements OnInit {
    */
   private fillFormFromSubject(subject: Subject | null | undefined): void {
     if (!subject) {
-      console.warn('[SubjectsComponent] fillFormFromSubject: sujet null ou undefined');
       return;
     }
-
-    console.log('[SubjectsComponent] fillFormFromSubject appelé avec:', subject);
     
     // Vérifier que le formulaire existe
     if (!this.subjectForm) {
-      console.error('[SubjectsComponent] fillFormFromSubject: formulaire non initialisé');
       return;
     }
 
@@ -416,16 +382,6 @@ export class SubjectsComponent implements OnInit {
     // Mettre à jour la validité
     this.subjectForm.updateValueAndValidity({ emitEvent: false });
 
-    // Vérifier immédiatement que les valeurs ont bien été assignées
-    const actualName = this.subjectForm.get('name')?.value;
-    const actualDesc = this.subjectForm.get('description')?.value;
-    const actualType = this.subjectForm.get('type')?.value;
-    
-    console.log('[SubjectsComponent] fillFormFromSubject: formulaire rempli', {
-      expected: { name: subject.name, description: subject.description, type: subject.type },
-      actual: { name: actualName, description: actualDesc, type: actualType },
-      match: actualName === subject.name && actualDesc === (subject.description || '') && actualType === subject.type
-    });
     
     // Si les valeurs ne correspondent pas, réessayer immédiatement
     if (actualName !== subject.name || actualDesc !== (subject.description || '') || actualType !== subject.type) {

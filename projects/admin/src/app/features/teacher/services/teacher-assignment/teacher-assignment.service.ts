@@ -102,8 +102,6 @@ export class TeacherAssignmentService {
           switchMap(({ data: activeAssignments, error: activeCheckError }) => {
             // Si une affectation active existe avec un niveau différent, demander confirmation
             if (activeAssignments && activeAssignments.length > 0) {
-              console.log('[createAssignment] Affectation active trouvée avec un niveau différent, demande de confirmation:', activeAssignments);
-              
               // Construire le message de confirmation
               const levels = activeAssignments.map((a: { school_level: string }) => a.school_level).join(', ');
               const message = `Une affectation active existe déjà pour cette matière avec le${activeAssignments.length > 1 ? 's niveau' : ' niveau'} "${levels}". Voulez-vous la remplacer par le niveau "${normalized.school_level}" ?`;
@@ -130,7 +128,6 @@ export class TeacherAssignmentService {
 
             if (deletedWithCorrectLevel) {
               // Réactiver l'affectation supprimée avec le bon niveau
-              console.log('[createAssignment] Réactivation de l\'affectation supprimée avec le bon niveau:', deletedWithCorrectLevel.id);
               return from(
                 this.supabaseService.client
                   .from('teacher_assignments')
@@ -241,7 +238,7 @@ export class TeacherAssignmentService {
 
             if (deletedWithCorrectLevel) {
               // Réactiver l'affectation supprimée avec le bon niveau
-              console.log('[createAssignmentWithConfirmation] Réactivation de l\'affectation supprimée:', deletedWithCorrectLevel.id);
+('[createAssignmentWithConfirmation] Réactivation de l\'affectation supprimée:', deletedWithCorrectLevel.id);
               return from(
                 this.supabaseService.client
                   .from('teacher_assignments')
@@ -455,7 +452,7 @@ export class TeacherAssignmentService {
 
             // Si le professeur cible a déjà une affectation active, supprimer celle qu'on transfère
             if (existingAssignment && existingAssignment.id && !existingAssignment.deleted_at) {
-              console.log('[TransferAssignment] Le professeur cible a déjà cette affectation active, suppression de l\'affectation source');
+('[TransferAssignment] Le professeur cible a déjà cette affectation active, suppression de l\'affectation source');
               return this.deleteAssignment(assignmentId).pipe(
                 map(({ error }) => {
                   return {
@@ -468,7 +465,7 @@ export class TeacherAssignmentService {
 
             // Si le professeur cible a une affectation supprimée, la réactiver et supprimer celle du source
             if (existingAssignment && existingAssignment.id && existingAssignment.deleted_at) {
-              console.log('[TransferAssignment] Le professeur cible a une affectation supprimée, réactivation et suppression de l\'affectation source');
+('[TransferAssignment] Le professeur cible a une affectation supprimée, réactivation et suppression de l\'affectation source');
               return from(
                 this.supabaseService.client
                   .from('teacher_assignments')
@@ -519,7 +516,7 @@ export class TeacherAssignmentService {
               switchMap(({ data, error }) => {
                 // Si erreur de contrainte unique, supprimer l'affectation source
                 if (error && error.code === '23505') {
-                  console.log('[TransferAssignment] Impossible de transférer : le professeur cible a déjà cette affectation. Suppression de l\'affectation source.');
+('[TransferAssignment] Impossible de transférer : le professeur cible a déjà cette affectation. Suppression de l\'affectation source.');
                   // Supprimer l'affectation source et retourner un succès
                   return this.deleteAssignment(assignmentId).pipe(
                     map(({ error: deleteError }) => ({
@@ -580,7 +577,7 @@ export class TeacherAssignmentService {
 
         // Si une affectation supprimée existe, essayer de la réactiver
         if (validation.existingAssignment && validation.existingAssignment.deleted_at) {
-          console.log('[ShareAssignment] Réactivation d\'une affectation supprimée');
+('[ShareAssignment] Réactivation d\'une affectation supprimée');
           // Vérifier si l'affectation supprimée appartient au même professeur
           // Si oui, on peut la réactiver avec upsert
           // Si non, RLS empêchera la mise à jour, donc on créera une nouvelle affectation
@@ -611,7 +608,7 @@ export class TeacherAssignmentService {
                   });
                 }
                 // Si update échoue (RLS bloque ou ligne n'existe plus), créer une nouvelle affectation
-                console.log('[ShareAssignment] Update échoué (RLS bloque probablement), création d\'une nouvelle affectation');
+('[ShareAssignment] Update échoué (RLS bloque probablement), création d\'une nouvelle affectation');
                 const newAssignment = {
                   teacher_id: newTeacherId,
                   school_id: sourceAssignment.school_id,
@@ -715,7 +712,7 @@ export class TeacherAssignmentService {
             // RLS empêchera la mise à jour, donc on va créer une nouvelle affectation
             // L'upsert avec onConflict va échouer à cause de RLS, donc on utilise insert
             // et on gère l'erreur de contrainte unique en supprimant définitivement l'ancienne
-            console.log('[ShareAssignment] Affectation supprimée appartient à un autre professeur, création d\'une nouvelle');
+('[ShareAssignment] Affectation supprimée appartient à un autre professeur, création d\'une nouvelle');
             // Continuer avec la création d'une nouvelle affectation (voir code ci-dessous)
           }
         }
@@ -750,7 +747,7 @@ export class TeacherAssignmentService {
             // Si erreur de contrainte unique, cela signifie qu'une affectation supprimée existe
             // On essaie alors avec upsert qui devrait fonctionner si l'affectation appartient au même professeur
             if (error && error.code === '23505') {
-              console.log('[ShareAssignment] Contrainte unique détectée, tentative avec upsert');
+('[ShareAssignment] Contrainte unique détectée, tentative avec upsert');
               return from(
                 this.supabaseService.client
                   .from('teacher_assignments')

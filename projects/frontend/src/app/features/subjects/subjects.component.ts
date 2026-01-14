@@ -780,10 +780,7 @@ export class SubjectsComponent implements OnInit, OnDestroy {
         });
 
         // Charger les profs pour toutes les matières (avec childId pour filtrer par école/niveau)
-        console.log('[SubjectsComponent] Début du chargement des profs pour les matières:', subjectIds);
         this.infrastructure.getTeachersForSubjects(subjectIds, childId).then((teachersMap) => {
-          console.log('[SubjectsComponent] Profs chargés avec succès:', teachersMap);
-          console.log('[SubjectsComponent] Nombre de matières avec profs:', teachersMap.size);
           this.teachersBySubject.set(teachersMap);
         }).catch((error) => {
           console.error('[SubjectsComponent] Erreur lors du chargement des professeurs:', error);
