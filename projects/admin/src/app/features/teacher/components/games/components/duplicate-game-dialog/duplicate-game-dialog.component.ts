@@ -34,6 +34,9 @@ export interface DuplicateGameData {
     question: string | null;
     aides: string[] | null;
     metadata: Record<string, unknown> | null;
+    aideImageFile?: File | null;
+    aideImageUrl?: string | null;
+    aideVideoUrl?: string | null;
   };
 }
 
@@ -225,6 +228,8 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
       instructions: this.game.instructions || null,
       question: this.game.question || null,
       aides: this.game.aides || null,
+      aideImageUrl: this.game.aide_image_url || null,
+      aideVideoUrl: this.game.aide_video_url || null,
     });
 
     // Charger les données spécifiques depuis metadata et normaliser si nécessaire
@@ -275,6 +280,9 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
         question: globalFields?.question || null,
         aides: globalFields?.aides || null,
         metadata: gameData ? (gameData as unknown as Record<string, unknown>) : null,
+        aideImageFile: globalFields?.aideImageFile || null,
+        aideImageUrl: globalFields?.aideImageUrl || null,
+        aideVideoUrl: globalFields?.aideVideoUrl || null,
       },
     });
   }
@@ -361,12 +369,17 @@ export class DuplicateGameDialogComponent implements OnInit, OnChanges {
       instructions: this.game.instructions || null,
       question: this.game.question || null,
       aides: this.game.aides || null,
+      aideImageUrl: this.game.aide_image_url || null,
+      aideVideoUrl: this.game.aide_video_url || null,
     };
     
     const globalFieldsChanged = 
       currentGlobalFields?.instructions !== initialGlobalFields.instructions ||
       currentGlobalFields?.question !== initialGlobalFields.question ||
-      JSON.stringify(currentGlobalFields?.aides || []) !== JSON.stringify(initialGlobalFields.aides || []);
+      JSON.stringify(currentGlobalFields?.aides || []) !== JSON.stringify(initialGlobalFields.aides || []) ||
+      currentGlobalFields?.aideImageUrl !== initialGlobalFields.aideImageUrl ||
+      currentGlobalFields?.aideVideoUrl !== initialGlobalFields.aideVideoUrl ||
+      currentGlobalFields?.aideImageFile !== null; // Si un nouveau fichier a été sélectionné
 
     // Vérifier si les données spécifiques du jeu ont changé
     const currentGameData = this.gameSpecificData();

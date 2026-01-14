@@ -942,6 +942,12 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     const imageUrl = metadata && typeof metadata === 'object' && 'image_url' in metadata
       ? (metadata as unknown as ImageInteractiveData).image_url
       : null;
+    
+    // Si une nouvelle image d'aide a été sélectionnée, utiliser celle-ci
+    // Sinon, utiliser l'image d'aide source pour la copier
+    const aideImageFile = duplicateData.gameData.aideImageFile || null;
+    const aideImageUrl = duplicateData.gameData.aideImageUrl || null;
+    const sourceAideImageUrl = aideImageFile ? null : (game.aide_image_url || null);
 
     this.gameCreationService.duplicateGameWithImage({
       gameTypeId: game.game_type_id,
@@ -953,6 +959,10 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
       aides: duplicateData.gameData.aides || null,
       metadata,
       sourceImageUrl: imageUrl || null,
+      sourceAideImageUrl: sourceAideImageUrl,
+      aideImageFile: aideImageFile,
+      aideImageUrl: aideImageUrl,
+      aideVideoUrl: duplicateData.gameData.aideVideoUrl || null,
     }).subscribe({
       next: () => {
         this.isDuplicating = false;

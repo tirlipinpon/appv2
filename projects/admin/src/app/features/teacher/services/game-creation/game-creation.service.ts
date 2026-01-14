@@ -61,6 +61,10 @@ export interface DuplicateGameParams {
   aides?: string[] | null;
   metadata: Record<string, unknown> | null;
   sourceImageUrl?: string | null;
+  sourceAideImageUrl?: string | null;
+  aideImageFile?: File | null;
+  aideImageUrl?: string | null;
+  aideVideoUrl?: string | null;
 }
 
 @Injectable({
@@ -523,6 +527,10 @@ export class GameCreationService {
       aides,
       metadata,
       sourceImageUrl,
+      sourceAideImageUrl,
+      aideImageFile,
+      aideImageUrl,
+      aideVideoUrl,
     } = params;
 
     const isClickGame = this.isImageInteractiveGame(gameTypeName);
@@ -530,6 +538,12 @@ export class GameCreationService {
       sourceImageUrl &&
       typeof sourceImageUrl === 'string' &&
       sourceImageUrl.length > 0;
+    const hasAideImageUrl =
+      sourceAideImageUrl &&
+      typeof sourceAideImageUrl === 'string' &&
+      sourceAideImageUrl.length > 0;
+    const hasNewAideImageFile = aideImageFile !== null && aideImageFile !== undefined;
+    const hasNewAideImageUrl = aideImageUrl && typeof aideImageUrl === 'string' && aideImageUrl.length > 0;
 
     const autoName = this.generateAutoName(gameTypeName, question);
     const filteredAides = aides?.filter((a) => a && a.trim()) || null;
@@ -546,6 +560,7 @@ export class GameCreationService {
       question: question?.trim() || null,
       reponses: null,
       aides: filteredAides && filteredAides.length > 0 ? filteredAides : null,
+      aide_video_url: aideVideoUrl?.trim() || null,
       metadata: null,
     };
 
@@ -554,7 +569,11 @@ export class GameCreationService {
       return this.duplicateGameWithImageCopy(
         baseGameData,
         metadata,
-        sourceImageUrl!
+        sourceImageUrl!,
+        hasAideImageUrl ? sourceAideImageUrl! : null,
+        aideImageFile,
+        aideImageUrl,
+        aideVideoUrl
       );
     }
 
@@ -570,12 +589,122 @@ export class GameCreationService {
           true,
       };
       baseGameData.metadata = metadataWithoutImage as unknown as Record<string, unknown>;
-      return this.application.createGame(baseGameData);
+      
+      // Créer le jeu puis gérer l'image d'aide si nécessaire
+      return this.application.createGame(baseGameData).pipe(
+        switchMap((createdGame) => {
+          if (!createdGame) {
+            return of(null);
+          }
+
+          // Gérer l'image d'aide : priorité à la nouvelle image sélectionnée
+          // Si une nouvelle image d'aide a été sélectionnée, l'uploader
+          if (hasNewAideImageFile) {
+            return this.uploadAideImageAndUpdateGame(createdGame.id, aideImageFile!).pipe(
+              switchMap(() => of(createdGame)),
+              catchError((error) => {
+                console.error('Erreur lors de l\'upload de l\'image d\'aide:', error);
+                return of(createdGame);
+              })
+            );
+          }
+
+          // Si une URL d'image d'aide existe (mode édition sans nouveau fichier)
+          if (hasNewAideImageUrl) {
+            this.application.updateGame(createdGame.id, {
+              aide_image_url: aideImageUrl,
+            });
+            return of(createdGame);
+          }
+
+          // Si une image d'aide doit être copiée depuis le jeu source
+          if (hasAideImageUrl) {
+            return this.copyAideImageAndUpdateGame(createdGame.id, sourceAideImageUrl!).pipe(
+              switchMap(() => of(createdGame)),
+              catchError((error) => {
+                console.error('Erreur lors de la copie de l\'image d\'aide:', error);
+                return of(createdGame);
+              })
+            );
+          }
+
+          return of(createdGame);
+        })
+      );
     }
 
     // Cas 3: Jeu normal
     baseGameData.metadata = metadata;
-    return this.application.createGame(baseGameData);
+    
+    // Créer le jeu puis gérer l'image d'aide si nécessaire
+    return this.application.createGame(baseGameData).pipe(
+      switchMap((createdGame) => {
+        if (!createdGame) {
+          return of(null);
+        }
+
+        // Si une nouvelle image d'aide a été sélectionnée, l'uploader
+        if (hasNewAideImageFile) {
+          return this.uploadAideImageAndUpdateGame(createdGame.id, aideImageFile!).pipe(
+            switchMap(() => of(createdGame)),
+            catchError((error) => {
+              console.error('Erreur lors de l\'upload de l\'image d\'aide:', error);
+              return of(createdGame);
+            })
+          );
+        }
+
+        // Si une URL d'image d'aide existe (mode édition sans nouveau fichier)
+        if (hasNewAideImageUrl) {
+          this.application.updateGame(createdGame.id, {
+            aide_image_url: aideImageUrl,
+          });
+          return of(createdGame);
+        }
+
+        // Si une image d'aide doit être copiée depuis le jeu source
+        if (hasAideImageUrl) {
+          return this.copyAideImageAndUpdateGame(createdGame.id, sourceAideImageUrl!).pipe(
+            switchMap(() => of(createdGame)),
+            catchError((error) => {
+              console.error('Erreur lors de la copie de l\'image d\'aide:', error);
+              return of(createdGame);
+            })
+          );
+        }
+
+        return of(createdGame);
+      })
+    );
+  }
+
+  /**
+   * Copie une image d'aide et met à jour le jeu
+   */
+  private copyAideImageAndUpdateGame(
+    gameId: string,
+    sourceAideImageUrl: string
+  ): Observable<void> {
+    return this.aideMediaUploadService.copyAideImageToGame(sourceAideImageUrl, gameId).pipe(
+      switchMap((result) => {
+        if (result.error) {
+          this.errorSnackbar.showError(
+            `Erreur lors de la copie de l'image d'aide: ${result.error}`
+          );
+          return of(void 0);
+        }
+
+        // Mettre à jour le jeu avec l'URL de l'image d'aide copiée
+        this.application.updateGame(gameId, {
+          aide_image_url: result.url,
+        });
+        return of(void 0);
+      }),
+      catchError(() => {
+        this.errorSnackbar.showError('Erreur lors de la copie de l\'image d\'aide');
+        return of(void 0);
+      })
+    );
   }
 
   /**
@@ -584,7 +713,11 @@ export class GameCreationService {
   private duplicateGameWithImageCopy(
     baseGameData: GameCreate,
     metadata: Record<string, unknown>,
-    sourceImageUrl: string
+    sourceImageUrl: string,
+    sourceAideImageUrl: string | null = null,
+    aideImageFile: File | null | undefined = null,
+    aideImageUrl: string | null | undefined = null,
+    aideVideoUrl: string | null | undefined = null
   ): Observable<Game | null> {
     const metadataWithoutImage: ImageInteractiveData = {
       image_url: '',
@@ -627,6 +760,56 @@ export class GameCreationService {
             this.application.updateGame(createdGame.id, {
               metadata: updatedImageData as unknown as Record<string, unknown>,
             });
+
+            // Gérer l'image d'aide : priorité à la nouvelle image sélectionnée
+            const hasNewAideImageFile = aideImageFile !== null && aideImageFile !== undefined;
+            const hasNewAideImageUrl = aideImageUrl && typeof aideImageUrl === 'string' && aideImageUrl.length > 0;
+
+            // Si une nouvelle image d'aide a été sélectionnée, l'uploader
+            if (hasNewAideImageFile) {
+              return this.uploadAideImageAndUpdateGame(createdGame.id, aideImageFile!).pipe(
+                switchMap(() => of(createdGame)),
+                catchError((error) => {
+                  console.error('Erreur lors de l\'upload de l\'image d\'aide:', error);
+                  return of(createdGame);
+                })
+              );
+            }
+
+            // Si une URL d'image d'aide existe (mode édition sans nouveau fichier)
+            if (hasNewAideImageUrl) {
+              this.application.updateGame(createdGame.id, {
+                aide_image_url: aideImageUrl,
+                aide_video_url: aideVideoUrl?.trim() || null,
+              });
+              return of(createdGame);
+            }
+
+            // Si une image d'aide doit être copiée depuis le jeu source
+            if (sourceAideImageUrl) {
+              return this.copyAideImageAndUpdateGame(createdGame.id, sourceAideImageUrl).pipe(
+                switchMap(() => {
+                  // Mettre à jour aussi la vidéo d'aide si elle existe
+                  if (aideVideoUrl) {
+                    this.application.updateGame(createdGame.id, {
+                      aide_video_url: aideVideoUrl.trim(),
+                    });
+                  }
+                  return of(createdGame);
+                }),
+                catchError((error) => {
+                  console.error('Erreur lors de la copie de l\'image d\'aide:', error);
+                  return of(createdGame);
+                })
+              );
+            }
+
+            // Mettre à jour la vidéo d'aide si elle existe
+            if (aideVideoUrl) {
+              this.application.updateGame(createdGame.id, {
+                aide_video_url: aideVideoUrl.trim(),
+              });
+            }
 
             return of(createdGame);
           }),
