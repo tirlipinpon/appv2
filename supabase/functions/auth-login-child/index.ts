@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
       .select(
         "id, firstname, school_level, parent_id, school_id, avatar_url, avatar_seed, avatar_style"
       )
-      .eq("firstname", firstname)
+      .ilike("firstname", firstname)
       .eq("login_pin", pin)
       .eq("is_active", true)
       .maybeSingle();

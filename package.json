@@ -1,6 +1,6 @@
 {
   "name": "appv2",
-  "version": "0.196.0",
+  "version": "0.197.0",
   "scripts": {
     "ng": "ng",
     "prebuild:admin": "node scripts/increment-version.js && node scripts/generate-version.js",
@@ -13,7 +13,7 @@
     "watch:admin": "ng build admin --watch --configuration development",
     "watch:frontend": "ng build frontend --watch --configuration development",
     "deploy:admin": "npm run build:admin && node scripts/deploy-ftp.js",
-    "deploy:frontend": "npm run build:frontend && node scripts/deploy-ftp-frontend.js",
+     "deploy:frontend": "npm run build:frontend && node scripts/deploy-ftp-frontend.js",
     "test:admin": "ng test admin",
     "test:frontend": "ng test frontend",
     "test": "ng test",
