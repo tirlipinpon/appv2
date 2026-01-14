@@ -1292,9 +1292,8 @@ export class SubjectsComponent implements OnInit, OnDestroy {
     // Chercher dans les catégories de la matière sélectionnée
     const category = this.categories().find(cat => cat.id === categoryId);
     if (category?.progress) {
-      // Retourner 1 si complétée, 0 sinon
-      const isCompleted = category.progress.completed || (category.progress.completion_percentage ?? 0) >= 100;
-      return isCompleted ? 1 : 0;
+      // Retourner le nombre d'étoiles (stars_count) qui correspond au nombre de fois complétée
+      return category.progress.stars_count ?? 0;
     }
     
     // Si pas trouvé, chercher dans toutes les catégories chargées (categoriesBySubject)
@@ -1302,9 +1301,8 @@ export class SubjectsComponent implements OnInit, OnDestroy {
     for (const categories of categoriesMap.values()) {
       const foundCategory = categories.find(cat => cat.id === categoryId);
       if (foundCategory?.progress) {
-        // Retourner 1 si complétée, 0 sinon
-        const isCompleted = foundCategory.progress.completed || (foundCategory.progress.completion_percentage ?? 0) >= 100;
-        return isCompleted ? 1 : 0;
+        // Retourner le nombre d'étoiles (stars_count) qui correspond au nombre de fois complétée
+        return foundCategory.progress.stars_count ?? 0;
       }
     }
     
@@ -1318,24 +1316,18 @@ export class SubjectsComponent implements OnInit, OnDestroy {
   getSubjectTotalStars(subjectId: string): number {
     let totalStars = 0;
     
-    // 1. Étoile de la matière principale si elle est complétée
+    // 1. Ajouter les étoiles de la matière principale (stars_count)
     const subjectProgress = this.application.getSubjectProgress(subjectId);
     if (subjectProgress) {
-      const isSubjectCompleted = subjectProgress.completed || (subjectProgress.completion_percentage ?? 0) >= 100;
-      if (isSubjectCompleted) {
-        totalStars += 1;
-      }
+      totalStars += subjectProgress.stars_count ?? 0;
     }
     
-    // 2. Ajouter 1 étoile par sous-matière complétée
+    // 2. Ajouter les étoiles de chaque sous-matière (stars_count)
     // Utiliser categoriesBySubject pour récupérer les catégories de cette matière spécifique
     const categoriesForSubject = this.categoriesBySubject().get(subjectId) || [];
     categoriesForSubject.forEach(category => {
       if (category.progress) {
-        const isCategoryCompleted = category.progress.completed || (category.progress.completion_percentage ?? 0) >= 100;
-        if (isCategoryCompleted) {
-          totalStars += 1;
-        }
+        totalStars += category.progress.stars_count ?? 0;
       }
     });
     
@@ -1345,10 +1337,7 @@ export class SubjectsComponent implements OnInit, OnDestroy {
       // Vérifier que les catégories appartiennent bien à cette matière
       categories.forEach(category => {
         if (category.subject_id === subjectId && category.progress) {
-          const isCategoryCompleted = category.progress.completed || (category.progress.completion_percentage ?? 0) >= 100;
-          if (isCategoryCompleted) {
-            totalStars += 1;
-          }
+          totalStars += category.progress.stars_count ?? 0;
         }
       });
     }

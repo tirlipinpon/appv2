@@ -32,7 +32,6 @@ export class ProgressionService {
     subjectCategoryId: string,
     updates: {
       completed?: boolean;
-      starsCount?: number;
       completionPercentage?: number;
     }
   ): Promise<SubjectCategoryProgress> {
@@ -55,7 +54,6 @@ export class ProgressionService {
     // Préparer les données de mise à jour
     const updateData: any = {
       completed: updates.completed ?? existing?.completed ?? false,
-      stars_count: updates.starsCount ?? existing?.stars_count ?? 0,
       completion_percentage: newCompletionPercentage,
       last_played_at: new Date().toISOString(),
     };
@@ -69,6 +67,7 @@ export class ProgressionService {
     } else {
       // Conserver les valeurs existantes si pas de nouvelle complétion
       updateData.completion_count = existing?.completion_count ?? 0;
+      updateData.stars_count = updateData.completion_count; // stars_count doit toujours être égal à completion_count
       if (existing?.last_completed_at) {
         updateData.last_completed_at = existing.last_completed_at;
       }

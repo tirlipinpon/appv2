@@ -185,12 +185,6 @@ export class GameApplication {
         game.subject_category_id
       );
 
-      // Calculer les étoiles selon le score du jeu actuel
-      let starsCount = 0;
-      if (finalScore >= 90) starsCount = 3;
-      else if (finalScore >= 70) starsCount = 2;
-      else if (finalScore >= 60) starsCount = 1;
-
       // La catégorie est complétée si tous les jeux sont résolus (100%)
       const categoryCompleted = completionPercentage === 100;
 
@@ -199,7 +193,6 @@ export class GameApplication {
         game.subject_category_id,
         {
           completed: categoryCompleted,
-          starsCount,
           completionPercentage: completionPercentage,
         }
       );
