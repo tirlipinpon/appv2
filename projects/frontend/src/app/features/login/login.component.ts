@@ -18,7 +18,6 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
             type="text"
             [formControl]="firstnameControl"
             placeholder="Ton prénom"
-            [disabled]="isLoading"
           />
         </div>
         <div class="form-group">
@@ -29,7 +28,6 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
             [formControl]="pinControl"
             placeholder="1234"
             maxlength="4"
-            [disabled]="isLoading"
           />
           @if (pinInvalid) {
             <div class="error-message">
@@ -120,7 +118,23 @@ export class LoginComponent {
   ]);
 
   errorMessage = '';
-  isLoading = false;
+  private _isLoading = false;
+
+  get isLoading(): boolean {
+    return this._isLoading;
+  }
+
+  set isLoading(value: boolean) {
+    this._isLoading = value;
+    // Gérer l'état disabled des FormControls
+    if (value) {
+      this.firstnameControl.disable();
+      this.pinControl.disable();
+    } else {
+      this.firstnameControl.enable();
+      this.pinControl.enable();
+    }
+  }
 
   onLogin(event?: Event): void {
     event?.preventDefault();
