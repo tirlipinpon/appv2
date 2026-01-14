@@ -85,6 +85,11 @@ import {
                 position="absolute"
                 alignment="right">
               </app-stars-display>
+              @if (getTeachersForSubject(subject.id).length > 0) {
+                <div class="subject-teachers">
+                  Prof: {{ formatTeachersNames(getTeachersForSubject(subject.id)) }}
+                </div>
+              }
             </div>
           }
         </div>
@@ -283,6 +288,14 @@ import {
       color: var(--theme-primary-color, #4CAF50);
     }
 
+    .subject-teachers {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+      font-size: 0.875rem;
+      color: var(--theme-text-secondary-color, #666);
+    }
+
     .categories-view {
       margin-top: 2rem;
     }
@@ -476,6 +489,9 @@ export class SubjectsComponent implements OnInit, OnDestroy {
   // Signaux pour stocker les jeux par catégorie et par matière (pour calculer les restants)
   gamesByCategory = signal<Map<string, Game[]>>(new Map());
   gamesBySubject = signal<Map<string, Game[]>>(new Map());
+
+  // Signal pour stocker les profs par matière
+  teachersBySubject = signal<Map<string, string[]>>(new Map());
 
   // Exposer les signals directement pour le template
   subjects = computed(() => this.application.getSubjects()());
@@ -761,6 +777,17 @@ export class SubjectsComponent implements OnInit, OnDestroy {
         // Utiliser .then() et .catch() car les effects ne peuvent pas être async
         this.loadCategoriesForSubjects(subjectIds, childId).catch((error) => {
           console.error('Erreur lors du chargement des catégories:', error);
+        });
+
+        // Charger les profs pour toutes les matières (avec childId pour filtrer par école/niveau)
+        console.log('[SubjectsComponent] Début du chargement des profs pour les matières:', subjectIds);
+        this.infrastructure.getTeachersForSubjects(subjectIds, childId).then((teachersMap) => {
+          console.log('[SubjectsComponent] Profs chargés avec succès:', teachersMap);
+          console.log('[SubjectsComponent] Nombre de matières avec profs:', teachersMap.size);
+          this.teachersBySubject.set(teachersMap);
+        }).catch((error) => {
+          console.error('[SubjectsComponent] Erreur lors du chargement des professeurs:', error);
+          console.error('[SubjectsComponent] Détails de l\'erreur:', error);
         });
       }
     });
@@ -1343,5 +1370,23 @@ export class SubjectsComponent implements OnInit, OnDestroy {
     }
     
     return totalStars;
+  }
+
+  /**
+   * Récupère les noms des professeurs pour une matière
+   */
+  getTeachersForSubject(subjectId: string): string[] {
+    return this.teachersBySubject().get(subjectId) || [];
+  }
+
+  /**
+   * Formate les noms des professeurs pour l'affichage
+   * Format: "M. Dupont, Mme Martin"
+   */
+  formatTeachersNames(teacherNames: string[]): string {
+    if (teacherNames.length === 0) {
+      return '';
+    }
+    return teacherNames.join(', ');
   }
 }

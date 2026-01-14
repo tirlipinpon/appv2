@@ -2,11 +2,13 @@ import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@ang
 import { SettingsApplication } from './components/application/application';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { Theme } from '../../core/types/game.types';
+import { SupabaseService } from '../../core/services/supabase/supabase.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
+  imports: [CommonModule],
   template: `
     <div class="settings-container">
       <h1>Paramètres</h1>
@@ -129,14 +131,81 @@ import { Theme } from '../../core/types/game.types';
       <!-- Section Informations -->
       <section class="settings-section">
         <h2>ℹ️ Informations</h2>
-        <div class="info-item">
-          <span class="info-label">Prénom</span>
-          <span class="info-value">{{ child()?.firstname || 'Non défini' }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Niveau scolaire</span>
-          <span class="info-value">{{ child()?.school_level || 'Non défini' }}</span>
-        </div>
+        @if (childInfoLoading()) {
+          <div class="loading">Chargement des informations...</div>
+        }
+        @if (!childInfoLoading() && childData()) {
+          <div class="info-content">
+            <!-- Avatar -->
+            @if (getAvatarUrl()) {
+              <div class="info-avatar">
+                <img [src]="getAvatarUrl()" alt="Avatar" class="avatar-image">
+              </div>
+            }
+            
+            <!-- Informations de l'enfant -->
+            <div class="info-section">
+              <h3 class="info-section-title">👤 Mon profil</h3>
+              <div class="info-item">
+                <span class="info-label">Prénom</span>
+                <span class="info-value">{{ childData()?.firstname || 'Non défini' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Nom</span>
+                <span class="info-value">{{ childData()?.lastname || 'Non défini' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Date de naissance</span>
+                <span class="info-value">{{ formatDate(childData()?.birthdate) || 'Non définie' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Genre</span>
+                <span class="info-value">{{ childData()?.gender || 'Non défini' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Niveau scolaire</span>
+                <span class="info-value">{{ childData()?.school_level || 'Non défini' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">École</span>
+                <span class="info-value">{{ schoolData()?.name || 'Non définie' }}</span>
+              </div>
+              @if (childData()?.notes) {
+                <div class="info-item">
+                  <span class="info-label">Notes</span>
+                  <span class="info-value">{{ childData()?.notes }}</span>
+                </div>
+              }
+            </div>
+
+            <!-- Informations du parent -->
+            @if (parentData()) {
+              <div class="info-section">
+                <h3 class="info-section-title">👨‍👩‍👧 Parent</h3>
+                <div class="info-item">
+                  <span class="info-label">Nom</span>
+                  <span class="info-value">{{ parentData()?.fullname || 'Non défini' }}</span>
+                </div>
+              </div>
+            }
+
+            <!-- Professeurs et matières -->
+            @if (teachersData() && teachersData()!.length > 0) {
+              <div class="info-section">
+                <h3 class="info-section-title">👨‍🏫 Mes professeurs</h3>
+                @for (teacher of teachersData(); track teacher.teacher_id) {
+                  <div class="teacher-item">
+                    <div class="teacher-name">{{ teacher.teacher_name }}</div>
+                    <div class="teacher-subjects">
+                      <span class="subjects-label">Matières :</span>
+                      <span class="subjects-list">{{ teacher.subjects.join(', ') }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
       </section>
     </div>
   `,
@@ -380,6 +449,70 @@ import { Theme } from '../../core/types/game.types';
       color: #666;
     }
 
+    .info-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .info-avatar {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .avatar-image {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--theme-primary-color, #4CAF50);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .info-section-title {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--theme-text-color, #333);
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--theme-primary-color, #4CAF50);
+    }
+
+    .teacher-item {
+      padding: 0.75rem;
+      background: #f5f5f5;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+
+    .teacher-name {
+      font-weight: 600;
+      color: var(--theme-text-color, #333);
+      margin-bottom: 0.25rem;
+    }
+
+    .teacher-subjects {
+      font-size: 0.875rem;
+      color: #666;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .subjects-label {
+      font-weight: 600;
+    }
+
+    .subjects-list {
+      color: var(--theme-primary-color, #4CAF50);
+    }
+
     .loading, .error {
       text-align: center;
       padding: 2rem;
@@ -393,9 +526,15 @@ import { Theme } from '../../core/types/game.types';
 export class SettingsComponent implements OnInit {
   protected readonly application = inject(SettingsApplication);
   private readonly authService = inject(ChildAuthService);
+  private readonly supabaseService = inject(SupabaseService);
 
   Math = Math;
   child = signal<any>(null);
+  childData = signal<any>(null);
+  parentData = signal<any>(null);
+  schoolData = signal<any>(null);
+  teachersData = signal<Array<{ teacher_id: string; teacher_name: string; subjects: string[] }> | null>(null);
+  childInfoLoading = signal<boolean>(false);
   availableThemes = signal<Theme[]>([]);
   unlockedThemes = signal<string[]>([]);
   themesLoading = signal<boolean>(false);
@@ -406,7 +545,147 @@ export class SettingsComponent implements OnInit {
       this.child.set(currentChild);
       await this.application.initialize();
       await this.loadThemes();
+      await this.loadChildInfo();
     }
+  }
+
+  async loadChildInfo(): Promise<void> {
+    this.childInfoLoading.set(true);
+    try {
+      const currentChild = this.child();
+      if (!currentChild?.child_id) {
+        return;
+      }
+
+      // Récupérer les données complètes de l'enfant
+      const { data: childData, error: childError } = await this.supabaseService.client
+        .from('children')
+        .select('*')
+        .eq('id', currentChild.child_id)
+        .single();
+
+      if (childError) {
+        console.error('Erreur lors du chargement des données enfant:', childError);
+        return;
+      }
+
+      this.childData.set(childData);
+
+      // Récupérer les données du parent
+      if (childData.parent_id) {
+        const { data: parentProfile, error: parentProfileError } = await this.supabaseService.client
+          .from('profiles')
+          .select('id')
+          .eq('id', childData.parent_id)
+          .single();
+
+        if (!parentProfileError && parentProfile) {
+          const { data: parentData, error: parentError } = await this.supabaseService.client
+            .from('parents')
+            .select('fullname')
+            .eq('profile_id', parentProfile.id)
+            .single();
+
+          if (!parentError && parentData) {
+            this.parentData.set(parentData);
+          }
+        }
+      }
+
+      // Récupérer les données de l'école
+      if (childData.school_id) {
+        const { data: schoolData, error: schoolError } = await this.supabaseService.client
+          .from('schools')
+          .select('name')
+          .eq('id', childData.school_id)
+          .single();
+
+        if (!schoolError && schoolData) {
+          this.schoolData.set(schoolData);
+        }
+      }
+
+      // Récupérer les professeurs et leurs matières
+      if (childData.school_level && childData.school_id) {
+        const { data: assignments, error: assignmentsError } = await this.supabaseService.client
+          .from('teacher_assignments')
+          .select(`
+            teacher_id,
+            subject_id,
+            school_level,
+            teachers!inner(
+              id,
+              fullname,
+              profile_id
+            ),
+            subjects!inner(
+              id,
+              name
+            )
+          `)
+          .eq('school_level', childData.school_level)
+          .eq('school_id', childData.school_id)
+          .is('deleted_at', null);
+
+        if (!assignmentsError && assignments) {
+          // Grouper par professeur
+          const teachersMap = new Map<string, { teacher_id: string; teacher_name: string; subjects: string[] }>();
+
+          for (const assignment of assignments) {
+            const teacherId = assignment.teacher_id;
+            const teacherName = (assignment.teachers as any)?.fullname || 'Professeur inconnu';
+            const subjectName = (assignment.subjects as any)?.name || 'Matière inconnue';
+
+            if (!teachersMap.has(teacherId)) {
+              teachersMap.set(teacherId, {
+                teacher_id: teacherId,
+                teacher_name: teacherName,
+                subjects: []
+              });
+            }
+
+            const teacher = teachersMap.get(teacherId)!;
+            if (!teacher.subjects.includes(subjectName)) {
+              teacher.subjects.push(subjectName);
+            }
+          }
+
+          this.teachersData.set(Array.from(teachersMap.values()));
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des informations:', error);
+    } finally {
+      this.childInfoLoading.set(false);
+    }
+  }
+
+  formatDate(dateString: string | null | undefined): string {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch {
+      return dateString;
+    }
+  }
+
+  getAvatarUrl(): string | null {
+    const data = this.childData();
+    if (!data) return null;
+    
+    // Utiliser avatar_url s'il existe
+    if (data.avatar_url) {
+      return data.avatar_url;
+    }
+    
+    // Sinon, générer l'URL depuis DiceBear si seed et style sont disponibles
+    if (data.avatar_seed && data.avatar_style) {
+      const style = data.avatar_style === 'bottts' ? 'bottts' : 'fun-emoji';
+      return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(data.avatar_seed)}`;
+    }
+    
+    return null;
   }
 
   async loadThemes(): Promise<void> {

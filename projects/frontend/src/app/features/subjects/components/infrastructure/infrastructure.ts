@@ -365,5 +365,174 @@ export class SubjectsInfrastructure {
   ): Promise<SubjectProgress> {
     return this.progressionService.updateSubjectProgress(childId, subjectId, updates);
   }
+
+  /**
+   * Récupère les professeurs associés à une matière via les affectations actives
+   * @param subjectId - ID de la matière
+   * @param childId - ID de l'enfant (optionnel, pour filtrer par école/niveau)
+   * @returns Liste des noms des professeurs (fullname ou display_name)
+   */
+  async getTeachersForSubject(subjectId: string, childId?: string | null): Promise<string[]> {
+    // Construire la requête de base avec filtres par école et niveau (nécessaires pour les RLS)
+    let query = this.supabase.client
+      .from('teacher_assignments')
+      .select('teacher_id, school_id, school_level')
+      .eq('subject_id', subjectId)
+      .is('deleted_at', null);
+
+    // Si on a un childId, récupérer ses informations pour filtrer par école et niveau
+    if (childId) {
+      const { data: childData, error: childError } = await this.supabase.client
+        .from('children')
+        .select('school_id, school_level')
+        .eq('id', childId)
+        .single();
+
+      if (!childError && childData) {
+        const schoolId = (childData as { school_id?: string | null }).school_id;
+        const schoolLevel = (childData as { school_level?: string | null }).school_level;
+
+        // Filtrer par école si disponible
+        if (schoolId) {
+          query = query.eq('school_id', schoolId);
+        }
+
+        // Filtrer par niveau scolaire si disponible
+        if (schoolLevel) {
+          query = query.eq('school_level', schoolLevel);
+        }
+      }
+    }
+
+    // Exécuter la requête
+    const { data: assignments, error: assignmentsError } = await query;
+    
+    console.log(`[getTeachersForSubject] Résultat pour matière ${subjectId}:`, {
+      assignments: assignments?.length || 0,
+      error: assignmentsError
+    });
+
+    if (assignmentsError) {
+      console.error('[getTeachersForSubject] Erreur lors de la récupération des affectations:', assignmentsError);
+      return [];
+    }
+
+    if (!assignments || assignments.length === 0) {
+      console.log(`[getTeachersForSubject] Aucune affectation trouvée pour la matière ${subjectId}`);
+      return [];
+    }
+
+    // Extraire les teacher_ids uniques
+    const teacherIds = [...new Set(
+      assignments
+        .map((a: { teacher_id: string }) => a.teacher_id)
+        .filter((id: string | null): id is string => id !== null)
+    )];
+
+    if (teacherIds.length === 0) {
+      return [];
+    }
+
+    // Récupérer les informations des professeurs
+    const { data: teachers, error: teachersError } = await this.supabase.client
+      .from('teachers')
+      .select('id, fullname, profile_id')
+      .in('id', teacherIds);
+
+    if (teachersError) {
+      console.error('[getTeachersForSubject] Erreur lors de la récupération des professeurs:', teachersError);
+      return [];
+    }
+
+    if (!teachers || teachers.length === 0) {
+      console.log(`[getTeachersForSubject] Aucun professeur trouvé pour les IDs:`, teacherIds);
+      return [];
+    }
+
+    // Extraire les profile_ids pour récupérer les display_name si fullname est null
+    const profileIds = teachers
+      .filter((t: { fullname?: string | null; profile_id?: string | null }) => !t.fullname && t.profile_id)
+      .map((t: { profile_id?: string | null }) => t.profile_id)
+      .filter((id: string | null | undefined): id is string => id !== null && id !== undefined);
+
+    // Récupérer les display_name des profils si nécessaire
+    let profilesMap = new Map<string, string>();
+    if (profileIds.length > 0) {
+      const { data: profiles, error: profilesError } = await this.supabase.client
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', profileIds);
+
+      if (!profilesError && profiles) {
+        for (const profile of profiles) {
+          const profileId = (profile as { id: string }).id;
+          const displayName = (profile as { display_name?: string | null }).display_name;
+          if (displayName) {
+            profilesMap.set(profileId, displayName);
+          }
+        }
+      }
+    }
+
+    // Extraire les noms des professeurs (fullname en priorité, sinon display_name)
+    const teacherNames: string[] = [];
+    const seenNames = new Set<string>();
+
+    for (const teacher of teachers) {
+      const fullname = (teacher as { fullname?: string | null }).fullname;
+      const profileId = (teacher as { profile_id?: string | null }).profile_id;
+      const displayName = profileId ? profilesMap.get(profileId) : null;
+
+      const name = fullname || displayName || null;
+      
+      if (name && !seenNames.has(name)) {
+        teacherNames.push(name);
+        seenNames.add(name);
+      }
+    }
+
+    console.log(`[getTeachersForSubject] Profs trouvés pour la matière ${subjectId}:`, teacherNames);
+    return teacherNames;
+  }
+
+  /**
+   * Récupère les professeurs associés à plusieurs matières en une seule requête
+   * @param subjectIds - IDs des matières
+   * @param childId - ID de l'enfant (pour récupérer son école et niveau scolaire)
+   * @returns Map<subjectId, string[]> des noms des professeurs par matière
+   */
+  async getTeachersForSubjects(subjectIds: string[], childId?: string | null): Promise<Map<string, string[]>> {
+    if (subjectIds.length === 0) {
+      return new Map();
+    }
+
+    // Utiliser la fonction RPC pour contourner les RLS (comme get_frontend_child_statistics)
+    const { data: rpcResult, error: rpcError } = await this.supabase.client
+      .rpc('get_teachers_for_subjects', {
+        p_subject_ids: subjectIds,
+        p_child_id: childId || null
+      });
+
+    if (rpcError) {
+      console.error('[getTeachersForSubjects] Erreur lors de l\'appel RPC:', rpcError);
+      return new Map();
+    }
+
+    if (!rpcResult || rpcResult.length === 0) {
+      return new Map();
+    }
+
+    // Convertir le résultat RPC en Map
+    const result = new Map<string, string[]>();
+    for (const row of rpcResult) {
+      const subjectId = (row as { subject_id: string }).subject_id;
+      const teacherNames = (row as { teacher_names: string[] }).teacher_names;
+      if (subjectId && teacherNames && teacherNames.length > 0) {
+        result.set(subjectId, teacherNames);
+      }
+    }
+
+    return result;
+  }
 }
 
