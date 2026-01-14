@@ -238,7 +238,7 @@ export class TeacherAssignmentService {
 
             if (deletedWithCorrectLevel) {
               // Réactiver l'affectation supprimée avec le bon niveau
-('[createAssignmentWithConfirmation] Réactivation de l\'affectation supprimée:', deletedWithCorrectLevel.id);
+              console.log('[createAssignmentWithConfirmation] Réactivation de l\'affectation supprimée:', deletedWithCorrectLevel.id);
               return from(
                 this.supabaseService.client
                   .from('teacher_assignments')

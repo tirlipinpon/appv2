@@ -84,10 +84,6 @@ export class SubjectService {
           (linksRes.error as PostgrestError | null) ||
           (extrasRes.error as PostgrestError | null) ||
           null;
-            firstSubjects: subjects.slice(0, 5).map(s => ({ id: s.id, name: s.name })),
-            error,
-          });
-        }
         return { subjects, error };
       })
     );

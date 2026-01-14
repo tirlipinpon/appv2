@@ -3,6 +3,7 @@ import { signalStore, withState, withComputed, withMethods, patchState } from '@
 import { withDevtools } from "@angular-architects/ngrx-toolkit";
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap, catchError, of } from 'rxjs';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { Subject } from '../../features/teacher/types/subject';
 import { SubjectService } from '../../features/teacher/services/subject/subject.service';
 import { ErrorSnackbarService } from '../services/snackbar/error-snackbar.service';
@@ -205,7 +206,7 @@ export const SubjectsStore = signalStore(
           patchState(store, { allSubjects: updatedSubjects });
           
           return subjectService.updateSubject(id, updates).pipe(
-            tap((result) => {
+            tap((result: { subject: Subject | null; error: PostgrestError | null }) => {
               if (result.error) {
                 // Rollback
                 patchState(store, { allSubjects: previous });

@@ -206,24 +206,16 @@ export class ParentSubjectService {
             code: error.code
           });
         }
-('📊 Enrollments query result for child', childId, ':', { 
-          count: data?.length || 0, 
-          data, 
-          error 
-        });
         return { enrollments: (data as Enrollment[] | null) || [], error: error || null };
       })
     );
   }
 
   upsertEnrollment(enr: { child_id: string; school_id: string; school_year_id?: string | null; subject_id: string; selected: boolean }): Observable<{ enrollment: Enrollment | null; error: PostgrestError | null }> {
-('🔄 [ParentSubjectService] upsertEnrollment called:', enr);
-    
     // Approche UPDATE puis INSERT si nécessaire pour éviter les problèmes de contrainte ON CONFLICT
     return from(
       (async () => {
         // D'abord, récupérer tous les enrollments existants (gérer les doublons)
-('🔍 [ParentSubjectService] Checking for existing enrollment...');
         const { data: existingList, error: selectError } = await this.supabase.client
           .from('child_subject_enrollments')
           .select('*')
@@ -251,14 +243,11 @@ export class ParentSubjectService {
             
             if (deleteError) {
               console.error('❌ [ParentSubjectService] Error deleting duplicates:', deleteError);
-            } else {
-(`✅ [ParentSubjectService] Deleted ${duplicateIds.length} duplicate enrollment(s)`);
             }
           }
         }
 
         if (existing) {
-('📝 [ParentSubjectService] Updating existing enrollment:', existing);
           // Mise à jour de l'enrollment existant
           const { data: updated, error: updateError } = await this.supabase.client
             .from('child_subject_enrollments')
@@ -273,12 +262,9 @@ export class ParentSubjectService {
 
           if (updateError) {
             console.error('❌ [ParentSubjectService] Error updating enrollment:', updateError);
-          } else {
-('✅ [ParentSubjectService] Enrollment updated:', updated);
           }
           return { data: updated as Enrollment | null, error: updateError };
         } else {
-('➕ [ParentSubjectService] Inserting new enrollment...');
           // Insertion d'un nouvel enrollment
           const { data: inserted, error: insertError } = await this.supabase.client
             .from('child_subject_enrollments')
@@ -300,19 +286,12 @@ export class ParentSubjectService {
               hint: insertError.hint,
               code: insertError.code
             });
-          } else {
-('✅ [ParentSubjectService] Enrollment inserted:', inserted);
           }
           return { data: inserted as Enrollment | null, error: insertError };
         }
       })()
     ).pipe(
       map(({ data, error }) => {
-('📊 [ParentSubjectService] upsertEnrollment result:', { 
-          hasEnrollment: !!data, 
-          hasError: !!error,
-          error: error ? { message: error.message, code: error.code } : null
-        });
         return { enrollment: data as Enrollment | null, error: error || null };
       })
     );
@@ -854,16 +833,9 @@ export class ParentSubjectService {
         }
 
         const assignmentRows = (assignments as Array<{ subject_id: string; teacher_id: string }> | null) || [];
-('[getTeachersForSubjectsBatch] Assignments trouvés:', assignmentRows.length, {
-          subjectIds,
-          schoolId,
-          schoolLevel,
-          assignments: assignmentRows
-        });
         
         // Récupérer tous les teacher_ids uniques
         const teacherIds = [...new Set(assignmentRows.map(a => a.teacher_id).filter(Boolean))];
-('[getTeachersForSubjectsBatch] Teacher IDs uniques:', teacherIds);
 
         if (teacherIds.length === 0) {
           const result = new Map<string, { id: string; fullname: string | null }[]>();
@@ -924,7 +896,6 @@ export class ParentSubjectService {
             teachersBySubject.forEach((teachersMap, subjectId) => {
               const teachersArray = Array.from(teachersMap.values());
               result.set(subjectId, teachersArray);
-(`[getTeachersForSubjectsBatch] Professeurs pour matière ${subjectId}:`, teachersArray.map(t => t.fullname));
             });
 
             // S'assurer que toutes les matières ont au moins un tableau vide

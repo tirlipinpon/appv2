@@ -592,11 +592,6 @@ export class GamesComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Priorité : URL directe > query params > signal > select
     const categoryId = normalizedFromUrl || normalizedQueryParam || normalizedSelected || normalizedFromSelect;
-      categoryIdFromSelect: normalizedFromSelect,
-      finalCategoryId: categoryId,
-      subjectId,
-      currentUrl: window.location.href
-    });
 
     this.gameCreationService.createGameWithImage({
       gameTypeId,

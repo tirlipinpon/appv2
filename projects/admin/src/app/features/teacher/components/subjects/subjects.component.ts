@@ -384,6 +384,9 @@ export class SubjectsComponent implements OnInit {
 
     
     // Si les valeurs ne correspondent pas, réessayer immédiatement
+    const actualName = nameControl?.value || '';
+    const actualDesc = descriptionControl?.value || '';
+    const actualType = typeControl?.value || '';
     if (actualName !== subject.name || actualDesc !== (subject.description || '') || actualType !== subject.type) {
       console.warn('[SubjectsComponent] fillFormFromSubject: valeurs non correspondantes, nouvelle tentative');
       if (nameControl) nameControl.setValue(subject.name || '', { emitEvent: false });

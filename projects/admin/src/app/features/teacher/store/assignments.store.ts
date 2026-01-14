@@ -191,7 +191,7 @@ export const TeacherAssignmentStore = signalStore(
               setStoreError(store, errorSnackbar, errorMessage);
               return of(null);
             })
-          ))
+          )
         )
       )
     ),
