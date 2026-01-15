@@ -9,16 +9,21 @@
     autocorrect="off"
     autocapitalize="off"
     spellcheck="false"
+    inputmode="text"
     maxlength="20"
     placeholder="Tape ici..."
     aria-label="Zone de saisie pour mobile"
     (input)="onMobileInput($event)"
     (focus)="onMobileFocus()"
     (blur)="onMobileBlur()"
+    (click)="onMobileInputClick()"
   />
 
   <!-- Container avec les boîtes de lettres -->
-  <div class="word-display" [class.disabled]="disabled">
+  <div 
+    class="word-display" 
+    [class.disabled]="disabled"
+    (click)="onWordDisplayClick()">
     @for (box of letterBoxes(); track $index) {
       <div 
         [class]="getLetterBoxClasses(box)"

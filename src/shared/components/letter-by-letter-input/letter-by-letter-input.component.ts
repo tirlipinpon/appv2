@@ -87,6 +87,15 @@ export class LetterByLetterInputComponent implements OnInit, OnChanges {
   ngOnInit(): void {
     this.setupKeyboardListeners();
     this.setupMobileInput();
+    
+    // Focuser automatiquement l'input sur mobile après un court délai
+    if (this.isMobileDevice()) {
+      setTimeout(() => {
+        if (this.mobileInput?.nativeElement && !this.disabled) {
+          this.mobileInput.nativeElement.focus();
+        }
+      }, 300);
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -295,6 +304,29 @@ export class LetterByLetterInputComponent implements OnInit, OnChanges {
           this.mobileInput.nativeElement?.focus();
         }
       }, 100);
+    }
+  }
+
+  /**
+   * Gère le clic sur l'input mobile pour le focuser
+   */
+  onMobileInputClick(): void {
+    if (this.isMobileDevice() && this.mobileInput?.nativeElement) {
+      this.mobileInput.nativeElement.focus();
+    }
+  }
+
+  /**
+   * Gère le clic sur la zone d'affichage des lettres pour focuser l'input mobile
+   */
+  onWordDisplayClick(): void {
+    if (this.disabled || this.isComplete()) {
+      return;
+    }
+    
+    if (this.isMobileDevice() && this.mobileInput?.nativeElement) {
+      // Focuser l'input pour déclencher le clavier
+      this.mobileInput.nativeElement.focus();
     }
   }
 
