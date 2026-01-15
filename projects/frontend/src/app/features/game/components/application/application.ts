@@ -15,6 +15,7 @@ import { GameState } from '../../types/game.types';
 import { normalizeGameType } from '../../../../shared/utils/game-normalization.util';
 import { SPECIFIC_GAME_TYPES } from '@shared/utils/game-type.util';
 import { GameInfrastructure } from '../infrastructure/infrastructure';
+import type { Game } from '../../../../core/types/game.types';
 
 @Injectable({
   providedIn: 'root',
@@ -154,10 +155,7 @@ export class GameApplication {
           questionId: q.id,
           selectedAnswer: effectiveGameState.selectedAnswer,
         })),
-        correct_count: effectiveGameState.questions.filter((q, i) => {
-          // Compter les bonnes réponses (simplifié, à améliorer selon la logique réelle)
-          return effectiveGameState.score > 0;
-        }).length,
+        correct_count: effectiveGameState.questions.filter(() => effectiveGameState.score > 0).length,
         total_count: effectiveGameState.questions.length,
       },
       difficulty_level: 1, // TODO: Récupérer depuis le state
@@ -168,77 +166,21 @@ export class GameApplication {
     // Sauvegarder la tentative et récupérer l'ID
     const savedAttempt = await this.infrastructure.saveGameAttempt(attemptData);
     
-    // Recalculer les jours consécutifs et vérifier les badges débloqués
-    await this.checkAndNotifyConsecutiveDaysBadges(child.child_id);
-    
-    // Vérifier le badge Activité Quotidienne
-    await this.checkAndNotifyDailyActivityBadges(child.child_id);
-    
-    // Vérifier les nouveaux badges débloqués (le trigger PostgreSQL les a déjà débloqués)
-    await this.checkAndNotifyBadges(child.child_id, savedAttempt.id);
+    // Mettre à jour la progression et vérifier les badges (non-bloquant pour l'affichage du modal)
+    // Les badges seront mis en file d'attente et affichés après la fermeture du modal de complétion
+    // On vérifie les badges APRÈS la mise à jour de la progression car certains badges
+    // (comme "Première catégorie complétée") sont débloqués par les triggers PostgreSQL
+    this.updateProgressAndCheckBadges(game, child.child_id, savedAttempt.id, isSuccess).catch(error => {
+      console.error('[GameApplication] Erreur lors de la mise à jour de la progression:', error);
+    });
 
-    // Mettre à jour la progression
-    if (game.subject_category_id) {
-      // Calculer la progression globale basée sur les jeux résolus / total de jeux
-      const completionPercentage = await this.progression.calculateCategoryCompletionPercentage(
-        child.child_id,
-        game.subject_category_id
-      );
-
-      // La catégorie est complétée si tous les jeux sont résolus (100%)
-      const categoryCompleted = completionPercentage === 100;
-
-      await this.progression.updateProgress(
-        child.child_id,
-        game.subject_category_id,
-        {
-          completed: categoryCompleted,
-          completionPercentage: completionPercentage,
-        }
-      );
-
-      // Attendre un peu pour que le trigger sur frontend_subject_category_progress s'exécute
-      // puis vérifier à nouveau les badges débloqués (notamment "Première catégorie complétée")
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      await this.checkAndNotifyBadges(child.child_id, savedAttempt.id);
-
-      // Vérifier et débloquer les collectibles
-      if (isSuccess) {
-        await this.collection.checkAndUnlockCollectibles(child.child_id, game.subject_category_id);
-      }
-    } else if (game.subject_id) {
-      // Mettre à jour la progression de la matière principale
-      try {
-        const completionPercentage = await this.progression.calculateSubjectCompletionPercentage(
-          child.child_id,
-          game.subject_id
-        );
-
-        // La matière est complétée si tous les jeux sont résolus (100%)
-        const subjectCompleted = completionPercentage === 100;
-
-        await this.progression.updateSubjectProgress(
-          child.child_id,
-          game.subject_id,
-          {
-            completionPercentage: completionPercentage,
-          }
-        );
-
-        // Attendre un peu pour que le trigger s'exécute
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await this.checkAndNotifyBadges(child.child_id, savedAttempt.id);
-      } catch (error) {
-        // Ne pas bloquer l'affichage du modal si la mise à jour de la progression échoue
-        console.error('Erreur lors de la mise à jour de la progression de la matière:', error);
-      }
-    }
-
-    // Créer un checkpoint
-    await this.checkpoint.createGameEndCheckpoint(child.child_id, {
+    // Créer un checkpoint (non-bloquant)
+    this.checkpoint.createGameEndCheckpoint(child.child_id, {
       gameId: game.id,
       score: finalScore,
       completed: isSuccess,
+    }).catch(error => {
+      console.error('[GameApplication] Erreur lors de la création du checkpoint:', error);
     });
   }
 
@@ -321,6 +263,137 @@ export class GameApplication {
     } catch (error) {
       console.error('[savePartialScore] Erreur lors de la sauvegarde', error);
       throw error;
+    }
+  }
+
+  /**
+   * Vérifie et met en file d'attente les badges (non-bloquant)
+   */
+  private async checkAndQueueBadges(childId: string, gameAttemptId: string): Promise<void> {
+    try {
+      // Vérifier les jours consécutifs
+      const consecutiveStatus = await this.consecutiveGameDaysService.recalculateAndGetStatus(childId);
+      if (consecutiveStatus.badgesUnlocked && consecutiveStatus.badgesUnlocked.length > 0) {
+        this.badgesStore.loadChildBadges(childId);
+        const allBadges = await this.badgesService.getAllBadges();
+        const consecutiveBadge = allBadges.find(b => b.badge_type === 'consecutive_game_days');
+        
+        for (const unlockedBadge of consecutiveStatus.badgesUnlocked) {
+          this.badgeNotification.queueBadgeNotification(
+            {
+              badge_id: unlockedBadge.badge_id,
+              badge_name: consecutiveBadge?.name || 'Jours consécutifs de jeu',
+              badge_type: 'consecutive_game_days',
+              level: unlockedBadge.level,
+              value: unlockedBadge.value,
+              unlocked_at: unlockedBadge.unlocked_at,
+            },
+            consecutiveBadge?.description
+          );
+        }
+      }
+
+      // Vérifier l'activité quotidienne
+      const dailyStatus = await this.dailyActivityService.recalculateAndGetStatus(childId);
+      if (dailyStatus.newLevelsUnlocked && dailyStatus.newLevelsUnlocked.length > 0) {
+        const allBadges = await this.badgesService.getAllBadges();
+        const dailyActivityBadge = allBadges.find(b => b.badge_type === 'daily_activity');
+        
+        if (dailyStatus.newLevelsUnlocked.length > 1) {
+          const levelsText = dailyStatus.newLevelsUnlocked.join(', ');
+          this.badgeNotification.queueBadgeNotification(
+            {
+              badge_id: dailyActivityBadge?.id || '',
+              badge_name: dailyActivityBadge?.name || 'Activité Quotidienne',
+              badge_type: 'daily_activity',
+              level: dailyStatus.maxLevelToday,
+              value: dailyStatus.totalActiveMinutes,
+              unlocked_at: new Date().toISOString(),
+            },
+            `Tu as débloqué les niveaux ${levelsText} du badge Activité Quotidienne!`
+          );
+        } else {
+          this.badgeNotification.queueBadgeNotification(
+            {
+              badge_id: dailyActivityBadge?.id || '',
+              badge_name: dailyActivityBadge?.name || 'Activité Quotidienne',
+              badge_type: 'daily_activity',
+              level: dailyStatus.newLevelsUnlocked[0],
+              value: dailyStatus.totalActiveMinutes,
+              unlocked_at: new Date().toISOString(),
+            },
+            dailyActivityBadge?.description
+          );
+        }
+      }
+
+      // Vérifier les autres badges
+      const newBadges = await this.badgesService.getNewlyUnlockedBadges(childId, gameAttemptId);
+      if (newBadges && newBadges.length > 0) {
+        const allBadges = await this.badgesService.getAllBadges();
+        for (const badge of newBadges) {
+          const badgeDefinition = allBadges.find(b => b.id === badge.badge_id);
+          this.badgeNotification.queueBadgeNotification(badge, badgeDefinition?.description);
+        }
+      }
+    } catch (error) {
+      console.error('[GameApplication] Erreur lors de la vérification des badges:', error);
+    }
+  }
+
+  /**
+   * Met à jour la progression et vérifie les badges après un délai (non-bloquant)
+   */
+  private async updateProgressAndCheckBadges(
+    game: Game,
+    childId: string,
+    gameAttemptId: string,
+    isSuccess: boolean
+  ): Promise<void> {
+    try {
+      if (game.subject_category_id) {
+        const completionPercentage = await this.progression.calculateCategoryCompletionPercentage(
+          childId,
+          game.subject_category_id
+        );
+        const categoryCompleted = completionPercentage === 100;
+
+        await this.progression.updateProgress(
+          childId,
+          game.subject_category_id,
+          {
+            completed: categoryCompleted,
+            completionPercentage: completionPercentage,
+          }
+        );
+
+        // Attendre que le trigger s'exécute, puis vérifier les badges
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await this.checkAndQueueBadges(childId, gameAttemptId);
+
+        // Vérifier les collectibles
+        if (isSuccess) {
+          await this.collection.checkAndUnlockCollectibles(childId, game.subject_category_id);
+        }
+      } else if (game.subject_id) {
+        const completionPercentage = await this.progression.calculateSubjectCompletionPercentage(
+          childId,
+          game.subject_id
+        );
+
+        await this.progression.updateSubjectProgress(
+          childId,
+          game.subject_id,
+          {
+            completionPercentage: completionPercentage,
+          }
+        );
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await this.checkAndQueueBadges(childId, gameAttemptId);
+      }
+    } catch (error) {
+      console.error('[GameApplication] Erreur lors de la mise à jour de la progression:', error);
     }
   }
 

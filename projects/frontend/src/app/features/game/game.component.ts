@@ -15,6 +15,7 @@ import { SubjectsInfrastructure } from '../subjects/components/infrastructure/in
 import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { ProgressionService } from '../../core/services/progression/progression.service';
 import { SessionStarService } from '../../core/services/session-star/session-star.service';
+import { BadgeNotificationService } from '../../core/services/badges/badge-notification.service';
 import type { Game } from '../../core/types/game.types';
 import {
   isGameType,
@@ -362,7 +363,7 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
         [starColor]="starColor()"
         [starType]="starType()"
         [actions]="completionActions()"
-        (overlayClick)="goToSubjects()">
+        (overlayClick)="onCompletionModalClose()">
       </app-completion-modal>
 
       <!-- Modal d'erreur -->
@@ -616,6 +617,7 @@ export class GameComponent implements OnInit, OnDestroy {
   private readonly childAuthService = inject(ChildAuthService);
   private readonly progression = inject(ProgressionService);
   private readonly sessionStarService = inject(SessionStarService);
+  private readonly badgeNotification = inject(BadgeNotificationService);
   private routeSubscription?: Subscription;
 
   selectedAnswer = signal<number | null>(null);
@@ -757,7 +759,7 @@ export class GameComponent implements OnInit, OnDestroy {
       actions.push({
         label: 'Continuer',
         variant: 'primary',
-        action: () => this.goToNextGame()
+        action: () => this.onCompletionAction(() => this.goToNextGame())
       });
     }
     
@@ -766,17 +768,39 @@ export class GameComponent implements OnInit, OnDestroy {
       {
         label: 'Retour aux matières',
         variant: this.hasNextGame() ? 'secondary' : 'primary',
-        action: () => this.goToSubjects()
+        action: () => this.onCompletionAction(() => this.goToSubjects())
       },
       {
         label: 'Rejouer',
         variant: 'secondary',
-        action: () => this.restartGame()
+        action: () => this.onCompletionAction(() => this.restartGame())
       }
     );
     
     return actions;
   });
+
+  /**
+   * Wrapper pour les actions du modal de complétion
+   * Ferme le modal, déclenche l'affichage des badges, puis exécute l'action
+   */
+  private onCompletionAction(action: () => void | Promise<void>): void {
+    // Fermer le modal
+    this.showCompletionScreen.set(false);
+    
+    // Déclencher l'affichage des badges après un court délai
+    setTimeout(() => {
+      this.badgeNotification.processNextBadgeInQueue();
+    }, 300);
+    
+    // Exécuter l'action
+    const result = action();
+    if (result instanceof Promise) {
+      result.catch(error => {
+        console.error('Erreur lors de l\'exécution de l\'action:', error);
+      });
+    }
+  }
 
   // Computed pour déterminer le type de jeu et les données
   gameType = computed(() => {
@@ -1475,74 +1499,33 @@ export class GameComponent implements OnInit, OnDestroy {
         }
       }
       
-      await this.application.completeGame();
+      // NOUVEAU : Calculer les données nécessaires pour le modal AVANT d'appeler completeGame()
       const gameState = this.application.getGameState()();
-      
-      // Chercher le prochain jeu dans la même catégorie AVANT de calculer le score
-      await this.findNextGame();
-      
-      // Recharger la progression globale de la catégorie après avoir complété le jeu
-      await this.loadCategoryProgress();
-      // Recharger le score total après avoir complété le jeu
-      await this.loadTotalScore();
-      
-      // Vérifier si une nouvelle étoile a été gagnée (vérifier si c'est une nouvelle complétion : passe de < 100% à 100%)
-      let newStarEarned = false;
-      if (childId && entityId) {
-        let currentCompletionPercentage = 0;
-        
-        if (isCategory && game?.subject_category_id) {
-          const progressList = await this.progression.getProgressForChild(childId);
-          const categoryProgress = progressList.find(p => p.subject_category_id === game.subject_category_id);
-          currentCompletionPercentage = categoryProgress?.completion_percentage ?? 0;
-        } else if (!isCategory && game?.subject_id) {
-          const subjectProgress = await this.subjectsInfrastructure.loadSubjectProgress(childId, game.subject_id);
-          currentCompletionPercentage = subjectProgress?.completion_percentage ?? 0;
-        }
-        
-        // Une nouvelle étoile est gagnée si :
-        // La catégorie/matière passe de < 100% à 100% (nouvelle complétion)
-        const wasNotCompleted = previousCompletionPercentage < 100;
-        const isNowCompleted = currentCompletionPercentage >= 100;
-        
-        if (wasNotCompleted && isNowCompleted) {
-          newStarEarned = true;
-          this.starEarned.set(true);
-          
-          // Marquer l'étoile comme nouvelle pour le clignotement
-          if (isCategory && game?.subject_category_id) {
-            this.sessionStarService.markStarAsNew('category', game.subject_category_id);
-          } else if (!isCategory && game?.subject_id) {
-            this.sessionStarService.markStarAsNew('subject', game.subject_id);
-          }
-        } else {
-          this.starEarned.set(false);
-        }
-      }
-      
-      // Liste des types de jeux spécifiques qui n'utilisent pas le système de questions standard
       const normalizedGameType = normalizeGameType(game?.game_type);
       const isSpecificGame = SPECIFIC_GAME_TYPES.some(type => normalizeGameType(type) === normalizedGameType);
       
-      // Calculer le score individuel du jeu pour le message
+      // Calculer le score individuel du jeu
       let individualScore = 0;
       if (isSpecificGame) {
-        // Pour les jeux spécifiques, on considère que c'est réussi à 100% si terminé
         individualScore = 100;
       } else if (gameState && gameState.questions && gameState.questions.length > 0) {
-        // Pour les jeux avec questions (jeux génériques)
         const totalQuestions = gameState.questions.length;
         const score = gameState.score;
         individualScore = Math.round((score / totalQuestions) * 100);
       } else {
-        // Pour les jeux sans gameState ni questions, on considère que c'est réussi
         individualScore = 100;
       }
       
       this.finalScore.set(individualScore);
       
-      // Message basé sur la progression globale de la catégorie ou matière
+      // Charger la progression actuelle pour le message (rapide)
+      await this.loadCategoryProgress();
       const globalProgress = this.categoryProgress();
+      
+      // Chercher le prochain jeu (rapide)
+      await this.findNextGame();
+      
+      // Calculer le message
       const isSubject = game && !game.subject_category_id && game.subject_id;
       const entityName = isSubject ? 'matière' : 'catégorie';
       
@@ -1556,14 +1539,73 @@ export class GameComponent implements OnInit, OnDestroy {
         this.completionMessage.set(`Continue ! Tu as complété ${globalProgress}% de cette ${entityName}. 💪`);
       }
       
-      // Toujours afficher le modal, même en cas d'erreur précédente
+      // AFFICHER LE MODAL IMMÉDIATEMENT (avant les opérations lourdes)
       this.showCompletionScreen.set(true);
+      
+      // NOUVEAU : Exécuter completeGame() en arrière-plan (non-bloquant)
+      // Cela va sauvegarder, vérifier les badges, etc. sans bloquer l'affichage
+      this.application.completeGame().catch(error => {
+        console.error('Erreur lors de la complétion du jeu:', error);
+      });
+      
+      // Vérifier les étoiles en arrière-plan (non-bloquant)
+      this.checkStarEarned(childId, entityId, isCategory, game, previousCompletionPercentage)
+        .catch(error => {
+          console.error('Erreur lors de la vérification des étoiles:', error);
+        });
+      
+      // Recharger le score total en arrière-plan (non-bloquant)
+      this.loadTotalScore().catch(error => {
+        console.error('Erreur lors du chargement du score total:', error);
+      });
+      
     } catch (error) {
       // En cas d'erreur, afficher quand même le modal avec un message par défaut
       console.error('Erreur lors de la complétion du jeu:', error);
       this.finalScore.set(100);
       this.completionMessage.set('🎉 Jeu terminé ! 🏆');
       this.showCompletionScreen.set(true);
+    }
+  }
+
+  /**
+   * Vérifie si une étoile a été gagnée (exécuté en arrière-plan)
+   */
+  private async checkStarEarned(
+    childId: string | undefined,
+    entityId: string | null,
+    isCategory: boolean,
+    game: Game | null,
+    previousCompletionPercentage: number
+  ): Promise<void> {
+    if (!childId || !entityId || !game) {
+      return;
+    }
+    
+    let currentCompletionPercentage = 0;
+    
+    if (isCategory && game.subject_category_id) {
+      const progressList = await this.progression.getProgressForChild(childId);
+      const categoryProgress = progressList.find(p => p.subject_category_id === game.subject_category_id);
+      currentCompletionPercentage = categoryProgress?.completion_percentage ?? 0;
+    } else if (!isCategory && game.subject_id) {
+      const subjectProgress = await this.subjectsInfrastructure.loadSubjectProgress(childId, game.subject_id);
+      currentCompletionPercentage = subjectProgress?.completion_percentage ?? 0;
+    }
+    
+    const wasNotCompleted = previousCompletionPercentage < 100;
+    const isNowCompleted = currentCompletionPercentage >= 100;
+    
+    if (wasNotCompleted && isNowCompleted) {
+      this.starEarned.set(true);
+      
+      if (isCategory && game.subject_category_id) {
+        this.sessionStarService.markStarAsNew('category', game.subject_category_id);
+      } else if (!isCategory && game.subject_id) {
+        this.sessionStarService.markStarAsNew('subject', game.subject_id);
+      }
+    } else {
+      this.starEarned.set(false);
     }
   }
 
@@ -1813,6 +1855,20 @@ export class GameComponent implements OnInit, OnDestroy {
     // Réinitialiser l'animation d'étoile
     this.starEarned.set(false);
     this.router.navigate(['/subjects']);
+  }
+
+  /**
+   * Gère la fermeture du modal de complétion
+   * Ferme le modal et déclenche l'affichage des badges en attente
+   */
+  onCompletionModalClose(): void {
+    this.showCompletionScreen.set(false);
+    
+    // Après la fermeture du modal de complétion, afficher les badges en attente
+    // Utiliser setTimeout pour laisser le temps à l'animation de fermeture de se terminer
+    setTimeout(() => {
+      this.badgeNotification.processNextBadgeInQueue();
+    }, 300); // Délai pour l'animation de fermeture
   }
 
   async goBack(): Promise<void> {

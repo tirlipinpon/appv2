@@ -24,13 +24,22 @@ export class BadgeNotificationService {
    */
   showBadgeNotification(badge: NewlyUnlockedBadge, description?: string): Promise<void> {
     return new Promise((resolve) => {
-      // Créer une clé unique pour ce badge (badge_id + unlocked_at si disponible)
-      const badgeKey = badge.unlocked_at 
-        ? `${badge.badge_id}-${badge.unlocked_at}`
-        : `${badge.badge_id}-${Date.now()}`;
+      // Utiliser badge_id + level pour la déduplication (cohérent avec queueBadgeNotification)
+      const badgeKey = `${badge.badge_id}-${badge.level ?? 'default'}`;
 
       // Si le badge a déjà été affiché, ne pas l'afficher à nouveau
       if (this.displayedBadges.has(badgeKey)) {
+        resolve();
+        return;
+      }
+
+      // Vérifier aussi dans la file d'attente pour éviter les doublons
+      const currentQueue = this.badgeQueue();
+      const alreadyInQueue = currentQueue.some(
+        existing => existing.badge_id === badge.badge_id && existing.level === badge.level
+      );
+
+      if (alreadyInQueue) {
         resolve();
         return;
       }
@@ -85,6 +94,11 @@ export class BadgeNotificationService {
     if (queue.length > 0) {
       const nextBadge = queue[0];
       this.badgeQueue.update((q) => q.slice(1));
+      
+      // CRITICAL FIX: Ajouter le badge à displayedBadges pour éviter qu'il soit réajouté
+      const badgeKey = `${nextBadge.badge_id}-${nextBadge.level ?? 'default'}`;
+      this.displayedBadges.add(badgeKey);
+      
       this.currentBadge.set(nextBadge);
       this.isVisible.set(true);
     }
@@ -123,5 +137,69 @@ export class BadgeNotificationService {
    */
   clearDisplayedBadgesCache(): void {
     this.displayedBadges.clear();
+  }
+
+  /**
+   * Ajoute un badge à la file d'attente sans bloquer
+   * Utile pour mettre les badges en attente pendant qu'un autre modal est affiché
+   */
+  queueBadgeNotification(badge: NewlyUnlockedBadge, description?: string): void {
+    // Utiliser badge_id + level pour la déduplication (plus fiable que unlocked_at)
+    // car le même badge peut être débloqué plusieurs fois avec des unlocked_at différents
+    const badgeKey = `${badge.badge_id}-${badge.level ?? 'default'}`;
+
+    if (this.displayedBadges.has(badgeKey)) {
+      return; // Ce badge avec ce niveau a déjà été ajouté
+    }
+
+    this.displayedBadges.add(badgeKey);
+
+    const badgeData: BadgeNotificationData = {
+      badge_id: badge.badge_id,
+      badge_name: badge.badge_name,
+      badge_type: badge.badge_type,
+      level: badge.level,
+      value: badge.value,
+      description,
+    };
+
+    // Vérifier aussi dans la file d'attente pour éviter les doublons
+    const currentQueue = this.badgeQueue();
+    const alreadyInQueue = currentQueue.some(
+      existing => existing.badge_id === badge.badge_id && existing.level === badge.level
+    );
+
+    if (!alreadyInQueue) {
+      // Toujours ajouter à la file d'attente, même si rien n'est visible
+      this.badgeQueue.update((queue) => [...queue, badgeData]);
+    }
+  }
+
+  /**
+   * Affiche le prochain badge de la file d'attente si aucun n'est visible
+   */
+  processNextBadgeInQueue(): void {
+    if (this.isVisible()) {
+      return; // Un badge est déjà affiché
+    }
+
+    const queue = this.badgeQueue();
+    if (queue.length === 0) {
+      return; // Aucun badge en attente
+    }
+
+    const nextBadge = queue[0];
+    this.badgeQueue.update((q) => q.slice(1));
+    
+    // CRITICAL FIX: Ajouter le badge à displayedBadges pour éviter qu'il soit réajouté
+    // même s'il est retourné par getNewlyUnlockedBadges() lors d'appels ultérieurs
+    const badgeKey = `${nextBadge.badge_id}-${nextBadge.level ?? 'default'}`;
+    this.displayedBadges.add(badgeKey);
+    
+    this.currentBadge.set(nextBadge);
+    this.isVisible.set(true);
+    
+    // Pas de waitForClose car cette méthode est utilisée pour les badges en file d'attente
+    // qui ne nécessitent pas de promesse à résoudre
   }
 }
