@@ -259,6 +259,7 @@ L'application supporte plusieurs types de jeux éducatifs, chacun avec sa propre
 - Le système affiche une séquence (couleurs, nombres, etc.)
 - L'enfant doit répéter la séquence dans le même ordre
 - Score : 100% si séquence correcte, 0% sinon
+- **Validation automatique** : Le jeu se valide automatiquement (pas de bouton "Valider")
 
 **Caractéristiques** :
 - Animation de la séquence

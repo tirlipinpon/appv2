@@ -679,18 +679,17 @@ export class GameComponent implements OnInit, OnDestroy {
 
   // Computed pour déterminer si le bouton "Valider" doit être affiché
   shouldShowValidateButton = computed<boolean>(() => {
-    // Masquer pour les jeux avec validation automatique
-    if (this.isCaseVideGame() || this.isLiensGame() || this.isVraiFauxGame() || this.isQcmGame()) {
+    // Masquer pour les jeux avec validation automatique et Simon
+    if (this.isCaseVideGame() || this.isLiensGame() || this.isVraiFauxGame() || this.isQcmGame() || this.isSimonGame()) {
       return false;
     }
 
-    // Afficher pour les autres jeux (Chronologie, Memory, Simon, etc.)
+    // Afficher pour les autres jeux (Chronologie, Memory, etc.)
     return !this.showFeedback() && 
            (this.selectedAnswer() !== null || 
             this.isGenericGame() || 
             this.isChronologieGame() ||
-            this.isMemoryGame() ||
-            this.isSimonGame());
+            this.isMemoryGame());
   });
 
   toggleAides(): void {
