@@ -892,10 +892,15 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Sauvegarder le score partiel avant de détruire le composant (sans await car ngOnDestroy ne peut pas être async)
-    this.savePartialScoreIfNeeded().catch(error => {
-      console.error('Erreur lors de la sauvegarde du score partiel:', error);
-    });
+    // IMPORTANT: Vérifier que le composant est toujours sur la route /game avant de sauvegarder
+    // pour éviter de sauvegarder lors de la navigation vers une autre route
+    const currentUrl = this.router.url;
+    if (currentUrl.startsWith('/game/')) {
+      // Sauvegarder le score partiel avant de détruire le composant (sans await car ngOnDestroy ne peut pas être async)
+      this.savePartialScoreIfNeeded().catch(error => {
+        console.error('Erreur lors de la sauvegarde du score partiel:', error);
+      });
+    }
     
     // Nettoyer l'abonnement pour éviter les fuites mémoire
     if (this.routeSubscription) {
@@ -1606,6 +1611,10 @@ export class GameComponent implements OnInit, OnDestroy {
       // Sauvegarder l'ID avant de réinitialiser pour éviter une condition de course
       const targetGameId = nextId;
       
+      // IMPORTANT: Sauvegarder le score partiel AVANT de réinitialiser les signaux
+      // pour éviter de sauvegarder des données pour le mauvais jeu lors de la navigation
+      await this.savePartialScoreIfNeeded();
+      
       // Réinitialiser l'état du jeu actuel
       this.selectedAnswer.set(null);
       this.showFeedback.set(false);
@@ -1618,6 +1627,11 @@ export class GameComponent implements OnInit, OnDestroy {
       this.hasNextGame.set(false);
       this.nextGameId.set(null);
       this.categoryProgress.set(0); // Réinitialiser temporairement, sera rechargé dans loadGame()
+      
+      // Réinitialiser aussi les compteurs pour éviter qu'ils soient utilisés avec le nouveau jeu
+      this.correctAnswersCount.set(0);
+      this.incorrectAnswersCount.set(0);
+      this.lastValidatedScore.set(null);
       
       // Naviguer vers le prochain jeu
       // La subscription à route.paramMap détectera le changement et appellera loadGame()
@@ -1668,6 +1682,16 @@ export class GameComponent implements OnInit, OnDestroy {
 
     const game = this.application.getCurrentGame()();
     if (!game) {
+      return;
+    }
+
+    // IMPORTANT: Vérifier que le gameId correspond bien à l'ID du jeu actuel dans la route
+    // pour éviter de sauvegarder pour le mauvais jeu lors de la navigation
+    const routeGameId = this.route.snapshot.paramMap.get('id');
+    if (routeGameId && routeGameId !== game.id) {
+      // Le jeu dans le store ne correspond pas au jeu dans la route
+      // Cela peut arriver pendant la navigation, ne pas sauvegarder dans ce cas
+      console.warn(`[savePartialScoreIfNeeded] Jeu dans le store (${game.id}) ne correspond pas au jeu dans la route (${routeGameId}), annulation de la sauvegarde`);
       return;
     }
 
