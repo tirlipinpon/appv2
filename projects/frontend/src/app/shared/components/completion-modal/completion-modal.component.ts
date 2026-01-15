@@ -22,8 +22,8 @@ export interface CompletionModalData {
   imports: [ChildButtonComponent],
   template: `
     @if (visible()) {
-      <div class="modal-overlay" (click)="onOverlayClick()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-overlay" (click)="onOverlayClick()" (keyup.escape)="onOverlayClick()" tabindex="0">
+        <div class="modal-content" (click)="$event.stopPropagation()" (keyup)="$event.stopPropagation()" tabindex="0">
           <!-- Titre -->
           @if (title()) {
             <h1 class="modal-title">
@@ -35,7 +35,6 @@ export interface CompletionModalData {
           @if (score() !== null && score() !== undefined) {
             <div class="score-section">
               <div class="score-value">{{ score() }}%</div>
-              <div class="score-label">{{ scoreLabel() || 'Score final' }}</div>
             </div>
           }
 
@@ -153,14 +152,7 @@ export interface CompletionModalData {
       font-size: 4rem;
       font-weight: 700;
       color: var(--theme-primary-color, #4CAF50);
-      margin-bottom: 0.5rem;
       line-height: 1;
-    }
-
-    .score-label {
-      font-size: 1.25rem;
-      color: #666;
-      font-weight: 500;
     }
 
     .modal-message {

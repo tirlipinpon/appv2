@@ -1489,6 +1489,7 @@ export class GameComponent implements OnInit, OnDestroy {
       this.starEarned.set(false);
       
       // Récupérer le completion_percentage AVANT la complétion pour détecter une nouvelle étoile
+      // Utiliser les mêmes méthodes de calcul que loadCategoryProgress() pour être cohérent
       let previousCompletionPercentage = 0;
       let isCategory = false;
       let entityId: string | null = null;
@@ -1498,17 +1499,16 @@ export class GameComponent implements OnInit, OnDestroy {
           // Pour une sous-matière
           isCategory = true;
           entityId = game.subject_category_id;
-          const progressList = await this.progression.getProgressForChild(childId);
-          const categoryProgress = progressList.find(p => p.subject_category_id === game.subject_category_id);
-          previousCompletionPercentage = categoryProgress?.completion_percentage ?? 0;
+          // Utiliser calculateCategoryCompletionPercentage() comme loadCategoryProgress()
+          previousCompletionPercentage = await this.progression.calculateCategoryCompletionPercentage(childId, game.subject_category_id);
           this.starType.set('category');
           this.starColor.set('gold');
         } else if (game.subject_id) {
           // Pour une matière principale
           isCategory = false;
           entityId = game.subject_id;
-          const subjectProgress = await this.subjectsInfrastructure.loadSubjectProgress(childId, game.subject_id);
-          previousCompletionPercentage = subjectProgress?.completion_percentage ?? 0;
+          // Utiliser calculateSubjectCompletionPercentage() comme loadCategoryProgress()
+          previousCompletionPercentage = await this.progression.calculateSubjectCompletionPercentage(childId, game.subject_id);
           this.starType.set('subject');
           this.starColor.set('silver');
         }
@@ -1573,8 +1573,9 @@ export class GameComponent implements OnInit, OnDestroy {
           // Mettre à jour le message avec la nouvelle progression
           updateMessage(updatedProgress);
           
-          // Vérifier les étoiles APRÈS que completeGame() soit terminé pour avoir la progression à jour
-          await this.checkStarEarned(childId, entityId, isCategory, game, previousCompletionPercentage);
+          // Vérifier les étoiles APRÈS que completeGame() soit terminé
+          // Utiliser la progression déjà chargée dans categoryProgress() au lieu de recharger
+          await this.checkStarEarned(childId, entityId, isCategory, game, previousCompletionPercentage, updatedProgress);
         })
         .catch(error => {
           console.error('Erreur lors de la complétion du jeu:', error);
@@ -1596,33 +1597,48 @@ export class GameComponent implements OnInit, OnDestroy {
 
   /**
    * Vérifie si une étoile a été gagnée (exécuté en arrière-plan)
+   * @param currentCompletionPercentage - La progression actuelle déjà chargée (optionnel, sera chargée si non fournie)
    */
   private async checkStarEarned(
     childId: string | undefined,
     entityId: string | null,
     isCategory: boolean,
     game: Game | null,
-    previousCompletionPercentage: number
+    previousCompletionPercentage: number,
+    currentCompletionPercentage?: number
   ): Promise<void> {
     if (!childId || !entityId || !game) {
       return;
     }
     
-    let currentCompletionPercentage = 0;
+    // Utiliser la progression fournie ou la charger si non fournie
+    let currentProgress = currentCompletionPercentage;
     
-    if (isCategory && game.subject_category_id) {
-      const progressList = await this.progression.getProgressForChild(childId);
-      const categoryProgress = progressList.find(p => p.subject_category_id === game.subject_category_id);
-      currentCompletionPercentage = categoryProgress?.completion_percentage ?? 0;
-    } else if (!isCategory && game.subject_id) {
-      const subjectProgress = await this.subjectsInfrastructure.loadSubjectProgress(childId, game.subject_id);
-      currentCompletionPercentage = subjectProgress?.completion_percentage ?? 0;
+    if (currentProgress === undefined) {
+      // Fallback : charger la progression si elle n'a pas été fournie
+      if (isCategory && game.subject_category_id) {
+        currentProgress = await this.progression.calculateCategoryCompletionPercentage(childId, game.subject_category_id);
+      } else if (!isCategory && game.subject_id) {
+        currentProgress = await this.progression.calculateSubjectCompletionPercentage(childId, game.subject_id);
+      } else {
+        currentProgress = 0;
+      }
     }
     
     const wasNotCompleted = previousCompletionPercentage < 100;
-    const isNowCompleted = currentCompletionPercentage >= 100;
+    const isNowCompleted = currentProgress >= 100;
+    
+    console.log('⭐ [STAR] Vérification étoile:', {
+      previousCompletionPercentage,
+      currentProgress,
+      wasNotCompleted,
+      isNowCompleted,
+      isCategory,
+      entityId
+    });
     
     if (wasNotCompleted && isNowCompleted) {
+      console.log('⭐ [STAR] Étoile gagnée !');
       this.starEarned.set(true);
       
       if (isCategory && game.subject_category_id) {
