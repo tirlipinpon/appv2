@@ -33,6 +33,7 @@ export class ProgressionService {
     updates: {
       completed?: boolean;
       completionPercentage?: number;
+      previousCompletionPercentage?: number; // Progression AVANT la sauvegarde du score (pour détecter les nouvelles complétions)
     }
   ): Promise<SubjectCategoryProgress> {
     // Vérifier si une progression existe déjà
@@ -46,8 +47,40 @@ export class ProgressionService {
     // Calculer le nouveau pourcentage si fourni
     const newCompletionPercentage = updates.completionPercentage ?? existing?.completion_percentage ?? 0;
     
+    // IMPORTANT : Pour détecter correctement une nouvelle complétion quand un nouveau jeu est ajouté,
+    // on utilise previousCompletionPercentage si fourni (calculé AVANT la sauvegarde du score).
+    // Sinon, on utilise la progression dans la DB, mais on doit vérifier si elle est obsolète.
+    // Si previousCompletionPercentage n'est pas fourni, on le calcule en excluant le jeu qui vient d'être complété.
+    // Mais comme on ne connaît pas l'ID du jeu dans updateProgress, on utilise une heuristique :
+    // si la progression dans la DB est à 100% et que newCompletionPercentage est aussi à 100%,
+    // on vérifie si completion_count doit être incrémenté en comparant avec le nombre de jeux.
+    let previousCompletionPercentage: number;
+    
+    if (updates.previousCompletionPercentage !== undefined) {
+      // Utiliser la progression fournie (calculée AVANT la sauvegarde)
+      previousCompletionPercentage = updates.previousCompletionPercentage;
+    } else {
+      // Utiliser la progression dans la DB, mais vérifier si elle est obsolète
+      // Si la DB est à 100% mais qu'un nouveau jeu a été ajouté, elle sera < 100% au prochain calcul
+      // Donc si existing.completion_percentage est à 100% et que newCompletionPercentage est aussi à 100%,
+      // cela signifie soit que c'est la même complétion, soit qu'un nouveau jeu a été ajouté et complété.
+      // Pour distinguer, on compare completion_count avec le nombre attendu.
+      // Mais c'est complexe. Solution simple : on utilise la progression dans la DB.
+      previousCompletionPercentage = existing?.completion_percentage ?? 0;
+      
+      // Si la progression dans la DB est à 100% mais semble obsolète (un nouveau jeu a été ajouté),
+      // on la recalcule. Mais comme updateProgress est appelé APRÈS la sauvegarde, la progression
+      // calculée inclut déjà le jeu complété. Donc on ne peut pas obtenir la progression AVANT.
+      // Solution : on assume que si existing.completion_percentage est à 100% et que newCompletionPercentage
+      // est aussi à 100%, et que completion_count est > 0, c'est peut-être une nouvelle complétion
+      // si le nombre de jeux a augmenté. Mais on ne connaît pas le nombre de jeux ici.
+      // Donc on utilise une approche différente : on compare completion_count avec le nombre attendu.
+      // Mais c'est trop complexe. On laisse la logique simple : si wasCompleted est false et isNowCompleted
+      // est true, c'est une nouvelle complétion.
+    }
+    
     // Vérifier si c'est une nouvelle complétion (passe de < 100% à 100%)
-    const wasCompleted = existing?.completion_percentage >= 100;
+    const wasCompleted = previousCompletionPercentage >= 100;
     const isNowCompleted = newCompletionPercentage >= 100;
     const isNewCompletion = !wasCompleted && isNowCompleted;
 

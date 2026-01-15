@@ -75,7 +75,11 @@ export class GameApplication {
     return !newState.isCompleted;
   }
 
-  async completeGame(): Promise<void> {
+  /**
+   * Complète un jeu avec la progression précédente (pour détecter les nouvelles complétions)
+   * @param previousCompletionPercentage Progression AVANT la sauvegarde du score (optionnel)
+   */
+  async completeGame(previousCompletionPercentage?: number): Promise<void> {
     const gameState = this.store.gameState();
     const game = this.store.currentGame();
     const child = await this.authService.getCurrentChild();
@@ -170,7 +174,8 @@ export class GameApplication {
     // Les badges seront mis en file d'attente et affichés après la fermeture du modal de complétion
     // On vérifie les badges APRÈS la mise à jour de la progression car certains badges
     // (comme "Première catégorie complétée") sont débloqués par les triggers PostgreSQL
-    this.updateProgressAndCheckBadges(game, child.child_id, savedAttempt.id, isSuccess).catch(error => {
+    // Passer previousCompletionPercentage pour détecter correctement les nouvelles complétions
+    this.updateProgressAndCheckBadges(game, child.child_id, savedAttempt.id, isSuccess, previousCompletionPercentage).catch(error => {
       console.error('[GameApplication] Erreur lors de la mise à jour de la progression:', error);
     });
 
@@ -348,22 +353,26 @@ export class GameApplication {
     game: Game,
     childId: string,
     gameAttemptId: string,
-    isSuccess: boolean
+    isSuccess: boolean,
+    previousCompletionPercentage?: number // Progression AVANT la sauvegarde du score (optionnel)
   ): Promise<void> {
     try {
       if (game.subject_category_id) {
+        // Calculer la progression APRÈS avoir sauvegardé le score (inclut le jeu qui vient d'être complété)
         const completionPercentage = await this.progression.calculateCategoryCompletionPercentage(
           childId,
           game.subject_category_id
         );
         const categoryCompleted = completionPercentage === 100;
 
+        // Passer previousCompletionPercentage si fourni pour détecter correctement les nouvelles complétions
         await this.progression.updateProgress(
           childId,
           game.subject_category_id,
           {
             completed: categoryCompleted,
             completionPercentage: completionPercentage,
+            previousCompletionPercentage: previousCompletionPercentage,
           }
         );
 

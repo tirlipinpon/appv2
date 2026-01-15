@@ -1488,8 +1488,10 @@ export class GameComponent implements OnInit, OnDestroy {
       // Réinitialiser l'étoile au début pour éviter d'afficher une étoile d'un jeu précédent
       this.starEarned.set(false);
       
-      // Récupérer le completion_percentage AVANT la complétion pour détecter une nouvelle étoile
-      // Utiliser les mêmes méthodes de calcul que loadCategoryProgress() pour être cohérent
+      // IMPORTANT : Récupérer le completion_percentage AVANT de sauvegarder le score du jeu actuel
+      // pour détecter correctement une nouvelle étoile quand un nouveau jeu est ajouté
+      // On calcule la progression AVEC tous les jeux (y compris le nouveau non complété)
+      // Exemple : si 2/3 jeux complétés avant, puis 3/3 après → nouvelle étoile
       let previousCompletionPercentage = 0;
       let isCategory = false;
       let entityId: string | null = null;
@@ -1499,7 +1501,8 @@ export class GameComponent implements OnInit, OnDestroy {
           // Pour une sous-matière
           isCategory = true;
           entityId = game.subject_category_id;
-          // Utiliser calculateCategoryCompletionPercentage() comme loadCategoryProgress()
+          // Calculer AVANT que le jeu actuel soit sauvegardé (le jeu actuel n'est pas encore complété dans la DB)
+          // Cela donne la progression réelle avant la complétion (ex: 2/3 = 66% si 2 jeux complétés sur 3)
           previousCompletionPercentage = await this.progression.calculateCategoryCompletionPercentage(childId, game.subject_category_id);
           this.starType.set('category');
           this.starColor.set('gold');
@@ -1507,7 +1510,7 @@ export class GameComponent implements OnInit, OnDestroy {
           // Pour une matière principale
           isCategory = false;
           entityId = game.subject_id;
-          // Utiliser calculateSubjectCompletionPercentage() comme loadCategoryProgress()
+          // Calculer AVANT que le jeu actuel soit sauvegardé
           previousCompletionPercentage = await this.progression.calculateSubjectCompletionPercentage(childId, game.subject_id);
           this.starType.set('subject');
           this.starColor.set('silver');
@@ -1564,8 +1567,13 @@ export class GameComponent implements OnInit, OnDestroy {
       
       // NOUVEAU : Exécuter completeGame() puis recharger la progression
       // Cela va sauvegarder, vérifier les badges, etc.
-      this.application.completeGame()
+      // IMPORTANT : Passer previousCompletionPercentage à completeGame() pour détecter correctement
+      // les nouvelles complétions quand un nouveau jeu est ajouté
+      this.application.completeGame(previousCompletionPercentage)
         .then(async () => {
+          // Attendre un peu pour que la base de données soit à jour
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           // Recharger la progression APRÈS que le jeu soit complété pour avoir la valeur à jour
           await this.loadCategoryProgress();
           const updatedProgress = this.categoryProgress();
@@ -1634,19 +1642,31 @@ export class GameComponent implements OnInit, OnDestroy {
       wasNotCompleted,
       isNowCompleted,
       isCategory,
-      entityId
+      entityId,
+      gameId: game.id,
+      gameName: game.name
     });
     
+    // Détecter une nouvelle étoile si on passe de < 100% à 100%
+    // Cela permet de détecter quand un nouveau jeu est ajouté et complété
     if (wasNotCompleted && isNowCompleted) {
-      console.log('⭐ [STAR] Étoile gagnée !');
+      console.log('⭐ [STAR] Étoile gagnée ! Passage de', previousCompletionPercentage, '% à', currentProgress, '%');
       this.starEarned.set(true);
       
       if (isCategory && game.subject_category_id) {
         this.sessionStarService.markStarAsNew('category', game.subject_category_id);
+        console.log('⭐ [STAR] Étoile marquée comme nouvelle pour catégorie:', game.subject_category_id);
       } else if (!isCategory && game.subject_id) {
         this.sessionStarService.markStarAsNew('subject', game.subject_id);
+        console.log('⭐ [STAR] Étoile marquée comme nouvelle pour matière:', game.subject_id);
       }
     } else {
+      console.log('⭐ [STAR] Pas de nouvelle étoile. Raison:', {
+        wasNotCompleted,
+        isNowCompleted,
+        previousWas100: previousCompletionPercentage >= 100,
+        currentIs100: currentProgress >= 100
+      });
       this.starEarned.set(false);
     }
   }
