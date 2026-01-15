@@ -11,7 +11,7 @@ import { BadgeNotificationModalComponent } from '../badge-notification-modal/bad
   template: `
     <div class="app-layout">
       <header class="app-header">
-        <h1>Mon Application</h1>
+        <h1>{{ headerText() }}</h1>
         <nav>
           <a routerLink="/dashboard" routerLinkActive="active">Tableau de bord</a>
           <a routerLink="/subjects" routerLinkActive="active">Matières</a>
@@ -106,6 +106,13 @@ export class AppLayoutComponent {
 
   // Badge actuellement affiché
   currentBadge = computed(() => this.badgeNotification.getCurrentBadge());
+
+  // Texte du header avec prénom de l'enfant
+  headerText = computed(() => {
+    const child = this.authService.getCurrentChild();
+    const firstname = child?.firstname;
+    return firstname ? `Bonjour ${firstname}` : 'Bonjour';
+  });
 
   /**
    * Gère la déconnexion de l'utilisateur

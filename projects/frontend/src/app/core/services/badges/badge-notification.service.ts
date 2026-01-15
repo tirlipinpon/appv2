@@ -110,11 +110,11 @@ export class BadgeNotificationService {
       // Jouer le son de badge spécifique au type
       this.soundService.playBadgeSoundByType(nextBadge.badge_type);
       
-      // CRITICAL FIX: Initialiser waitForClose pour permettre la fermeture du badge suivant
-      // Créer une promesse et stocker sa fonction resolve pour qu'elle soit appelée lors de la prochaine fermeture
-      new Promise<void>((resolve) => {
-        this.waitForClose = resolve;
-      });
+      // Note: On n'initialise pas waitForClose ici car les badges de la queue
+      // n'ont pas de promesse en attente (ils ont été ajoutés via queueBadgeNotification
+      // qui ne retourne pas de promesse). Si quelqu'un veut attendre la fermeture,
+      // il doit utiliser showBadgeNotification à la place.
+      this.waitForClose = null;
     }
   }
 
@@ -216,10 +216,10 @@ export class BadgeNotificationService {
     // Jouer le son de badge spécifique au type
     this.soundService.playBadgeSoundByType(nextBadge.badge_type);
     
-    // CRITICAL FIX: Initialiser waitForClose pour permettre la fermeture du badge
-    // Créer une promesse et stocker sa fonction resolve pour qu'elle soit appelée lors de la fermeture
-    new Promise<void>((resolve) => {
-      this.waitForClose = resolve;
-    });
+    // Note: On n'initialise pas waitForClose ici car les badges de la queue
+    // n'ont pas de promesse en attente (ils ont été ajoutés via queueBadgeNotification
+    // qui ne retourne pas de promesse). Si quelqu'un veut attendre la fermeture,
+    // il doit utiliser showBadgeNotification à la place.
+    this.waitForClose = null;
   }
 }
