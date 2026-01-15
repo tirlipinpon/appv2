@@ -1520,33 +1520,47 @@ export class GameComponent implements OnInit, OnDestroy {
       
       // Charger la progression actuelle pour le message (rapide)
       await this.loadCategoryProgress();
-      const globalProgress = this.categoryProgress();
+      const initialProgress = this.categoryProgress();
       
       // Chercher le prochain jeu (rapide)
       await this.findNextGame();
       
-      // Calculer le message
+      // Calculer le message initial
       const isSubject = game && !game.subject_category_id && game.subject_id;
       const entityName = isSubject ? 'matière' : 'catégorie';
       
-      if (globalProgress === 100) {
-        this.completionMessage.set(`🎉 Félicitations ! Tu as terminé tous les jeux de cette ${entityName} ! 🏆`);
-      } else if (globalProgress >= 80) {
-        this.completionMessage.set(`Excellent ! Tu as complété ${globalProgress}% de cette ${entityName} ! ⭐`);
-      } else if (globalProgress >= 50) {
-        this.completionMessage.set(`Bien joué ! Tu as complété ${globalProgress}% de cette ${entityName} ! 👍`);
-      } else {
-        this.completionMessage.set(`Continue ! Tu as complété ${globalProgress}% de cette ${entityName}. 💪`);
-      }
+      const updateMessage = (progress: number) => {
+        if (progress === 100) {
+          this.completionMessage.set(`🎉 Félicitations ! Tu as terminé tous les jeux de cette ${entityName} ! 🏆`);
+        } else if (progress >= 80) {
+          this.completionMessage.set(`Excellent ! Tu as complété ${progress}% de cette ${entityName} ! ⭐`);
+        } else if (progress >= 50) {
+          this.completionMessage.set(`Bien joué ! Tu as complété ${progress}% de cette ${entityName} ! 👍`);
+        } else {
+          this.completionMessage.set(`Continue ! Tu as complété ${progress}% de cette ${entityName}. 💪`);
+        }
+      };
+      
+      // Afficher le message initial
+      updateMessage(initialProgress);
       
       // AFFICHER LE MODAL IMMÉDIATEMENT (avant les opérations lourdes)
       this.showCompletionScreen.set(true);
       
-      // NOUVEAU : Exécuter completeGame() en arrière-plan (non-bloquant)
-      // Cela va sauvegarder, vérifier les badges, etc. sans bloquer l'affichage
-      this.application.completeGame().catch(error => {
-        console.error('Erreur lors de la complétion du jeu:', error);
-      });
+      // NOUVEAU : Exécuter completeGame() puis recharger la progression
+      // Cela va sauvegarder, vérifier les badges, etc.
+      this.application.completeGame()
+        .then(async () => {
+          // Recharger la progression APRÈS que le jeu soit complété pour avoir la valeur à jour
+          await this.loadCategoryProgress();
+          const updatedProgress = this.categoryProgress();
+          
+          // Mettre à jour le message avec la nouvelle progression
+          updateMessage(updatedProgress);
+        })
+        .catch(error => {
+          console.error('Erreur lors de la complétion du jeu:', error);
+        });
       
       // Vérifier les étoiles en arrière-plan (non-bloquant)
       this.checkStarEarned(childId, entityId, isCategory, game, previousCompletionPercentage)
