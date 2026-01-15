@@ -7,7 +7,7 @@ import { GameApplication } from './components/application/application';
 import { ChildButtonComponent } from '../../shared/components/child-button/child-button.component';
 import { SubjectProgressComponent } from '../../shared/components/subject-progress/subject-progress.component';
 import { CompletionModalComponent, CompletionModalAction } from '../../shared/components/completion-modal/completion-modal.component';
-import { FeedbackData } from './services/feedback.service';
+import { FeedbackData, FeedbackService } from './services/feedback.service';
 import { QcmGameComponent, ChronologieGameComponent, MemoryGameComponent, SimonGameComponent, ImageInteractiveGameComponent, CaseVideGameComponent, LiensGameComponent, VraiFauxGameComponent, PuzzleGameComponent, ReponseLibreGameComponent } from '@shared/games';
 import type { QcmData, ChronologieData, MemoryData, SimonData, ImageInteractiveData, ReponseLibreData, CaseVideData, LiensData, VraiFauxData, PuzzleData } from '@shared/games';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
@@ -618,6 +618,7 @@ export class GameComponent implements OnInit, OnDestroy {
   private readonly progression = inject(ProgressionService);
   private readonly sessionStarService = inject(SessionStarService);
   private readonly badgeNotification = inject(BadgeNotificationService);
+  private readonly feedbackService = inject(FeedbackService);
   private routeSubscription?: Subscription;
 
   selectedAnswer = signal<number | null>(null);
@@ -1188,6 +1189,9 @@ export class GameComponent implements OnInit, OnDestroy {
     };
     this.feedback.set(feedbackData);
     
+    // Jouer le son de feedback (succès ou échec)
+    this.feedbackService.showFeedback(feedbackData);
+    
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
       // Afficher immédiatement le modal de complétion
@@ -1275,6 +1279,9 @@ export class GameComponent implements OnInit, OnDestroy {
     };
     this.feedback.set(feedbackData);
     
+    // Jouer le son de feedback (succès ou échec)
+    this.feedbackService.showFeedback(feedbackData);
+    
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
       // Afficher immédiatement le modal de complétion
@@ -1358,6 +1365,9 @@ export class GameComponent implements OnInit, OnDestroy {
       explanation: ''
     };
     this.feedback.set(feedbackData);
+    
+    // Jouer le son de feedback (succès ou échec)
+    this.feedbackService.showFeedback(feedbackData);
     
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {

@@ -1,0 +1,52 @@
+{
+  "sounds": {
+    "success": {
+      "description": "Son de feedback pour une action réussie",
+      "file": "/sounds/playSuccessSound.mp3"
+    },
+    "failure": {
+      "description": "Son de feedback pour une action échouée",
+      "file": "/sounds/failure.mp3"
+    },
+    "unlock": {
+      "description": "Son de déblocage d'un élément",
+      "file": null
+    },
+    "badge": {
+      "description": "Son par défaut pour les badges (utilisé si aucun son spécifique n'est défini)",
+      "file": null
+    },
+    "badge_first_category_complete": {
+      "description": "Son pour le badge 'Première catégorie complétée'",
+      "file": null
+    },
+    "badge_first_subject_complete": {
+      "description": "Son pour le badge 'Premier sujet complété'",
+      "file": null
+    },
+    "badge_first_game_perfect": {
+      "description": "Son pour le badge 'Premier jeu parfait'",
+      "file": null
+    },
+    "badge_daily_streak_responses": {
+      "description": "Son pour le badge 'Série de réponses quotidiennes'",
+      "file": null
+    },
+    "badge_consecutive_correct": {
+      "description": "Son pour le badge 'Réponses consécutives correctes'",
+      "file": null
+    },
+    "badge_perfect_games_count": {
+      "description": "Son pour le badge 'Nombre de jeux parfaits'",
+      "file": null
+    },
+    "badge_consecutive_game_days": {
+      "description": "Son pour le badge 'Jours consécutifs de jeu'",
+      "file": null
+    },
+    "badge_daily_activity": {
+      "description": "Son pour le badge 'Activité quotidienne'",
+      "file": null
+    }
+  }
+}

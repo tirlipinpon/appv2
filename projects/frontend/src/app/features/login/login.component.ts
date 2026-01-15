@@ -109,7 +109,7 @@ export class LoginComponent {
   private readonly authService = inject(ChildAuthService);
   private readonly router = inject(Router);
 
-  firstnameControl = new FormControl('akira', Validators.required);
+  firstnameControl = new FormControl('tony kids', Validators.required);
   pinControl = new FormControl('1111', [
     Validators.required,
     Validators.pattern(/^\d{4}$/),

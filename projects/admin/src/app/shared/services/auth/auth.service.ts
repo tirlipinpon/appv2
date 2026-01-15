@@ -97,10 +97,11 @@ export class AuthService {
 
   async checkUserExists(email: string): Promise<{ exists: boolean; hasRole: boolean; isConfirmed: boolean; existingRoles: string[] }> {
     try {
+      const normalizedEmail = this.normalizeEmail(email);
       await this.supabaseService.client
         .from('profiles')
         .select('roles')
-        .eq('id', email)
+        .eq('id', normalizedEmail)
         .single();
 
       return { exists: false, hasRole: false, isConfirmed: false, existingRoles: [] };
@@ -111,6 +112,7 @@ export class AuthService {
 
   async signUp(email: string, password: string, roles: string[]): Promise<SignupResult> {
     try {
+      const normalizedEmail = this.normalizeEmail(email);
       const signUpOptions = {
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
         data: {
@@ -119,7 +121,7 @@ export class AuthService {
       };
       
       const { data, error } = await this.supabaseService.client.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: signUpOptions
       });
@@ -162,7 +164,7 @@ export class AuthService {
         // On exclut l'utilisateur qui vient d'être créé pour éviter les faux positifs
         const { data: emailExists, error: checkError } = await this.supabaseService.client
           .rpc('check_email_exists', { 
-            email_to_check: email,
+            email_to_check: normalizedEmail,
             exclude_user_id: data.user.id // Exclure l'utilisateur qui vient d'être créé
           });
 
@@ -242,7 +244,7 @@ export class AuthService {
           const roleExists = existingProfile.roles.includes(role);
           
           if (!roleExists) {
-            const { data: addData, error: addError } = await this.supabaseService.client
+            const { error: addError } = await this.supabaseService.client
               .rpc('add_role_to_profile', {
                 user_id: userId,
                 new_role: role
@@ -259,7 +261,7 @@ export class AuthService {
       }
 
       // Si le profil n'existe pas, utiliser create_profile_after_signup
-      const { data, error } = await this.supabaseService.client
+      const { error } = await this.supabaseService.client
         .rpc('create_profile_after_signup', {
           user_id: userId,
           roles_array: roles,
@@ -282,8 +284,9 @@ export class AuthService {
 
   async signIn(email: string, password: string): Promise<SignInResult> {
     try {
+      const normalizedEmail = this.normalizeEmail(email);
       const { data, error } = await this.supabaseService.client.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
 
@@ -330,8 +333,9 @@ export class AuthService {
 
   async requestPasswordReset(email: string): Promise<{ error: ServiceError | null }> {
     try {
+      const normalizedEmail = this.normalizeEmail(email);
       const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/reset` : undefined;
-      const { error } = await this.supabaseService.client.auth.resetPasswordForEmail(email, {
+      const { error } = await this.supabaseService.client.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo: redirectUrl,
       });
 
@@ -480,7 +484,7 @@ export class AuthService {
     }
 
     try {
-      const { data, error } = await this.supabaseService.client
+      const { error } = await this.supabaseService.client
         .rpc('add_role_to_profile', {
           user_id: user.id,
           new_role: newRole
@@ -566,6 +570,15 @@ export class AuthService {
   hasMultipleRoles(): boolean {
     const profile = this.currentProfileSubject.value;
     return profile ? profile.roles.length > 1 : false;
+  }
+
+  /**
+   * Normalise un email en minuscules et supprime les espaces
+   * @param email L'email à normaliser
+   * @returns L'email normalisé
+   */
+  private normalizeEmail(email: string): string {
+    return email.toLowerCase().trim();
   }
 
   private normalizeError(error: unknown, fallbackMessage: string): ServiceError {

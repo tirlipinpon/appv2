@@ -72,7 +72,7 @@ export class FeedbackService {
       message = `Continue ! ${score}/${totalQuestions} bonnes réponses. Tu peux réessayer ! 💪`;
     }
 
-    this.soundService.playUnlockSound();
+    this.soundService.playSuccessSound();
 
     return {
       isCorrect: percentage >= 60,

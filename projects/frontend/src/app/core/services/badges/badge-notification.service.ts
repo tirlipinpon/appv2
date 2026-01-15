@@ -1,11 +1,13 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { BadgeNotificationData } from '../../../shared/components/badge-notification-modal/badge-notification-modal.component';
 import { NewlyUnlockedBadge } from '../../types/badge.types';
+import { SoundService } from '../sounds/sound.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class BadgeNotificationService {
+  private readonly soundService = inject(SoundService);
   // File d'attente des badges à afficher
   private readonly badgeQueue = signal<BadgeNotificationData[]>([]);
   private readonly currentBadge = signal<BadgeNotificationData | null>(null);
@@ -68,6 +70,9 @@ export class BadgeNotificationService {
       this.currentBadge.set(badgeData);
       this.isVisible.set(true);
 
+      // Jouer le son de badge spécifique au type
+      this.soundService.playBadgeSoundByType(badge.badge_type);
+
       // Attendre que l'utilisateur ferme la modal
       // La résolution se fera dans closeCurrentNotification()
       this.waitForClose = resolve;
@@ -101,6 +106,15 @@ export class BadgeNotificationService {
       
       this.currentBadge.set(nextBadge);
       this.isVisible.set(true);
+      
+      // Jouer le son de badge spécifique au type
+      this.soundService.playBadgeSoundByType(nextBadge.badge_type);
+      
+      // CRITICAL FIX: Initialiser waitForClose pour permettre la fermeture du badge suivant
+      // Créer une promesse et stocker sa fonction resolve pour qu'elle soit appelée lors de la prochaine fermeture
+      new Promise<void>((resolve) => {
+        this.waitForClose = resolve;
+      });
     }
   }
 
@@ -199,7 +213,13 @@ export class BadgeNotificationService {
     this.currentBadge.set(nextBadge);
     this.isVisible.set(true);
     
-    // Pas de waitForClose car cette méthode est utilisée pour les badges en file d'attente
-    // qui ne nécessitent pas de promesse à résoudre
+    // Jouer le son de badge spécifique au type
+    this.soundService.playBadgeSoundByType(nextBadge.badge_type);
+    
+    // CRITICAL FIX: Initialiser waitForClose pour permettre la fermeture du badge
+    // Créer une promesse et stocker sa fonction resolve pour qu'elle soit appelée lors de la fermeture
+    new Promise<void>((resolve) => {
+      this.waitForClose = resolve;
+    });
   }
 }
