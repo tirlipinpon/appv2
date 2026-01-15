@@ -57,6 +57,8 @@ export class FeedbackService {
 
   /**
    * Affiche le feedback de fin de jeu
+   * Note: Le son de succès n'est pas joué ici car il a déjà été joué
+   * pour la dernière réponse correcte via showFeedback()
    */
   showGameCompleteFeedback(score: number, totalQuestions: number): FeedbackData {
     const percentage = Math.round((score / totalQuestions) * 100);
@@ -71,8 +73,6 @@ export class FeedbackService {
     } else {
       message = `Continue ! ${score}/${totalQuestions} bonnes réponses. Tu peux réessayer ! 💪`;
     }
-
-    this.soundService.playSuccessSound();
 
     return {
       isCorrect: percentage >= 60,

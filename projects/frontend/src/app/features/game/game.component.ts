@@ -1432,6 +1432,9 @@ export class GameComponent implements OnInit, OnDestroy {
     };
     this.feedback.set(feedbackData);
     
+    // Jouer le son de feedback (succès ou échec)
+    this.feedbackService.showFeedback(feedbackData);
+    
     // Pour les jeux spécifiques, on considère qu'il n'y a qu'une seule "question"
     // donc on passe directement à la fin du jeu si correct
     if (isCorrect) {
