@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { QcmData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
@@ -45,6 +45,25 @@ export class QcmGameComponent implements OnInit {
 
   // Lettres de l'alphabet
   private readonly letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+  constructor() {
+    // Validation automatique quand le nombre de réponses sélectionnées correspond au nombre de réponses valides
+    effect(() => {
+      const selected = this.selectedLetters();
+      const validCount = this.qcmData?.reponses_valides?.length ?? 0;
+
+      // Validation automatique si le bon nombre de réponses est sélectionné
+      if (
+        !this.isSubmitted() &&
+        !this.disabled &&
+        selected.size === validCount &&
+        selected.size > 0 &&
+        validCount > 0
+      ) {
+        this.validate();
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.shufflePropositions();

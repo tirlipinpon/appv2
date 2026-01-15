@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit, AfterViewInit, AfterViewChecked, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, AfterViewInit, AfterViewChecked, OnDestroy, ViewChild, ElementRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { LiensData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
@@ -54,6 +54,21 @@ export class LiensGameComponent implements OnInit, AfterViewInit, AfterViewCheck
 
   private resizeObserver?: ResizeObserver;
   private updateLinksTimeout?: number;
+
+  constructor() {
+    // Validation automatique quand tous les liens sont créés
+    effect(() => {
+      if (!this.liensData || this.isSubmitted() || this.disabled) return;
+
+      const userLinks = this.userLinks();
+      const expectedLinks = this.liensData.liens.length;
+
+      // Validation automatique si tous les liens sont créés
+      if (userLinks.size === expectedLinks && expectedLinks > 0) {
+        this.submitLiens();
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.shuffleLiensData();

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { VraiFauxData } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
@@ -35,6 +35,20 @@ export class VraiFauxGameComponent implements OnInit {
   isSubmitted = signal<boolean>(false);
   isCorrect = signal<boolean | null>(null);
   
+  constructor() {
+    // Validation automatique quand tous les énoncés sont répondus
+    effect(() => {
+      if (!this.vraiFauxData || this.isSubmitted() || this.disabled) return;
+
+      const userAnswers = this.userAnswers();
+      const enonces = this.getVraiFauxEnonces();
+
+      // Validation automatique si tous les énoncés ont une réponse
+      if (userAnswers.size === enonces.length && enonces.length > 0) {
+        this.submitVraiFaux();
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.shuffleVraiFauxData();

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, computed, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import type { CaseVideData } from '../../types/game-data';
@@ -55,6 +55,33 @@ export class CaseVideGameComponent implements OnInit {
   // Compteur pour générer des IDs uniques
   private wordInstanceCounter = 0;
   
+  constructor() {
+    // Validation automatique quand toutes les cases sont remplies
+    effect(() => {
+      const caseVideData = this.caseVideData;
+      if (!caseVideData || this.isSubmitted() || this.disabled) return;
+
+      // Nouveau format : toutes les cases remplies
+      if (caseVideData.texte && caseVideData.cases_vides) {
+        const allFilled = caseVideData.cases_vides.every(caseVide => 
+          this.userCaseVideAnswers().has(caseVide.index)
+        );
+        if (allFilled) {
+          this.submitCaseVide();
+        }
+      }
+      // Ancien format : réponse non vide
+      else if (
+        caseVideData.debut_phrase &&
+        caseVideData.fin_phrase &&
+        caseVideData.reponse_valide
+      ) {
+        if (this.caseVideUserAnswer().trim().length > 0) {
+          this.submitCaseVide();
+        }
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.initializeCaseVide();

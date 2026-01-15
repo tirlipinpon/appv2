@@ -319,7 +319,7 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
         <!-- Boutons d'action - Masqués si le jeu est complété (le modal gère la navigation) -->
         @if (!isGameCompleted() || !showCompletionScreen()) {
           <div class="actions-container">
-            @if (!showFeedback() && (selectedAnswer() !== null || isGenericGame() || (isCaseVideGame() && canSubmitCaseVide()) || (isLiensGame() && canSubmitLiens()) || (isVraiFauxGame() && canSubmitVraiFaux()))) {
+            @if (!showFeedback() && shouldShowValidateButton() && !isGameCompleted()) {
               <app-child-button
                 (buttonClick)="isCaseVideGame() ? submitCaseVide() : (isLiensGame() ? submitLiens() : (isVraiFauxGame() ? submitVraiFaux() : submitAnswer()))"
                 variant="primary"
@@ -675,6 +675,22 @@ export class GameComponent implements OnInit, OnDestroy {
            this.feedback() !== null && 
            this.feedback()?.isCorrect === false &&
            !this.isGameCompleted();
+  });
+
+  // Computed pour déterminer si le bouton "Valider" doit être affiché
+  shouldShowValidateButton = computed<boolean>(() => {
+    // Masquer pour les jeux avec validation automatique
+    if (this.isCaseVideGame() || this.isLiensGame() || this.isVraiFauxGame() || this.isQcmGame()) {
+      return false;
+    }
+
+    // Afficher pour les autres jeux (Chronologie, Memory, Simon, etc.)
+    return !this.showFeedback() && 
+           (this.selectedAnswer() !== null || 
+            this.isGenericGame() || 
+            this.isChronologieGame() ||
+            this.isMemoryGame() ||
+            this.isSimonGame());
   });
 
   toggleAides(): void {

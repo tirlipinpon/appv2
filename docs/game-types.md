@@ -32,6 +32,7 @@ L'application supporte plusieurs types de jeux éducatifs, chacun avec sa propre
 - L'enfant sélectionne une ou plusieurs propositions
 - La réponse est correcte si toutes les sélections correspondent aux `reponses_valides`
 - Score : (réponses correctes / total réponses) × 100
+- **Validation automatique** : Le jeu se valide automatiquement dès que le nombre de réponses sélectionnées correspond exactement au nombre de réponses valides (pas besoin de cliquer sur "Valider")
 
 **Champs additionnels** :
 - `question` : Texte de la question (optionnel)
@@ -136,6 +137,7 @@ L'application supporte plusieurs types de jeux éducatifs, chacun avec sa propre
 **Logique de validation** :
 - L'enfant répond Vrai ou Faux pour chaque énoncé
 - Score : (réponses correctes / total énoncés) × 100
+- **Validation automatique** : Le jeu se valide automatiquement dès que tous les énoncés ont une réponse (pas besoin de cliquer sur "Valider")
 
 **Caractéristiques** :
 - Interface simple avec boutons Vrai/Faux
@@ -175,6 +177,7 @@ L'application supporte plusieurs types de jeux éducatifs, chacun avec sa propre
 - L'enfant doit relier chaque mot à sa réponse correspondante
 - La réponse est correcte si tous les liens correspondent à `liens`
 - Score : (liens corrects / total liens) × 100
+- **Validation automatique** : Le jeu se valide automatiquement dès que tous les liens sont créés (pas besoin de cliquer sur "Valider")
 
 **Caractéristiques** :
 - Interface avec lignes de connexion (drag & drop)
@@ -214,6 +217,7 @@ L'application supporte plusieurs types de jeux éducatifs, chacun avec sa propre
 - L'enfant doit compléter les cases vides avec les mots de la banque
 - La réponse est correcte si tous les mots correspondent à `cases_vides[].mot_correct`
 - Score : (cases correctes / total cases) × 100
+- **Validation automatique** : Le jeu se valide automatiquement dès que toutes les cases sont remplies (pas besoin de cliquer sur "Valider")
 
 **Caractéristiques** :
 - Interface avec zones de texte ou sélection depuis banque
