@@ -682,16 +682,15 @@ export class GameComponent implements OnInit, OnDestroy {
 
   // Computed pour déterminer si le bouton "Valider" doit être affiché
   shouldShowValidateButton = computed<boolean>(() => {
-    // Masquer pour les jeux avec validation automatique et Simon
-    if (this.isCaseVideGame() || this.isLiensGame() || this.isVraiFauxGame() || this.isQcmGame() || this.isSimonGame()) {
+    // Masquer pour les jeux avec validation automatique, Simon et Chronologie (qui ont leur propre bouton)
+    if (this.isCaseVideGame() || this.isLiensGame() || this.isVraiFauxGame() || this.isQcmGame() || this.isSimonGame() || this.isChronologieGame()) {
       return false;
     }
 
-    // Afficher pour les autres jeux (Chronologie, Memory, etc.)
+    // Afficher pour les autres jeux (Memory, etc.)
     return !this.showFeedback() && 
            (this.selectedAnswer() !== null || 
             this.isGenericGame() || 
-            this.isChronologieGame() ||
             this.isMemoryGame());
   });
 
@@ -1483,6 +1482,9 @@ export class GameComponent implements OnInit, OnDestroy {
       const child = this.childAuthService.getCurrentChild();
       const childId = child?.child_id;
       
+      // Réinitialiser l'étoile au début pour éviter d'afficher une étoile d'un jeu précédent
+      this.starEarned.set(false);
+      
       // Récupérer le completion_percentage AVANT la complétion pour détecter une nouvelle étoile
       let previousCompletionPercentage = 0;
       let isCategory = false;
@@ -1567,15 +1569,12 @@ export class GameComponent implements OnInit, OnDestroy {
           
           // Mettre à jour le message avec la nouvelle progression
           updateMessage(updatedProgress);
+          
+          // Vérifier les étoiles APRÈS que completeGame() soit terminé pour avoir la progression à jour
+          await this.checkStarEarned(childId, entityId, isCategory, game, previousCompletionPercentage);
         })
         .catch(error => {
           console.error('Erreur lors de la complétion du jeu:', error);
-        });
-      
-      // Vérifier les étoiles en arrière-plan (non-bloquant)
-      this.checkStarEarned(childId, entityId, isCategory, game, previousCompletionPercentage)
-        .catch(error => {
-          console.error('Erreur lors de la vérification des étoiles:', error);
         });
       
       // Recharger le score total en arrière-plan (non-bloquant)

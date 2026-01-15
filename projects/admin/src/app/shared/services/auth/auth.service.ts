@@ -98,14 +98,34 @@ export class AuthService {
   async checkUserExists(email: string): Promise<{ exists: boolean; hasRole: boolean; isConfirmed: boolean; existingRoles: string[] }> {
     try {
       const normalizedEmail = this.normalizeEmail(email);
-      await this.supabaseService.client
+      const { data: profile, error } = await this.supabaseService.client
         .from('profiles')
         .select('roles')
         .eq('id', normalizedEmail)
-        .single();
+        .maybeSingle();
 
-      return { exists: false, hasRole: false, isConfirmed: false, existingRoles: [] };
-    } catch {
+      // Si erreur ou pas de profil trouvé
+      if (error || !profile) {
+        return { exists: false, hasRole: false, isConfirmed: false, existingRoles: [] };
+      }
+
+      // Profil trouvé, extraire les informations
+      const existingRoles = profile.roles || [];
+      const hasRole = existingRoles.length > 0;
+      
+      // Vérifier si l'utilisateur est confirmé en vérifiant dans auth.users
+      // Note: On suppose que si le profil existe, l'utilisateur est confirmé
+      // Pour une vérification plus précise, on pourrait utiliser une fonction RPC
+      const isConfirmed = true; // Le profil existe, donc l'utilisateur est confirmé
+
+      return { 
+        exists: true, 
+        hasRole, 
+        isConfirmed, 
+        existingRoles 
+      };
+    } catch (error) {
+      console.error('❌ [AUTH] checkUserExists() - Exception:', error);
       return { exists: false, hasRole: false, isConfirmed: false, existingRoles: [] };
     }
   }
