@@ -7,6 +7,9 @@
   border-radius: 8px;
   background-color: #ffffff;
   margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 
   .search-header {
     margin-bottom: 0.5rem;
@@ -23,6 +26,8 @@
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    width: 100%;
+    min-width: 0; // Permet au flex de fonctionner correctement
 
     .btn-reset-input {
       position: absolute;
@@ -34,15 +39,16 @@
       color: #999;
       font-size: 1.2rem;
       cursor: pointer;
-      padding: 0.25rem 0.5rem;
-      z-index: 1;
+      padding: 0;
+      z-index: 2;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       transition: all 0.2s ease;
+      line-height: 1;
 
       &:hover {
         background-color: #f0f0f0;
@@ -53,19 +59,28 @@
       &:active {
         transform: translateY(-50%) scale(0.95);
       }
+
+      &:focus {
+        outline: 2px solid #2196f3;
+        outline-offset: 2px;
+      }
     }
 
     .search-input {
       flex: 1;
+      min-width: 0; // Important pour que le flex fonctionne avec le contenu
+      width: 100%;
+      max-width: 100%;
       padding: 0.75rem;
-      padding-left: 0.75rem;
+      padding-right: 0.75rem;
       border: 2px solid #e0e0e0;
       border-radius: 4px;
       font-size: 1rem;
+      box-sizing: border-box; // S'assurer que le padding est inclus dans la largeur
       transition: border-color 0.2s, padding-left 0.2s;
 
       &.has-reset-button {
-        padding-left: 2.75rem;
+        padding-left: 2.5rem;
       }
 
       &:focus {
@@ -577,16 +592,32 @@
     padding: 0.75rem;
 
     .search-input-wrapper {
-      flex-direction: column;
-      align-items: stretch;
+      flex-direction: row;
+      align-items: center;
       gap: 0.5rem;
+      width: 100%;
+
+      .btn-reset-input {
+        left: 0.4rem;
+        width: 24px;
+        height: 24px;
+        font-size: 1rem;
+      }
 
       .search-input {
         width: 100%;
+        min-width: 0;
+        flex: 1;
+        
+        &.has-reset-button {
+          padding-left: 2.25rem;
+        }
       }
 
       .btn-add-word {
-        width: 100%;
+        width: auto;
+        flex-shrink: 0;
+        padding: 0.5rem 0.75rem;
       }
     }
 

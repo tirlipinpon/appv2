@@ -50,85 +50,6 @@ import { SmartWordSearchComponent } from '@shared/components/smart-word-search/s
         }
       </section>
 
-      <!-- Section Thèmes -->
-      <section class="settings-section">
-        <h2>🎨 Thèmes</h2>
-        @if (themesLoading()) {
-          <div class="loading">Chargement des thèmes...</div>
-        }
-        @if (!themesLoading()) {
-          <div class="themes-grid">
-            @for (theme of availableThemes(); track theme.id) {
-              <div
-                class="theme-card"
-                [class.selected]="isThemeSelected(theme.id)"
-                [class.unlocked]="isThemeUnlocked(theme.id)"
-                [class.locked]="!isThemeUnlocked(theme.id)"
-                (click)="selectTheme(theme.id)">
-                <div class="theme-preview" [style.background]="getThemeColor(theme)">
-                  @for (shape of getThemeShapes(theme); track shape) {
-                    <div class="theme-shape"></div>
-                  }
-                </div>
-                <div class="theme-info">
-                  <h3>{{ theme.name }}</h3>
-                  @if (!isThemeUnlocked(theme.id)) {
-                    <div class="locked-badge">🔒 Verrouillé</div>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        }
-      </section>
-
-      <!-- Section Statistiques -->
-      <section class="settings-section">
-        <h2>📊 Mes Statistiques</h2>
-        @if (application.isLoading()) {
-          <div class="loading">
-            Chargement de tes statistiques...
-          </div>
-        }
-        @if (application.getError()) {
-          <div class="error">
-            {{ application.getError() }}
-          </div>
-        }
-        @if (!application.isLoading() && !application.getError() && application.getStatistics()()) {
-          <div class="stats-details">
-          <div class="stat-row">
-            <span class="stat-label">Jeux joués</span>
-            <span class="stat-value">{{ application.getStatistics()()?.total_games_played || 0 }}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Jeux réussis</span>
-            <span class="stat-value">{{ application.getStatistics()()?.total_games_succeeded || 0 }}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Taux de réussite</span>
-            <span class="stat-value">{{ Math.round(application.getStatistics()()?.success_rate || 0) }}%</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Étoiles totales</span>
-            <span class="stat-value">{{ application.getStatistics()()?.total_stars || 0 }}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Sous-matières terminées</span>
-            <span class="stat-value">{{ application.getStatistics()()?.completed_subject_categories_count || 0 }}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Objets débloqués</span>
-            <span class="stat-value">{{ application.getStatistics()()?.collectibles_count || 0 }}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Mini-jeux bonus</span>
-            <span class="stat-value">{{ application.getStatistics()()?.bonus_games_unlocked_count || 0 }}</span>
-          </div>
-          </div>
-        }
-      </section>
-
       <!-- Section Recherche de mots -->
       <section class="settings-section">
         <h2>🔍 Recherche de mots</h2>
@@ -216,6 +137,85 @@ import { SmartWordSearchComponent } from '@shared/components/smart-word-search/s
                 }
               </div>
             }
+          </div>
+        }
+      </section>
+
+      <!-- Section Thèmes -->
+      <section class="settings-section">
+        <h2>🎨 Thèmes</h2>
+        @if (themesLoading()) {
+          <div class="loading">Chargement des thèmes...</div>
+        }
+        @if (!themesLoading()) {
+          <div class="themes-grid">
+            @for (theme of availableThemes(); track theme.id) {
+              <div
+                class="theme-card"
+                [class.selected]="isThemeSelected(theme.id)"
+                [class.unlocked]="isThemeUnlocked(theme.id)"
+                [class.locked]="!isThemeUnlocked(theme.id)"
+                (click)="selectTheme(theme.id)">
+                <div class="theme-preview" [style.background]="getThemeColor(theme)">
+                  @for (shape of getThemeShapes(theme); track shape) {
+                    <div class="theme-shape"></div>
+                  }
+                </div>
+                <div class="theme-info">
+                  <h3>{{ theme.name }}</h3>
+                  @if (!isThemeUnlocked(theme.id)) {
+                    <div class="locked-badge">🔒 Verrouillé</div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Section Statistiques -->
+      <section class="settings-section">
+        <h2>📊 Mes Statistiques</h2>
+        @if (application.isLoading()) {
+          <div class="loading">
+            Chargement de tes statistiques...
+          </div>
+        }
+        @if (application.getError()) {
+          <div class="error">
+            {{ application.getError() }}
+          </div>
+        }
+        @if (!application.isLoading() && !application.getError() && application.getStatistics()()) {
+          <div class="stats-details">
+          <div class="stat-row">
+            <span class="stat-label">Jeux joués</span>
+            <span class="stat-value">{{ application.getStatistics()()?.total_games_played || 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Jeux réussis</span>
+            <span class="stat-value">{{ application.getStatistics()()?.total_games_succeeded || 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Taux de réussite</span>
+            <span class="stat-value">{{ Math.round(application.getStatistics()()?.success_rate || 0) }}%</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Étoiles totales</span>
+            <span class="stat-value">{{ application.getStatistics()()?.total_stars || 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Sous-matières terminées</span>
+            <span class="stat-value">{{ application.getStatistics()()?.completed_subject_categories_count || 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Objets débloqués</span>
+            <span class="stat-value">{{ application.getStatistics()()?.collectibles_count || 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Mini-jeux bonus</span>
+            <span class="stat-value">{{ application.getStatistics()()?.bonus_games_unlocked_count || 0 }}</span>
+          </div>
           </div>
         }
       </section>
