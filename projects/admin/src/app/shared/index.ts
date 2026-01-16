@@ -13,6 +13,8 @@ export * from './components/games-stats-display/games-stats-display.component';
 export * from './components/school-level-select/school-level-select.component';
 export * from './components/scroll-to-top/scroll-to-top.component';
 export * from './components/toast/toast.component';
+// SmartWordSearchComponent from src/shared
+export { SmartWordSearchComponent } from '../../../../../src/shared/components/smart-word-search/smart-word-search.component';
 
 // Services
 export * from './services/auth/auth.service';

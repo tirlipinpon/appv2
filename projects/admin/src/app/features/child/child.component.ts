@@ -4,7 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ChildStore } from './store/index';
 import { Application } from './components/application/application';
-import { ErrorSnackbarService, SchoolLevelSelectComponent, SchoolsStore } from '../../shared';
+import { ErrorSnackbarService, SchoolLevelSelectComponent, SchoolsStore, SmartWordSearchComponent } from '../../shared';
 import { SchoolService } from '../../features/teacher/services/school/school.service';
 import type { Child } from './types/child';
 import type { School } from './types/school';
@@ -14,7 +14,7 @@ import { AvatarPinGeneratorComponent } from './components/avatar-pin-generator/a
 @Component({
   selector: 'app-child',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent, AvatarPinGeneratorComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SchoolLevelSelectComponent, AvatarPinGeneratorComponent, SmartWordSearchComponent],
   templateUrl: './child.component.html',
   styleUrl: './child.component.scss',
 })
@@ -594,5 +594,14 @@ export class ChildComponent implements OnInit, OnDestroy {
         control.setErrors(null);
       }
     }
+  }
+
+  /**
+   * Handler appelé quand des mots sont liés à l'enfant
+   */
+  onWordsLinked(wordIds: string[]): void {
+    // Optionnel: Afficher un message de succès ou rafraîchir les données
+    console.log('Mots liés avec succès:', wordIds);
+    // Vous pouvez ajouter ici une notification de succès si nécessaire
   }
 }

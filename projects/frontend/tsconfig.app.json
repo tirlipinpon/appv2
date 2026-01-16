@@ -14,7 +14,9 @@
       "@shared/components": ["src/shared/components"],
       "@shared/components/*": ["src/shared/components/*"],
       "@shared/utils": ["src/shared/utils"],
-      "@shared/utils/*": ["src/shared/utils/*"]
+      "@shared/utils/*": ["src/shared/utils/*"],
+      "@shared/tokens": ["src/shared/tokens"],
+      "@shared/tokens/*": ["src/shared/tokens/*"]
     }
   },
   "include": [

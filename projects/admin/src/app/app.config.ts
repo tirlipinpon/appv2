@@ -4,7 +4,8 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
-import { GlobalErrorHandler, httpErrorInterceptor, ENVIRONMENT, APP_VERSION_TOKEN } from './shared';
+import { GlobalErrorHandler, httpErrorInterceptor, APP_VERSION_TOKEN } from './shared';
+import { ENVIRONMENT } from '@shared/tokens/environment.token';
 import { environment } from '../environments/environment';
 import { APP_VERSION } from './core/version';
 import { GamesStatsService } from '@shared/services/games-stats/games-stats.service';

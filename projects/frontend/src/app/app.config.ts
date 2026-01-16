@@ -2,7 +2,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChang
 import { provideRouter, PreloadAllModules, withPreloading } from '@angular/router';
 
 import { routes } from './app.routes';
-import { ENVIRONMENT } from './core/tokens/environment.token';
+import { ENVIRONMENT } from '@shared/tokens/environment.token';
 import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {

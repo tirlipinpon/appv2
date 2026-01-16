@@ -1,0 +1,159 @@
+<div class="smart-search-container">
+  <!-- HEADER SECTION -->
+  <div class="search-header">
+    <label class="search-label">Rechercher des mots</label>
+  </div>
+
+  <!-- INPUT SECTION -->
+  <div class="search-input-wrapper">
+    <input
+      type="text"
+      [ngModel]="store.searchInput()"
+      (ngModelChange)="onInputChange($event)"
+      (keydown)="onKeyDown($event)"
+      placeholder="Tapez une ou plusieurs lettres..."
+      [attr.aria-label]="'Recherche de mots'"
+      class="search-input"
+      [class.has-results]="store.isDropdownVisible() && store.filteredWords().length > 0"
+    />
+    <button 
+      type="button" 
+      (click)="onAddSelectedWords()" 
+      class="btn-add-word"
+      [disabled]="!store.canAddWord()"
+      [attr.aria-label]="store.selectedWords().size > 0 ? 'Ajouter les mots sélectionnés' : 'Créer un nouveau mot'">
+      + Ajouter
+    </button>
+  </div>
+
+  <!-- ERROR MESSAGE -->
+  @if (store.errorMessage()) {
+    <div class="error-message" role="alert" [attr.aria-live]="'polite'">
+      {{ store.errorMessage() }}
+    </div>
+  }
+
+  <!-- SEARCH RESULTS -->
+  @if (store.searchInput().length > 0 && store.filteredWords().length > 0) {
+    <div class="search-results" role="region" [attr.aria-label]="'Résultats de recherche'">
+      <div class="results-list">
+        @for (word of store.filteredWords(); track word.globalWordId; let i = $index) {
+          <div
+            class="result-item"
+            [class.selected]="word.isFromChild || store.selectedWords().has(word.globalWordId)"
+            [class.from-child]="word.isFromChild"
+            [class.highlighted]="store.selectedIndex() === i && !word.isFromChild"
+            [attr.aria-selected]="word.isFromChild || store.selectedWords().has(word.globalWordId)"
+            role="option"
+            (click)="!word.isFromChild && toggleWordSelection(word.globalWordId)"
+            (keydown.enter)="!word.isFromChild && toggleWordSelection(word.globalWordId)"
+            [attr.tabindex]="store.selectedIndex() === i && !word.isFromChild ? 0 : -1"
+          >
+            <input
+              type="checkbox"
+              [checked]="word.isFromChild || store.selectedWords().has(word.globalWordId)"
+              (change)="word.isFromChild ? toggleChildWordLink(word.globalWordId, word.childWordId) : toggleWordSelection(word.globalWordId)"
+              (click)="$event.stopPropagation()"
+              [attr.aria-label]="word.isFromChild ? 'Supprimer ' + word.original + ' de l\'enfant' : 'Sélectionner ' + word.original"
+              class="word-checkbox"
+              [class.from-child-checkbox]="word.isFromChild"
+            />
+            <label class="word-label">
+              <span class="word-full">{{ word.original }}</span>
+              @if (word.isFromChild) {
+                <span class="badge" [attr.aria-label]="'Mot déjà lié à l\'enfant'">
+                  Mots de l'enfant
+                </span>
+              }
+            </label>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (store.showNoResults()) {
+    <div class="no-results" role="status">
+      <p>Aucun mot trouvé pour "{{ store.searchInput() }}"</p>
+    </div>
+  }
+
+  <!-- CHILD WORDS SECTION -->
+  @if (store.childWordsData().length > 0) {
+    <div class="child-words-section" role="region" [attr.aria-label]="'Mots de l\'enfant'">
+      <div class="child-words-header">
+        <span class="child-words-title">Mots de l'enfant ({{ store.childWordsData().length }})</span>
+      </div>
+      <div class="child-words-list">
+        @for (word of store.childWordsData(); track word.childWordId) {
+          <div class="child-word-item" [attr.aria-label]="'Mot: ' + word.original">
+            @if (store.editingWordId() === word.childWordId) {
+              <!-- Mode édition -->
+              <div class="edit-mode">
+                <input
+                  type="text"
+                  [ngModel]="store.editingWordValue()"
+                  (ngModelChange)="onEditingWordValueChange($event)"
+                  (keydown.enter)="saveEditChildWord(word.childWordId)"
+                  (keydown.escape)="cancelEditChildWord()"
+                  class="edit-input"
+                  [attr.aria-label]="'Modifier ' + word.original"
+                  autofocus
+                />
+                <div class="edit-actions">
+                  <button
+                    type="button"
+                    (click)="saveEditChildWord(word.childWordId)"
+                    class="btn-save-word"
+                    [disabled]="store.isValidating()"
+                    [attr.aria-label]="'Sauvegarder'"
+                    title="Sauvegarder (Entrée)"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    (click)="cancelEditChildWord()"
+                    class="btn-cancel-edit"
+                    [disabled]="store.isValidating()"
+                    [attr.aria-label]="'Annuler'"
+                    title="Annuler (Échap)"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <!-- Mode affichage -->
+              <span class="child-word-text">{{ word.original }}</span>
+              <div class="child-word-actions">
+                <button
+                  type="button"
+                  (click)="startEditChildWord(word)"
+                  class="btn-edit-word"
+                  [attr.aria-label]="'Éditer ' + word.original"
+                  [disabled]="store.isValidating() || store.editingWordId() !== null"
+                  title="Éditer"
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  (click)="onDeleteChildWord(word)"
+                  class="btn-delete-word"
+                  [attr.aria-label]="'Supprimer ' + word.original"
+                  [disabled]="store.isValidating() || store.editingWordId() !== null"
+                  title="Supprimer"
+                >
+                  🗑️
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+
+</div>

@@ -64,6 +64,15 @@
       </div>
     }
     <form [formGroup]="childForm" (ngSubmit)="onSubmit()" class="child-form">
+      <!-- COMPOSANT SMART WORD SEARCH - EN PREMIER -->
+      @if (currentChildId(); as childId) {
+        <app-smart-word-search
+          [currentChildId]="childId"
+          variant="admin"
+          (wordsLinked)="onWordsLinked($event)"
+        />
+      }
+
       <div class="form-group">
         <label for="firstname">Prénom *</label>
         <input

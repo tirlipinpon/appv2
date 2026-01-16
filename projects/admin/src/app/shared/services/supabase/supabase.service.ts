@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { ENVIRONMENT } from '../../tokens/environment.token';
+import { ENVIRONMENT } from '@shared/tokens/environment.token';
 
 @Injectable({
   providedIn: 'root',

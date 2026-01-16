@@ -1,6 +1,6 @@
 import { Injectable, inject, Injector } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { ENVIRONMENT } from '../../tokens/environment.token';
+import { ENVIRONMENT } from '@shared/tokens/environment.token';
 import { ChildAuthService } from '../../auth/child-auth.service';
 import { SupabaseErrorHandlerService } from './supabase-error-handler.service';
 
