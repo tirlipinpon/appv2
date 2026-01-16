@@ -63,6 +63,18 @@ export class ChildComponent implements OnInit, OnDestroy {
     return this.currentChildId() === null;
   });
   readonly buttonText = computed(() => this.isCreating() ? 'Ajouter' : 'Modifier');
+  readonly childName = computed(() => {
+    const child = this.selectedChild();
+    if (!child) return '';
+    const parts: string[] = [];
+    if (child.firstname) parts.push(child.firstname);
+    if (child.lastname) parts.push(child.lastname);
+    return parts.join(' ').trim();
+  });
+  readonly pageTitle = computed(() => {
+    const name = this.childName();
+    return name ? `Profil Enfant - ${name}` : 'Profil Enfant';
+  });
 
   constructor() {
     // Écouter les changements de l'enfant sélectionné dans le store pour remplir le formulaire

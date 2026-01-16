@@ -3,7 +3,7 @@
     <a routerLink="/dashboard" class="btn-back">
       ← Retour au dashboard
     </a>
-    <h1>Profil Enfant</h1>
+    <h1>{{ pageTitle() }}</h1>
   </div>
 
   @if (isLoading() && !showForm() && !showCopySelection()) {
