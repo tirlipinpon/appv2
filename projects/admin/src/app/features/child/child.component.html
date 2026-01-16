@@ -64,15 +64,6 @@
       </div>
     }
     <form [formGroup]="childForm" (ngSubmit)="onSubmit()" class="child-form">
-      <!-- COMPOSANT SMART WORD SEARCH - EN PREMIER -->
-      @if (currentChildId(); as childId) {
-        <app-smart-word-search
-          [currentChildId]="childId"
-          variant="admin"
-          (wordsLinked)="onWordsLinked($event)"
-        />
-      }
-
       <div class="form-group">
         <label for="firstname">Prénom *</label>
         <input
@@ -187,6 +178,15 @@
           placeholder="Informations complémentaires sur l'enfant..."
         ></textarea>
       </div>
+
+      <!-- COMPOSANT SMART WORD SEARCH - APRÈS LE CHAMP NOTES -->
+      @if (currentChildId(); as childId) {
+        <app-smart-word-search
+          [currentChildId]="childId"
+          variant="admin"
+          (wordsLinked)="onWordsLinked($event)"
+        />
+      }
 
       <app-avatar-pin-generator
         [initialAvatarSeed]="avatarSeed()"
