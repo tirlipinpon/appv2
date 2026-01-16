@@ -29,28 +29,54 @@ export class Application {
   }
 
   /**
-   * Toggle la sélection d'un mot
+   * Toggle la sélection d'un mot et l'ajoute/supprime automatiquement de l'enfant
    */
-  toggleWordSelection(globalWordId: string, childWordId?: string): void {
-    // Si c'est un mot déjà lié à l'enfant (childWordId fourni), on ne fait rien ici
-    // La suppression sera gérée par toggleChildWordLink
-    const childWordIds = new Set(this.store.childWords().map(cw => cw.global_word_id));
-    if (childWordIds.has(globalWordId) && childWordId) {
-      // C'est un mot de l'enfant, on ne toggle pas la sélection normale
+  async toggleWordSelection(globalWordId: string, childWordId: string | undefined, childId: string): Promise<void> {
+    // Si c'est un mot déjà lié à l'enfant, on le supprime
+    if (childWordId) {
+      await this.toggleChildWordLink(globalWordId, childWordId, childId);
       return;
     }
 
+    // Sinon, c'est un mot non lié : on l'ajoute automatiquement à l'enfant
     const currentSelected = new Set(this.store.selectedWords());
     
     if (currentSelected.has(globalWordId)) {
+      // Déjà sélectionné, on le retire (et on le supprime de l'enfant si déjà lié)
       currentSelected.delete(globalWordId);
+      this.store.patchState({
+        selectedWords: currentSelected,
+      });
     } else {
+      // Nouveau mot à ajouter : on l'ajoute directement à l'enfant
       currentSelected.add(globalWordId);
+      this.store.patchState({
+        selectedWords: currentSelected,
+        isValidating: true,
+        errorMessage: null,
+      });
+
+      try {
+        await firstValueFrom(this.wordService.linkWordsToChild(childId, [globalWordId]));
+        
+        // Recharger les mots de l'enfant et globaux
+        this.loadChildWords(childId);
+        this.loadGlobalWords();
+        
+        this.store.patchState({
+          isValidating: false,
+          errorMessage: null,
+        });
+      } catch (error: any) {
+        // En cas d'erreur, retirer de la sélection
+        currentSelected.delete(globalWordId);
+        this.store.patchState({
+          selectedWords: currentSelected,
+          isValidating: false,
+          errorMessage: error?.message || 'Erreur lors de l\'ajout du mot',
+        });
+      }
     }
-    
-    this.store.patchState({
-      selectedWords: currentSelected,
-    });
   }
 
   /**
@@ -144,7 +170,7 @@ export class Application {
   /**
    * Gère la navigation au clavier
    */
-  onKeyDown(event: KeyboardEvent): void {
+  onKeyDown(event: KeyboardEvent, childId: string): void {
     const filtered = this.store.filteredWords();
     
     if (filtered.length === 0) {
@@ -170,7 +196,8 @@ export class Application {
       case 'Enter':
         event.preventDefault();
         if (currentIndex >= 0 && currentIndex < filtered.length) {
-          this.toggleWordSelection(filtered[currentIndex].globalWordId);
+          const word = filtered[currentIndex];
+          this.toggleWordSelection(word.globalWordId, word.childWordId, childId);
         }
         break;
 

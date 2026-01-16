@@ -54,18 +54,20 @@ export const SmartWordSearchStore = signalStore(
       return true;
     });
 
-    // Computed : Peut ajouter (des mots sont sélectionnés OU input valide pour création)
+    // Computed : Peut ajouter (uniquement pour créer un nouveau mot, pas pour ajouter des mots sélectionnés)
     const canAddWord = computed(() => {
       if (store.isValidating()) {
         return false;
       }
-      // Si des mots sont sélectionnés, on peut les ajouter
+      // Le bouton "+ Ajouter" sert uniquement à créer un nouveau mot
+      // Il est activé uniquement si l'input a au moins 3 lettres ET aucun mot n'est sélectionné
       if (store.selectedWords().size > 0) {
-        return true;
+        return false;
       }
-      // Sinon, on peut créer un nouveau mot si l'input a au moins 3 lettres
       const input = store.searchInput().trim();
-      return input.length >= 3;
+      // Le bouton est activé si l'input a au moins 3 lettres ET qu'il n'y a pas de résultats (mot n'existe pas)
+      const hasNoResults = showNoResults();
+      return input.length >= 3 && hasNoResults;
     });
 
     // Computed : Afficher le bouton "Valider"

@@ -21,7 +21,7 @@
       (click)="onAddSelectedWords()" 
       class="btn-add-word"
       [disabled]="!store.canAddWord()"
-      [attr.aria-label]="store.selectedWords().size > 0 ? 'Ajouter les mots sélectionnés' : 'Créer un nouveau mot'">
+      [attr.aria-label]="'Créer un nouveau mot'">
       + Ajouter
     </button>
   </div>
@@ -45,14 +45,14 @@
             [class.highlighted]="store.selectedIndex() === i && !word.isFromChild"
             [attr.aria-selected]="word.isFromChild || store.selectedWords().has(word.globalWordId)"
             role="option"
-            (click)="!word.isFromChild && toggleWordSelection(word.globalWordId)"
-            (keydown.enter)="!word.isFromChild && toggleWordSelection(word.globalWordId)"
+            (click)="!word.isFromChild && toggleWordSelection(word.globalWordId, word.childWordId)"
+            (keydown.enter)="!word.isFromChild && toggleWordSelection(word.globalWordId, word.childWordId)"
             [attr.tabindex]="store.selectedIndex() === i && !word.isFromChild ? 0 : -1"
           >
             <input
               type="checkbox"
               [checked]="word.isFromChild || store.selectedWords().has(word.globalWordId)"
-              (change)="word.isFromChild ? toggleChildWordLink(word.globalWordId, word.childWordId) : toggleWordSelection(word.globalWordId)"
+              (change)="toggleWordSelection(word.globalWordId, word.childWordId)"
               (click)="$event.stopPropagation()"
               [attr.aria-label]="word.isFromChild ? 'Supprimer ' + word.original + ' de l\'enfant' : 'Sélectionner ' + word.original"
               class="word-checkbox"

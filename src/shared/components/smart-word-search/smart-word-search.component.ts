@@ -54,8 +54,14 @@ export class SmartWordSearchComponent implements OnInit, OnDestroy {
     this.application.onInputChange(value);
   }
 
-  toggleWordSelection(globalWordId: string, childWordId?: string): void {
-    this.application.toggleWordSelection(globalWordId, childWordId);
+  async toggleWordSelection(globalWordId: string, childWordId?: string): Promise<void> {
+    if (!this.currentChildId) {
+      this.store.patchState({
+        errorMessage: 'ID enfant manquant',
+      });
+      return;
+    }
+    await this.application.toggleWordSelection(globalWordId, childWordId, this.currentChildId);
   }
 
   async toggleChildWordLink(globalWordId: string, childWordId: string | undefined): Promise<void> {
@@ -77,7 +83,10 @@ export class SmartWordSearchComponent implements OnInit, OnDestroy {
   }
 
   onKeyDown(event: KeyboardEvent): void {
-    this.application.onKeyDown(event);
+    if (!this.currentChildId) {
+      return;
+    }
+    this.application.onKeyDown(event, this.currentChildId);
   }
 
   async onCreateNewWord(): Promise<void> {
@@ -102,16 +111,11 @@ export class SmartWordSearchComponent implements OnInit, OnDestroy {
   }
 
   async onAddSelectedWords(): Promise<void> {
-    // Si des mots sont sélectionnés, les ajouter à l'enfant
-    if (this.store.selectedWords().size > 0) {
-      await this.onSubmit();
-    } else {
-      // Sinon, créer un nouveau mot depuis l'input si valide
-      const input = this.store.searchInput().trim();
-      if (input.length >= 3) {
-        // Créer le mot et l'ajouter automatiquement à l'enfant
-        await this.application.onCreateNewWordAndLink(input, this.variant, this.currentChildId);
-      }
+    // Le bouton "+ Ajouter" sert uniquement à créer un nouveau mot
+    const input = this.store.searchInput().trim();
+    if (input.length >= 3) {
+      // Créer le mot et l'ajouter automatiquement à l'enfant
+      await this.application.onCreateNewWordAndLink(input, this.variant, this.currentChildId);
     }
   }
 
