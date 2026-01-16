@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, OnInit, OnDestroy, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, OnInit, OnDestroy, OnChanges, SimpleChanges, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import type { SearchState, FormattedWord } from './types/word.types';
@@ -12,7 +12,7 @@ import { Application } from './components/application/application';
   templateUrl: './smart-word-search.component.html',
   styleUrl: './smart-word-search.component.scss',
 })
-export class SmartWordSearchComponent implements OnInit, OnDestroy {
+export class SmartWordSearchComponent implements OnInit, OnDestroy, OnChanges {
   // Inputs
   @Input() currentChildId = '';
   @Input() variant: 'admin' | 'frontend' = 'admin';
@@ -38,8 +38,24 @@ export class SmartWordSearchComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Charger les mots globaux et les mots de l'enfant
-    if (this.currentChildId) {
-      this.application.loadGlobalWords();
+    this.loadWordsIfNeeded();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // Recharger les mots si currentChildId change
+    if (changes['currentChildId'] && !changes['currentChildId'].firstChange) {
+      this.loadWordsIfNeeded();
+    } else if (changes['currentChildId']?.firstChange && this.currentChildId) {
+      this.loadWordsIfNeeded();
+    }
+  }
+
+  private loadWordsIfNeeded(): void {
+    // Charger les mots globaux (toujours disponibles)
+    this.application.loadGlobalWords();
+    
+    // Charger les mots de l'enfant si l'ID est disponible
+    if (this.currentChildId && this.currentChildId.trim() !== '') {
       this.application.loadChildWords(this.currentChildId);
     }
   }

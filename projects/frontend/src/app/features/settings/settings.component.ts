@@ -4,11 +4,12 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { Theme } from '../../core/types/game.types';
 import { SupabaseService } from '../../core/services/supabase/supabase.service';
 import { CommonModule } from '@angular/common';
+import { SmartWordSearchComponent } from '@shared/components/smart-word-search/smart-word-search.component';
 
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, SmartWordSearchComponent],
   template: `
     <div class="settings-container">
       <h1>Paramètres</h1>
@@ -125,6 +126,17 @@ import { CommonModule } from '@angular/common';
             <span class="stat-value">{{ application.getStatistics()()?.bonus_games_unlocked_count || 0 }}</span>
           </div>
           </div>
+        }
+      </section>
+
+      <!-- Section Recherche de mots -->
+      <section class="settings-section">
+        <h2>🔍 Recherche de mots</h2>
+        @if (child()?.child_id) {
+          <app-smart-word-search 
+            [currentChildId]="child()?.child_id || ''"
+            variant="frontend">
+          </app-smart-word-search>
         }
       </section>
 
