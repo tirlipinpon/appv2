@@ -70,6 +70,10 @@ export class SmartWordSearchComponent implements OnInit, OnDestroy, OnChanges {
     this.application.onInputChange(value);
   }
 
+  onResetInput(): void {
+    this.application.clearSelection();
+  }
+
   async toggleWordSelection(globalWordId: string, childWordId?: string): Promise<void> {
     if (!this.currentChildId) {
       this.store.patchState({

@@ -6,6 +6,17 @@
 
   <!-- INPUT SECTION -->
   <div class="search-input-wrapper">
+    @if (store.searchInput().length > 0) {
+      <button
+        type="button"
+        (click)="onResetInput()"
+        class="btn-reset-input"
+        [attr.aria-label]="'Réinitialiser la recherche'"
+        title="Effacer"
+      >
+        ✕
+      </button>
+    }
     <input
       type="text"
       [ngModel]="store.searchInput()"
@@ -17,6 +28,7 @@
       [class.has-results]="
         store.isDropdownVisible() && store.filteredWords().length > 0
       "
+      [class.has-reset-button]="store.searchInput().length > 0"
     />
     <button
       type="button"

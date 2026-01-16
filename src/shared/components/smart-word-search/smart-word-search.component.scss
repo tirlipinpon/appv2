@@ -24,13 +24,49 @@
     gap: 0.5rem;
     align-items: center;
 
+    .btn-reset-input {
+      position: absolute;
+      left: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: #f0f0f0;
+        color: #333;
+        transform: translateY(-50%) scale(1.1);
+      }
+
+      &:active {
+        transform: translateY(-50%) scale(0.95);
+      }
+    }
+
     .search-input {
       flex: 1;
       padding: 0.75rem;
+      padding-left: 0.75rem;
       border: 2px solid #e0e0e0;
       border-radius: 4px;
       font-size: 1rem;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, padding-left 0.2s;
+
+      &.has-reset-button {
+        padding-left: 2.75rem;
+      }
 
       &:focus {
         outline: none;
