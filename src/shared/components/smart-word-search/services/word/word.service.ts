@@ -2,46 +2,16 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { GlobalWord, ChildWord, FormattedWord } from '../../types/word.types';
-import { ENVIRONMENT, type Environment } from '@shared/tokens/environment.token';
+import { SUPABASE_CLIENT } from '@shared/tokens/supabase-client.token';
 
 @Injectable({
   providedIn: 'root',
 })
 export class WordService {
-  // Injection directe du token ENVIRONMENT (fourni dans app.config.ts)
-  private readonly environment = inject<Environment | null>(ENVIRONMENT, { optional: true });
-  
-  private _client: SupabaseClient | null = null;
-  
-  /**
-   * Récupère le client Supabase (compatible admin et frontend)
-   * Utilise l'injection directe du token ENVIRONMENT fourni dans app.config.ts
-   * 
-   * SOLUTION SIMPLE : Injection directe du token ENVIRONMENT partagé
-   */
-  private getSupabaseClient(): SupabaseClient | null {
-    if (this._client) {
-      return this._client;
-    }
-    
-    // Injection directe du token ENVIRONMENT
-    if (this.environment?.supabaseUrl && this.environment?.supabaseAnonKey) {
-      this._client = createClient(this.environment.supabaseUrl, this.environment.supabaseAnonKey);
-      return this._client;
-    }
-    
-    return null;
-  }
-  
-  private get client(): SupabaseClient {
-    const client = this.getSupabaseClient();
-    if (!client) {
-      throw new Error('SupabaseService not found. Please ensure SupabaseService is provided in your app.config.ts or ENVIRONMENT token is available.');
-    }
-    return client;
-  }
+  // Injection du client Supabase singleton (créé une seule fois dans app.config.ts)
+  private readonly client = inject(SUPABASE_CLIENT);
   /**
    * Normalise un mot : trim, lowercase, suppression des accents
    * @param word - Le mot à normaliser

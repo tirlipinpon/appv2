@@ -1,6 +1,6 @@
 import { Injectable, inject, Injector } from '@angular/core';
 import { ChildSession } from '../types/child-session';
-import { ENVIRONMENT } from '../tokens/environment.token';
+import { ENVIRONMENT } from '@shared/tokens/environment.token';
 import { SupabaseService } from '../services/supabase/supabase.service';
 
 const CHILD_SESSION_KEY = 'child_session';
@@ -12,7 +12,7 @@ const VALIDATION_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes en millisecondes
   providedIn: 'root',
 })
 export class ChildAuthService {
-  private readonly environment = inject(ENVIRONMENT, { optional: true });
+  private readonly environment = inject(ENVIRONMENT);
   private readonly injector = inject(Injector);
   private currentSession: ChildSession | null = null;
   private validationInterval: ReturnType<typeof setInterval> | null = null;
