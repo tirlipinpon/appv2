@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { SettingsApplication } from './components/application/application';
 import { ChildAuthService } from '../../core/auth/child-auth.service';
 import { Theme } from '../../core/types/game.types';
@@ -102,6 +102,47 @@ import { SmartWordSearchComponent } from '@shared/components/smart-word-search/s
               <div class="info-item">
                 <span class="info-label">École</span>
                 <span class="info-value">{{ schoolData()?.name || 'Non définie' }}</span>
+              </div>
+              <!-- Nom d'avatar éditable -->
+              <div class="info-item avatar-name-item">
+                <span class="info-label">Nom d'avatar</span>
+                <div class="avatar-name-edit">
+                  <div class="avatar-name-input-wrapper">
+                    <input
+                      type="text"
+                      class="avatar-name-input"
+                      [value]="avatarName()"
+                      (input)="onAvatarNameInput($event)"
+                      (blur)="onAvatarNameBlur()"
+                      (keydown.enter)="saveAvatarName()"
+                      placeholder="Entrez un nom d'avatar">
+                    @if (isAvatarNameModified()) {
+                      <button 
+                        type="button"
+                        class="save-avatar-button"
+                        (click)="saveAvatarName()"
+                        title="Sauvegarder les modifications">
+                        💾
+                      </button>
+                    }
+                  </div>
+                  @if (avatarNameError()) {
+                    <div class="avatar-name-error">
+                      {{ avatarNameError() }}
+                      @if (avatarNameSuggestion()) {
+                        <div class="avatar-name-suggestion">
+                          Suggestion : <strong>{{ avatarNameSuggestion() }}</strong>
+                          <button 
+                            type="button"
+                            class="use-suggestion-button"
+                            (click)="useSuggestion()">
+                            Utiliser cette suggestion
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
               </div>
               @if (childData()?.notes) {
                 <div class="info-item">
@@ -533,6 +574,95 @@ import { SmartWordSearchComponent } from '@shared/components/smart-word-search/s
     .error {
       color: var(--theme-warn-color, #F44336);
     }
+
+    .avatar-name-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .avatar-name-edit {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .avatar-name-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .avatar-name-input {
+      padding: 0.5rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 1rem;
+      flex: 1;
+      min-width: 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .save-avatar-button {
+      background: var(--theme-primary-color, #4CAF50);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.2s;
+      white-space: nowrap;
+    }
+
+    .save-avatar-button:hover {
+      background-color: #45a049;
+    }
+
+    .avatar-name-input:focus {
+      outline: none;
+      border-color: var(--theme-primary-color, #4CAF50);
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+    }
+
+    .avatar-name-error {
+      color: var(--theme-warn-color, #F44336);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .avatar-name-suggestion {
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      background-color: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .avatar-name-suggestion strong {
+      color: var(--theme-primary-color, #4CAF50);
+    }
+
+    .use-suggestion-button {
+      padding: 0.5rem 1rem;
+      background-color: var(--theme-primary-color, #4CAF50);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background-color 0.2s;
+      align-self: flex-start;
+    }
+
+    .use-suggestion-button:hover {
+      background-color: #45a049;
+    }
   `]
 })
 export class SettingsComponent implements OnInit {
@@ -550,6 +680,11 @@ export class SettingsComponent implements OnInit {
   availableThemes = signal<Theme[]>([]);
   unlockedThemes = signal<string[]>([]);
   themesLoading = signal<boolean>(false);
+  avatarName = signal<string>('');
+  originalAvatarName = signal<string>('');
+  avatarNameError = signal<string | null>(null);
+  avatarNameSuggestion = signal<string | null>(null);
+  isAvatarNameModified = computed(() => this.avatarName() !== this.originalAvatarName());
 
   async ngOnInit(): Promise<void> {
     const currentChild = await this.authService.getCurrentChild();
@@ -582,6 +717,9 @@ export class SettingsComponent implements OnInit {
       }
 
       this.childData.set(childData);
+      const avatarNameValue = childData.avatar_name || '';
+      this.avatarName.set(avatarNameValue);
+      this.originalAvatarName.set(avatarNameValue);
 
       // Récupérer les données du parent
       if (childData.parent_id) {
@@ -747,5 +885,188 @@ export class SettingsComponent implements OnInit {
   getThemeShapes(theme: Theme): string[] {
     const colors = theme.shapes_colors_json as any;
     return colors?.['shapes'] || [];
+  }
+
+  onAvatarNameInput(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const value = target.value.trim();
+    this.avatarName.set(value);
+    
+    // Réinitialiser les erreurs lors de la saisie
+    if (this.avatarNameError()) {
+      this.avatarNameError.set(null);
+      this.avatarNameSuggestion.set(null);
+    }
+    
+    // Validation en temps réel : minimum 3 caractères
+    if (value && value.length > 0 && value.length < 3) {
+      this.avatarNameError.set('Le nom d\'avatar doit contenir au moins 3 caractères.');
+    } else if (value && value.length >= 3) {
+      // Réinitialiser l'erreur si la longueur est valide
+      if (this.avatarNameError()?.includes('3 caractères')) {
+        this.avatarNameError.set(null);
+      }
+    }
+  }
+
+  onAvatarNameBlur(): void {
+    // Sauvegarder seulement si le nom a été modifié
+    if (this.isAvatarNameModified()) {
+      this.saveAvatarName();
+    }
+  }
+
+  async saveAvatarName(): Promise<void> {
+    const newAvatarName = this.avatarName().trim();
+    const currentChild = this.child();
+    
+    if (!currentChild?.child_id) {
+      console.error('saveAvatarName: child_id manquant');
+      return;
+    }
+
+    // Si le nom n'a pas changé, ne rien faire
+    if (newAvatarName === this.originalAvatarName()) {
+      return;
+    }
+
+    // Si le nom est vide, on peut l'autoriser (NULL en base)
+    if (!newAvatarName) {
+      await this.updateAvatarNameInDatabase(null);
+      return;
+    }
+
+    // Validation : minimum 3 caractères
+    if (newAvatarName.length < 3) {
+      this.avatarNameError.set('Le nom d\'avatar doit contenir au moins 3 caractères.');
+      return;
+    }
+
+    // Vérifier l'unicité (insensible à la casse)
+    // On compare en minuscules pour ignorer les majuscules/minuscules
+    const { data: allChildren, error: checkError } = await this.supabaseService.client
+      .from('children')
+      .select('id, avatar_name')
+      .neq('id', currentChild.child_id)
+      .not('avatar_name', 'is', null);
+
+    // Si une erreur se produit, on l'affiche
+    if (checkError) {
+      console.error('Erreur lors de la vérification du nom:', checkError);
+      this.avatarNameError.set('Erreur lors de la vérification. Veuillez réessayer.');
+      return;
+    }
+
+    // Vérifier si un nom similaire existe déjà (insensible à la casse)
+    const existingChild = allChildren?.find(
+      child => child.avatar_name && child.avatar_name.toLowerCase() === newAvatarName.toLowerCase()
+    );
+
+    // Si une erreur se produit, on l'affiche
+    if (checkError) {
+      console.error('Erreur lors de la vérification du nom:', checkError);
+      this.avatarNameError.set('Erreur lors de la vérification. Veuillez réessayer.');
+      return;
+    }
+
+    // Si le nom existe déjà (trouvé dans la base)
+    if (existingChild) {
+      const suggestion = await this.generateAvatarNameSuggestion(newAvatarName, currentChild.child_id);
+      this.avatarNameError.set(`Ce nom d'avatar est déjà utilisé.`);
+      this.avatarNameSuggestion.set(suggestion);
+      return;
+    }
+
+    // Le nom est disponible, on peut le sauvegarder
+    await this.updateAvatarNameInDatabase(newAvatarName);
+  }
+
+  async generateAvatarNameSuggestion(baseName: string, currentChildId: string): Promise<string> {
+    // Récupérer tous les noms d'avatar existants (hors celui de l'enfant actuel)
+    const { data: allChildren, error } = await this.supabaseService.client
+      .from('children')
+      .select('id, avatar_name')
+      .neq('id', currentChildId)
+      .not('avatar_name', 'is', null);
+
+    if (error) {
+      // En cas d'erreur, proposer avec un nombre aléatoire
+      return `${baseName}${Math.floor(Math.random() * 999) + 1}`;
+    }
+
+    const existingNames = new Set(
+      (allChildren || [])
+        .map(child => child.avatar_name?.toLowerCase())
+        .filter(name => name !== null && name !== undefined)
+    );
+
+    // Essayer jusqu'à 10 variantes
+    for (let i = 1; i <= 10; i++) {
+      const suggestion = `${baseName}${i}`;
+      
+      // Vérifier si la suggestion existe déjà (insensible à la casse)
+      if (!existingNames.has(suggestion.toLowerCase())) {
+        return suggestion;
+      }
+    }
+
+    // Si on n'a pas trouvé en 10 tentatives, proposer avec timestamp
+    return `${baseName}${Date.now().toString().slice(-4)}`;
+  }
+
+  async updateAvatarNameInDatabase(avatarName: string | null): Promise<void> {
+    const currentChild = this.child();
+    if (!currentChild?.child_id) {
+      console.error('updateAvatarNameInDatabase: child_id manquant');
+      return;
+    }
+
+    console.log('Sauvegarde du nom d\'avatar:', { child_id: currentChild.child_id, avatar_name: avatarName });
+
+    const { data, error: updateError } = await this.supabaseService.client
+      .from('children')
+      .update({ avatar_name: avatarName })
+      .eq('id', currentChild.child_id)
+      .select('avatar_name')
+      .single();
+
+    if (updateError) {
+      console.error('Erreur lors de la mise à jour du nom d\'avatar:', updateError);
+      // Si c'est une erreur de contrainte UNIQUE, proposer une suggestion
+      if (updateError.code === '23505') {
+        const suggestion = await this.generateAvatarNameSuggestion(this.avatarName(), currentChild.child_id);
+        this.avatarNameError.set(`Ce nom d'avatar est déjà utilisé.`);
+        this.avatarNameSuggestion.set(suggestion);
+      } else {
+        this.avatarNameError.set('Erreur lors de la sauvegarde. Veuillez réessayer.');
+      }
+      return;
+    }
+
+    console.log('Nom d\'avatar sauvegardé avec succès:', data);
+
+    // Mettre à jour les données locales
+    const updatedData = { ...this.childData(), avatar_name: data?.avatar_name || avatarName };
+    this.childData.set(updatedData);
+    
+    // Mettre à jour la valeur originale pour refléter la sauvegarde
+    const savedValue = data?.avatar_name || avatarName || '';
+    this.originalAvatarName.set(savedValue);
+    this.avatarName.set(savedValue);
+    
+    // Réinitialiser les erreurs
+    this.avatarNameError.set(null);
+    this.avatarNameSuggestion.set(null);
+  }
+
+  useSuggestion(): void {
+    const suggestion = this.avatarNameSuggestion();
+    if (suggestion) {
+      this.avatarName.set(suggestion);
+      this.avatarNameError.set(null);
+      this.avatarNameSuggestion.set(null);
+      // Sauvegarder automatiquement avec la suggestion
+      this.saveAvatarName();
+    }
   }
 }
