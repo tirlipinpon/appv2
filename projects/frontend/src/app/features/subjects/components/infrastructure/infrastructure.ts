@@ -81,15 +81,60 @@ export class SubjectsInfrastructure {
     return subjects;
   }
 
-  async loadSubjectCategories(subjectId: string): Promise<SubjectCategory[]> {
+  async loadSubjectCategories(subjectId: string, childId?: string | null): Promise<SubjectCategory[]> {
+    // Si pas de childId, retourner toutes les catégories (comportement par défaut)
+    if (!childId) {
+      const { data, error } = await this.supabase.client
+        .from('subject_categories')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .order('name');
+
+      if (error) throw error;
+      const allCategories = data || [];
+      return allCategories;
+    }
+
+    // NE PAS utiliser de cache pour les catégories filtrées car elles dépendent des enrollments
+    // qui peuvent changer fréquemment. Le cache pourrait contenir des données obsolètes.
+    // On charge toujours depuis la base de données pour garantir la cohérence.
+
+    // Filtrer les catégories par childId via la table child_subject_category_enrollments (comme pour les matières)
+    // Récupérer les enrollments où selected = true (comme l'admin)
+    const { data: enrollments, error: enrollmentsError } = await this.supabase.client
+      .from('child_subject_category_enrollments')
+      .select('subject_category_id')
+      .eq('child_id', childId)
+      .eq('selected', true);
+
+    if (enrollmentsError) throw enrollmentsError;
+
+    if (!enrollments || enrollments.length === 0) {
+      return [];
+    }
+
+    // Extraire les IDs de catégories
+    const categoryIds = enrollments
+      .map((e: { subject_category_id: string }) => e.subject_category_id)
+      .filter((id: string | undefined): id is string => id !== undefined);
+
+    if (categoryIds.length === 0) {
+      return [];
+    }
+
+    // Récupérer les catégories correspondantes ET qui appartiennent à la matière
     const { data, error } = await this.supabase.client
       .from('subject_categories')
       .select('*')
       .eq('subject_id', subjectId)
+      .in('id', categoryIds)
       .order('name');
 
     if (error) throw error;
-    return data || [];
+    const filteredCategories = data || [];
+    // NE PAS mettre en cache les catégories filtrées car elles dépendent des enrollments
+    // qui peuvent changer fréquemment. On charge toujours depuis la base de données.
+    return filteredCategories;
   }
 
   async loadChildProgress(childId: string, categoryIds: string[]): Promise<SubjectCategoryProgress[]> {
@@ -105,8 +150,8 @@ export class SubjectsInfrastructure {
     return data || [];
   }
 
-  async loadSubjectWithCategories(subjectId: string): Promise<SubjectCategory[]> {
-    return this.loadSubjectCategories(subjectId);
+  async loadSubjectWithCategories(subjectId: string, childId?: string | null): Promise<SubjectCategory[]> {
+    return this.loadSubjectCategories(subjectId, childId);
   }
 
   /**

@@ -57,9 +57,12 @@ export const SubjectsStore = signalStore(
     },
     selectSubject: rxMethod<string>(
       pipe(
-        tap((subjectId) => patchState(store, { selectedSubjectId: subjectId, loading: true, error: null })),
-        switchMap((subjectId) =>
-          infrastructure.loadSubjectCategories(subjectId).then(
+        tap((subjectId) => {
+          patchState(store, { selectedSubjectId: subjectId, loading: true, error: null });
+        }),
+        switchMap((subjectId) => {
+          const childId = store.childId();
+          return infrastructure.loadSubjectCategories(subjectId, childId || undefined).then(
             (categories) => {
               // Convertir en SubjectCategoryWithProgress
               const categoriesWithProgress: SubjectCategoryWithProgress[] = categories.map(cat => ({
@@ -71,8 +74,8 @@ export const SubjectsStore = signalStore(
             (error) => {
               patchState(store, { error: error.message, loading: false });
             }
-          )
-        ),
+          );
+        }),
         catchError((error) => {
           patchState(store, { error: error.message, loading: false });
           return of(null);

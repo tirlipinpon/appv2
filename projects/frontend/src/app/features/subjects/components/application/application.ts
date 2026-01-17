@@ -116,7 +116,7 @@ export class SubjectsApplication {
     
     for (const subject of subjects) {
       try {
-        const categories = await this.infrastructure.loadSubjectCategories(subject.id);
+        const categories = await this.infrastructure.loadSubjectCategories(subject.id, child.child_id);
         const categoryIds = categories.map((c: { id: string }) => c.id);
         allCategoryIds.push(...categoryIds);
       } catch (error) {

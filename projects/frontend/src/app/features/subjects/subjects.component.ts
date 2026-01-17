@@ -506,12 +506,13 @@ export class SubjectsComponent implements OnInit, OnDestroy {
   filteredCategories = computed(() => {
     const allCategories = this.categories();
     const childId = this.getCurrentChildId();
+    const selectedSubjectId = this.selectedSubjectId();
     // Lire le signal statsByKey pour que le computed soit réactif aux changements
     const statsByKey = this.gamesStatsService.statsByKey();
     
     if (allCategories.length === 0) return [];
     
-    return allCategories.filter((category: { id: string }) => {
+    const filtered = allCategories.filter((category: { id: string }) => {
       // Utiliser directement le store pour être réactif
       const categoryKey = childId ? `${childId}:category:${category.id}` : `category:${category.id}`;
       const cached = statsByKey[categoryKey];
@@ -527,6 +528,7 @@ export class SubjectsComponent implements OnInit, OnDestroy {
       // Cacher seulement si total = 0 (pas de jeux)
       return stats.total > 0;
     });
+    return filtered;
   });
 
   // Computed signal pour filtrer les matières avec des jeux (directs ou via catégories)
@@ -808,32 +810,13 @@ export class SubjectsComponent implements OnInit, OnDestroy {
           await this.application.loadAllSubjectsProgress();
           await this.application.loadAllCategoriesProgress();
           
-          // Recharger les progressions des catégories dans categoriesBySubject
+          // Recharger les catégories depuis la base de données pour s'assurer qu'elles sont à jour avec les enrollments
           const child = this.authService.getCurrentChild();
           if (child) {
-            const categoriesMap = new Map(this.categoriesBySubject());
-            for (const [subjectId, categories] of categoriesMap.entries()) {
-              if (categories.length > 0) {
-                const categoryIds = categories.map((cat: { id: string }) => cat.id);
-                const progressList = await this.infrastructure.loadChildProgress(child.child_id, categoryIds);
-                const updatedCategories: SubjectCategoryWithProgress[] = categories.map(cat => {
-                  const progress = progressList.find(p => p.subject_category_id === cat.id);
-                  return {
-                    ...cat,
-                    progress: progress ? {
-                      completed: progress.completed,
-                      stars_count: progress.stars_count,
-                      completion_percentage: progress.completion_percentage,
-                      completion_count: progress.completion_count,
-                      last_completed_at: progress.last_completed_at,
-                      last_played_at: progress.last_played_at,
-                    } : cat.progress,
-                  } as SubjectCategoryWithProgress;
-                });
-                categoriesMap.set(subjectId, updatedCategories);
-              }
-            }
-            this.categoriesBySubject.set(categoriesMap);
+            const subjects = this.subjects();
+            const subjectIds = subjects.map((s: { id: string }) => s.id);
+            // Recharger toutes les catégories depuis la base de données (avec filtrage par enrollments)
+            await this.loadCategoriesForSubjects(subjectIds, child.child_id);
           }
           
           // Recharger aussi la progression des catégories si une matière est sélectionnée
@@ -929,7 +912,7 @@ export class SubjectsComponent implements OnInit, OnDestroy {
     await Promise.all(
       subjectIds.map(async (subjectId: string) => {
         try {
-          const categories = await this.infrastructure.loadSubjectCategories(subjectId);
+          const categories = await this.infrastructure.loadSubjectCategories(subjectId, childId);
           
           // Charger les progressions des catégories
           let categoriesWithProgress: SubjectCategoryWithProgress[] = categories.map(cat => ({ ...cat, progress: undefined }));
