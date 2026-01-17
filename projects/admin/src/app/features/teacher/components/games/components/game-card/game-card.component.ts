@@ -271,34 +271,38 @@ export class GameCardComponent implements OnInit, OnChanges {
   saveEdit(): void {
     if (!this.gameSpecificValid()) return;
     
-    const globalFields = this.currentGlobalFields() || this.initialGlobalFields();
-    let gameData = this.gameSpecificData();
-    if (!globalFields || !gameData) return;
-
-    // Vérifier si on a un fichier image d'aide à uploader
-    const aideImageFile = globalFields.aideImageFile;
-    const oldAideImageUrl = globalFields.aideImageUrl;
-
-    // Vérifier si on a un fichier image à uploader (pour ImageInteractive)
-    const imageDataWithFile = this.imageInteractiveDataWithFile();
-    const isImageInteractive = isGameTypeOneOf(this.currentGameTypeName(), 'click', 'image interactive');
-
-    // Vérifier si on a un fichier image à uploader (pour Puzzle)
-    const puzzleDataWithFile = this.puzzleDataWithFile();
-    const isPuzzle = isGameTypeOneOf(this.currentGameTypeName(), ...getGameTypeVariations(GAME_TYPE_PUZZLE));
+    // Capturer uniquement le fichier image d'aide au début (ne change pas pendant l'upload)
+    const initialGlobalFields = this.currentGlobalFields() || this.initialGlobalFields();
+    if (!initialGlobalFields) return;
+    
+    const aideImageFile = initialGlobalFields.aideImageFile;
+    const oldAideImageUrl = initialGlobalFields.aideImageUrl;
 
     // Fonction pour continuer la sauvegarde après l'upload de l'image d'aide
+    // Cette fonction récupère les valeurs ACTUELLES des signals pour éviter les race conditions
     const continueSave = (aideImageUrl: string | null) => {
+      // Récupérer les valeurs ACTUELLES des signals au moment de l'appel
+      const currentGlobalFields = this.currentGlobalFields() || this.initialGlobalFields();
+      const currentGameData = this.gameSpecificData();
+      if (!currentGlobalFields || !currentGameData) return;
+
+      // Mettre à jour avec la nouvelle URL d'image d'aide
       const updatedGlobalFields: GameGlobalFieldsData = {
-        ...globalFields,
+        ...currentGlobalFields,
         aideImageUrl: aideImageUrl,
         aideImageFile: null, // Réinitialiser après upload
       };
 
-      if (isImageInteractive && imageDataWithFile?.imageFile) {
+      // Récupérer les valeurs ACTUELLES pour les autres types de jeux
+      const currentImageDataWithFile = this.imageInteractiveDataWithFile();
+      const currentPuzzleDataWithFile = this.puzzleDataWithFile();
+      const isImageInteractive = isGameTypeOneOf(this.currentGameTypeName(), 'click', 'image interactive');
+      const isPuzzle = isGameTypeOneOf(this.currentGameTypeName(), ...getGameTypeVariations(GAME_TYPE_PUZZLE));
+
+      if (isImageInteractive && currentImageDataWithFile?.imageFile) {
         // Uploader l'image avant de sauvegarder
-        const file = imageDataWithFile.imageFile;
-        const oldImageUrl = imageDataWithFile.oldImageUrl;
+        const file = currentImageDataWithFile.imageFile;
+        const oldImageUrl = currentImageDataWithFile.oldImageUrl;
 
         // Supprimer l'ancienne image si elle existe, puis uploader la nouvelle
         const deleteOldImage$: Observable<{ success: boolean; error: string | null }> = oldImageUrl 
@@ -315,26 +319,40 @@ export class GameCardComponent implements OnInit, OnChanges {
               return;
             }
 
+            // Récupérer les données ACTUELLES au moment de la sauvegarde
+            const latestImageDataWithFile = this.imageInteractiveDataWithFile();
+            if (!latestImageDataWithFile) return;
+
             // Mettre à jour les données avec la nouvelle URL en copiant toutes les propriétés
             const updatedImageData: ImageInteractiveData = {
               image_url: result.url,
               image_width: result.width,
               image_height: result.height,
-              zones: imageDataWithFile.zones,
-              require_all_correct_zones: imageDataWithFile.require_all_correct_zones,
+              zones: latestImageDataWithFile.zones,
+              require_all_correct_zones: latestImageDataWithFile.require_all_correct_zones,
+            };
+
+            // Récupérer les champs globaux ACTUELS avant de sauvegarder
+            const latestGlobalFields = this.currentGlobalFields() || this.initialGlobalFields();
+            if (!latestGlobalFields) return;
+
+            const finalGlobalFields: GameGlobalFieldsData = {
+              ...latestGlobalFields,
+              aideImageUrl: aideImageUrl,
+              aideImageFile: null,
             };
 
             // Sauvegarder le jeu avec la nouvelle URL
-            this.saveGameWithData(updatedGlobalFields, updatedImageData);
+            this.saveGameWithData(finalGlobalFields, updatedImageData);
           },
           error: (error) => {
             console.error('Erreur upload:', error);
             this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
           }
         });
-      } else if (isPuzzle && puzzleDataWithFile?.imageFile) {
+      } else if (isPuzzle && currentPuzzleDataWithFile?.imageFile) {
         // Générer et uploader les pièces du puzzle avec nouveau fichier
-        this.gameCreationService.generateAndUploadPuzzlePieces(this.game.id, puzzleDataWithFile).subscribe({
+        this.gameCreationService.generateAndUploadPuzzlePieces(this.game.id, currentPuzzleDataWithFile).subscribe({
           next: (updatedPuzzleData) => {
             if (!updatedPuzzleData) {
               console.error('Erreur lors de la génération des pièces');
@@ -342,17 +360,27 @@ export class GameCardComponent implements OnInit, OnChanges {
               return;
             }
 
+            // Récupérer les champs globaux ACTUELS avant de sauvegarder
+            const latestGlobalFields = this.currentGlobalFields() || this.initialGlobalFields();
+            if (!latestGlobalFields) return;
+
+            const finalGlobalFields: GameGlobalFieldsData = {
+              ...latestGlobalFields,
+              aideImageUrl: aideImageUrl,
+              aideImageFile: null,
+            };
+
             // Sauvegarder le jeu avec les pièces générées
-            this.saveGameWithData(updatedGlobalFields, updatedPuzzleData);
+            this.saveGameWithData(finalGlobalFields, updatedPuzzleData);
           },
           error: (error) => {
             console.error('Erreur génération pièces:', error);
             this.errorSnackbar.showError('Erreur lors de la génération des pièces');
           }
         });
-      } else if (isPuzzle && gameData && 'pieces' in gameData) {
+      } else if (isPuzzle && currentGameData && 'pieces' in currentGameData) {
         // Puzzle sans nouveau fichier : vérifier si les pièces ont des URLs
-        const puzzleData = gameData as PuzzleData;
+        const puzzleData = currentGameData as PuzzleData;
         const hasEmptyUrls = puzzleData.pieces.some(piece => !piece.image_url || piece.image_url === '');
         
         if (hasEmptyUrls && puzzleData.image_url) {
@@ -365,8 +393,18 @@ export class GameCardComponent implements OnInit, OnChanges {
                 return;
               }
 
+              // Récupérer les champs globaux ACTUELS avant de sauvegarder
+              const latestGlobalFields = this.currentGlobalFields() || this.initialGlobalFields();
+              if (!latestGlobalFields) return;
+
+              const finalGlobalFields: GameGlobalFieldsData = {
+                ...latestGlobalFields,
+                aideImageUrl: aideImageUrl,
+                aideImageFile: null,
+              };
+
               // Sauvegarder le jeu avec les pièces régénérées
-              this.saveGameWithData(updatedGlobalFields, updatedPuzzleData);
+              this.saveGameWithData(finalGlobalFields, updatedPuzzleData);
             },
             error: (error) => {
               console.error('Erreur régénération pièces:', error);
@@ -375,11 +413,31 @@ export class GameCardComponent implements OnInit, OnChanges {
           });
         } else {
           // Pas de nouveau fichier et URLs déjà présentes, sauvegarder directement
-          this.saveGameWithData(updatedGlobalFields, gameData);
+          // Récupérer les champs globaux ACTUELS avant de sauvegarder
+          const latestGlobalFields = this.currentGlobalFields() || this.initialGlobalFields();
+          if (!latestGlobalFields) return;
+
+          const finalGlobalFields: GameGlobalFieldsData = {
+            ...latestGlobalFields,
+            aideImageUrl: aideImageUrl,
+            aideImageFile: null,
+          };
+
+          this.saveGameWithData(finalGlobalFields, currentGameData);
         }
       } else {
         // Pas de nouveau fichier, sauvegarder directement
-        this.saveGameWithData(updatedGlobalFields, gameData);
+        // Récupérer les champs globaux ACTUELS avant de sauvegarder
+        const latestGlobalFields = this.currentGlobalFields() || this.initialGlobalFields();
+        if (!latestGlobalFields) return;
+
+        const finalGlobalFields: GameGlobalFieldsData = {
+          ...latestGlobalFields,
+          aideImageUrl: aideImageUrl,
+          aideImageFile: null,
+        };
+
+        this.saveGameWithData(finalGlobalFields, currentGameData);
       }
     };
 
