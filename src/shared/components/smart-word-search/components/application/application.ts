@@ -252,11 +252,13 @@ export class Application {
    * Crée un nouveau mot global
    * @param newWordInput - Le mot à créer
    * @param variant - Variant du composant ('admin' ou 'frontend')
+   * @param childId - ID de l'enfant (optionnel). Si fourni, permet la création même en mode frontend
    * @returns Promise qui résout avec le mot créé ou null en cas d'erreur
    */
-  async onCreateNewWord(newWordInput: string, variant: 'admin' | 'frontend'): Promise<GlobalWord | null> {
-    // Vérifier variant
-    if (variant !== 'admin') {
+  async onCreateNewWord(newWordInput: string, variant: 'admin' | 'frontend', childId?: string): Promise<GlobalWord | null> {
+    // Vérifier variant : en mode frontend, la création est autorisée uniquement si childId est fourni
+    // (c'est-à-dire quand on crée via onCreateNewWordAndLink)
+    if (variant !== 'admin' && !childId) {
       this.store.patchState( {
         errorMessage: 'La création de mots n\'est disponible qu\'en mode admin',
       });
@@ -357,8 +359,8 @@ export class Application {
       return;
     }
 
-    // Créer le mot
-    const createdWord = await this.onCreateNewWord(newWordInput, variant);
+    // Créer le mot (en passant childId pour autoriser la création en mode frontend)
+    const createdWord = await this.onCreateNewWord(newWordInput, variant, childId);
     
     if (!createdWord) {
       // Erreur déjà gérée dans onCreateNewWord
