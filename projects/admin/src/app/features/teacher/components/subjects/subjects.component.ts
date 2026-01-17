@@ -253,7 +253,7 @@ export class SubjectsComponent implements OnInit {
     const v = this.subjectForm.value;
     const updates = {
       name: ((v.name || '').trim() || undefined) as string | undefined,
-      description: (v.description || undefined) as string | undefined,
+      description: (v.description?.trim() || null) as string | null,
       type: v.type as Subject['type'],
     };
     this.infra.updateSubject(id, updates).subscribe(({ subject, error }) => {
