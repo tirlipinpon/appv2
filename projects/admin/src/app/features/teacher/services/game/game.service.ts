@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { Observable, from, forkJoin } from 'rxjs';
+import { map, switchMap, catchError } from 'rxjs/operators';
 import { SupabaseService } from '../../../../shared';
 import type { Game, GameCreate, GameUpdate } from '../../types/game';
 import type { PostgrestError } from '@supabase/supabase-js';
@@ -441,6 +441,134 @@ export class GameService {
         });
 
         return { statsByCategory, error: null };
+      })
+    );
+  }
+
+  /**
+   * Calcule le nombre total de jeux pour une matière (jeux directs + jeux des catégories)
+   * @param subjectId - ID de la matière
+   * @param skipAssignmentCheck - Si true, skip la vérification d'assignments (optimisation)
+   * @returns Observable avec le total de jeux
+   */
+  getTotalGamesCountForSubject(subjectId: string, skipAssignmentCheck = false): Observable<{ 
+    total: number; 
+    error: PostgrestError | null 
+  }> {
+    if (!subjectId) {
+      return from(Promise.resolve({ total: 0, error: null }));
+    }
+
+    // Si on doit vérifier les assignments, vérifier d'abord qu'il y en a
+    if (!skipAssignmentCheck) {
+      return from(
+        this.supabaseService.client
+          .from('teacher_assignments')
+          .select('id')
+          .eq('subject_id', subjectId)
+          .is('deleted_at', null)
+          .limit(1)
+      ).pipe(
+        switchMap(({ data: assignments, error: assignmentsError }) => {
+          if (assignmentsError) {
+            return from(Promise.resolve({ total: 0, error: assignmentsError }));
+          }
+
+          // Si pas d'affectation active, retourner 0
+          if (!assignments || assignments.length === 0) {
+            return from(Promise.resolve({ total: 0, error: null }));
+          }
+
+          // Compter tous les jeux de la matière (directs + catégories)
+          return this.countAllGamesForSubject(subjectId);
+        })
+      );
+    }
+
+    // Skip la vérification d'assignments - compter directement
+    return this.countAllGamesForSubject(subjectId);
+  }
+
+  /**
+   * Compte tous les jeux d'une matière (directs + catégories)
+   * Utilise deux requêtes séparées pour plus de clarté et de fiabilité
+   * @param subjectId - ID de la matière
+   */
+  private countAllGamesForSubject(subjectId: string): Observable<{ 
+    total: number; 
+    error: PostgrestError | null 
+  }> {
+    // 1. Compter les jeux directs (subject_id = subjectId)
+    const directGames$ = from(
+      this.supabaseService.client
+        .from('games')
+        .select('id', { count: 'exact', head: true })
+        .eq('subject_id', subjectId)
+    ).pipe(
+      map(({ count, error }) => ({
+        count: error ? 0 : (count || 0),
+        error: error || null,
+      })),
+      catchError((error) => from(Promise.resolve({ count: 0, error: error || null })))
+    );
+
+    // 2. Récupérer les catégories de la matière
+    const categories$ = from(
+      this.supabaseService.client
+        .from('subject_categories')
+        .select('id')
+        .eq('subject_id', subjectId)
+    ).pipe(
+      map(({ data, error }) => ({
+        categoryIds: error ? [] : ((data || []) as { id: string }[]).map((cat) => cat.id),
+        error: error || null,
+      })),
+      catchError((error) => from(Promise.resolve({ categoryIds: [], error: error || null })))
+    );
+
+    // 3. Combiner les deux et compter les jeux des catégories
+    return forkJoin({
+      directGames: directGames$,
+      categories: categories$,
+    }).pipe(
+      switchMap(({ directGames, categories }) => {
+        // Si pas de catégories, retourner uniquement les jeux directs
+        if (categories.categoryIds.length === 0) {
+          return from(Promise.resolve({
+            total: directGames.count,
+            error: directGames.error || categories.error || null,
+          }));
+        }
+
+        // 4. Compter les jeux des catégories
+        const categoryGames$ = from(
+          this.supabaseService.client
+            .from('games')
+            .select('id', { count: 'exact', head: true })
+            .in('subject_category_id', categories.categoryIds)
+        ).pipe(
+          map(({ count, error }) => ({
+            count: error ? 0 : (count || 0),
+            error: error || null,
+          })),
+          catchError((error) => from(Promise.resolve({ count: 0, error: error || null })))
+        );
+
+        return categoryGames$.pipe(
+          map((categoryGames) => {
+            const total = directGames.count + categoryGames.count;
+            const errors = [
+              directGames.error,
+              categories.error,
+              categoryGames.error,
+            ].filter((e) => e !== null);
+
+            return {
+              total,
+              error: errors.length > 0 ? errors[0] : null,
+            };
+          })
+        );
       })
     );
   }

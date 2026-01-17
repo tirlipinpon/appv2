@@ -5,6 +5,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TeacherAssignmentStore } from '../../../../store/assignments.store';
 import { TeacherStore } from '../../../../store/index';
 import { GamesStatsDisplayComponent, GamesStatsService } from '@shared';
+import { SubjectTotalGamesDisplayComponent } from '../../../../../../shared/components/subject-total-games-display/subject-total-games-display.component';
 import { ConfirmationDialogService } from '../../../../../../shared';
 import { TransferAssignmentDialogComponent, TransferAssignmentData, TeacherAssignmentWithJoins } from '../transfer-assignment-dialog/transfer-assignment-dialog.component';
 import { ChildrenListModalComponent } from '../children-list-modal/children-list-modal.component';
@@ -27,6 +28,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
     RouterModule,
     MatTooltipModule,
     GamesStatsDisplayComponent,
+    SubjectTotalGamesDisplayComponent,
     TransferAssignmentDialogComponent,
     ChildrenListModalComponent,
     TeacherInfoModalComponent,

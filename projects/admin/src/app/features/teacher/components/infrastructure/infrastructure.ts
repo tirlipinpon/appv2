@@ -328,6 +328,13 @@ export class Infrastructure {
     return this.gameService.getGamesStatsByCategoriesBatch(categoryIds);
   }
 
+  getTotalGamesCountForSubject(subjectId: string, skipAssignmentCheck = false): Observable<{ 
+    total: number; 
+    error: PostgrestError | null 
+  }> {
+    return this.gameService.getTotalGamesCountForSubject(subjectId, skipAssignmentCheck);
+  }
+
   // ===== Génération IA =====
   generateSingleGameWithAI(
     request: AIGameGenerationRequest

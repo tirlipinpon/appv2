@@ -89,13 +89,11 @@
                         getCategoriesCount(s.id) > 1 ? "s" : ""
                       }}</span
                     >
-                    <span
-                      *ngIf="getTotalGamesCount(s.id) > 0"
-                      class="games-count"
-                      >🎮 {{ getTotalGamesCount(s.id) }} jeu{{
-                        getTotalGamesCount(s.id) > 1 ? "x" : ""
-                      }}</span
-                    >
+                    <app-subject-total-games-display
+                      [subjectId]="s.id"
+                      [skipAssignmentCheck]="true"
+                      class="games-count">
+                    </app-subject-total-games-display>
                   </span>
                   <span *ngIf="isUnofficial(s.id)" class="unofficial-badge"
                     >(hors programme)</span
@@ -276,13 +274,11 @@
                         getCategoriesCount(s.id) > 1 ? "s" : ""
                       }}</span
                     >
-                    <span
-                      *ngIf="getTotalGamesCount(s.id) > 0"
-                      class="games-count"
-                      >🎮 {{ getTotalGamesCount(s.id) }} jeu{{
-                        getTotalGamesCount(s.id) > 1 ? "x" : ""
-                      }}</span
-                    >
+                    <app-subject-total-games-display
+                      [subjectId]="s.id"
+                      [skipAssignmentCheck]="true"
+                      class="games-count">
+                    </app-subject-total-games-display>
                   </span>
                 </div>
                 <div class="subject-header-actions">

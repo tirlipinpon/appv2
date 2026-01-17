@@ -66,6 +66,11 @@
         <p *ngIf="assignment.school_id">📍 École: {{ getSchoolName(assignment.school_id, assignment) }}</p>
         <p *ngIf="assignment.school_year_id">📅 Année: {{ getSchoolYearLabel(assignment.school_year_id) }}</p>
         <p *ngIf="assignment.school_level">🎓 Niveau: {{ getSchoolLevelLabel(assignment.school_level) }}</p>
+        <app-subject-total-games-display
+          *ngIf="assignment.subject_id"
+          [subjectId]="assignment.subject_id"
+          [skipAssignmentCheck]="true">
+        </app-subject-total-games-display>
         <p>
           <span 
             class="children-count clickable" 

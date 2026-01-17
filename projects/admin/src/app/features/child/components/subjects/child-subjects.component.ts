@@ -6,6 +6,7 @@ import { forkJoin } from 'rxjs';
 import { ParentSubjectService, CategoryEnrollment, Enrollment } from '../../services/subject/parent-subject.service';
 import { SchoolService } from '../../services/school/school.service';
 import { GamesStatsDisplayComponent } from '@shared';
+import { SubjectTotalGamesDisplayComponent } from '../../../../shared/components/subject-total-games-display/subject-total-games-display.component';
 import { GamesStatsWrapperService } from '../../../../shared/services/games-stats/games-stats-wrapper.service';
 import { ErrorSnackbarService } from '../../../../shared';
 import { TeacherInfoModalComponent } from '../../../teacher/components/assignments/components/teacher-info-modal/teacher-info-modal.component';
@@ -16,7 +17,7 @@ import { getSchoolLevelLabel } from '../../../teacher/utils/school-levels.util';
 @Component({
   selector: 'app-child-subjects',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, GamesStatsDisplayComponent, TeacherInfoModalComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, GamesStatsDisplayComponent, SubjectTotalGamesDisplayComponent, TeacherInfoModalComponent],
   templateUrl: './child-subjects.component.html',
   styleUrls: ['./child-subjects.component.scss'],
 })
