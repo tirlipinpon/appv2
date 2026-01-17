@@ -64,7 +64,8 @@ import { GameErrorModalComponent } from '../../shared/components/game-error-moda
         <p>Jeu chargé mais données manquantes.</p>
         <p>Type de jeu: {{ gameType() || 'non défini' }}</p>
         <p>Jeu: {{ application.getCurrentGame()()?.name || 'sans nom' }}</p>
-        <p>game_data_json: {{ application.getCurrentGame()()?.game_data_json ? 'présent mais vide/null' : 'absent' }}</p>
+        <p>game_data_json: {{ getDataStatus(application.getCurrentGame()()?.game_data_json) }}</p>
+        <p>metadata: {{ getDataStatus(application.getCurrentGame()()?.metadata) }}</p>
         <details>
           <summary>Détails du jeu (cliquez pour voir)</summary>
           <pre>{{ application.getCurrentGame()() | json }}</pre>
@@ -1980,6 +1981,17 @@ export class GameComponent implements OnInit, OnDestroy {
     this.finalScore.set(0);
     this.completionMessage.set('');
     this.showAides.set(false); // Réinitialiser le toggle des aides
+  }
+
+  // Helper pour afficher le statut des données
+  getDataStatus(data: Record<string, unknown> | undefined | null): string {
+    if (!data) {
+      return 'absent';
+    }
+    if (typeof data === 'object' && Object.keys(data).length > 0) {
+      return 'présent';
+    }
+    return 'présent mais vide/null';
   }
 }
 

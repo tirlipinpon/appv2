@@ -111,6 +111,15 @@ export class SoundService {
   }
 
   /**
+   * Joue un son de snap/placement (pour les puzzles avec magnétisme)
+   */
+  async playSnapSound(): Promise<void> {
+    if (!this.soundsEnabled()) return;
+    // Son court et discret pour indiquer qu'une pièce a été aimantée
+    await this.playSoundByKey('snap', () => this.playTone(440, 0.08));
+  }
+
+  /**
    * Joue un son spécifique selon le type de badge (dynamique)
    * @param badgeType Le type de badge (ex: 'consecutive_game_days', 'daily_activity', etc.)
    * Le système génère automatiquement la clé badge_<badge_type> et utilise le son générique "badge" en fallback
@@ -141,6 +150,7 @@ export class SoundService {
   private async playSoundByKey(key: string, defaultSound: () => void): Promise<void> {
     if (!this.configLoaded) {
       // Si la config n'est pas encore chargée, utiliser le son par défaut
+      console.log('playSoundByKey: config not loaded, using default sound');
       defaultSound();
       return;
     }

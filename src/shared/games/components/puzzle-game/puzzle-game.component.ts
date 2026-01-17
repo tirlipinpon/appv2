@@ -1,9 +1,10 @@
-import { Component, Input, Output, EventEmitter, signal, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { PuzzleData, PuzzlePiece } from '../../types/game-data';
 import { GameErrorActionsComponent } from '../game-error-actions/game-error-actions.component';
 import { AideSectionComponent } from '../../../components/aide-section/aide-section.component';
 import { calculateSnappedPosition, relativeToAbsolute, type Position } from '../../utils/puzzle-magnetism.util';
+import { SoundService } from '../../../../../projects/frontend/src/app/core/services/sounds/sound.service';
 import Konva from 'konva';
 
 interface PieceState {
@@ -81,6 +82,9 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
 
   // Seuil de snap en pixels
   private readonly SNAP_THRESHOLD = 80;
+
+  // Service de sons
+  private readonly soundService = inject(SoundService);
 
   ngOnInit(): void {
     this.totalImages.set(this.puzzleData.pieces.length + 1); // +1 pour l'image de fond
@@ -589,6 +593,8 @@ export class PuzzleGameComponent implements OnInit, OnChanges, AfterViewInit, On
       finalWidth = fullWidth;
       finalHeight = fullHeight;
       pieceState.isThumbnail = false;
+      // Jouer un son pour indiquer que la pièce a été aimantée
+      this.soundService.playSnapSound();
     } else if (isFinalPositionInThumbnailZone) {
       // Cas 2 : Relâchée dans la zone des vignettes (à droite)
       finalWidth = thumbnailWidth;

@@ -104,6 +104,61 @@ export class GameCardComponent implements OnInit, OnChanges {
       this.isEditing.set(false);
       this.isExpanded.set(false);
       this.showAides.set(false); // Réinitialiser le toggle des aides
+      // Charger les données depuis metadata pour que la prévisualisation fonctionne
+      // Utiliser un try-catch pour éviter les erreurs si gameTypeName n'est pas encore disponible
+      try {
+        if (this.game.metadata) {
+          const gameTypeName = this.gameTypeName || (this.gameTypes.length > 0 ? this.gameTypes.find(gt => gt.id === this.game.game_type_id)?.name : null);
+          if (gameTypeName) {
+            const normalizedMetadata = normalizeGameData(
+              gameTypeName,
+              this.game.metadata as Record<string, unknown>
+            );
+            if (normalizedMetadata) {
+              const gameData = normalizedMetadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData;
+              this.initialGameData.set(gameData);
+              this.gameSpecificData.set(gameData);
+              this.gameSpecificValid.set(true);
+            } else {
+              // Réinitialiser si normalisation échoue
+              this.gameSpecificData.set(null);
+              this.gameSpecificValid.set(false);
+              this.initialGameData.set(null);
+            }
+          } else {
+            // Si gameTypeName n'est pas encore disponible, utiliser metadata directement
+            // Cela fonctionnera pour les puzzles qui n'ont pas besoin de normalisation
+            const gameData = this.game.metadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData;
+            this.initialGameData.set(gameData);
+            this.gameSpecificData.set(gameData);
+            this.gameSpecificValid.set(true);
+          }
+        } else {
+          // Réinitialiser si pas de metadata
+          this.gameSpecificData.set(null);
+          this.gameSpecificValid.set(false);
+          this.initialGameData.set(null);
+        }
+      } catch (error) {
+        console.warn('[GameCardComponent] Erreur lors du chargement des données depuis metadata:', error);
+        // En cas d'erreur, essayer d'utiliser metadata directement
+        if (this.game.metadata) {
+          const gameData = this.game.metadata as unknown as CaseVideData | ReponseLibreData | LiensData | ChronologieData | QcmData | VraiFauxData | MemoryData | SimonData | ImageInteractiveData | PuzzleData;
+          this.initialGameData.set(gameData);
+          this.gameSpecificData.set(gameData);
+          this.gameSpecificValid.set(true);
+        }
+      }
+      // Initialiser aussi currentGlobalFields pour que la prévisualisation fonctionne
+      const globalFields = {
+        instructions: this.game.instructions || null,
+        question: this.game.question || null,
+        aides: this.game.aides || null,
+        aideImageUrl: this.game.aide_image_url || null,
+        aideVideoUrl: this.game.aide_video_url || null,
+      };
+      this.initialGlobalFields.set(globalFields);
+      this.currentGlobalFields.set(globalFields);
       // Ne pas initialiser le mode édition automatiquement
     }
   }

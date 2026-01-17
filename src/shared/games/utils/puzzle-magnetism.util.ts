@@ -21,7 +21,7 @@ export interface SnappedPosition extends Position {
 export function calculateSnappedPosition(
   currentPosition: Position,
   targetPosition: Position,
-  snapThreshold  = 30
+  snapThreshold  = 1
 ): SnappedPosition {
   const distance = Math.sqrt(
     Math.pow(currentPosition.x - targetPosition.x, 2) +

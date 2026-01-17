@@ -212,9 +212,17 @@ export function normalizeGame(rawGame: RawGameFromDb): Game {
       }
       gameTypeName = GAME_TYPE_SIMON;
     } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_PUZZLE))) {
-      // Puzzle : utiliser game_data_json directement (nouveau jeu, pas de migration depuis metadata)
+      // Puzzle : utiliser game_data_json s'il existe, sinon convertir depuis metadata
       if (rawGame.game_data_json && typeof rawGame.game_data_json === 'object' && Object.keys(rawGame.game_data_json).length > 0) {
         gameDataJson = rawGame.game_data_json;
+      } else if (rawGame.metadata) {
+        // Convertir depuis metadata si game_data_json est vide
+        gameDataJson = {
+          image_url: rawGame.metadata['image_url'] || '',
+          image_width: rawGame.metadata['image_width'] || 0,
+          image_height: rawGame.metadata['image_height'] || 0,
+          pieces: rawGame.metadata['pieces'] || []
+        };
       }
       gameTypeName = GAME_TYPE_PUZZLE;
     } else if (isGameTypeOneOf(gameTypeName, ...getGameTypeVariations(GAME_TYPE_IMAGE_INTERACTIVE))) {

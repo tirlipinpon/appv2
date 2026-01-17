@@ -47,6 +47,10 @@
     "badge_daily_activity": {
       "description": "Son pour le badge 'Activité quotidienne'",
       "file": null
+    },
+    "snap": {
+      "description": "Son de snap/placement pour les puzzles avec magnétisme",
+      "file": "/sounds/puzzle_snap.mp3"
     }
   }
 }
