@@ -275,6 +275,10 @@ export class GameCardComponent implements OnInit, OnChanges {
     let gameData = this.gameSpecificData();
     if (!globalFields || !gameData) return;
 
+    // Vérifier si on a un fichier image d'aide à uploader
+    const aideImageFile = globalFields.aideImageFile;
+    const oldAideImageUrl = globalFields.aideImageUrl;
+
     // Vérifier si on a un fichier image à uploader (pour ImageInteractive)
     const imageDataWithFile = this.imageInteractiveDataWithFile();
     const isImageInteractive = isGameTypeOneOf(this.currentGameTypeName(), 'click', 'image interactive');
@@ -283,91 +287,130 @@ export class GameCardComponent implements OnInit, OnChanges {
     const puzzleDataWithFile = this.puzzleDataWithFile();
     const isPuzzle = isGameTypeOneOf(this.currentGameTypeName(), ...getGameTypeVariations(GAME_TYPE_PUZZLE));
 
-    if (isImageInteractive && imageDataWithFile?.imageFile) {
-      // Uploader l'image avant de sauvegarder
-      const file = imageDataWithFile.imageFile;
-      const oldImageUrl = imageDataWithFile.oldImageUrl;
+    // Fonction pour continuer la sauvegarde après l'upload de l'image d'aide
+    const continueSave = (aideImageUrl: string | null) => {
+      const updatedGlobalFields: GameGlobalFieldsData = {
+        ...globalFields,
+        aideImageUrl: aideImageUrl,
+        aideImageFile: null, // Réinitialiser après upload
+      };
 
-      // Supprimer l'ancienne image si elle existe, puis uploader la nouvelle
-      const deleteOldImage$: Observable<{ success: boolean; error: string | null }> = oldImageUrl 
-        ? this.imageUploadService.deleteImage(oldImageUrl)
-        : of({ success: true, error: null });
+      if (isImageInteractive && imageDataWithFile?.imageFile) {
+        // Uploader l'image avant de sauvegarder
+        const file = imageDataWithFile.imageFile;
+        const oldImageUrl = imageDataWithFile.oldImageUrl;
 
-      deleteOldImage$.pipe(
-        switchMap(() => this.imageUploadService.uploadImage(file, this.game.id))
-      ).subscribe({
-        next: (result) => {
-          if (result.error) {
-            console.error('Erreur upload:', result.error);
-            this.errorSnackbar.showError(`Erreur lors de l'upload de l'image: ${result.error}`);
-            return;
-          }
+        // Supprimer l'ancienne image si elle existe, puis uploader la nouvelle
+        const deleteOldImage$: Observable<{ success: boolean; error: string | null }> = oldImageUrl 
+          ? this.imageUploadService.deleteImage(oldImageUrl)
+          : of({ success: true, error: null });
 
-          // Mettre à jour les données avec la nouvelle URL en copiant toutes les propriétés
-          const updatedImageData: ImageInteractiveData = {
-            image_url: result.url,
-            image_width: result.width,
-            image_height: result.height,
-            zones: imageDataWithFile.zones,
-            require_all_correct_zones: imageDataWithFile.require_all_correct_zones,
-          };
-
-          // Sauvegarder le jeu avec la nouvelle URL
-          this.saveGameWithData(globalFields, updatedImageData);
-        },
-        error: (error) => {
-          console.error('Erreur upload:', error);
-          this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
-        }
-      });
-    } else if (isPuzzle && puzzleDataWithFile?.imageFile) {
-      // Générer et uploader les pièces du puzzle avec nouveau fichier
-      this.gameCreationService.generateAndUploadPuzzlePieces(this.game.id, puzzleDataWithFile).subscribe({
-        next: (updatedPuzzleData) => {
-          if (!updatedPuzzleData) {
-            console.error('Erreur lors de la génération des pièces');
-            this.errorSnackbar.showError('Erreur lors de la génération des pièces');
-            return;
-          }
-
-          // Sauvegarder le jeu avec les pièces générées
-          this.saveGameWithData(globalFields, updatedPuzzleData);
-        },
-        error: (error) => {
-          console.error('Erreur génération pièces:', error);
-          this.errorSnackbar.showError('Erreur lors de la génération des pièces');
-        }
-      });
-    } else if (isPuzzle && gameData && 'pieces' in gameData) {
-      // Puzzle sans nouveau fichier : vérifier si les pièces ont des URLs
-      const puzzleData = gameData as PuzzleData;
-      const hasEmptyUrls = puzzleData.pieces.some(piece => !piece.image_url || piece.image_url === '');
-      
-      if (hasEmptyUrls && puzzleData.image_url) {
-        // Régénérer les pièces depuis l'image existante
-        this.gameCreationService.regeneratePuzzlePiecesFromExistingImage(this.game.id, puzzleData).subscribe({
-          next: (updatedPuzzleData) => {
-            if (!updatedPuzzleData) {
-              console.error('Erreur lors de la régénération des pièces');
-              this.errorSnackbar.showError('Erreur lors de la régénération des pièces');
+        deleteOldImage$.pipe(
+          switchMap(() => this.imageUploadService.uploadImage(file, this.game.id))
+        ).subscribe({
+          next: (result) => {
+            if (result.error) {
+              console.error('Erreur upload:', result.error);
+              this.errorSnackbar.showError(`Erreur lors de l'upload de l'image: ${result.error}`);
               return;
             }
 
-            // Sauvegarder le jeu avec les pièces régénérées
-            this.saveGameWithData(globalFields, updatedPuzzleData);
+            // Mettre à jour les données avec la nouvelle URL en copiant toutes les propriétés
+            const updatedImageData: ImageInteractiveData = {
+              image_url: result.url,
+              image_width: result.width,
+              image_height: result.height,
+              zones: imageDataWithFile.zones,
+              require_all_correct_zones: imageDataWithFile.require_all_correct_zones,
+            };
+
+            // Sauvegarder le jeu avec la nouvelle URL
+            this.saveGameWithData(updatedGlobalFields, updatedImageData);
           },
           error: (error) => {
-            console.error('Erreur régénération pièces:', error);
-            this.errorSnackbar.showError('Erreur lors de la régénération des pièces');
+            console.error('Erreur upload:', error);
+            this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image');
           }
         });
+      } else if (isPuzzle && puzzleDataWithFile?.imageFile) {
+        // Générer et uploader les pièces du puzzle avec nouveau fichier
+        this.gameCreationService.generateAndUploadPuzzlePieces(this.game.id, puzzleDataWithFile).subscribe({
+          next: (updatedPuzzleData) => {
+            if (!updatedPuzzleData) {
+              console.error('Erreur lors de la génération des pièces');
+              this.errorSnackbar.showError('Erreur lors de la génération des pièces');
+              return;
+            }
+
+            // Sauvegarder le jeu avec les pièces générées
+            this.saveGameWithData(updatedGlobalFields, updatedPuzzleData);
+          },
+          error: (error) => {
+            console.error('Erreur génération pièces:', error);
+            this.errorSnackbar.showError('Erreur lors de la génération des pièces');
+          }
+        });
+      } else if (isPuzzle && gameData && 'pieces' in gameData) {
+        // Puzzle sans nouveau fichier : vérifier si les pièces ont des URLs
+        const puzzleData = gameData as PuzzleData;
+        const hasEmptyUrls = puzzleData.pieces.some(piece => !piece.image_url || piece.image_url === '');
+        
+        if (hasEmptyUrls && puzzleData.image_url) {
+          // Régénérer les pièces depuis l'image existante
+          this.gameCreationService.regeneratePuzzlePiecesFromExistingImage(this.game.id, puzzleData).subscribe({
+            next: (updatedPuzzleData) => {
+              if (!updatedPuzzleData) {
+                console.error('Erreur lors de la régénération des pièces');
+                this.errorSnackbar.showError('Erreur lors de la régénération des pièces');
+                return;
+              }
+
+              // Sauvegarder le jeu avec les pièces régénérées
+              this.saveGameWithData(updatedGlobalFields, updatedPuzzleData);
+            },
+            error: (error) => {
+              console.error('Erreur régénération pièces:', error);
+              this.errorSnackbar.showError('Erreur lors de la régénération des pièces');
+            }
+          });
+        } else {
+          // Pas de nouveau fichier et URLs déjà présentes, sauvegarder directement
+          this.saveGameWithData(updatedGlobalFields, gameData);
+        }
       } else {
-        // Pas de nouveau fichier et URLs déjà présentes, sauvegarder directement
-        this.saveGameWithData(globalFields, gameData);
+        // Pas de nouveau fichier, sauvegarder directement
+        this.saveGameWithData(updatedGlobalFields, gameData);
       }
+    };
+
+    // Si on a un fichier image d'aide à uploader, le faire en premier
+    if (aideImageFile) {
+      // Supprimer l'ancienne image d'aide si elle existe
+      const deleteOldAideImage$: Observable<{ success: boolean; error: string | null }> = oldAideImageUrl 
+        ? this.imageUploadService.deleteImage(oldAideImageUrl)
+        : of({ success: true, error: null });
+
+      deleteOldAideImage$.pipe(
+        switchMap(() => this.imageUploadService.uploadImage(aideImageFile, this.game.id))
+      ).subscribe({
+        next: (result) => {
+          if (result.error) {
+            console.error('Erreur upload image d\'aide:', result.error);
+            this.errorSnackbar.showError(`Erreur lors de l'upload de l'image d'aide: ${result.error}`);
+            return;
+          }
+
+          // Continuer la sauvegarde avec la nouvelle URL de l'image d'aide
+          continueSave(result.url);
+        },
+        error: (error) => {
+          console.error('Erreur upload image d\'aide:', error);
+          this.errorSnackbar.showError('Erreur lors de l\'upload de l\'image d\'aide');
+        }
+      });
     } else {
-      // Pas de nouveau fichier, sauvegarder directement
-      this.saveGameWithData(globalFields, gameData);
+      // Pas de nouveau fichier image d'aide, continuer directement
+      continueSave(oldAideImageUrl || null);
     }
   }
 
