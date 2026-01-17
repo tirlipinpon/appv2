@@ -81,23 +81,53 @@ async function uploadDirectory(client, localDir, remoteDir) {
     if (stat.isDirectory()) {
       // Créer le dossier sur le serveur (chemin relatif)
       const remotePath = remoteDir === '.' ? file : remoteDir + '/' + file;
+      const currentDir = await client.pwd();
+      
       try {
-        await client.ensureDir(remotePath);
-        await client.cd(remotePath);
-      } catch (error) {
-        // Le dossier existe peut-être déjà
-        if (error.code !== 550) {
-          throw error;
+        // ensureDir crée le dossier ET y navigue automatiquement
+        // Si ensureDir réussit, on est déjà dans le bon répertoire, pas besoin de cd
+        try {
+          await client.ensureDir(remotePath);
+          // ensureDir a réussi, on est dans le bon répertoire, continuer
+        } catch (mkdirError) {
+          // Si ensureDir échoue, essayer de naviguer manuellement
+          if (mkdirError.code === 550 || mkdirError.message?.includes('550')) {
+            // Erreur 550 = le dossier existe peut-être déjà mais ensureDir a échoué
+            // Essayer de naviguer dans le dossier existant
+            try {
+              await client.cd(remotePath);
+            } catch (cdError) {
+              // Si cd échoue aussi, le dossier n'existe peut-être pas vraiment
+              // Réessayer ensureDir (peut-être que ça marchera cette fois)
+              try {
+                await client.ensureDir(remotePath);
+              } catch (retryError) {
+                // Si ça échoue encore, essayer cd une dernière fois
+                await client.cd(remotePath);
+              }
+            }
+          } else {
+            // Autre type d'erreur, la propager
+            throw mkdirError;
+          }
         }
-        await client.cd(remotePath);
+        
+        // Upload récursif
+        const count = await uploadDirectory(client, localPath, '.');
+        uploadedCount += count;
+        
+        // Revenir au répertoire parent
+        await client.cd('..');
+      } catch (error) {
+        console.error(`❌ Erreur lors du traitement du répertoire ${remotePath}: ${error.message}`);
+        // Revenir au répertoire précédent en cas d'erreur
+        try {
+          await client.cd(currentDir);
+        } catch {
+          // Ignorer si on ne peut pas revenir
+        }
+        throw error;
       }
-      
-      // Upload récursif
-      const count = await uploadDirectory(client, localPath, '.');
-      uploadedCount += count;
-      
-      // Revenir au répertoire parent
-      await client.cd('..');
     } else {
       // Upload le fichier (chemin relatif)
       const remotePath = remoteDir === '.' ? file : remoteDir + '/' + file;
