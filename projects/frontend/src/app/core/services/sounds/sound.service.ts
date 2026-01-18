@@ -33,7 +33,10 @@ export class SoundService {
    */
   private async loadSoundsConfig(): Promise<void> {
     try {
-      const response = await fetch('/sounds.config.json');
+      // Utiliser document.baseURI pour construire l'URL correctement avec le base-href
+      const baseUrl = document.baseURI.replace(/\/$/, ''); // Retirer le slash final s'il existe
+      const configUrl = `${baseUrl}/sounds.config.json`;
+      const response = await fetch(configUrl);
       if (response.ok) {
         this.soundsConfig = await response.json();
       } else {
@@ -208,8 +211,25 @@ export class SoundService {
    * Charge un son depuis une URL
    */
   async loadSound(url: string): Promise<AudioBuffer | null> {
-    // Normaliser l'URL : s'assurer qu'elle commence par / pour les fichiers dans public
-    const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
+    // Construire l'URL en utilisant document.baseURI pour respecter le base-href
+    // document.baseURI devrait contenir l'URL complète avec le base-href configuré
+    let normalizedUrl: string;
+    try {
+      // Si l'URL commence par /, on utilise document.baseURI comme base
+      // document.baseURI devrait être quelque chose comme "https://jardin-iris.be/appv2/frontend/"
+      if (url.startsWith('/')) {
+        // Retirer le / initial et utiliser document.baseURI comme base
+        normalizedUrl = new URL(url.substring(1), document.baseURI).href;
+      } else {
+        // URL relative : utiliser document.baseURI comme base
+        normalizedUrl = new URL(url, document.baseURI).href;
+      }
+    } catch (error) {
+      // Fallback en cas d'erreur avec new URL
+      console.error('[SoundService] Error building URL:', error);
+      const baseUrl = document.baseURI.replace(/\/$/, '');
+      normalizedUrl = url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
+    }
     
     if (this.soundCache.has(normalizedUrl)) {
       return this.soundCache.get(normalizedUrl) || null;

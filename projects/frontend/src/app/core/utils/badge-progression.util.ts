@@ -56,9 +56,6 @@ export function getNextLevelMessage(
   badgeLevel?: BadgeLevel,
   currentProgress?: number | { minutes?: number; games?: number }
 ): string | null {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badge-progression.util.ts:27',message:'getNextLevelMessage entry',data:{badgeType:badge.badge_type,isUnlocked:badge.isUnlocked,badgeLevel_current_level:badgeLevel?.current_level,badge_currentThreshold:badge.currentThreshold,badge_level:badge.level,currentProgress:currentProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   
   // Badges sans niveaux progressifs (un seul niveau, pas de prochain)
   if (
@@ -82,11 +79,6 @@ export function getNextLevelMessage(
     // Calculer le niveau à partir de la progression actuelle pour avoir le niveau réel
     // C'est la source de vérité la plus fiable car elle reflète la progression actuelle
     currentLevel = calculateCurrentLevelFromProgress(badge.badge_type, currentProgress);
-    
-    // #region agent log
-    const storedLevel = badge.level ?? badgeLevel?.current_level ?? badge.currentThreshold ?? 1;
-    fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badge-progression.util.ts:83',message:'calculateCurrentLevelFromProgress result',data:{badgeType:badge.badge_type,currentProgress:currentProgress,calculatedLevel:currentLevel,storedLevel:storedLevel,finalCurrentLevel:currentLevel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
   } else {
     // Si pas de progression disponible, utiliser les valeurs stockées
     currentLevel = badge.level ?? badgeLevel?.current_level ?? badge.currentThreshold ?? 1;
@@ -97,10 +89,6 @@ export function getNextLevelMessage(
 
   // Calculer le prochain niveau (niveau actuel + 1)
   const nextLevel = currentLevel + 1;
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badge-progression.util.ts:53',message:'currentLevel and nextLevel calculated',data:{badgeType:badge.badge_type,currentLevel:currentLevel,nextLevel:nextLevel,isLocked:isLocked},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
 
   // Préfixe du message : "Objectif" pour les badges verrouillés, "Prochain" pour les débloqués
   const prefix = isLocked ? 'Objectif' : 'Prochain';
@@ -114,10 +102,6 @@ export function getNextLevelMessage(
       );
       if (currentProgress !== undefined && typeof currentProgress === 'number') {
         const remaining = nextGamesThreshold - currentProgress;
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badge-progression.util.ts:67',message:'perfect_games_count remaining calculation',data:{nextGamesThreshold:nextGamesThreshold,currentProgress:currentProgress,remaining:remaining},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         if (remaining > 0) {
           return `Il te reste ${remaining} jeux parfaits`;
         }
@@ -148,10 +132,6 @@ export function getNextLevelMessage(
       );
       if (currentProgress !== undefined && typeof currentProgress === 'number') {
         const remaining = nextConsecutiveThreshold - currentProgress;
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badge-progression.util.ts:96',message:'consecutive_correct remaining calculation',data:{nextConsecutiveThreshold:nextConsecutiveThreshold,currentProgress:currentProgress,remaining:remaining,currentLevel:currentLevel,nextLevel:nextLevel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         if (remaining > 0) {
           return `Il te reste ${remaining} réponses consécutives`;
         }
