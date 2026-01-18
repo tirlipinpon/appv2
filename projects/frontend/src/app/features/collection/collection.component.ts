@@ -34,22 +34,6 @@ import { ChildAuthService } from '../../core/auth/child-auth.service';
         <div class="badges-section">
           <h2>Mes Badges</h2>
 
-          <!-- Statistiques badges -->
-          <div class="badges-stats">
-            <div class="stat-card">
-              <div class="stat-value">{{ application.getBadgesUnlockedCount()() }}</div>
-              <div class="stat-label">Badges débloqués</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">{{ application.getBadgesTotalCount()() }}</div>
-              <div class="stat-label">Total</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">{{ application.getBadgesCompletionPercentage()() }}%</div>
-              <div class="stat-label">Complété</div>
-            </div>
-          </div>
-
           <!-- Grille de badges -->
           <div class="badges-grid">
             @for (badge of application.getBadges()(); track badge.id) {
