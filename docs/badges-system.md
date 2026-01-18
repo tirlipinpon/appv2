@@ -206,11 +206,21 @@ interface BadgeLevel {
 
 **Condition** :
 - 10 jeux uniques réussis à 100% (meilleur score = 100%)
-- Un jeu est compté une seule fois même s'il est réussi plusieurs fois
+- **IMPORTANT** : Un jeu est compté **UNIQUEMENT lors de la PREMIÈRE atteinte de 100%**
+- Si un joueur rejoue un jeu déjà complété à 100%, cette nouvelle tentative **NE COMPTE PAS**
 
-**Déblocage** : Automatique via trigger `track_daily_and_consecutive_responses()` après chaque tentative parfaite.
+**Déblocage** : Automatique via trigger `track_perfect_games_badge()` après chaque tentative parfaite.
 
 **Tracking** : Table `frontend_perfect_games_count` avec compteur `total_perfect_games`.
+
+**Logique de vérification** :
+- Avant d'incrémenter le compteur, le système vérifie le meilleur score AVANT cette tentative
+- Le jeu ne compte QUE si : `previous_best_score IS NULL OR previous_best_score < 100`
+- Exemples :
+  - Tentative 1 : 80% → Ne compte pas
+  - Tentative 2 : 100% → ✅ Compte (première fois à 100%)
+  - Tentative 3 : 70% → Ne compte pas
+  - Tentative 4 : 100% → ❌ Ne compte PAS (déjà à 100%)
 
 **Niveaux** : Système de niveaux avec seuils dynamiques.
 
@@ -228,6 +238,7 @@ interface BadgeLevel {
 
 **Condition** :
 - 13 jeux uniques réussis à 100%
+- **IMPORTANT** : Même logique que Badge 6 - un jeu est compté **UNIQUEMENT lors de la PREMIÈRE atteinte de 100%**
 
 **Seuils par niveau** :
 - Niveau 1 : 13 jeux (base)
@@ -402,8 +413,23 @@ RETURNS TABLE (
 - Badge 4.1 : Réponses quotidiennes (7+)
 - Badge 5 : Réponses consécutives (5)
 - Badge 5.1 : Réponses consécutives (7)
+
+### Trigger : Jeux parfaits cumulatifs
+
+**Fonction** : `track_perfect_games_badge()`
+
+**Déclenchement** : Après insertion dans `frontend_game_attempts` (appelé par `trigger_check_badges()`)
+
+**Badges vérifiés** :
 - Badge 6 : Jeux parfaits cumulatifs (10)
 - Badge 6.1 : Jeux parfaits cumulatifs (13)
+
+**Logique de vérification** :
+1. Vérifie si le score est 100%
+2. Récupère le meilleur score AVANT cette tentative
+3. N'incrémente le compteur QUE si `previous_best_score IS NULL OR previous_best_score < 100`
+4. Recalcule le nombre total de jeux avec meilleur score = 100%
+5. Vérifie les seuils et débloque les badges si nécessaire
 
 ### Trigger : Badge Activité Quotidienne
 
@@ -435,8 +461,10 @@ track_daily_and_consecutive_responses(
 1. Compter les bonnes réponses dans `p_responses_json`
 2. Mettre à jour `frontend_daily_responses` (compteur quotidien)
 3. Mettre à jour `frontend_consecutive_responses` (compteur consécutif, réinitialisé en cas d'erreur)
-4. Mettre à jour `frontend_perfect_games_count` (si score = 100%)
+4. ~~Mettre à jour `frontend_perfect_games_count` (si score = 100%)~~ **DÉPLACÉ vers `track_perfect_games_badge()`**
 5. Vérifier les seuils et débloquer les badges si nécessaire
+
+**Note** : La gestion des jeux parfaits (Badge 6 et 6.1) a été déplacée vers la fonction dédiée `track_perfect_games_badge()` pour garantir qu'un jeu ne compte que lors de la première atteinte de 100%.
 
 ## Tables de tracking
 
@@ -517,8 +545,10 @@ interface PerfectGamesCount {
 ```
 
 **Logique** :
-- Un jeu est compté une seule fois (meilleur score = 100%)
-- Le compteur est incrémenté uniquement si le jeu n'a pas encore été compté
+- Un jeu est compté **UNIQUEMENT lors de la PREMIÈRE atteinte de 100%**
+- Le système vérifie le meilleur score précédent AVANT d'incrémenter
+- Si le meilleur score précédent était déjà 100%, le jeu n'est PAS compté à nouveau
+- Le compteur reflète le nombre de jeux uniques avec meilleur score = 100%
 
 ### `frontend_daily_activity_tracking`
 

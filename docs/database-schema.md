@@ -1571,18 +1571,20 @@ Cette documentation décrit la structure complète de la base de données de l'a
 
 ### `frontend_perfect_games_count`
 
-**Description :** Table de tracking des jeux parfaits cumulatifs (pour Badges 6 et 6.1). Suit le nombre total de jeux uniques réussis à 100% pour chaque enfant. Un jeu est compté une seule fois même s'il est réussi plusieurs fois.
+**Description :** Table de tracking des jeux parfaits cumulatifs (pour Badges 6 et 6.1). Suit le nombre total de jeux uniques réussis à 100% pour chaque enfant. **IMPORTANT** : Un jeu est compté **UNIQUEMENT lors de la PREMIÈRE atteinte de 100%**. Si un joueur rejoue un jeu déjà complété à 100%, cette nouvelle tentative ne compte pas.
 
 **Rôle métier :**
 
 - Suit le nombre total de jeux uniques réussis à 100%
 - Permet de débloquer les badges "Jeux parfaits" (10 ou 13 jeux)
-- Un jeu est compté une seule fois (meilleur score = 100%)
+- **Un jeu est compté UNIQUEMENT lors de la PREMIÈRE atteinte de 100%** (pas lors des rejeux)
+- Le système vérifie le meilleur score précédent avant d'incrémenter le compteur
 
 **Utilisation :**
 
-- **Backend :** Utilisée par la fonction `track_daily_and_consecutive_responses()` pour compter les jeux parfaits
+- **Backend :** Utilisée par la fonction `track_perfect_games_badge()` pour compter les jeux parfaits
 - **Déblocage :** Les badges sont débloqués automatiquement quand le seuil est atteint
+- **Vérification** : Avant d'incrémenter, vérifie que `previous_best_score IS NULL OR previous_best_score < 100`
 
 **Relations clés :**
 
