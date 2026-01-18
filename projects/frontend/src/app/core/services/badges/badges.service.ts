@@ -127,4 +127,67 @@ export class BadgesService {
   ): Promise<ConsecutiveGameDaysStatus | null> {
     return this.consecutiveGameDaysService.getConsecutiveGameDaysStatus(childId);
   }
+
+  /**
+   * Récupère la progression actuelle pour un type de badge
+   * @param childId ID de l'enfant
+   * @param badgeType Type de badge
+   * @returns La progression actuelle (nombre ou objet pour daily_activity) ou null
+   */
+  async getCurrentProgress(
+    childId: string,
+    badgeType: string
+  ): Promise<number | { minutes: number; games: number } | null> {
+    switch (badgeType) {
+      case 'perfect_games_count': {
+        const { data, error } = await this.supabase.client
+          .from('frontend_perfect_games_count')
+          .select('count')
+          .eq('child_id', childId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('[BadgesService] Erreur lors de la récupération de perfect_games_count:', error);
+          return null;
+        }
+        // Si pas de données (pas encore de jeux parfaits), retourner 0
+        return data?.count ?? 0;
+      }
+
+      case 'daily_streak_responses': {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await this.supabase.client
+          .from('frontend_daily_responses')
+          .select('correct_responses_count')
+          .eq('child_id', childId)
+          .eq('response_date', today)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('[BadgesService] Erreur lors de la récupération de daily_streak_responses:', error);
+          return null;
+        }
+        // Si pas de données (pas encore de réponses aujourd'hui), retourner 0
+        return data?.correct_responses_count ?? 0;
+      }
+
+      case 'consecutive_correct': {
+        const { data, error } = await this.supabase.client
+          .from('frontend_consecutive_responses')
+          .select('consecutive_count')
+          .eq('child_id', childId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('[BadgesService] Erreur lors de la récupération de consecutive_correct:', error);
+          return null;
+        }
+        // Si pas de données (pas encore de série), retourner 0
+        return data?.consecutive_count ?? 0;
+      }
+
+      default:
+        return null;
+    }
+  }
 }

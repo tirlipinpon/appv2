@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { CollectionApplication } from './components/application/application';
@@ -7,13 +7,17 @@ import { ChildButtonComponent } from '../../shared/components/child-button/child
 import { ProgressBarComponent } from '../../shared/components/progress-bar/progress-bar.component';
 import { BadgeVisualComponent } from '../../shared/components/badge-visual/badge-visual.component';
 import { BadgeLevelIndicatorComponent } from '../../shared/components/badge-level-indicator/badge-level-indicator.component';
+import { BadgeNextLevelComponent } from '../../shared/components/badge-next-level/badge-next-level.component';
 import { BadgesService } from '../../core/services/badges/badges.service';
 import { DailyActivityCardComponent } from '../../shared/components/daily-activity-card/daily-activity-card.component';
+import { getNextLevelMessage } from '../../core/utils/badge-progression.util';
+import { BadgeWithStatus } from '../../core/types/badge.types';
+import { ChildAuthService } from '../../core/auth/child-auth.service';
 
 @Component({
   selector: 'app-collection',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent, BadgeLevelIndicatorComponent, DailyActivityCardComponent],
+  imports: [ChildButtonComponent, ProgressBarComponent, BadgeVisualComponent, BadgeLevelIndicatorComponent, BadgeNextLevelComponent, DailyActivityCardComponent],
   template: `
     <div class="collection-container">
       <h1>Ma Collection</h1>
@@ -79,13 +83,7 @@ import { DailyActivityCardComponent } from '../../shared/components/daily-activi
                       Débloqué le {{ formatDate(badge.unlockedAt) }}
                     </div>
                   }
-                  @if (!badge.isUnlocked) {
-                    <div class="locked-info">
-                      @if (getNextThreshold(badge)) {
-                        <span>Prochain seuil : {{ getNextThreshold(badge) }}</span>
-                      }
-                    </div>
-                  }
+                  <app-badge-next-level [message]="getNextLevelMessage(badge)" />
                 </div>
               </div>
             }
@@ -567,23 +565,91 @@ import { DailyActivityCardComponent } from '../../shared/components/daily-activi
 export class CollectionComponent implements OnInit, OnDestroy {
   protected readonly application = inject(CollectionApplication);
   private readonly badgesService = inject(BadgesService);
+  private readonly authService = inject(ChildAuthService);
   private readonly router = inject(Router);
   private navigationSubscription?: Subscription;
+
+  // Cache de progression actuelle par type de badge
+  // Utiliser un objet Record au lieu d'un Map pour une meilleure réactivité
+  private readonly badgeProgressCache = signal<Record<string, number | { minutes: number; games: number }>>({});
+  
+  // Flag pour éviter les appels multiples simultanés
+  private isLoadingProgress = false;
 
   constructor() {
     // Écouter les événements de navigation pour recharger les données quand on revient sur /collection
     this.navigationSubscription = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe((event: NavigationEnd) => {
-        // Si on navigue vers /collection, recharger les données
+      .subscribe(async (event: NavigationEnd) => {
+        // Si on navigue vers /collection, recharger les données et la progression
         if (event.urlAfterRedirects.includes('/collection')) {
-          this.application.initialize();
+          await this.application.initialize();
+          // Attendre un peu pour que les badges soient bien chargés
+          setTimeout(async () => {
+            await this.loadBadgeProgress();
+          }, 300);
         }
       });
+
+    // Recharger la progression quand les badges changent
+    effect(() => {
+      const badges = this.application.getBadges()();
+      const isLoading = this.application.isLoadingBadges()();
+      // Si les badges sont chargés et qu'on n'est plus en train de charger, recharger la progression
+      if (badges.length > 0 && !isLoading && !this.isLoadingProgress) {
+        // Utiliser setTimeout pour éviter les appels multiples pendant le chargement
+        setTimeout(() => {
+          this.loadBadgeProgress();
+        }, 300);
+      }
+    });
   }
 
   async ngOnInit(): Promise<void> {
     await this.application.initialize();
+    await this.loadBadgeProgress();
+  }
+
+  /**
+   * Charge la progression actuelle pour tous les badges qui en ont besoin
+   */
+  private async loadBadgeProgress(): Promise<void> {
+    // Éviter les appels multiples simultanés
+    if (this.isLoadingProgress) {
+      return;
+    }
+
+    const child = this.authService.getCurrentChild();
+    if (!child) {
+      return;
+    }
+
+    this.isLoadingProgress = true;
+
+    try {
+      const progressRecord: Record<string, number | { minutes: number; games: number }> = {};
+
+      // Charger la progression pour les badges qui en ont besoin
+      const badgeTypes = ['perfect_games_count', 'daily_streak_responses', 'consecutive_correct'];
+      
+      for (const badgeType of badgeTypes) {
+        try {
+          const progress = await this.badgesService.getCurrentProgress(child.child_id, badgeType);
+          if (progress !== null) {
+            progressRecord[badgeType] = progress;
+          }
+        } catch (error) {
+          console.error(`[CollectionComponent] Erreur lors du chargement de la progression pour ${badgeType}:`, error);
+        }
+      }
+
+      // Mettre à jour le cache (créer un nouvel objet pour déclencher la réactivité)
+      // Angular détecte les changements par référence, donc on doit créer un nouvel objet
+      // Utiliser JSON.parse(JSON.stringify()) pour créer une copie profonde et forcer la détection
+      this.badgeProgressCache.set(JSON.parse(JSON.stringify(progressRecord)));
+    } finally {
+      this.isLoadingProgress = false;
+    }
   }
 
   ngOnDestroy(): void {
@@ -606,7 +672,7 @@ export class CollectionComponent implements OnInit, OnDestroy {
     });
   }
 
-  getBadgeTooltip(badge: any): string {
+  getBadgeTooltip(badge: BadgeWithStatus): string {
     let tooltip = badge.description || badge.name;
     if (badge.isUnlocked) {
       tooltip += `\nDébloqué le ${this.formatDate(badge.unlockedAt!)}`;
@@ -616,39 +682,60 @@ export class CollectionComponent implements OnInit, OnDestroy {
       if (badge.value !== undefined) {
         tooltip += `\nValeur obtenue : ${badge.value}`;
       }
-    } else {
-      const threshold = this.getNextThreshold(badge);
-      if (threshold) {
-        tooltip += `\nProchain seuil : ${threshold}`;
-      }
+    }
+    const nextMessage = this.getNextLevelMessage(badge);
+    if (nextMessage) {
+      tooltip += `\n${nextMessage}`;
     }
     return tooltip;
   }
 
-  getNextThreshold(badge: any): number | null {
-    // Pour consecutive_game_days, la formule est différente : Niveau = Jours - 1
-    // Donc le prochain niveau nécessite currentStreak + 1 jours
+  /**
+   * Récupère le message du prochain niveau pour un badge
+   * Fonctionne pour les badges débloqués ET verrouillés
+   * Affiche la progression actuelle et ce qui reste à faire
+   * Utilise un computed pour être réactif aux changements de progression
+   */
+  getNextLevelMessageForBadge(badge: BadgeWithStatus): string | null {
+    // Lire le cache pour déclencher la réactivité
+    const cache = this.badgeProgressCache();
+    
+    // Pour consecutive_game_days, utiliser nextLevelDays du status avec progression actuelle
     if (badge.badge_type === 'consecutive_game_days') {
       const status = this.application.consecutiveGameDaysStatus();
       if (status) {
-        return status.nextLevelDays;
+        const currentProgress = status.currentStreak;
+        return getNextLevelMessage(badge, undefined, currentProgress);
       }
-      return null;
     }
     
-    if (!badge.currentThreshold) {
-      return null;
+    // Pour daily_activity, utiliser nextLevelTarget du status avec progression actuelle
+    if (badge.badge_type === 'daily_activity') {
+      const status = this.application.dailyActivityStatus();
+      if (status) {
+        const currentProgress = {
+          minutes: status.totalActiveMinutes,
+          games: status.totalGamesCompleted,
+        };
+        return getNextLevelMessage(badge, undefined, currentProgress);
+      }
     }
-    // Calculer le seuil suivant selon le type de badge
-    const baseValues: Record<string, number> = {
-      perfect_games_count: 10,
-      daily_streak_responses: 5,
-      consecutive_correct: 5,
-    };
-    const baseValue = baseValues[badge.badge_type];
-    if (!baseValue) {
-      return null;
+
+    // Pour les autres badges, récupérer la progression depuis le cache
+    const progress = cache[badge.badge_type];
+    if (progress !== undefined) {
+      return getNextLevelMessage(badge, undefined, progress);
     }
-    return this.badgesService.calculateBadgeThreshold(baseValue, badge.currentThreshold);
+
+    // Si pas de progression disponible, afficher juste le seuil
+    return getNextLevelMessage(badge);
+  }
+
+  /**
+   * @deprecated Utiliser getNextLevelMessageForBadge à la place
+   * Gardé pour compatibilité avec getBadgeTooltip
+   */
+  getNextLevelMessage(badge: BadgeWithStatus): string | null {
+    return this.getNextLevelMessageForBadge(badge);
   }
 }

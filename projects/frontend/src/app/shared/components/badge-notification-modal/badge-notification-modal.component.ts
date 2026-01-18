@@ -1,7 +1,11 @@
-import { Component, input, output, signal, effect, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, signal, effect, computed, ChangeDetectionStrategy, inject } from '@angular/core';
 import { ChildButtonComponent } from '../child-button/child-button.component';
 import { BadgeVisualComponent } from '../badge-visual/badge-visual.component';
-import { BadgeType } from '../../../core/types/badge.types';
+import { BadgeNextLevelComponent } from '../badge-next-level/badge-next-level.component';
+import { BadgeType, BadgeLevel, BadgeWithStatus } from '../../../core/types/badge.types';
+import { BadgesService } from '../../../core/services/badges/badges.service';
+import { ChildAuthService } from '../../../core/auth/child-auth.service';
+import { getNextLevelMessage } from '../../../core/utils/badge-progression.util';
 
 export interface BadgeNotificationData {
   badge_id: string;
@@ -15,7 +19,7 @@ export interface BadgeNotificationData {
 @Component({
   selector: 'app-badge-notification-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChildButtonComponent, BadgeVisualComponent],
+  imports: [ChildButtonComponent, BadgeVisualComponent, BadgeNextLevelComponent],
   template: `
     @if (visible()) {
       <div class="modal-overlay" (click)="onOverlayClick()">
@@ -77,6 +81,7 @@ export interface BadgeNotificationData {
                 <span class="info-value">N{{ level() }}</span>
               </div>
             }
+            <app-badge-next-level [message]="nextLevelMessage()" />
           </div>
 
           <!-- Bouton continuer -->
@@ -299,6 +304,9 @@ export interface BadgeNotificationData {
   `],
 })
 export class BadgeNotificationModalComponent {
+  private readonly badgesService = inject(BadgesService);
+  private readonly authService = inject(ChildAuthService);
+
   visible = input<boolean>(false);
   badgeName = input<string>('');
   badgeType = input.required<BadgeType>();
@@ -313,6 +321,46 @@ export class BadgeNotificationModalComponent {
   // Génération de confettis pour l'animation
   confettiArray = signal<{ color: string; x: number; delay: number }[]>([]);
   private readonly confettiColors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#54A0FF', '#FF9FF3'];
+
+  // BadgeLevel pour calculer le prochain niveau
+  private readonly badgeLevel = signal<BadgeLevel | null>(null);
+
+  // Message du prochain niveau calculé
+  nextLevelMessage = computed(() => {
+    const currentBadgeType = this.badgeType();
+    const currentLevel = this.badgeLevel();
+    const unlockedLevel = this.level();
+    const currentValue = this.value();
+
+    // Construire un BadgeWithStatus minimal pour getNextLevelMessage
+    // Utiliser current_level du BadgeLevel (niveau actuel du badge) ou le niveau débloqué ou 1 par défaut
+    const currentThreshold = currentLevel?.current_level ?? unlockedLevel ?? 1;
+
+    const badge: Partial<BadgeWithStatus> = {
+      badge_type: currentBadgeType,
+      isUnlocked: true,
+      currentThreshold: currentThreshold,
+      description: this.description(),
+    };
+
+    // Extraire la progression actuelle depuis la valeur du badge si disponible
+    let currentProgress: number | { minutes: number; games: number } | undefined = undefined;
+    if (currentValue !== undefined && currentValue !== null) {
+      if (typeof currentValue === 'number') {
+        currentProgress = currentValue;
+      } else if (typeof currentValue === 'object' && currentValue !== null) {
+        if (currentBadgeType === 'daily_activity') {
+          const activity = currentValue as { minutes?: number; games?: number };
+          currentProgress = {
+            minutes: activity.minutes ?? 0,
+            games: activity.games ?? 0,
+          };
+        }
+      }
+    }
+
+    return getNextLevelMessage(badge as BadgeWithStatus, currentLevel ?? undefined, currentProgress);
+  });
 
   // Formater la valeur selon le type de badge
   formattedValue = computed(() => {
@@ -336,7 +384,8 @@ export class BadgeNotificationModalComponent {
         }
       }
       // Pour les autres badges avec objet, essayer d'extraire une valeur numérique
-      const numValue = (val as any).value ?? (val as any).count ?? Object.values(val)[0];
+      const valObj = val as Record<string, unknown>;
+      const numValue = (valObj['value'] as number | undefined) ?? (valObj['count'] as number | undefined) ?? Object.values(val)[0] as number | undefined;
       if (typeof numValue === 'number') {
         return numValue;
       }
@@ -351,8 +400,27 @@ export class BadgeNotificationModalComponent {
     effect(() => {
       if (this.visible()) {
         this.generateConfetti();
+        this.loadBadgeLevel();
       }
     });
+  }
+
+  /**
+   * Charge le BadgeLevel pour le badge actuel afin de calculer le prochain niveau
+   */
+  private async loadBadgeLevel(): Promise<void> {
+    const child = this.authService.getCurrentChild();
+    if (!child) {
+      return;
+    }
+
+    try {
+      const level = await this.badgesService.getBadgeLevel(child.child_id, this.badgeType());
+      this.badgeLevel.set(level);
+    } catch (error) {
+      console.error('[BadgeNotificationModalComponent] Erreur lors du chargement du niveau du badge:', error);
+      this.badgeLevel.set(null);
+    }
   }
 
   private generateConfetti(): void {
