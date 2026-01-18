@@ -57,14 +57,18 @@
           <div
             *ngFor="let s of filteredSelectedSubjects()"
             class="subject-card active"
+            tabindex="0"
             (click)="$event.stopPropagation()"
+            (keyup.enter)="$event.stopPropagation()"
           >
             <div class="subject-header">
               <div class="subject-header-top">
                 <div class="subject-info">
                   <label
                     class="subject-checkbox"
+                    tabindex="0"
                     (click)="$event.stopPropagation()"
+                    (keyup.enter)="$event.stopPropagation()"
                   >
                     <input
                       type="checkbox"
@@ -141,7 +145,10 @@
                       let last = last
                     "
                     class="teacher-name clickable"
+                    tabindex="0"
+                    role="button"
                     (click)="openTeacherModal(teacher, s.id)"
+                    (keyup.enter)="openTeacherModal(teacher, s.id)"
                     title="Voir les informations du professeur"
                   >
                     {{ teacher.fullname || "Professeur"
@@ -242,14 +249,18 @@
           <div
             *ngFor="let s of filteredUnselectedSubjects()"
             class="subject-card"
+            tabindex="0"
             (click)="$event.stopPropagation()"
+            (keyup.enter)="$event.stopPropagation()"
           >
             <div class="subject-header">
               <div class="subject-header-top">
                 <div class="subject-info">
                   <label
                     class="subject-checkbox"
+                    tabindex="0"
                     (click)="$event.stopPropagation()"
+                    (keyup.enter)="$event.stopPropagation()"
                   >
                     <input
                       type="checkbox"
@@ -323,7 +334,10 @@
                       let last = last
                     "
                     class="teacher-name clickable"
+                    tabindex="0"
+                    role="button"
                     (click)="openTeacherModal(teacher, s.id)"
+                    (keyup.enter)="openTeacherModal(teacher, s.id)"
                     title="Voir les informations du professeur"
                   >
                     {{ teacher.fullname || "Professeur"

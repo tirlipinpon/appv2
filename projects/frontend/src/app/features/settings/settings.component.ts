@@ -1034,7 +1034,7 @@ export class SettingsComponent implements OnInit {
       console.error('Erreur lors de la mise à jour du nom d\'avatar:', updateError);
       // Si c'est une erreur de contrainte UNIQUE, proposer une suggestion
       if (updateError.code === '23505') {
-        const suggestion = await this.generateAvatarNameSuggestion(this.avatarName(), currentChild.child_id);
+        const suggestion = await this.generateAvatarNameSuggestion(avatarName || '', currentChild.child_id);
         this.avatarNameError.set(`Ce nom d'avatar est déjà utilisé.`);
         this.avatarNameSuggestion.set(suggestion);
       } else {
