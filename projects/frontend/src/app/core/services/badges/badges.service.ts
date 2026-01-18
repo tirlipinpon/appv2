@@ -78,17 +78,14 @@ export class BadgesService {
       .select('*')
       .eq('child_id', childId)
       .eq('badge_type', badgeType)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      // Si pas de niveau trouvé, retourner null (pas une erreur)
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       throw new Error(`Erreur lors de la récupération du niveau du badge: ${error.message}`);
     }
 
-    return data;
+    // maybeSingle() retourne null automatiquement si 0 lignes, pas besoin de gérer PGRST116
+    return data ?? null;
   }
 
   /**

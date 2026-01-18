@@ -632,18 +632,18 @@ export class GameComponent implements OnInit, OnDestroy {
   gameCompleted = signal<boolean>(false);
   categoryProgress = signal<number>(0); // Progression globale de la catégorie
   totalScore = signal<number>(0); // Score total (nombre de jeux résolus avec score 100%)
-  
+
   // Compteurs pour calculer le pourcentage lors de la validation
   correctAnswersCount = signal<number>(0);
   incorrectAnswersCount = signal<number>(0);
   // Stocker le dernier score validé pour la sauvegarde (car les compteurs peuvent être réinitialisés)
   lastValidatedScore = signal<{ correct: number; incorrect: number } | null>(null);
-  
+
   // Signals pour l'animation d'étoile dans le modal
   starEarned = signal<boolean>(false);
   starColor = signal<'gold' | 'silver'>('gold');
   starType = signal<'category' | 'subject'>('category');
-  
+
   // Taux de réussite calculé après chaque validation
   // Pour les jeux génériques : utilise le score du GameState
   // Pour les jeux spécifiques : utilise les compteurs de tentatives
@@ -659,26 +659,26 @@ export class GameComponent implements OnInit, OnDestroy {
       if (totalQuestions === 0) return null;
       return Math.round((score / totalQuestions) * 100);
     }
-    
+
     // Pour les jeux spécifiques, utiliser les compteurs de tentatives
     const correct = this.correctAnswersCount();
     const incorrect = this.incorrectAnswersCount();
     const total = correct + incorrect;
-    
+
     if (total === 0) return null;
-    
+
     return Math.round((correct / total) * 100);
   });
-  
+
   // État pour afficher/masquer les aides (pour les jeux génériques et reponse_libre)
   showAides = signal<boolean>(false);
 
   // Computed pour déterminer si le modal d'erreur doit être affiché
   shouldShowErrorModal = computed<boolean>(() => {
-    return this.showFeedback() && 
-           this.feedback() !== null && 
-           this.feedback()?.isCorrect === false &&
-           !this.isGameCompleted();
+    return this.showFeedback() &&
+      this.feedback() !== null &&
+      this.feedback()?.isCorrect === false &&
+      !this.isGameCompleted();
   });
 
   // Computed pour déterminer si le bouton "Valider" doit être affiché
@@ -689,10 +689,10 @@ export class GameComponent implements OnInit, OnDestroy {
     }
 
     // Afficher pour les autres jeux (Memory, etc.)
-    return !this.showFeedback() && 
-           (this.selectedAnswer() !== null || 
-            this.isGenericGame() || 
-            this.isMemoryGame());
+    return !this.showFeedback() &&
+      (this.selectedAnswer() !== null ||
+        this.isGenericGame() ||
+        this.isMemoryGame());
   });
 
   toggleAides(): void {
@@ -707,14 +707,14 @@ export class GameComponent implements OnInit, OnDestroy {
   breadcrumbItems = computed<BreadcrumbItem[]>(() => {
     const items: BreadcrumbItem[] = [];
     const game = this.application.getCurrentGame()();
-    
+
     if (!game) return items;
-    
+
     items.push({
       label: 'Matières',
       action: () => this.goToSubjects()
     });
-    
+
     if (this.currentSubject()) {
       items.push({
         label: this.currentSubject()!.name,
@@ -722,7 +722,7 @@ export class GameComponent implements OnInit, OnDestroy {
         isActive: !this.currentCategory()
       });
     }
-    
+
     if (this.currentCategory()) {
       items.push({
         label: this.currentCategory()!.name,
@@ -735,12 +735,12 @@ export class GameComponent implements OnInit, OnDestroy {
         isActive: false
       });
     }
-    
+
     items.push({
       label: game.name,
       isActive: true
     });
-    
+
     return items;
   });
 
@@ -754,7 +754,7 @@ export class GameComponent implements OnInit, OnDestroy {
 
   completionActions = computed<CompletionModalAction[]>(() => {
     const actions: CompletionModalAction[] = [];
-    
+
     // Ajouter le bouton "Continuer" si un prochain jeu existe
     if (this.hasNextGame()) {
       actions.push({
@@ -763,7 +763,7 @@ export class GameComponent implements OnInit, OnDestroy {
         action: () => this.onCompletionAction(() => this.goToNextGame())
       });
     }
-    
+
     // Ajouter les autres actions
     actions.push(
       {
@@ -777,7 +777,7 @@ export class GameComponent implements OnInit, OnDestroy {
         action: () => this.onCompletionAction(() => this.restartGame())
       }
     );
-    
+
     return actions;
   });
 
@@ -788,12 +788,12 @@ export class GameComponent implements OnInit, OnDestroy {
   private onCompletionAction(action: () => void | Promise<void>): void {
     // Fermer le modal
     this.showCompletionScreen.set(false);
-    
+
     // Déclencher l'affichage des badges après un court délai
     setTimeout(() => {
       this.badgeNotification.processNextBadgeInQueue();
     }, 300);
-    
+
     // Exécuter l'action
     const result = action();
     if (result instanceof Promise) {
@@ -941,7 +941,7 @@ export class GameComponent implements OnInit, OnDestroy {
         console.error('Erreur lors de la sauvegarde du score partiel:', error);
       });
     }
-    
+
     // Nettoyer l'abonnement pour éviter les fuites mémoire
     if (this.routeSubscription) {
       this.routeSubscription.unsubscribe();
@@ -963,7 +963,7 @@ export class GameComponent implements OnInit, OnDestroy {
     this.showAides.set(false);
     this.correctAnswersCount.set(0);
     this.incorrectAnswersCount.set(0);
-    
+
     await this.application.initializeGame(gameId);
     // Charger les informations de subject et category pour le breadcrumb
     await this.loadBreadcrumbData();
@@ -976,15 +976,15 @@ export class GameComponent implements OnInit, OnDestroy {
     const child = this.childAuthService.getCurrentChild();
     const childId = child?.child_id;
     const game = this.application.getCurrentGame()();
-    
+
     if (!childId || !game) {
       this.categoryProgress.set(0);
       return;
     }
-    
+
     try {
       let progress = 0;
-      
+
       if (game.subject_category_id) {
         // Cas 1 : Sous-catégorie (subject_category_id présent)
         progress = await this.progression.calculateCategoryCompletionPercentage(childId, game.subject_category_id);
@@ -992,7 +992,7 @@ export class GameComponent implements OnInit, OnDestroy {
         // Cas 2 : Matière principale (subject_id présent, subject_category_id null)
         progress = await this.progression.calculateSubjectCompletionPercentage(childId, game.subject_id);
       }
-      
+
       this.categoryProgress.set(progress);
     } catch (error) {
       // Ne pas bloquer l'affichage du modal si le chargement de la progression échoue
@@ -1005,12 +1005,12 @@ export class GameComponent implements OnInit, OnDestroy {
   private async loadTotalScore(): Promise<void> {
     const child = this.childAuthService.getCurrentChild();
     const childId = child?.child_id;
-    
+
     if (!childId) {
       this.totalScore.set(0);
       return;
     }
-    
+
     try {
       const score = await this.progression.calculateTotalScore(childId);
       this.totalScore.set(score);
@@ -1128,15 +1128,15 @@ export class GameComponent implements OnInit, OnDestroy {
     // Cela permet de corriger le problème où les compteurs s'accumulent entre les tentatives
     this.correctAnswersCount.set(0);
     this.incorrectAnswersCount.set(0);
-    
+
     this.showFeedback.set(true);
-    
+
     // Compter le nombre réel de cases correctes/incorrectes
     const caseVideData = this.getCaseVideData();
     if (caseVideData?.cases_vides && this.caseVideGameComponent) {
       let correctCases = 0;
       let incorrectCases = 0;
-      
+
       // Compter les cases correctes et incorrectes
       for (const caseVide of caseVideData.cases_vides) {
         const userAnswer = this.caseVideGameComponent.getWordInCase(caseVide.index);
@@ -1152,14 +1152,14 @@ export class GameComponent implements OnInit, OnDestroy {
           incorrectCases++;
         }
       }
-      
+
       // Ajouter les comptes réels
       this.correctAnswersCount.update(count => count + correctCases);
       this.incorrectAnswersCount.update(count => count + incorrectCases);
-      
+
       // Stocker le dernier score validé pour la sauvegarde
       this.lastValidatedScore.set({ correct: correctCases, incorrect: incorrectCases });
-      
+
       // Sauvegarder immédiatement le score partiel si la réponse est incorrecte
       if (!isValid) {
         const gameState = this.application.getGameState()();
@@ -1174,24 +1174,24 @@ export class GameComponent implements OnInit, OnDestroy {
       } else {
         this.incorrectAnswersCount.update(count => count + 1);
         this.lastValidatedScore.set({ correct: 0, incorrect: 1 });
-        
+
         // Sauvegarder immédiatement le score partiel si la réponse est incorrecte
         const gameState = this.application.getGameState()();
         const startedAt = gameState?.startedAt || new Date();
         await this.application.savePartialScore(0, 1, undefined, undefined, startedAt);
       }
     }
-    
+
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
       message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
       explanation: ''
     };
     this.feedback.set(feedbackData);
-    
+
     // Jouer le son de feedback (succès ou échec)
     this.feedbackService.showFeedback(feedbackData);
-    
+
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
       // Afficher immédiatement le modal de complétion
@@ -1208,15 +1208,15 @@ export class GameComponent implements OnInit, OnDestroy {
     // Cela permet de corriger le problème où les compteurs s'accumulent entre les tentatives
     this.correctAnswersCount.set(0);
     this.incorrectAnswersCount.set(0);
-    
+
     this.showFeedback.set(true);
-    
+
     // Compter le nombre réel de liens corrects/incorrects
     const liensData = this.getLiensData();
     if (liensData && this.liensGameComponent) {
       let correctLiens = 0;
       let incorrectLiens = 0;
-      
+
       // Récupérer les liens de l'utilisateur depuis le composant
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const userLinks = (this.liensGameComponent as any).userLinks() as Map<string, string>;
@@ -1224,7 +1224,7 @@ export class GameComponent implements OnInit, OnDestroy {
         const [mot, reponse] = entry;
         return { mot, reponse };
       });
-      
+
       // Compter les liens corrects et incorrects
       // Pour chaque lien attendu, vérifier si l'utilisateur l'a créé correctement
       for (const correctLink of liensData.liens) {
@@ -1236,11 +1236,11 @@ export class GameComponent implements OnInit, OnDestroy {
           incorrectLiens++;
         }
       }
-      
+
       // Compter aussi les liens créés par l'utilisateur qui ne sont pas dans la liste correcte
       // (liens supplémentaires incorrects)
       for (const userLink of userLinksArray) {
-        const isInCorrectList = liensData.liens.some(correct => 
+        const isInCorrectList = liensData.liens.some(correct =>
           correct.mot === userLink.mot && correct.reponse === userLink.reponse
         );
         if (!isInCorrectList) {
@@ -1254,11 +1254,11 @@ export class GameComponent implements OnInit, OnDestroy {
           // Si le mot est dans la liste mais avec une mauvaise réponse, on l'a déjà compté dans la boucle précédente
         }
       }
-      
+
       // Ajouter les comptes réels
       this.correctAnswersCount.update(count => count + correctLiens);
       this.incorrectAnswersCount.update(count => count + incorrectLiens);
-      
+
       // Stocker le dernier score validé pour la sauvegarde
       this.lastValidatedScore.set({ correct: correctLiens, incorrect: incorrectLiens });
     } else {
@@ -1271,17 +1271,17 @@ export class GameComponent implements OnInit, OnDestroy {
         this.lastValidatedScore.set({ correct: 0, incorrect: 1 });
       }
     }
-    
+
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
       message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
       explanation: ''
     };
     this.feedback.set(feedbackData);
-    
+
     // Jouer le son de feedback (succès ou échec)
     this.feedbackService.showFeedback(feedbackData);
-    
+
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
       // Afficher immédiatement le modal de complétion
@@ -1299,21 +1299,21 @@ export class GameComponent implements OnInit, OnDestroy {
     // Cela permet de corriger le problème où les compteurs s'accumulent entre les tentatives
     this.correctAnswersCount.set(0);
     this.incorrectAnswersCount.set(0);
-    
+
     this.showFeedback.set(true);
-    
+
     // Compter le nombre réel d'énoncés corrects/incorrects
     const vraiFauxData = this.getVraiFauxData();
     if (vraiFauxData && this.vraiFauxGameComponent) {
       let correctEnonces = 0;
       let incorrectEnonces = 0;
-      
+
       // Récupérer les réponses de l'utilisateur depuis le composant
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const userAnswers = (this.vraiFauxGameComponent as any).userAnswers() as Map<number, boolean>;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const enonces = (this.vraiFauxGameComponent as any).getVraiFauxEnonces() as { texte: string; reponse_correcte: boolean }[];
-      
+
       // Compter les énoncés corrects et incorrects
       for (let i = 0; i < enonces.length; i++) {
         const enonce = enonces[i];
@@ -1329,14 +1329,14 @@ export class GameComponent implements OnInit, OnDestroy {
           incorrectEnonces++;
         }
       }
-      
+
       // Ajouter les comptes réels
       this.correctAnswersCount.update(count => count + correctEnonces);
       this.incorrectAnswersCount.update(count => count + incorrectEnonces);
-      
+
       // Stocker le dernier score validé pour la sauvegarde
       this.lastValidatedScore.set({ correct: correctEnonces, incorrect: incorrectEnonces });
-      
+
       // Sauvegarder immédiatement le score partiel si la réponse est incorrecte
       if (!isValid) {
         const gameState = this.application.getGameState()();
@@ -1351,24 +1351,24 @@ export class GameComponent implements OnInit, OnDestroy {
       } else {
         this.incorrectAnswersCount.update(count => count + 1);
         this.lastValidatedScore.set({ correct: 0, incorrect: 1 });
-        
+
         // Sauvegarder immédiatement le score partiel si la réponse est incorrecte
         const gameState = this.application.getGameState()();
         const startedAt = gameState?.startedAt || new Date();
         await this.application.savePartialScore(0, 1, undefined, undefined, startedAt);
       }
     }
-    
+
     const feedbackData: FeedbackData = {
       isCorrect: isValid,
       message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
       explanation: ''
     };
     this.feedback.set(feedbackData);
-    
+
     // Jouer le son de feedback (succès ou échec)
     this.feedbackService.showFeedback(feedbackData);
-    
+
     // Ne compléter le jeu que si la réponse est correcte
     if (isValid) {
       // Afficher immédiatement le modal de complétion
@@ -1413,29 +1413,29 @@ export class GameComponent implements OnInit, OnDestroy {
   async onGameValidated(isCorrect: boolean): Promise<void> {
     // Gérer la validation des jeux spécifiques
     this.showFeedback.set(true);
-    
+
     // Compter la réponse après validation
     if (isCorrect) {
       this.correctAnswersCount.update(count => count + 1);
     } else {
       this.incorrectAnswersCount.update(count => count + 1);
     }
-    
+
     // Stocker le dernier score validé pour la sauvegarde
     const correct = this.correctAnswersCount();
     const incorrect = this.incorrectAnswersCount();
     this.lastValidatedScore.set({ correct, incorrect });
-    
+
     const feedbackData: FeedbackData = {
       isCorrect,
       message: '', // Le message sera géré par le composant GameFeedbackMessageComponent
       explanation: ''
     };
     this.feedback.set(feedbackData);
-    
+
     // Jouer le son de feedback (succès ou échec)
     this.feedbackService.showFeedback(feedbackData);
-    
+
     // Pour les jeux spécifiques, on considère qu'il n'y a qu'une seule "question"
     // donc on passe directement à la fin du jeu si correct
     if (isCorrect) {
@@ -1456,10 +1456,10 @@ export class GameComponent implements OnInit, OnDestroy {
 
     this.correctAnswer.set(question.correctAnswer);
     const result = await this.application.submitAnswer(this.selectedAnswer()!);
-    
+
     // Pour les jeux génériques, le score est géré par le GameState
     // Pas besoin de compter manuellement, le computed utilisera gameState.score
-    
+
     this.feedback.set(result.feedback);
     this.showFeedback.set(true);
   }
@@ -1481,14 +1481,14 @@ export class GameComponent implements OnInit, OnDestroy {
     try {
       // Marquer le jeu comme complété
       this.gameCompleted.set(true);
-      
+
       const game = this.application.getCurrentGame()();
       const child = this.childAuthService.getCurrentChild();
       const childId = child?.child_id;
-      
+
       // Réinitialiser l'étoile au début pour éviter d'afficher une étoile d'un jeu précédent
       this.starEarned.set(false);
-      
+
       // IMPORTANT : Récupérer le completion_percentage AVANT de sauvegarder le score du jeu actuel
       // pour détecter correctement une nouvelle étoile quand un nouveau jeu est ajouté
       // On calcule la progression AVEC tous les jeux (y compris le nouveau non complété)
@@ -1496,7 +1496,7 @@ export class GameComponent implements OnInit, OnDestroy {
       let previousCompletionPercentage = 0;
       let isCategory = false;
       let entityId: string | null = null;
-      
+
       if (childId && game) {
         if (game.subject_category_id) {
           // Pour une sous-matière
@@ -1517,12 +1517,12 @@ export class GameComponent implements OnInit, OnDestroy {
           this.starColor.set('silver');
         }
       }
-      
+
       // NOUVEAU : Calculer les données nécessaires pour le modal AVANT d'appeler completeGame()
       const gameState = this.application.getGameState()();
       const normalizedGameType = normalizeGameType(game?.game_type);
       const isSpecificGame = SPECIFIC_GAME_TYPES.some(type => normalizeGameType(type) === normalizedGameType);
-      
+
       // Calculer le score individuel du jeu
       let individualScore = 0;
       if (isSpecificGame) {
@@ -1534,20 +1534,20 @@ export class GameComponent implements OnInit, OnDestroy {
       } else {
         individualScore = 100;
       }
-      
+
       this.finalScore.set(individualScore);
-      
+
       // Charger la progression actuelle pour le message (rapide)
       await this.loadCategoryProgress();
       const initialProgress = this.categoryProgress();
-      
+
       // Chercher le prochain jeu (rapide)
       await this.findNextGame();
-      
+
       // Calculer le message initial
       const isSubject = game && !game.subject_category_id && game.subject_id;
       const entityName = isSubject ? 'matière' : 'catégorie';
-      
+
       const updateMessage = (progress: number) => {
         if (progress === 100) {
           this.completionMessage.set(`🎉 Félicitations ! Tu as terminé tous les jeux de cette ${entityName} ! 🏆`);
@@ -1559,13 +1559,13 @@ export class GameComponent implements OnInit, OnDestroy {
           this.completionMessage.set(`Continue ! Tu as complété ${progress}% de cette ${entityName}. 💪`);
         }
       };
-      
+
       // Afficher le message initial
       updateMessage(initialProgress);
-      
+
       // AFFICHER LE MODAL IMMÉDIATEMENT (avant les opérations lourdes)
       this.showCompletionScreen.set(true);
-      
+
       // NOUVEAU : Exécuter completeGame() puis recharger la progression
       // Cela va sauvegarder, vérifier les badges, etc.
       // IMPORTANT : Passer previousCompletionPercentage à completeGame() pour détecter correctement
@@ -1574,14 +1574,14 @@ export class GameComponent implements OnInit, OnDestroy {
         .then(async () => {
           // Attendre un peu pour que la base de données soit à jour
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           // Recharger la progression APRÈS que le jeu soit complété pour avoir la valeur à jour
           await this.loadCategoryProgress();
           const updatedProgress = this.categoryProgress();
-          
+
           // Mettre à jour le message avec la nouvelle progression
           updateMessage(updatedProgress);
-          
+
           // Vérifier les étoiles APRÈS que completeGame() soit terminé
           // Utiliser la progression déjà chargée dans categoryProgress() au lieu de recharger
           await this.checkStarEarned(childId, entityId, isCategory, game, previousCompletionPercentage, updatedProgress);
@@ -1589,12 +1589,12 @@ export class GameComponent implements OnInit, OnDestroy {
         .catch(error => {
           console.error('Erreur lors de la complétion du jeu:', error);
         });
-      
+
       // Recharger le score total en arrière-plan (non-bloquant)
       this.loadTotalScore().catch(error => {
         console.error('Erreur lors du chargement du score total:', error);
       });
-      
+
     } catch (error) {
       // En cas d'erreur, afficher quand même le modal avec un message par défaut
       console.error('Erreur lors de la complétion du jeu:', error);
@@ -1619,10 +1619,10 @@ export class GameComponent implements OnInit, OnDestroy {
     if (!childId || !entityId || !game) {
       return;
     }
-    
+
     // Utiliser la progression fournie ou la charger si non fournie
     let currentProgress = currentCompletionPercentage;
-    
+
     if (currentProgress === undefined) {
       // Fallback : charger la progression si elle n'a pas été fournie
       if (isCategory && game.subject_category_id) {
@@ -1633,41 +1633,23 @@ export class GameComponent implements OnInit, OnDestroy {
         currentProgress = 0;
       }
     }
-    
+
     const wasNotCompleted = previousCompletionPercentage < 100;
     const isNowCompleted = currentProgress >= 100;
-    
-    console.log('⭐ [STAR] Vérification étoile:', {
-      previousCompletionPercentage,
-      currentProgress,
-      wasNotCompleted,
-      isNowCompleted,
-      isCategory,
-      entityId,
-      gameId: game.id,
-      gameName: game.name
-    });
-    
+
+
     // Détecter une nouvelle étoile si on passe de < 100% à 100%
     // Cela permet de détecter quand un nouveau jeu est ajouté et complété
     if (wasNotCompleted && isNowCompleted) {
       console.log('⭐ [STAR] Étoile gagnée ! Passage de', previousCompletionPercentage, '% à', currentProgress, '%');
       this.starEarned.set(true);
-      
+
       if (isCategory && game.subject_category_id) {
         this.sessionStarService.markStarAsNew('category', game.subject_category_id);
-        console.log('⭐ [STAR] Étoile marquée comme nouvelle pour catégorie:', game.subject_category_id);
       } else if (!isCategory && game.subject_id) {
         this.sessionStarService.markStarAsNew('subject', game.subject_id);
-        console.log('⭐ [STAR] Étoile marquée comme nouvelle pour matière:', game.subject_id);
       }
     } else {
-      console.log('⭐ [STAR] Pas de nouvelle étoile. Raison:', {
-        wasNotCompleted,
-        isNowCompleted,
-        previousWas100: previousCompletionPercentage >= 100,
-        currentIs100: currentProgress >= 100
-      });
       this.starEarned.set(false);
     }
   }
@@ -1684,21 +1666,21 @@ export class GameComponent implements OnInit, OnDestroy {
       // Récupérer le childId pour le filtrage
       const child = this.childAuthService.getCurrentChild();
       const childId = child?.child_id;
-      
+
       let games: Game[] = [];
-      
+
       // Si le jeu est lié à une catégorie, charger les jeux de cette catégorie
       if (currentGame.subject_category_id) {
         games = await this.subjectsInfrastructure.loadGamesByCategory(currentGame.subject_category_id, childId);
-      } 
+      }
       // Sinon, si le jeu est lié directement à une matière, charger les jeux de cette matière
       else if (currentGame.subject_id) {
         games = await this.subjectsInfrastructure.loadGamesBySubject(currentGame.subject_id, childId);
       }
-      
+
       // Filtrer le jeu actuel et les jeux résolus (score = 100%) de la liste
       games = games.filter(g => g.id !== currentGame.id);
-      
+
       // Récupérer les scores pour exclure les jeux résolus
       if (childId && games.length > 0) {
         const gameIds = games.map(g => g.id);
@@ -1706,14 +1688,14 @@ export class GameComponent implements OnInit, OnDestroy {
         // Ne garder que les jeux non résolus (score !== 100)
         games = games.filter(game => scores.get(game.id) !== 100);
       }
-      
+
       if (games.length === 0) {
         // Tous les jeux sont résolus ou il n'y a plus de jeux
         this.hasNextGame.set(false);
         this.nextGameId.set(null);
         return;
       }
-      
+
       // Sélectionner le premier jeu de la liste (qui est déjà mélangée aléatoirement)
       const nextGame = games[0];
       this.nextGameId.set(nextGame.id);
@@ -1730,11 +1712,11 @@ export class GameComponent implements OnInit, OnDestroy {
     if (nextId) {
       // Sauvegarder l'ID avant de réinitialiser pour éviter une condition de course
       const targetGameId = nextId;
-      
+
       // IMPORTANT: Sauvegarder le score partiel AVANT de réinitialiser les signaux
       // pour éviter de sauvegarder des données pour le mauvais jeu lors de la navigation
       await this.savePartialScoreIfNeeded();
-      
+
       // Réinitialiser l'état du jeu actuel
       this.selectedAnswer.set(null);
       this.showFeedback.set(false);
@@ -1747,12 +1729,12 @@ export class GameComponent implements OnInit, OnDestroy {
       this.hasNextGame.set(false);
       this.nextGameId.set(null);
       this.categoryProgress.set(0); // Réinitialiser temporairement, sera rechargé dans loadGame()
-      
+
       // Réinitialiser aussi les compteurs pour éviter qu'ils soient utilisés avec le nouveau jeu
       this.correctAnswersCount.set(0);
       this.incorrectAnswersCount.set(0);
       this.lastValidatedScore.set(null);
-      
+
       // Naviguer vers le prochain jeu
       // La subscription à route.paramMap détectera le changement et appellera loadGame()
       await this.router.navigate(['/game', targetGameId]);
@@ -1770,18 +1752,18 @@ export class GameComponent implements OnInit, OnDestroy {
   async goToNextGameOrSubjects(): Promise<void> {
     // Sauvegarder le score partiel si le jeu n'a pas été complété et qu'il y a eu des tentatives
     await this.savePartialScoreIfNeeded();
-    
+
     // Réinitialiser l'animation d'étoile
     this.starEarned.set(false);
-    
+
     // Si la réponse était correcte, on a déjà cherché le prochain jeu dans completeGame()
     // Sinon, chercher le prochain jeu maintenant
     if (!this.feedback()?.isCorrect) {
       await this.findNextGame();
     }
-    
+
     const nextId = this.nextGameId();
-    
+
     if (nextId) {
       // Naviguer vers le prochain jeu
       await this.goToNextGame();
@@ -1817,7 +1799,7 @@ export class GameComponent implements OnInit, OnDestroy {
 
     const normalizedGameType = normalizeGameType(game.game_type);
     const isSpecificGame = SPECIFIC_GAME_TYPES.some(type => normalizeGameType(type) === normalizedGameType);
-    
+
     const gameState = this.application.getGameState()();
     const startedAt = gameState?.startedAt || new Date();
 
@@ -1829,11 +1811,11 @@ export class GameComponent implements OnInit, OnDestroy {
       const incorrectDisplay = this.getIncorrectCountForDisplay();
       const correct = this.correctAnswersCount();
       const incorrect = this.incorrectAnswersCount();
-      
+
       // Priorité : dernier score validé > display > compteurs directs
       let finalCorrect: number;
       let finalIncorrect: number;
-      
+
       if (lastScore && (lastScore.correct > 0 || lastScore.incorrect > 0)) {
         finalCorrect = lastScore.correct;
         finalIncorrect = lastScore.incorrect;
@@ -1846,9 +1828,9 @@ export class GameComponent implements OnInit, OnDestroy {
       } else {
         return;
       }
-      
+
       const finalTotal = finalCorrect + finalIncorrect;
-      
+
       // Sauvegarder seulement si il y a eu des tentatives
       if (finalTotal > 0) {
         await this.application.savePartialScore(finalCorrect, finalIncorrect, undefined, undefined, startedAt);
@@ -1858,7 +1840,7 @@ export class GameComponent implements OnInit, OnDestroy {
       if (gameState && gameState.questions && gameState.questions.length > 0) {
         const score = gameState.score || 0;
         const totalQuestions = gameState.questions.length;
-        
+
         // Sauvegarder seulement si il y a eu au moins une question répondue
         if (gameState.currentQuestionIndex > 0 || score > 0) {
           await this.application.savePartialScore(undefined, undefined, score, totalQuestions, startedAt);
@@ -1890,7 +1872,7 @@ export class GameComponent implements OnInit, OnDestroy {
       // Pour les jeux spécifiques, passer au jeu suivant
       await this.findNextGame();
       const nextId = this.nextGameId();
-      
+
       if (nextId) {
         // Naviguer vers le prochain jeu
         await this.goToNextGame();
@@ -1926,7 +1908,7 @@ export class GameComponent implements OnInit, OnDestroy {
    */
   onCompletionModalClose(): void {
     this.showCompletionScreen.set(false);
-    
+
     // Après la fermeture du modal de complétion, afficher les badges en attente
     // Utiliser setTimeout pour laisser le temps à l'animation de fermeture de se terminer
     setTimeout(() => {
@@ -1954,13 +1936,13 @@ export class GameComponent implements OnInit, OnDestroy {
       this.finalScore.set(0);
       this.completionMessage.set('');
       this.showAides.set(false);
-      
+
       // Réinitialiser les compteurs pour repartir à zéro lors d'un réessai
       this.correctAnswersCount.set(0);
       this.incorrectAnswersCount.set(0);
-      
+
       // Pour les jeux génériques, le score est géré par le GameState (remis à zéro automatiquement)
-      
+
       // Recharger le jeu depuis la base de données
       // Les composants enfants seront réinitialisés via l'événement resetRequested
       await this.application.initializeGame(gameId);

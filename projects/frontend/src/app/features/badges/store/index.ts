@@ -51,7 +51,7 @@ export const BadgesStore = signalStore(
         // Trouver le niveau actuel pour ce type de badge
         const badgeLevel = badgeLevels.find((bl) => bl.badge_type === badge.badge_type);
 
-        return {
+        const badgeWithStatus = {
           ...badge,
           isUnlocked: !!unlockedBadge,
           unlockedAt: unlockedBadge?.unlocked_at,
@@ -59,6 +59,14 @@ export const BadgesStore = signalStore(
           value: unlockedBadge?.value,
           currentThreshold: badgeLevel ? badgeLevel.current_level : 1,
         } as BadgeWithStatus;
+
+        // #region agent log
+        if (badge.badge_type === 'consecutive_correct' || badge.badge_type === 'daily_streak_responses' || badge.badge_type === 'perfect_games_count') {
+          fetch('http://127.0.0.1:7242/ingest/cb2b0d1b-8339-4e45-a9b3-e386906385f8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'badges/store/index.ts:45',message:'badgesWithStatus computed - badge level assignment',data:{badgeType:badge.badge_type,unlockedBadge_level:unlockedBadge?.level,badgeLevel_current_level:badgeLevel?.current_level,currentThreshold:badgeWithStatus.currentThreshold,isUnlocked:badgeWithStatus.isUnlocked},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        }
+        // #endregion
+
+        return badgeWithStatus;
       });
     },
     // Nombre de badges débloqués
@@ -127,9 +135,12 @@ export const BadgesStore = signalStore(
           infrastructure.checkNewBadges(childId, gameAttemptId).then(
             (newlyUnlocked) => {
               patchState(store, { newlyUnlocked });
-              // Recharger les badges de l'enfant pour mettre à jour l'état
-              return infrastructure.loadChildBadges(childId).then((childBadges) => {
-                patchState(store, { childBadges });
+              // Recharger les badges de l'enfant ET les niveaux de badges pour mettre à jour l'état
+              return Promise.all([
+                infrastructure.loadChildBadges(childId),
+                infrastructure.loadBadgeLevels(childId),
+              ]).then(([childBadges, badgeLevels]) => {
+                patchState(store, { childBadges, badgeLevels });
               });
             },
             (error) => {

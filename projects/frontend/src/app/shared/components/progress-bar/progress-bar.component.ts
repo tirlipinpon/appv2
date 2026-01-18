@@ -8,8 +8,8 @@ import { Component, input, computed, ChangeDetectionStrategy } from '@angular/co
     <div class="progress-bar-container">
       @if (label()) {
         <div class="progress-bar-label">
-          {{ label() }}
-          <span class="progress-percentage">{{ percentage() }}%</span>
+          {{ label() }} 
+          <span class="progress-percentage">&nbsp; {{ percentage() }}%</span>
         </div>
       }
       <div class="progress-bar-wrapper">
